@@ -14,6 +14,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/threefoldtech/zosbase/pkg/gridtypes/zos"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -162,13 +163,43 @@ func (c *Controller) getBackends(namespace string, path *networkingv1.HTTPIngres
 	svcName := path.Backend.Service.Name
 	portNum := path.Backend.Service.Port.Number
 
-	// if portNum == 0 {
-	// 	portNum = c.resolveNamedPort(namespace, svcName, path.Backend.Service.Port.Name)
-	// 	if portNum == 0 {
-	// 		return nil, fmt.Errorf("service %s/%s has no port named %s", namespace, svcName, path.Backend.Service.Port.Name)
-	// 	}
-	// }
+	// Get the service to check its type
+	svc, err := c.clientset.CoreV1().Services(namespace).Get(context.TODO(), svcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("cannot get service %s/%s: %w", namespace, svcName, err)
+	}
 
+	// Handle ExternalName services differently
+	if svc.Spec.Type == corev1.ServiceTypeExternalName {
+		externalName := svc.Spec.ExternalName
+		if externalName == "" {
+			return nil, fmt.Errorf("ExternalName service %s/%s has no external name configured", namespace, svcName)
+		}
+		// For ExternalName services, use the external name and port
+		backend := fmt.Sprintf("%s:%d", externalName, portNum)
+		klog.Infof("Found ExternalName service backend: %s", backend)
+		return []string{backend}, nil
+	}
+
+	// Check if service has external IPs configured
+	if len(svc.Spec.ExternalIPs) > 0 {
+		var backends []string
+		for _, externalIP := range svc.Spec.ExternalIPs {
+			// For services with external IPs, use the service port (not target port)
+			servicePort := portNum
+			if svc.Spec.Type == corev1.ServiceTypeNodePort {
+				// For NodePort services, we can use either the service port or node port
+				// Since external ingress controller accesses from outside, use service port with external IP
+				servicePort = portNum
+			}
+			backend := fmt.Sprintf("%s:%d", externalIP, servicePort)
+			backends = append(backends, backend)
+		}
+		klog.Infof("Found service with external IPs: %v", backends)
+		return backends, nil
+	}
+
+	// For regular services, find endpoints via EndpointSlices
 	labelSelector := labels.Set{
 		"kubernetes.io/service-name": svcName,
 	}.AsSelector()
@@ -202,22 +233,6 @@ func (c *Controller) getBackends(namespace string, path *networkingv1.HTTPIngres
 
 	return backends, nil
 }
-
-// func (c *Controller) resolveNamedPort(namespace, serviceName, portName string) int32 {
-// 	svcObj, err := c.clientset.CoreV1().Services(namespace).Get(context.TODO(), serviceName, metav1.GetOptions{})
-// 	if err != nil {
-// 		klog.Warningf("Cannot get Service %s/%s: %v", namespace, serviceName, err)
-// 		return 0
-// 	}
-
-// 	for _, port := range svcObj.Spec.Ports {
-// 		if port.Name == portName {
-// 			return port.Port
-// 		}
-// 	}
-
-// 	return 0
-// }
 
 func (c *Controller) deployGateway(config Config) error {
 	if len(config.Routes) == 0 {

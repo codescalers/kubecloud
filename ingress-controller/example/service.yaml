@@ -24,8 +24,12 @@ kind: Service
 metadata:
   name: my-app-svc
 spec:
+  type: NodePort
+  externalIPs:
+  -  185.206.122.36 
   selector:
     app: my-app
   ports:
   - port: 80
     targetPort: 80
+    nodePort: 30080

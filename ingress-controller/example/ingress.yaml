@@ -5,7 +5,7 @@ metadata:
 spec:
   ingressClassName: "my-custom-ingress"
   rules:
-  - host: myapp
+  - host: externalapp
     http:
       paths:
       - path: /
@@ -14,7 +14,7 @@ spec:
           service:
             name: my-app-svc
             port:
-              number: 80
+              number: 30080
 
 ---
 apiVersion: v1
