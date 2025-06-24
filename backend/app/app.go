@@ -75,6 +75,7 @@ func (app *App) registerHandlers() {
 		vouchersGroup := adminGroup.Group("/vouchers")
 		{
 			vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
+			vouchersGroup.GET("", app.handlers.ListVouchersHandler)
 
 		}
 

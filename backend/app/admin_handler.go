@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
@@ -72,8 +73,11 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
 		voucherCode := internal.GenerateRandomVoucher(5)
+		timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
+		fullCode := fmt.Sprintf("%s-%s", voucherCode, timestampPart)
+
 		voucher := models.Voucher{
-			Voucher:   voucherCode,
+			Voucher:   fullCode,
 			Value:     request.Value,
 			CreatedAt: time.Now(),
 		}
@@ -92,6 +96,19 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		"vouchers": vouchers,
 	})
 
+}
+
+// ListVouchersHandler returns all vouchers in system
+func (h *Handler) ListVouchersHandler(c *gin.Context) {
+
+	vouchers, err := h.db.ListAllVouchers()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to list all vouchers")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error listing vouchers"})
+		return
+	}
+
+	c.JSON(http.StatusOK, vouchers)
 }
 
 func (h *Handler) CreditUserHandler(c *gin.Context) {

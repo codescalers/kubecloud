@@ -86,6 +86,17 @@ func (s *Sqlite) CreateVoucher(voucher *models.Voucher) error {
 	return s.db.Create(voucher).Error
 }
 
+// ListAllVouchers gets all vouchers in system
+func (s *Sqlite) ListAllVouchers() ([]models.Voucher, error) {
+	var vouchers []models.Voucher
+
+	err := s.db.Find(&vouchers).Error
+	if err != nil {
+		return nil, err
+	}
+	return vouchers, nil
+}
+
 // CreateTransaction creates a payment transaction
 func (s *Sqlite) CreateTransaction(transaction *models.Transaction) error {
 	s.mutex.Lock()

@@ -8,6 +8,7 @@ type DB interface {
 	ListAllUsers() ([]User, error)
 	DeleteUserByID(userID string) error
 	CreateVoucher(voucher *Voucher) error
+	ListAllVouchers() ([]Voucher, error)
 	CreateTransaction(transaction *Transaction) error
 	CreditUserBalance(userID int, amount float64) error
 }
