@@ -22,7 +22,7 @@ func NewSqliteStorage(file string) (*Sqlite, error) {
 	}
 
 	// Migrate models
-	err = db.AutoMigrate(&models.User{})
+	err = db.AutoMigrate(&models.User{}, &models.Voucher{}, models.Transaction{})
 	if err != nil {
 		return nil, err
 	}
@@ -52,4 +52,52 @@ func (s *Sqlite) GetUserByEmail(email string) (models.User, error) {
 	var user models.User
 	query := s.db.First(&user, "email = ?", email)
 	return user, query.Error
+}
+
+// GetUserByEmail returns user by its email if found
+func (s *Sqlite) GetUserByID(ID string) (models.User, error) {
+	var user models.User
+	query := s.db.First(&user, "id = ?", ID)
+	return user, query.Error
+}
+
+// ListAllUsers lists all users in system
+func (s *Sqlite) ListAllUsers() ([]models.User, error) {
+	var users []models.User
+
+	err := s.db.Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+
+}
+
+// DeleteUserByID deletes user by its ID
+func (s *Sqlite) DeleteUserByID(userID string) error {
+	return s.db.Where("id = ?", userID).Delete(&models.User{}).Error
+}
+
+// CreateVoucher creates new voucher in system
+func (s *Sqlite) CreateVoucher(voucher *models.Voucher) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.db.Create(voucher).Error
+}
+
+// CreateTransaction creates a payment transaction
+func (s *Sqlite) CreateTransaction(transaction *models.Transaction) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.db.Create(transaction).Error
+}
+
+// CreditUserBalance add credited balance to user by its ID
+func (s *Sqlite) CreditUserBalance(userID int, amount float64) error {
+	return s.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		UpdateColumn("credited_balance", gorm.Expr("credited_balance + ?", amount)).
+		Error
 }

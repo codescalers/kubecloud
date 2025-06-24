@@ -9,7 +9,7 @@ import (
 
 // TokenManager defines the interface for token operations.
 type TokenManager interface {
-	CreateTokenPair(userID string, username string, isAdmin bool) (*TokenPair, error)
+	CreateTokenPair(userID int, username string, isAdmin bool) (*TokenPair, error)
 	VerifyToken(tokenString string) (*TokenClaims, error)
 	RefreshAccessToken(refreshToken string) (string, error)
 }
@@ -31,7 +31,7 @@ type TokenPair struct {
 type TokenClaims struct {
 	jwt.RegisteredClaims
 	Username string `json:"username"`
-	UserID   string `json:"user_id"`
+	UserID   int    `json:"user_id"`
 	Admin    bool   `json:"admin"`
 }
 
@@ -44,7 +44,7 @@ func NewTokenHandler(secretKey string, accessExpiry, refreshExpiry time.Duration
 }
 
 // CreateTokenPair generates a new access and refresh token pair
-func (h *TokenHandler) CreateTokenPair(userID string, username string, isAdmin bool) (*TokenPair, error) {
+func (h *TokenHandler) CreateTokenPair(userID int, username string, isAdmin bool) (*TokenPair, error) {
 	accessToken, err := h.createAccessToken(userID, username, isAdmin)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (h *TokenHandler) VerifyToken(tokenString string) (*TokenClaims, error) {
 }
 
 // createAccessToken generates a new access token
-func (h *TokenHandler) createAccessToken(userID string, username string, isAdmin bool) (string, error) {
+func (h *TokenHandler) createAccessToken(userID int, username string, isAdmin bool) (string, error) {
 	claims := TokenClaims{
 		Username: username,
 		UserID:   userID,
@@ -100,7 +100,7 @@ func (h *TokenHandler) createAccessToken(userID string, username string, isAdmin
 }
 
 // createRefreshToken generates a new refresh token
-func (h *TokenHandler) createRefreshToken(userID string, username string, isAdmin bool) (string, error) {
+func (h *TokenHandler) createRefreshToken(userID int, username string, isAdmin bool) (string, error) {
 	claims := TokenClaims{
 		Username: username,
 		UserID:   userID,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/middlewares"
 	"kubecloud/models/sqlite"
 	"net/http"
 	"time"
@@ -52,8 +53,32 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 // registerHandlers registers all routes
 func (app *App) registerHandlers() {
-	app.router.POST("/api/v1/register", app.handlers.RegisterHandler)
-	app.router.POST("/api/v1/login", app.handlers.LoginUserHandler)
+	v1 := app.router.Group("/api/v1")
+	{
+		v1.POST("/register", app.handlers.RegisterHandler)
+		v1.POST("/login", app.handlers.LoginUserHandler)
+	}
+
+	adminGroup := v1.Group("/admin")
+	adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
+	{
+
+		usersGroup := adminGroup.Group("/users")
+		{
+			usersGroup.GET("", app.handlers.ListUsersHandler)
+			usersGroup.POST("", app.handlers.RegisterHandler)
+			usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
+			usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
+		}
+
+		vouchersGroup := adminGroup.Group("/vouchers")
+		{
+			vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
+
+		}
+
+	}
+
 }
 
 // Run starts the server

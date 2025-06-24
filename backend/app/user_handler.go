@@ -90,7 +90,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	saved, _ := h.db.GetUserByEmail(user.Email)
 
 	// create token pairs
-	tokenPair, err := h.tokenManager.CreateTokenPair(saved.ID.String(), saved.Username, isAdmin)
+	tokenPair, err := h.tokenManager.CreateTokenPair(saved.ID, saved.Username, isAdmin)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to generate token pair")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
@@ -127,16 +127,12 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	}
 
 	// create token pairs
-	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID.String(), user.Username, user.Admin)
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to generate token pair")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
 		return
 	}
 	c.JSON(http.StatusCreated, tokenPair)
-
-}
-
-func (h *Handler) LogoutHandler(c *gin.Context) {
 
 }
