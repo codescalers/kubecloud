@@ -1,8 +1,7 @@
 package internal
 
 import (
-	"crypto/rand"
-	"math/big"
+	"math/rand"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -17,12 +16,18 @@ func IsAdmin(email string, admins []string) bool {
 	return false
 }
 
-// GenerateRandomVoucher generates a cryptographically secure random voucher
+// GenerateRandomVoucher generates a random voucher
 func GenerateRandomVoucher(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letterBytes))))
-		b[i] = letterBytes[num.Int64()]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+// GenerateRandomCode generates random code of 4 digits
+func GenerateRandomCode() int {
+	min := 1000
+	max := 9999
+	return rand.Intn(max-min) + min
 }

@@ -58,6 +58,16 @@ func (app *App) registerHandlers() {
 		v1.POST("/register", app.handlers.RegisterHandler)
 		v1.POST("/login", app.handlers.LoginUserHandler)
 		v1.POST("/refresh", app.handlers.RefreshTokenHandler)
+		v1.POST("/forgot_password", app.handlers.ForgotPasswordHandler)
+		v1.POST("/forgot_password/verify_email", app.handlers.VerifyForgetPasswordCodeHandler)
+
+		authGroup := v1.Group("")
+		authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
+		{
+			authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+		}
+
+
 	}
 
 	adminGroup := v1.Group("/admin")
@@ -70,6 +80,8 @@ func (app *App) registerHandlers() {
 			usersGroup.POST("", app.handlers.RegisterHandler)
 			usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
 			usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
+
+
 		}
 
 		vouchersGroup := adminGroup.Group("/vouchers")

@@ -4,9 +4,11 @@ import (
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 // Handler struct holds configs for all handlers
@@ -33,13 +35,34 @@ type RegisterInput struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required" validate:"password"`
 }
 
+// LoginInput struct for login handler
 type LoginInput struct {
 	Email    string `json:"email" binding:"required" validate:"mail"`
 	Password string `json:"password" binding:"required" validate:"password"`
 }
 
+// RefreshTokenInput struct when user refresh token
 type RefreshTokenInput struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// EmailInput struct for user when forgetting password
+type EmailInput struct {
+    Email string `json:"email" validate:"required,email"`
+}
+
+
+// VerifyCodeInput struct takes verification code from user
+type VerifyCodeInput struct {
+	Email string `json:"email" binding:"required"`
+	Code  int    `json:"code" binding:"required"`
+}
+
+// ChangePasswordInput struct for user to change password
+type ChangePasswordInput struct {
+	Email           string `json:"email" binding:"required"`
+	Password        string `json:"password" binding:"required" validate:"password"`
+	ConfirmPassword string `json:"confirm_password" binding:"required" validate:"password"`
 }
 
 // RegisterHandler registers user to the system
@@ -48,6 +71,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
@@ -87,6 +111,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	// create user model in db
 	err = h.db.RegisterUser(&user)
 	if err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
 		return
 	}
@@ -146,15 +171,155 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 	var request RefreshTokenInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
 
 	accessToken, err := h.tokenManager.RefreshAccessToken(request.RefreshToken)
 	if err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired refresh token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"access_token": accessToken})
+}
+
+// ForgotPasswordHandler sends user verification code
+func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
+	var request EmailInput
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// get user by email
+	user, err := h.db.GetUserByEmail(request.Email)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get user by email")
+		c.JSON(http.StatusNotFound, gin.H{"error": "failed to get email"})
+		return
+
+	}
+
+	code := internal.GenerateRandomCode()
+	subject, body := internal.ResetPasswordMailContent(code, h.config.MailSender.Timeout, user.Username, h.config.Server.Host)
+	err = internal.SendMail(h.config.MailSender.Email, h.config.MailSender.SendGridKey, request.Email, subject, body)
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to send verification code")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send verification code"})
+		return
+	}
+
+	err = h.db.UpdateUserByID(
+		&models.User{
+			ID:        user.ID,
+			UpdatedAt: time.Now(),
+			Code:      code,
+		},
+	)
+
+	if err != nil {
+		log.Error().Err(err).Msg("error updating user data")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update user data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Verification code has been sent to " + request.Email,
+		"timeout": h.config.MailSender.Timeout,
+	})
+
+}
+
+// VerifyForgetPasswordCodeHandler verifies code sent to user when forgetting password
+func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
+	var request VerifyCodeInput
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	// get user by email
+	user, err := h.db.GetUserByEmail(request.Email)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+
+		}
+		log.Error().Err(err).Msg("failed to get user by email")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get user by email"})
+		return
+
+	}
+
+	if user.Code != request.Code {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong code"})
+		return
+	}
+
+	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.Timeout) * time.Second).Before(time.Now()) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "code has expired"})
+		return
+	}
+	isAdmin := internal.IsAdmin(request.Email, h.config.Admins)
+
+	// create token pairs
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate token pair")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate tokens"})
+		return
+	}
+	c.JSON(http.StatusCreated, tokenPair)
+
+}
+
+// ChangePasswordHandler changes password of user
+func (h *Handler) ChangePasswordHandler(c *gin.Context) {
+	var request ChangePasswordInput
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	if request.Password != request.ConfirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "password and confirm password don't match"})
+		return
+	}
+
+	// hash password
+	salt, err := internal.GenerateSalt()
+	if err != nil {
+		log.Error().Err(err).Msg("error Generating salt for password")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error hashing password"})
+		return
+	}
+	hashed := internal.HashPassword(request.Password, salt)
+
+	err = h.db.UpdatePassword(request.Email, hashed, salt)
+	if err == gorm.ErrRecordNotFound {
+		log.Error().Err(err).Msg("user not found")
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	if err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error updating password"})
+		return
+
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+
 }

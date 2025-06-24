@@ -66,6 +66,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
@@ -127,6 +128,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
+		log.Error().Err(err).Send()
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}

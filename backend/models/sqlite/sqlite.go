@@ -1,8 +1,10 @@
 package sqlite
 
 import (
+	"fmt"
 	"kubecloud/models"
 	"sync"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -59,6 +61,39 @@ func (s *Sqlite) GetUserByID(ID string) (models.User, error) {
 	var user models.User
 	query := s.db.First(&user, "id = ?", ID)
 	return user, query.Error
+}
+
+// UpdateUserByID updates user data by its ID
+func (s *Sqlite) UpdateUserByID(user *models.User) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.db.Model(&models.User{}).
+		Where("id = ?", user.ID).
+		Updates(user).Error
+}
+
+func (s *Sqlite) UpdatePassword(email, hashedPassword, salt string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	result := s.db.Model(&models.User{}).
+		Where("email = ?", email).
+		Updates(map[string]interface{}{
+			"password":   hashedPassword,
+			"salt":       salt,
+			"updated_at": time.Now(),
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no user found with email %s", email)
+	}
+
+	return nil
 }
 
 // ListAllUsers lists all users in system
