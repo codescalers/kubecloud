@@ -57,6 +57,7 @@ func (app *App) registerHandlers() {
 	{
 		v1.POST("/register", app.handlers.RegisterHandler)
 		v1.POST("/login", app.handlers.LoginUserHandler)
+		v1.POST("/refresh", app.handlers.RefreshTokenHandler)
 	}
 
 	adminGroup := v1.Group("/admin")

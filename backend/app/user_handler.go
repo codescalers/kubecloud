@@ -38,6 +38,10 @@ type LoginInput struct {
 	Password string `json:"password" binding:"required" validate:"password"`
 }
 
+type RefreshTokenInput struct{
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
 // RegisterHandler registers user to the system
 func (h *Handler) RegisterHandler(c *gin.Context) {
 	var request RegisterInput
@@ -135,4 +139,22 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, tokenPair)
 
+}
+
+// RefreshTokenHandler handles token refresh requests
+func (h *Handler) RefreshTokenHandler(c *gin.Context) {
+	var request RefreshTokenInput
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	accessToken, err := h.tokenManager.RefreshAccessToken(request.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired refresh token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"access_token": accessToken})
 }
