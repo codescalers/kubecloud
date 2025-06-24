@@ -27,8 +27,8 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 	tokenHandler := internal.NewTokenHandler(
 		config.JWT.Secret,
-		time.Duration(config.JWT.AccessTokenExpiry)*time.Minute,
-		time.Duration(config.JWT.RefreshTokenExpiry)*time.Hour,
+		time.Duration(config.JWT.AccessTokenExpiryMinutes)*time.Minute,
+		time.Duration(config.JWT.RefreshTokenExpiryHours)*time.Hour,
 	)
 
 	db, err := sqlite.NewSqliteStorage(config.Database.File)

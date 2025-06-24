@@ -27,8 +27,8 @@ type DB struct {
 
 type JwtToken struct {
 	Secret             string `json:"secret" validate:"required"`
-	AccessTokenExpiry  int    `json:"access_token_expiry" validate:"required,gt=0"`  // in minutes
-	RefreshTokenExpiry int    `json:"refresh_token_expiry" validate:"required,gt=0"` // in hours
+	AccessTokenExpiryMinutes  int    `json:"access_token_expiry_minutes" validate:"required,gt=0"`  // in minutes
+	RefreshTokenExpiryHours int    `json:"refresh_token_expiry_hours" validate:"required,gt=0"` // in hours
 }
 
 // ReadConfFile read configurations of json file
