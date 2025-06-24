@@ -1,0 +1,9 @@
+apiVersion: ingress.grid.tf/v1
+kind: TFGW
+metadata:
+  labels:
+    app.kubernetes.io/name: crd
+    app.kubernetes.io/managed-by: kustomize
+  name: tfgw-sample
+spec:
+  # TODO(user): Add fields here
