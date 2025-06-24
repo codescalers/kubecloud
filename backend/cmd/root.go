@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/app"
+	"kubecloud/internal"
 	"net/http"
 	"os"
 	"os/signal"
@@ -26,7 +27,13 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse config: %w", err)
 		}
 
-		app, err := app.NewApp(configFile)
+		config, err := internal.ReadConfFile(configFile)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to read configurations file")
+			return fmt.Errorf("failed to read configuration file: %w", err)
+		}
+
+		app, err := app.NewApp(config)
 		if err != nil {
 			return fmt.Errorf("failed to create new app: %w", err)
 		}

@@ -21,14 +21,8 @@ type App struct {
 }
 
 // NewApp create new instance of the app with all configs
-func NewApp(configFile string) (*App, error) {
+func NewApp(config internal.Configuration) (*App, error) {
 	router := gin.Default()
-
-	config, err := internal.ReadConfFile(configFile)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to read configurations file")
-		return nil, err
-	}
 
 	tokenHandler := internal.NewTokenHandler(
 		config.JWT.Secret,
