@@ -3,6 +3,7 @@ package middlewares
 import (
 	"kubecloud/internal"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,7 @@ func UserMiddleware(tokenManager internal.TokenManager) gin.HandlerFunc {
 			return
 		}
 
-		c.Set("username", claims.Username)
+		c.Set("user_id", strconv.Itoa(claims.UserID))
 		c.Set("admin", claims.Admin)
 		c.Next()
 	}

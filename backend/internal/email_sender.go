@@ -1,8 +1,8 @@
 package internal
 
 import (
+	_ "embed"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -11,44 +11,48 @@ import (
 	"golang.org/x/text/language"
 )
 
-var resetPassMail = `
-Hi -name-,
+//go:embed templates/reset_password.html
+var resetPassTemplate []byte
 
-We received a request to reset your password.
+//go:embed templates/welcome.html
+var welcomeMail []byte
 
-Your verification code is: -code-
+//go:embed templates/signup.html
+var signupTemplate []byte
 
-This code will expire in -time- minutes.
+type MailService struct {
+	client *sendgrid.Client
+}
 
-If you did not request a password reset, please ignore this message.
-
-Best regards,
-KubeCloud Team
-Sent from -host-
-`
+func NewMailService(sendGridKey string) MailService {
+	return MailService{
+		client: sendgrid.NewSendClient(sendGridKey),
+	}
+}
 
 // SendMail sends verification mails
-func SendMail(sender, sendGridKey, receiver, subject, body string) error {
+func (service *MailService) SendMail(sender, receiver, subject, body string) error {
 	from := mail.NewEmail("KubeCloud", sender)
 
-	valid := !isValidEmail(receiver)
-	if !valid {
+	if !isValidEmail(receiver) {
 		return fmt.Errorf("email %v is not valid", receiver)
 	}
 
 	to := mail.NewEmail("KubeCloud User", receiver)
 
 	message := mail.NewSingleEmail(from, subject, to, "", body)
-	client := sendgrid.NewSendClient(sendGridKey)
-	_, err := client.Send(message)
+	message.Content = []*mail.Content{
+		mail.NewContent("text/html", body),
+	}
+	_, err := service.client.Send(message)
 
 	return err
 }
 
 // ResetPasswordMailContent gets the email content for reset password
-func ResetPasswordMailContent(code int, timeout int, username, host string) (string, string) {
+func (service *MailService) ResetPasswordMailContent(code int, timeout int, username, host string) (string, string) {
 	subject := "Reset password"
-	body := string(resetPassMail)
+	body := string(resetPassTemplate)
 
 	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))
 	body = strings.ReplaceAll(body, "-time-", fmt.Sprint(timeout))
@@ -58,8 +62,26 @@ func ResetPasswordMailContent(code int, timeout int, username, host string) (str
 	return subject, body
 }
 
-// isValidEmail validates email address
-func isValidEmail(email string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9._%%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
-	return re.MatchString(email)
+// WelcomeMailContent gets the email content for welcome messages
+func (service *MailService) WelcomeMailContent(username, host string) (string, string) {
+	subject := "Welcome to KubeCloud 🎉"
+	body := string(welcomeMail)
+
+	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
+	body = strings.ReplaceAll(body, "-host-", host)
+
+	return subject, body
+}
+
+// SignUpMailContent gets the email content for sign up
+func (service *MailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
+	subject := "Welcome to KubeCloud 🎉"
+	body := string(signupTemplate)
+
+	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))
+	body = strings.ReplaceAll(body, "-time-", fmt.Sprint(timeout))
+	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
+	body = strings.ReplaceAll(body, "-host-", host)
+
+	return subject, body
 }

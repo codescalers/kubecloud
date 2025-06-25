@@ -57,9 +57,9 @@ func (s *Sqlite) GetUserByEmail(email string) (models.User, error) {
 }
 
 // GetUserByEmail returns user by its email if found
-func (s *Sqlite) GetUserByID(ID string) (models.User, error) {
+func (s *Sqlite) GetUserByID(userID int) (models.User, error) {
 	var user models.User
-	query := s.db.First(&user, "id = ?", ID)
+	query := s.db.First(&user, "id = ?", userID)
 	return user, query.Error
 }
 
@@ -73,7 +73,7 @@ func (s *Sqlite) UpdateUserByID(user *models.User) error {
 		Updates(user).Error
 }
 
-func (s *Sqlite) UpdatePassword(email, hashedPassword, salt string) error {
+func (s *Sqlite) UpdatePassword(email string, hashedPassword []byte) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -81,7 +81,6 @@ func (s *Sqlite) UpdatePassword(email, hashedPassword, salt string) error {
 		Where("email = ?", email).
 		Updates(map[string]interface{}{
 			"password":   hashedPassword,
-			"salt":       salt,
 			"updated_at": time.Now(),
 		})
 
@@ -91,6 +90,22 @@ func (s *Sqlite) UpdatePassword(email, hashedPassword, salt string) error {
 
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("no user found with email %s", email)
+	}
+
+	return nil
+}
+
+func (s *Sqlite) UpdateUserVerification(userID int, verified bool) error {
+	result := s.db.Model(&models.User{}).
+		Where("id = ?", userID).
+		Update("verified", verified)
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no user found with ID %d", userID)
 	}
 
 	return nil
@@ -109,7 +124,7 @@ func (s *Sqlite) ListAllUsers() ([]models.User, error) {
 }
 
 // DeleteUserByID deletes user by its ID
-func (s *Sqlite) DeleteUserByID(userID string) error {
+func (s *Sqlite) DeleteUserByID(userID int) error {
 	return s.db.Where("id = ?", userID).Delete(&models.User{}).Error
 }
 

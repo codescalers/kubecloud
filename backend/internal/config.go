@@ -15,6 +15,7 @@ type Configuration struct {
 	JWT        JwtToken   `json:"token" validate:"required"`
 	Admins     []string   `json:"admins"`
 	MailSender MailSender `json:"mailSender"`
+	Voucher    Voucher    `json:"voucher"`
 }
 
 // Server struct holds server's information
@@ -42,6 +43,9 @@ type MailSender struct {
 	Timeout     int    `json:"timeout" validate:"min=30"`
 }
 
+type Voucher struct {
+	NameLength int `json:"name_length" validate:"required,gt=0"`
+}
 
 // ReadConfFile read configurations of json file
 func ReadConfFile(path string) (Configuration, error) {

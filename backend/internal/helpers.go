@@ -2,14 +2,14 @@ package internal
 
 import (
 	"math/rand"
+	"net/mail"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-// IsAdmin checks if provided email in admins list or not
-func IsAdmin(email string, admins []string) bool {
-	for _, adminEmail := range admins {
-		if email == adminEmail {
+func Contains[T comparable](elements []T, element T) bool {
+	for _, e := range elements {
+		if element == e {
 			return true
 		}
 	}
@@ -30,4 +30,10 @@ func GenerateRandomCode() int {
 	min := 1000
 	max := 9999
 	return rand.Intn(max-min) + min
+}
+
+// isValidEmail validates an email address using the standard library
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }
