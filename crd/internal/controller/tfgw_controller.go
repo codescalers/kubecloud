@@ -18,15 +18,22 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	ingressv1 "github.com/codescalers/kubecloud/crd/api/v1"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
+
+// finalizer string set to delay the delation until external resource cleanup
+const tfgwFinalizer = "finalizer.tfgw.ingress.grid.tf"
 
 // TFGWReconciler reconciles a TFGW object
 type TFGWReconciler struct {
@@ -50,21 +57,59 @@ type TFGWReconciler struct {
 func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = logf.FromContext(ctx)
 
-	// TODO(user): your logic here
 	mne := os.Getenv("MNEMONIC")
 	net := os.Getenv("NETWORK")
+	if net == "" || mne == "" {
+		klog.Warning("ThreeFold network or mnemonic not configured, skipping gateway deployment")
+		return ctrl.Result{}, fmt.Errorf("threefold network or mnemonic not configured")
+	}
+	pluginClient, err := deployer.NewTFPluginClient(
+		mne,
+		deployer.WithNetwork(net),
+		// TODO: remove this after testing
+		deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
+		deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
+	)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to create TF plugin client: %w", err)
+	}
 
 	var tfgw ingressv1.TFGW
 	if err := r.Get(ctx, req.NamespacedName, &tfgw); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	gw := GWRequest{
-		Hostname: tfgw.Spec.Hostname,
-		Backends: tfgw.Spec.Backends,
+	// Handle deletion logic
+	if !tfgw.ObjectMeta.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(&tfgw, tfgwFinalizer) {
+			log := logf.FromContext(ctx)
+			log.Info("Cleaning up before deletion", "host", tfgw.Spec.Hostname)
+
+			if err := pluginClient.CancelByProjectName(tfgw.Spec.Hostname); err != nil {
+				return ctrl.Result{}, fmt.Errorf("failed to cancel gateway: %w", err)
+			}
+
+			controllerutil.RemoveFinalizer(&tfgw, tfgwFinalizer)
+			if err := r.Update(ctx, &tfgw); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
 	}
 
-	res, err := deployGateway(gw, net, mne)
+	// Add finalizer if not present
+	if !controllerutil.ContainsFinalizer(&tfgw, tfgwFinalizer) {
+		controllerutil.AddFinalizer(&tfgw, tfgwFinalizer)
+		if err := r.Update(ctx, &tfgw); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Handle creation logic
+	res, err := deployGateway(pluginClient, GWRequest{
+		Hostname: tfgw.Spec.Hostname,
+		Backends: tfgw.Spec.Backends,
+	})
 	if err != nil {
 		tfgw.Status.FQDN = ""
 		tfgw.Status.Message = "Failed to create DNS record"

@@ -16,12 +16,7 @@ type GWRequest struct {
 	Backends []string `json:"backends"`
 }
 
-func deployGateway(gw GWRequest, network string, mnemonic string) (workloads.GatewayNameProxy, error) {
-	if network == "" || mnemonic == "" {
-		klog.Warning("ThreeFold network or mnemonic not configured, skipping gateway deployment")
-		return workloads.GatewayNameProxy{}, fmt.Errorf("threefold network or mnemonic not configured")
-	}
-
+func deployGateway(pluginClient deployer.TFPluginClient, gw GWRequest) (workloads.GatewayNameProxy, error) {
 	var zosBackends []zos.Backend
 	for _, backend := range gw.Backends {
 		zosBackends = append(zosBackends, zos.Backend(backend))
@@ -33,22 +28,13 @@ func deployGateway(gw GWRequest, network string, mnemonic string) (workloads.Gat
 		SolutionType: gw.Hostname,
 	}
 
-	pluginClient, err := deployer.NewTFPluginClient(
-		mnemonic,
-		deployer.WithNetwork(network),
-		deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
-		deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
-	)
-	if err != nil {
-		return workloads.GatewayNameProxy{}, fmt.Errorf("failed to create TF plugin client: %w", err)
-	}
-
 	node, err := selectNode(pluginClient)
 	if err != nil {
 		return workloads.GatewayNameProxy{}, fmt.Errorf("failed to select node: %w", err)
 	}
 
-	gateway.NodeID = node
+	// gateway.NodeID = node
+	gateway.NodeID = 14 // TODO: remove this after testing
 	if err := pluginClient.GatewayNameDeployer.Deploy(context.TODO(), &gateway); err != nil {
 		return workloads.GatewayNameProxy{}, fmt.Errorf("failed to deploy gateway on node %d: %w", node, err)
 	}
