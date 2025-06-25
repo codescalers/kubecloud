@@ -1,85 +1,91 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+  <ErrorBoundary>
+    <v-app class="kubecloud-app">
+      <!-- Shared Moving Background - Persists across route changes -->
+      <UnifiedBackground :theme="currentTheme" />
+      
+      <!-- Navigation Bar -->
+      <NavBar v-if="!isAuthPage" />
+      
+      <!-- Main Content Area -->
+      <v-main class="app-main">
+        <RouterView />
+      </v-main>
+      
+      <!-- Footer -->
+      <AppFooter v-if="!isAuthPage" />
+      
+      <!-- Global Notifications -->
+      <NotificationToast />
+    </v-app>
+  </ErrorBoundary>
 </template>
 
+<script lang="ts" setup>
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { computed } from 'vue'
+import NavBar from './components/NavBar.vue'
+import AppFooter from './components/AppFooter.vue'
+import ErrorBoundary from './components/ErrorBoundary.vue'
+import NotificationToast from './components/NotificationToast.vue'
+import UnifiedBackground from './components/UnifiedBackground.vue'
+
+const route = useRoute()
+
+// Determine if current page is an authentication page
+const isAuthPage = computed(() => {
+  const authRoutes = ['/sign-in', '/sign-up']
+  return authRoutes.includes(route.path)
+})
+
+// Dynamic theme based on current route
+const currentTheme = computed(() => {
+  const path = route.path
+  
+  // Theme mapping for different routes
+  const themeMap: Record<string, 'default' | 'home' | 'features' | 'pricing' | 'use-cases' | 'docs' | 'reserve' | 'dashboard'> = {
+    '/': 'home',
+    '/features': 'features',
+    '/pricing': 'pricing',
+    '/usecases': 'use-cases',
+    '/docs': 'docs',
+    '/reserve': 'reserve',
+    '/deploy': 'dashboard'
+  }
+  
+  // Check for dashboard routes
+  if (path.startsWith('/dashboard')) {
+    return 'dashboard'
+  }
+  
+  return themeMap[path] || 'default'
+})
+</script>
+
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
+.kubecloud-app {
+  min-height: 100vh;
+  background: var(--kubecloud-bg);
+  color: var(--kubecloud-white);
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.app-main {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - 72px); /* Account for navbar height */
 }
 
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .app-main {
+    min-height: calc(100vh - 64px);
   }
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
+@media (max-width: 600px) {
+  .app-main {
+    min-height: calc(100vh - 56px);
   }
 }
 </style>

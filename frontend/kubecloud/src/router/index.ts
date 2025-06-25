@@ -10,12 +10,55 @@ const router = createRouter({
       component: HomeView,
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      path: '/sign-in',
+      name: 'sign-in',
+      component: () => import('../views/SignInView.vue'),
+    },
+    {
+      path: '/sign-up',
+      name: 'sign-up',
+      component: () => import('../views/SignUpView.vue'),
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: () => import('../views/UserDashboard.vue'),
+    },
+    {
+      path: '/features',
+      name: 'features',
+      component: () => import('../views/FeaturesView.vue'),
+    },
+    {
+      path: '/clusters/:id',
+      name: 'manage-cluster',
+      component: () => import('../views/ManageClusterView.vue'),
+      props: true
+    },
+    {
+      path: '/deploy',
+      name: 'deploy-cluster',
+      component: () => import('../views/DeployClusterView.vue'),
+    },
+    {
+      path: '/reserve',
+      name: 'reserve',
+      component: () => import('../views/ReserveView.vue'),
+    },
+    {
+      path: '/pricing',
+      name: 'pricing',
+      component: () => import('../views/PricingView.vue'),
+    },
+    {
+      path: '/usecases',
+      name: 'usecases',
+      component: () => import('../views/UseCasesView.vue'),
+    },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: () => import('../views/DocsView.vue'),
     },
   ],
 })
