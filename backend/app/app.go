@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/stripe/stripe-go/v82"
 )
 
 // App holds all configurations for the app
@@ -24,6 +25,8 @@ type App struct {
 // NewApp create new instance of the app with all configs
 func NewApp(config internal.Configuration) (*App, error) {
 	router := gin.Default()
+
+	stripe.Key = config.StripeSecret
 
 	tokenHandler := internal.NewTokenHandler(
 		config.JWT.Secret,
@@ -65,8 +68,8 @@ func (app *App) registerHandlers() {
 		authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
 		{
 			authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+			authGroup.POST("/charge_balance", app.handlers.ChargeBalance)
 		}
-
 
 	}
 
@@ -80,7 +83,6 @@ func (app *App) registerHandlers() {
 			usersGroup.POST("", app.handlers.RegisterHandler)
 			usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
 			usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
-
 
 		}
 

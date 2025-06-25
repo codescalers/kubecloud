@@ -10,11 +10,13 @@ import (
 
 // Configuration struct holds all configs for the app
 type Configuration struct {
-	Server     Server     `json:"server" validate:"required,dive"`
-	Database   DB         `json:"database" validate:"required"`
-	JWT        JwtToken   `json:"token" validate:"required"`
-	Admins     []string   `json:"admins"`
-	MailSender MailSender `json:"mailSender"`
+	Server       Server     `json:"server" validate:"required,dive"`
+	Database     DB         `json:"database" validate:"required"`
+	JWT          JwtToken   `json:"token" validate:"required"`
+	Admins       []string   `json:"admins"`
+	MailSender   MailSender `json:"mailSender"`
+	Currency     string     `json:"currency" validate:"required"`
+	StripeSecret string     `json:"stripe_secret" validate:"required"`
 }
 
 // Server struct holds server's information
@@ -41,7 +43,6 @@ type MailSender struct {
 	SendGridKey string `json:"sendgrid_key" validate:"required"`
 	Timeout     int    `json:"timeout" validate:"min=30"`
 }
-
 
 // ReadConfFile read configurations of json file
 func ReadConfFile(path string) (Configuration, error) {

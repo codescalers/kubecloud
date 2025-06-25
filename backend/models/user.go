@@ -5,6 +5,7 @@ import "time"
 // User represents a user in the system
 type User struct {
 	ID                int       `gorm:"primaryKey;autoIncrement;column:id"`
+	StripeCustomerID  string    `json:"stripe_customer_id"`
 	Username          string    `json:"username" binding:"required"`
 	Email             string    `json:"email" gorm:"unique" binding:"required"`
 	Password          string    `json:"-"`
