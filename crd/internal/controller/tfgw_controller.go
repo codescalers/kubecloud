@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -50,8 +51,31 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	_ = logf.FromContext(ctx)
 
 	// TODO(user): your logic here
+	mne := os.Getenv("MNEMONIC")
+	net := os.Getenv("NETWORK")
 
-	return ctrl.Result{}, nil
+	var tfgw ingressv1.TFGW
+	if err := r.Get(ctx, req.NamespacedName, &tfgw); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	gw := GWRequest{
+		Hostname: tfgw.Spec.Hostname,
+		Backends: tfgw.Spec.Backends,
+	}
+
+	res, err := deployGateway(gw, net, mne)
+	if err != nil {
+		tfgw.Status.FQDN = ""
+		tfgw.Status.Message = "Failed to create DNS record"
+	} else {
+		tfgw.Status.FQDN = res.FQDN
+		tfgw.Status.Message = "DNS record created"
+	}
+
+	_ = r.Status().Update(ctx, &tfgw)
+
+	return ctrl.Result{}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

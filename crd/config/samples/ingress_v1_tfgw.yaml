@@ -6,4 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: tfgw-sample
 spec:
-  # TODO(user): Add fields here
+  hostname: "ibrahem"
+  backends:
+    - "http://1.1.1.1:80"
+    - "http://10.1.1.1:8080"

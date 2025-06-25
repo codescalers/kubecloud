@@ -30,16 +30,25 @@ type TFGWSpec struct {
 
 	// Foo is an example field of TFGW. Edit tfgw_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
+
+	Hostname string   `json:"hostname"`
+	Backends []string `json:"backends"`
 }
 
 // TFGWStatus defines the observed state of TFGW.
 type TFGWStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	FQDN    string `json:"fqdn"`
+	Message string `json:"message"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Host",type=string,JSONPath=`.spec.hostname`
+// +kubebuilder:printcolumn:name="Backends",type=string,JSONPath=`.spec.backends`
+// +kubebuilder:printcolumn:name="FQDN",type=string,JSONPath=`.status.fqdn`
 
 // TFGW is the Schema for the tfgws API.
 type TFGW struct {
