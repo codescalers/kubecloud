@@ -184,6 +184,52 @@ p {
   text-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
 }
 
+/* Legacy neon classes for compatibility - reduced intensity for accessibility */
+.neon-glow-violet {
+  text-shadow: 0 0 1px var(--kubecloud-blue);
+}
+
+.neon-glow-sky {
+  text-shadow: 0 0 1px var(--kubecloud-blue-light);
+}
+
+.neon-glow-pink {
+  text-shadow: 0 0 1px var(--kubecloud-orange);
+}
+
+.neon-glow-cyan {
+  text-shadow: 0 0 1px var(--kubecloud-cyan);
+}
+
+.neon-glow-rose {
+  text-shadow: 0 0 1px var(--neon-rose);
+}
+
+.neon-hover-violet:hover {
+  color: var(--kubecloud-blue) !important;
+  text-shadow: 0 0 1px var(--kubecloud-blue);
+}
+
+.neon-hover-sky:hover {
+  color: var(--kubecloud-blue-light) !important;
+  text-shadow: 0 0 1px var(--kubecloud-blue-light);
+}
+
+.neon-hover-pink:hover {
+  color: var(--kubecloud-orange) !important;
+  text-shadow: 0 0 1px var(--kubecloud-orange);
+}
+
+.neon-hover-cyan:hover {
+  color: var(--kubecloud-cyan) !important;
+  text-shadow: 0 0 1px var(--kubecloud-cyan);
+}
+
+.neon-hover-rose:hover {
+  color: var(--neon-rose) !important;
+  text-shadow: 0 0 1px var(--neon-rose);
+}
+
 /* Accessibility-focused alternatives */
 @media (prefers-reduced-motion: reduce) {
   .kubecloud-gradient,

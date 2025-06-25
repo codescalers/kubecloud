@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Add scroll animation observer
 import { onMounted } from 'vue'
+import FeatureGlobe from '@/components/features/FeatureGlobe.vue'
 
 onMounted(() => {
   const observerOptions = {
@@ -57,71 +58,28 @@ const features = [
 
 <template>
   <div class="home-view">
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-content container-padding">
-        <div class="hero-text">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
-            Build, Deploy, Scale
-          </h1>
-          <h2 class="hero-subtitle">
-            That's how real engineers manage Kubernetes clusters
-          </h2>
-          <p class="hero-description">
-            Experience the world's most advanced Kubernetes management platform. Deploy, monitor, and scale your applications with enterprise-grade reliability and developer-friendly simplicity.
-          </p>
-          
-          <div class="hero-cta">
-            <v-btn 
-              color="secondary" 
-              size="x-large" 
-              variant="elevated" 
-              to="/sign-up" 
-              class="cta-primary btn-enhanced kubecloud-glow-orange"
-            >
-              Get Started Free
-            </v-btn>
-            <v-btn 
-              color="primary" 
-              size="x-large" 
-              variant="outlined" 
-              to="/features" 
-              class="cta-secondary btn-enhanced kubecloud-hover-blue"
-            >
-              Explore Features
-            </v-btn>
-          </div>
-          
-          <div class="hero-stats">
-            <div class="stat-item">
-              <div class="stat-number kubecloud-gradient">10K+</div>
-              <div class="stat-label">Active Clusters</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number kubecloud-gradient">99.9%</div>
-              <div class="stat-label">Uptime</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-number kubecloud-gradient">24/7</div>
-              <div class="stat-label">Support</div>
-            </div>
-          </div>
+    <!-- Hero Globe Section -->
+    <section class="hero-globe-section">
+      <div class="hero-globe-content">
+        <div class="hero-globe-text">
+          <h1 class="hero-title">KubeCloud</h1>
+          <p class="hero-subtitle">The next generation Kubernetes platform for teams and enterprises</p>
         </div>
+        <FeatureGlobe />
       </div>
     </section>
-
     <!-- Features Section -->
     <section class="home-section section-padding">
       <div class="container-padding">
         <div class="section-header text-center mb-8">
-          <h2 class="section-title kubecloud-gradient kubecloud-glow-blue">
+          <h2 class="section-title">
             Everything You Need to Succeed
           </h2>
           <p class="section-subtitle">
             Powerful tools and features designed for modern cloud-native applications
           </p>
         </div>
-        
+
         <v-row>
           <v-col cols="12" md="4" v-for="feature in features" :key="feature.title">
             <div class="home-card card-enhanced">
@@ -140,17 +98,17 @@ const features = [
     <section class="cta-section section-padding">
       <div class="container-padding">
         <div class="cta-content text-center">
-          <h2 class="cta-title kubecloud-gradient kubecloud-glow-blue">
+          <h2 class="cta-title">
             Ready to Transform Your Kubernetes Experience?
           </h2>
           <p class="cta-description">
             Join thousands of developers and DevOps engineers who trust KubeCloud for their production workloads.
           </p>
-          <v-btn 
-            color="secondary" 
-            size="x-large" 
-            variant="elevated" 
-            to="/sign-up" 
+          <v-btn
+            color="secondary"
+            size="x-large"
+            variant="elevated"
+            to="/sign-up"
             class="cta-btn btn-enhanced kubecloud-glow-orange"
           >
             Start Your Free Trial
@@ -166,83 +124,6 @@ const features = [
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-}
-
-/* Hero Section */
-.hero-section {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 2;
-  padding: 2rem 0;
-}
-
-.hero-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.hero-text {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 1rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-}
-
-.hero-subtitle {
-  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-  color: #E0E7EF;
-  font-weight: 500;
-  margin-bottom: 1.5rem;
-  opacity: 0.9;
-}
-
-.hero-description {
-  font-size: 1.125rem;
-  color: #CBD5E1;
-  line-height: 1.7;
-  margin-bottom: 2.5rem;
-  opacity: 0.8;
-}
-
-.hero-cta {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-bottom: 3rem;
-  flex-wrap: wrap;
-}
-
-.hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 3rem;
-  flex-wrap: wrap;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #CBD5E1;
-  opacity: 0.7;
 }
 
 /* Features Section */
@@ -315,6 +196,7 @@ const features = [
   font-weight: 700;
   margin-bottom: 1rem;
   line-height: 1.3;
+  color: #FFFFFF;
 }
 
 .cta-description {
@@ -332,36 +214,66 @@ const features = [
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .hero-cta {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .hero-stats {
-    gap: 2rem;
-  }
-  
   .home-card {
     padding: 1.5rem;
   }
 }
 
 @media (max-width: 480px) {
-  .hero-section {
-    padding: 1rem 0;
-  }
-  
-  .hero-stats {
-    gap: 1.5rem;
-  }
-  
-  .stat-number {
-    font-size: 1.5rem;
-  }
-  
   .home-section,
   .cta-section {
     padding: 2rem 0;
+  }
+}
+
+.hero-globe-section {
+  width: 100%;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #0a192f 60%, #1e293b 100%);
+  position: relative;
+  z-index: 1;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+.hero-globe-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.hero-globe-text {
+  flex: 1;
+  min-width: 220px;
+  text-align: left;
+}
+.hero-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 1rem;
+  letter-spacing: -1px;
+}
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: #60a5fa;
+  opacity: 0.9;
+  max-width: 400px;
+}
+@media (max-width: 900px) {
+  .hero-globe-content {
+    flex-direction: column;
+    gap: 2rem;
+    text-align: center;
+  }
+  .hero-globe-text {
+    text-align: center;
   }
 }
 </style>

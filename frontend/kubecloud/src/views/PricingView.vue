@@ -4,9 +4,7 @@
     <section class="hero-section">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
-            Transparent Pricing
-          </h1>
+          <h1 class="hero-title">Transparent Pricing</h1>
           <p class="hero-description">
             Farmer-driven pricing for dedicated Kubernetes nodes with no hidden fees.
           </p>
@@ -19,16 +17,16 @@
       <div class="container-padding">
         <v-row justify="center">
           <v-col cols="12" lg="8">
-              <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
+              <h2 class="card-title">
                 How Pricing Works
               </h2>
               <p class="card-description">
                 Node prices are set by independent farmers. 80% of the price goes to the farmer, 20% to the ThreeFold treasury. No hidden fees.
               </p>
-              
+
               <v-divider class="my-6" color="primary" />
-              
-              <h3 class="section-title kubecloud-gradient">
+
+              <h3 class="section-title">
                 Sample Pricing
               </h3>
               <div class="table-container pricing-card card-enhanced fade-in">
@@ -137,7 +135,7 @@ onMounted(() => {
 
 .hero-description {
   font-size: 1.25rem;
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   line-height: 1.7;
   opacity: 0.8;
 }
@@ -163,7 +161,7 @@ onMounted(() => {
 
 .card-description {
   font-size: 1.125rem;
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   line-height: 1.7;
   margin-bottom: 2rem;
   opacity: 0.8;
@@ -176,29 +174,29 @@ onMounted(() => {
 }
 
 .table-container {
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--kubecloud-overlay-bg, rgba(15,23,42,0.3));
   border-radius: 12px;
   padding: 1.5rem;
-  border: 1px solid rgba(79, 70, 229, 0.2);
+  border: 1px solid var(--kubecloud-border, rgba(79,70,229,0.2));
 }
 
 .pricing-table {
   background: transparent;
-  color: #E0E7EF;
+  color: var(--kubecloud-text-primary);
 }
 
 .pricing-table th {
-  background: rgba(79, 70, 229, 0.1);
+  background: var(--kubecloud-primary-bg, rgba(79,70,229,0.1));
   color: #fff;
   font-weight: 600;
   padding: 1rem;
-  border-bottom: 1px solid rgba(79, 70, 229, 0.3);
+  border-bottom: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .pricing-table td {
   padding: 1rem;
-  border-bottom: 1px solid rgba(79, 70, 229, 0.1);
-  color: #CBD5E1;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+  color: var(--kubecloud-text-secondary);
 }
 
 .price {
@@ -213,23 +211,23 @@ onMounted(() => {
     min-height: 50vh;
     padding: 1rem 0;
   }
-  
+
   .hero-description {
     font-size: 1.125rem;
   }
-  
+
   .pricing-content {
     padding: 2rem 0;
   }
-  
+
   .pricing-card {
     padding: 2rem;
   }
-  
+
   .table-container {
     padding: 1rem;
   }
-  
+
   .pricing-table th,
   .pricing-table td {
     padding: 0.75rem;
@@ -241,15 +239,15 @@ onMounted(() => {
   .hero-section {
     min-height: 40vh;
   }
-  
+
   .pricing-content {
     padding: 1.5rem 0;
   }
-  
+
   .pricing-card {
     padding: 1.5rem;
   }
-  
+
   .pricing-table th,
   .pricing-table td {
     padding: 0.5rem;

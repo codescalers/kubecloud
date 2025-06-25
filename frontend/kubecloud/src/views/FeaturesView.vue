@@ -4,9 +4,7 @@
     <section class="hero-section">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
-            Powerful Features
-          </h1>
+          <h1 class="hero-title">Powerful Features</h1>
           <p class="hero-description">
             Everything you need to build, deploy, and scale your applications with confidence.
           </p>
@@ -18,14 +16,12 @@
     <section class="features-content section-padding">
       <div class="container-padding">
         <div class="section-header text-center mb-8">
-          <h2 class="section-title kubecloud-gradient kubecloud-glow-blue">
-            Enterprise-Grade Capabilities
-          </h2>
+          <h2 class="section-title">Enterprise-Grade Capabilities</h2>
           <p class="section-subtitle">
             Advanced features designed for modern cloud-native applications
           </p>
         </div>
-        
+
         <v-row>
           <v-col cols="12" md="4" v-for="feature in features" :key="feature.title">
             <component :is="feature.component" class="feature-card card-enhanced fade-in" />
@@ -112,7 +108,7 @@ function logout() {
 
 .hero-description {
   font-size: 1.25rem;
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   line-height: 1.7;
   opacity: 0.8;
 }
@@ -137,7 +133,7 @@ function logout() {
 
 .section-subtitle {
   font-size: 1.125rem;
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   opacity: 0.8;
   max-width: 600px;
   margin: 0 auto;
@@ -159,15 +155,15 @@ function logout() {
     min-height: 50vh;
     padding: 1rem 0;
   }
-  
+
   .hero-description {
     font-size: 1.125rem;
   }
-  
+
   .features-content {
     padding: 2rem 0;
   }
-  
+
   .feature-card {
     padding: 1.5rem;
   }
@@ -177,7 +173,7 @@ function logout() {
   .hero-section {
     min-height: 40vh;
   }
-  
+
   .features-content {
     padding: 1.5rem 0;
   }

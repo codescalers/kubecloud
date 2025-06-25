@@ -1,11 +1,11 @@
 <template>
   <v-card class="sidebar-card" flat>
     <v-list nav density="comfortable">
-      <v-list-item 
+      <v-list-item
         v-for="item in navigationItems"
         :key="item.key"
-        :active="selected === item.key" 
-        @click="$emit('update:selected', item.key)" 
+        :active="selected === item.key"
+        @click="$emit('update:selected', item.key)"
         class="sidebar-item"
         :class="{ 'sidebar-item--active': selected === item.key }"
       >
@@ -17,9 +17,9 @@
         <v-list-item-title class="sidebar-title">{{ item.title }}</v-list-item-title>
       </v-list-item>
     </v-list>
-    
+
     <v-divider class="my-4 sidebar-divider" />
-    
+
     <v-list nav density="comfortable">
       <v-list-item @click="$emit('logout')" class="sidebar-item logout-item">
         <template v-slot:prepend>
@@ -81,96 +81,71 @@ const navigationItems = [
 
 <style scoped>
 .sidebar-card {
-  border-radius: 18px;
-  box-shadow: 0 2px 12px rgba(60,60,60,0.06);
+  box-shadow: 0 2px 12px var(--kubecloud-shadow, rgba(60,60,60,0.06));
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
   border: 1px solid var(--kubecloud-blue);
-  padding: 1.5rem 1rem;
-  height: 100%;
 }
 
 .sidebar-item {
-  border-radius: 12px;
-  margin-bottom: 0.5rem;
-  min-height: 48px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
   border: 1px solid transparent;
 }
 
 .sidebar-item:hover {
-  background: rgba(37, 99, 235, 0.1);
+  background: var(--kubecloud-blue-bg-hover, rgba(37,99,235,0.1));
   border: 1px solid var(--kubecloud-blue);
-  transform: translateX(2px);
 }
 
 .sidebar-item--active {
-  background: rgba(37, 99, 235, 0.15) !important;
+  background: var(--kubecloud-blue-bg-active, rgba(37,99,235,0.15)) !important;
   border: 1px solid var(--kubecloud-blue) !important;
-  box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 15px var(--kubecloud-blue-shadow, rgba(37,99,235,0.2));
 }
 
 .sidebar-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-right: 12px;
+  background: var(--kubecloud-blue-bg-icon, rgba(37,99,235,0.1));
+  border: 1px solid var(--kubecloud-blue-border, rgba(37,99,235,0.2));
 }
 
 .sidebar-item:hover .sidebar-icon {
-  background: rgba(37, 99, 235, 0.2);
+  background: var(--kubecloud-blue-bg-icon-hover, rgba(37,99,235,0.2));
   border: 1px solid var(--kubecloud-blue);
-  box-shadow: 0 0 8px rgba(37, 99, 235, 0.2);
-  transform: scale(1.02);
+  box-shadow: 0 0 8px var(--kubecloud-blue-shadow, rgba(37,99,235,0.2));
 }
 
 .sidebar-item--active .sidebar-icon {
-  background: rgba(37, 99, 235, 0.25) !important;
+  background: var(--kubecloud-blue-bg-icon-active, rgba(37,99,235,0.25)) !important;
   border: 1px solid var(--kubecloud-blue) !important;
-  box-shadow: 0 0 12px rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 0 12px var(--kubecloud-blue-shadow-active, rgba(37,99,235,0.3)) !important;
 }
 
 .sidebar-title {
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #fff;
-  letter-spacing: 0.01em;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--kubecloud-text-primary);
 }
 
 .sidebar-item:hover .sidebar-title {
   color: var(--kubecloud-blue);
-  text-shadow: 0 0 1px rgba(37, 99, 235, 0.3);
+  text-shadow: 0 0 1px var(--kubecloud-blue-shadow, rgba(37,99,235,0.3));
 }
 
 .sidebar-item--active .sidebar-title {
   color: var(--kubecloud-blue) !important;
-  font-weight: 600 !important;
-  text-shadow: 0 0 1px rgba(37, 99, 235, 0.3) !important;
+  text-shadow: 0 0 1px var(--kubecloud-blue-shadow, rgba(37,99,235,0.3)) !important;
 }
 
 .sidebar-divider {
-  border-color: rgba(37, 99, 235, 0.2);
-  margin: 1.5rem 0;
+  border-color: var(--kubecloud-blue-border, rgba(37,99,235,0.2));
 }
 
 .logout-item:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid var(--neon-rose);
+  background: var(--kubecloud-error-bg, rgba(239,68,68,0.1));
+  border: 1px solid var(--kubecloud-error-border, var(--kubecloud-error));
 }
 
 .logout-item:hover .sidebar-icon {
-  background: rgba(239, 68, 68, 0.2);
-  border: 1px solid var(--neon-rose);
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+  background: var(--kubecloud-error-bg-icon, rgba(239,68,68,0.2));
+  border: 1px solid var(--kubecloud-error-border, var(--kubecloud-error));
+  box-shadow: 0 0 8px var(--kubecloud-error-shadow, rgba(239,68,68,0.2));
 }
 
 .logout-item:hover .sidebar-title {
@@ -187,13 +162,13 @@ const navigationItems = [
   .sidebar-card {
     padding: 1rem 0.75rem;
   }
-  
+
   .sidebar-icon {
     width: 36px;
     height: 36px;
     margin-right: 10px;
   }
-  
+
   .sidebar-title {
     font-size: 0.9rem;
   }
@@ -203,18 +178,18 @@ const navigationItems = [
   .sidebar-card {
     padding: 0.75rem 0.5rem;
   }
-  
+
   .sidebar-item {
     margin-bottom: 0.25rem;
     min-height: 44px;
   }
-  
+
   .sidebar-icon {
     width: 32px;
     height: 32px;
     margin-right: 8px;
   }
-  
+
   .sidebar-title {
     font-size: 0.85rem;
   }

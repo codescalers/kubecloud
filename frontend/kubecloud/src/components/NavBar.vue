@@ -1,220 +1,209 @@
 <template>
-  <v-app-bar app flat color="transparent" class="px-4 py-3 nav-app-bar kubecloud-nav">
+  <v-app-bar app flat color="#0F172A" class="nav-app-bar minimalist-nav enhanced-nav">
     <v-row align="center" class="w-100">
-      <v-col cols="3" class="d-flex align-center">
-        <router-link to="/" class="logo-link">
-          <span class="footer-logo kubecloud-glow-blue d-flex align-center" aria-label="KubeCloud logo">
-            <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <ellipse cx="24" cy="28" rx="16" ry="10" fill="#1E293B" stroke="#2563EB" stroke-width="2.5"/>
-              <ellipse cx="18" cy="22" rx="7" ry="6" fill="#1E293B" stroke="#3B82F6" stroke-width="2.5"/>
-              <ellipse cx="30" cy="20" rx="6" ry="5" fill="#1E293B" stroke="#F97316" stroke-width="2.5"/>
-              <ellipse cx="24" cy="28" rx="10" ry="7" fill="#1E293B" stroke="#3B82F6" stroke-width="2.5"/>
-              <ellipse cx="24" cy="28" rx="5" ry="3.5" fill="#2563EB" fill-opacity="0.7"/>
-            </svg>
-            <span class="footer-title ms-2">KubeCloud</span>
-          </span>
+      <v-col cols="2" class="d-flex align-center">
+        <router-link to="/" class="logo-link minimalist-logo">
+          <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="24" cy="28" rx="16" ry="10" fill="#181A20" stroke="#3B82F6" stroke-width="2.5"/>
+            <ellipse cx="18" cy="22" rx="7" ry="6" fill="#181A20" stroke="#60A5FA" stroke-width="2.5"/>
+            <ellipse cx="30" cy="20" rx="6" ry="5" fill="#181A20" stroke="#93C5FD" stroke-width="2.5"/>
+            <ellipse cx="24" cy="28" rx="10" ry="7" fill="#181A20" stroke="#3B82F6" stroke-width="2.5"/>
+            <ellipse cx="24" cy="28" rx="5" ry="3.5" fill="#3B82F6" fill-opacity="0.7"/>
+          </svg>
+          <span class="logo-title ms-2">KubeCloud</span>
         </router-link>
       </v-col>
-      <v-col cols="6" class="d-flex align-center justify-center nav-links">
-        <v-btn 
-          v-for="item in navigationItems" 
-          :key="item.path"
-          variant="text" 
-          color="primary" 
-          :to="item.path" 
-          class="nav-btn kubecloud-hover-blue"
-          :class="{ 'nav-btn--active': $route.path === item.path }"
-        >
+      <v-col cols="8" class="d-flex align-center justify-center nav-links minimalist-links">
+        <router-link v-for="item in navigationItems" :key="item.path" :to="item.path" class="nav-link minimalist-link" :class="{ 'nav-link--active': $route.path === item.path }" style="color: #fff;" @mouseover="(e) => e.target.style.color = '#3B82F6'" @mouseleave="(e) => e.target.style.color = '#fff'">
           {{ item.label }}
-        </v-btn>
+        </router-link>
       </v-col>
-      <v-col cols="3" class="d-flex justify-end align-center">
-        <v-btn color="secondary" variant="elevated" to="/sign-up" class="sign-up-btn newsletter-btn btn-enhanced kubecloud-glow-orange kubecloud-hover-blue">Sign Up</v-btn>
+      <v-col cols="2" class="d-flex justify-end align-center">
+        <template v-if="isSignedIn">
+          <v-menu offset-y>
+            <template v-slot:activator="{ props }">
+              <v-btn v-bind="props" variant="text" color="accent" class="user-menu-btn minimalist-user-btn">
+                <v-icon icon="mdi-account-circle" color="accent" />
+              </v-btn>
+            </template>
+            <v-list class="user-menu-list minimalist-user-list">
+              <v-list-item @click="handleLogout" class="logout-item minimalist-logout-item">
+                <v-list-item-title class="text-error">Logout</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </template>
+        <router-link v-else to="/sign-up" class="nav-link minimalist-link">Sign Up</router-link>
       </v-col>
     </v-row>
   </v-app-bar>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
 
-const mobileMenuOpen = ref(false)
+const userStore = useUserStore()
+const router = useRouter()
 
-const toggleMobileMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
+const isSignedIn = computed(() => userStore.isLoggedIn)
+
+const handleLogout = () => {
+  userStore.logout()
+  router.push('/')
 }
 
-// Navigation items data
+// Minimal navigation items
 const navigationItems = [
   { label: 'Home', path: '/' },
   { label: 'Features', path: '/features' },
   { label: 'Pricing', path: '/pricing' },
-  { label: 'Use Cases', path: '/usecases' },
   { label: 'Docs', path: '/docs' },
   { label: 'Dashboard', path: '/dashboard' }
 ]
 </script>
 
 <style scoped>
-.nav-app-bar {
-  background: var(--glass-bg) !important;
-  backdrop-filter: var(--glass-blur);
-  border-bottom: 2px solid var(--kubecloud-blue);
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.2), 0 2px 0 rgba(249, 115, 22, 0.1);
+.nav-app-bar.minimalist-nav {
+  background: #0F172A !important;
+  border-bottom: 2px solid #3B82F6;
+  box-shadow: none;
   border-radius: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
   position: sticky;
   top: 0;
   z-index: 1000;
+  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.logo-link {
+.logo-link.minimalist-logo {
   text-decoration: none;
   display: flex;
   align-items: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.logo-link:hover {
-  transform: scale(1.05);
-}
-
-.logo-link:hover .footer-logo {
-  text-shadow: 0 0 8px var(--kubecloud-blue), 0 0 16px var(--kubecloud-blue);
-}
-
-.footer-logo {
-  display: flex;
-  align-items: center;
+  color: #fff;
   font-family: 'Space Grotesk', 'Inter', sans-serif;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 700;
-  color: var(--kubecloud-blue);
-  text-shadow: 0 0 4px var(--kubecloud-blue);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.01em;
 }
 
-.footer-title {
-  color: var(--kubecloud-blue);
+.logo-title {
+  color: #fff;
   font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
-.newsletter-btn, .sign-up-btn {
-  color: var(--kubecloud-white) !important;
-  height: 36px;
-  line-height: 36px;
-  border: none;
-  box-shadow: none;
-}
-
-.newsletter-btn:hover, .sign-up-btn:hover {
-  box-shadow: 0 0 15px rgba(249, 115, 22, 0.2), 0 0 30px rgba(249, 115, 22, 0.1);
-  transform: translateY(-0.5px);
-}
-
-.nav-links {
-  gap: 0.5rem;
+.nav-links.minimalist-links {
+  gap: 1.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
 }
 
-.nav-btn {
-  margin: 0 0.25rem;
-  min-width: 100px;
+.nav-link.minimalist-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.05rem;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
   font-weight: 500;
-  color: var(--kubecloud-white) !important;
-  align-items: center;
-  height: 36px;
-  display: flex;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  position: relative;
+  transition: color 0.2s, background 0.2s, transform 0.18s cubic-bezier(0.4,0,0.2,1);
+  outline: none;
 }
 
-.nav-btn::before {
+.nav-link.minimalist-link:focus-visible {
+  box-shadow: 0 0 0 2px #3B82F6;
+  border-radius: 6px;
+}
+
+.nav-link.minimalist-link::after {
   content: '';
+  display: block;
   position: absolute;
-  top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--kubecloud-blue), var(--kubecloud-orange));
+  bottom: 2px;
+  height: 2.5px;
+  background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 100%);
+  border-radius: 2px;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transform: scaleX(0.5);
+  transition: opacity 0.18s, transform 0.18s cubic-bezier(0.4,0,0.2,1);
+}
+
+.nav-link.minimalist-link:hover,
+.nav-link--active {
+  color: #3B82F6;
+  background: rgba(59, 130, 246, 0.08);
+  transform: scale(1.06);
+}
+
+.nav-link.minimalist-link:hover::after,
+.nav-link--active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.user-menu-btn.minimalist-user-btn {
+  color: #8B5CF6 !important;
+  background: none;
+  border: none;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.user-menu-list.minimalist-user-list {
+  background: #181A20;
   border-radius: 10px;
-  transform: scale(1.02);
+  box-shadow: none;
+  min-width: 120px;
 }
 
-.nav-btn:focus, .nav-btn:hover {
-  background: rgba(79, 70, 229, 0.08);
-  border: 1px solid rgba(79, 70, 229, 0.3);
-  box-shadow: 0 0 12px rgba(79, 70, 229, 0.15);
-  text-shadow: 0 0 1px rgba(79, 70, 229, 0.2);
-  transform: translateY(-1px);
+.logout-item.minimalist-logout-item {
+  color: #e57373;
+  font-size: 1rem;
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
 }
 
-.nav-btn--active {
-  background: rgba(79, 70, 229, 0.12) !important;
-  border: 1px solid rgba(79, 70, 229, 0.4) !important;
-  box-shadow: 0 0 16px rgba(79, 70, 229, 0.2), inset 0 0 0 1px rgba(79, 70, 229, 0.1) !important;
-  text-shadow: 0 0 1px rgba(79, 70, 229, 0.3) !important;
-  color: var(--kubecloud-blue-light) !important;
-  font-weight: 600 !important;
-  transform: translateY(-1px);
+.logout-item.minimalist-logout-item:hover {
+  background: #2d223a;
 }
 
-.nav-btn--active::before {
-  opacity: 0.05;
+.enhanced-nav {
+  box-shadow: 0 6px 32px 0 rgba(59, 130, 246, 0.10);
 }
 
-@media (max-width: 960px) {
-  .nav-app-bar {
-    padding: 0.5rem 1rem !important;
+@media (max-width: 900px) {
+  .nav-links.minimalist-links {
+    gap: 0.5rem;
   }
-  .nav-links {
-    gap: 0.25rem;
-  }
-  .nav-btn {
-    min-width: 80px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
-    height: 32px;
-  }
-  .footer-title {
-    font-size: 1.25rem;
-  }
-  .sign-up-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    min-width: 100px;
-    height: 32px;
-    line-height: 32px;
+  .logo-link.minimalist-logo {
+    font-size: 1.1rem;
   }
 }
-
 @media (max-width: 600px) {
-  .nav-app-bar {
+  .nav-app-bar.minimalist-nav {
     padding: 0.25rem 0.5rem !important;
   }
-  .nav-links {
+  .nav-links.minimalist-links {
     flex-direction: column;
-    gap: 0.125rem;
+    gap: 0.25rem;
   }
-  .nav-btn {
-    min-width: 60px;
-    padding: 0.375rem 0.5rem;
-    font-size: 0.8rem;
-    height: 28px;
-  }
-  .footer-title {
-    font-size: 1.125rem;
-  }
-  .sign-up-btn {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-    min-width: 80px;
-    height: 28px;
-    line-height: 28px;
+  .nav-link.minimalist-link {
+    font-size: 0.95rem;
+    padding: 0.2rem 0.4rem;
   }
 }
 </style>

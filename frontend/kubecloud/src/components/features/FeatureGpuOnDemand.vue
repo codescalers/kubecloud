@@ -3,7 +3,8 @@
     <div class="feature-icon">
       <v-icon color="primary" size="48">mdi-chip</v-icon>
     </div>
-    <h3 class="feature-title kubecloud-gradient">GPU on Demand</h3>
+    <!-- Removed gaming-like class -->
+    <h3 class="feature-title">GPU on Demand</h3>
     <p class="feature-description">
       Get instant access to powerful computing for your projects. Run demanding apps easily and scale up when you need more power. Pay only for what you use.
     </p>
@@ -35,13 +36,17 @@
 // No logic needed
 </script>
 
+<script lang="ts">
+export default {}
+</script>
+
 <style scoped>
 .feature-diagram {
-  background: var(--kubecloud-slate);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: var(--kubecloud-surface-light); /* Use lighter surface */
+  border-radius: var(--rounded-md); /* Use standardized border radius */
+  padding: 1.2rem; /* Adjusted padding */
+  margin-bottom: 1.5rem; /* Adjusted margin */
+  border: 1px solid var(--kubecloud-border); /* Use border color */
 }
 
 .diagram-illustration {
@@ -54,66 +59,110 @@
 .diagram-flow {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
+  gap: 0.8rem; /* Adjusted gap */
+  font-size: var(--text-base); /* Use standardized font size */
+  margin-bottom: 0.8rem; /* Adjusted margin */
 }
 
 .diagram-item {
-  background: var(--kubecloud-blue);
-  color: var(--kubecloud-white);
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.9rem;
+  background: var(--kubecloud-primary); /* Use primary color */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
+  padding: 0.4rem 0.8rem; /* Adjusted padding */
+  border-radius: var(--rounded-sm); /* Use standardized border radius */
+  font-weight: var(--font-medium); /* Use standardized font weight */
+  font-size: var(--text-sm); /* Use standardized font size */
 }
 
 .diagram-arrow {
-  color: var(--kubecloud-orange);
-  font-size: 1.3rem;
-  font-weight: bold;
+  color: var(--kubecloud-text-secondary); /* Use secondary text color */
+  font-size: var(--text-lg); /* Adjusted font size */
+  font-weight: var(--font-bold); /* Use standardized font weight */
 }
 
 .diagram-labels {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  max-width: 320px;
-  font-size: 0.85rem;
-  color: var(--kubecloud-light-gray);
+  max-width: 300px; /* Adjusted max-width */
+  font-size: var(--text-xs); /* Use standardized font size */
+  color: var(--kubecloud-text-secondary); /* Use secondary text color */
 }
 
 .diagram-label {
   flex: 1;
   text-align: center;
+  color: var(--kubecloud-text-secondary);
 }
 
-/* Responsive Design */
+/* Responsive Design - Align with updated sizes and padding */
 @media (max-width: 960px) {
-  .diagram-flow {
-    gap: 0.7rem;
-    font-size: 1rem;
+  .feature-diagram {
+    padding: 1rem; /* Adjusted padding */
+    margin-bottom: 1.2rem; /* Adjusted margin */
   }
-  
+  .diagram-flow {
+    gap: 0.6rem; /* Adjusted gap */
+    font-size: var(--text-sm); /* Adjusted font size */
+    margin-bottom: 0.6rem; /* Adjusted margin */
+  }
   .diagram-item {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
+    font-size: var(--text-xs); /* Adjusted font size */
+    padding: 0.3rem 0.6rem; /* Adjusted padding */
+  }
+  .diagram-arrow {
+    font-size: var(--text-base); /* Adjusted font size */
+  }
+  .diagram-labels {
+    max-width: 250px; /* Adjusted max-width */
+    font-size: var(--text-xs); /* Adjusted font size */
   }
 }
 
 @media (max-width: 600px) {
+  .feature-diagram {
+    padding: 0.8rem; /* Adjusted padding */
+    margin-bottom: 1rem; /* Adjusted margin */
+  }
   .diagram-flow {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem; /* Adjusted gap */
+    font-size: var(--text-sm); /* Adjusted font size */
   }
-  
   .diagram-arrow {
     transform: rotate(90deg);
+    font-size: var(--text-base); /* Adjusted font size */
   }
-  
   .diagram-labels {
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.4rem; /* Adjusted gap */
+    max-width: 100%;
   }
+}
+
+/* Feature Tags */
+.feature-tag {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.15);
+  color: #FFFFFF;
+  border-radius: 6px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all 0.2s ease;
+}
+
+.feature-tag:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.feature-tags {
+  margin-top: 1rem;
 }
 </style>

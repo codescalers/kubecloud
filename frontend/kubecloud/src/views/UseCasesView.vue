@@ -4,9 +4,7 @@
     <section class="hero-section">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
-            Use Cases
-          </h1>
+          <h1 class="hero-title">Use Cases</h1>
           <p class="hero-description">
             Discover how KubeCloud powers real-world applications across industries.
           </p>
@@ -171,13 +169,13 @@ onMounted(() => {
 }
 
 .feature-tag {
-  background: rgba(79, 70, 229, 0.1);
-  color: #7C3AED;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 500;
-  border: 1px solid rgba(79, 70, 229, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 /* Responsive Design */
@@ -186,15 +184,15 @@ onMounted(() => {
     min-height: 50vh;
     padding: 1rem 0;
   }
-  
+
   .hero-description {
     font-size: 1.125rem;
   }
-  
+
   .use-cases-content {
     padding: 2rem 0;
   }
-  
+
   .use-case-card {
     padding: 2rem;
   }
@@ -204,15 +202,15 @@ onMounted(() => {
   .hero-section {
     min-height: 40vh;
   }
-  
+
   .use-cases-content {
     padding: 1.5rem 0;
   }
-  
+
   .use-case-card {
     padding: 1.5rem;
   }
-  
+
   .feature-tag {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;

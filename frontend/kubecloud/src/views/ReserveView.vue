@@ -520,7 +520,7 @@ onMounted(() => {
 
 .node-card {
   background: rgba(15, 23, 42, 0.3);
-  border: 1px solid rgba(79, 70, 229, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 12px;
   padding: 2rem;
   text-align: left;
@@ -529,8 +529,8 @@ onMounted(() => {
 
 .node-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(79, 70, 229, 0.4);
-  box-shadow: 0 8px 32px rgba(79, 70, 229, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
 }
 
 .node-header {

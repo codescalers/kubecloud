@@ -19,9 +19,9 @@ const vuetify = createVuetify({
       kubecloudTheme: {
         dark: true,
         colors: {
-          primary: '#4F46E5',      // kubecloud blue
+          primary: '#3B82F6',      // kubecloud blue
           secondary: '#EA580C',    // kubecloud orange
-          accent: '#6366F1',       // kubecloud blue-light
+          accent: '#60A5FA',       // kubecloud blue-light
           surface: '#1E293B',      // kubecloud slate
           background: '#0F172A',   // kubecloud navy
           success: '#10B981',      // kubecloud success

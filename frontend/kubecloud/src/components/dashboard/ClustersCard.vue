@@ -1,57 +1,44 @@
 <template>
-  <v-card class="clusters-card card-enhanced">
+  <div class="dashboard-card clusters-card">
     <div class="card-header">
       <div class="card-title-section">
-        <v-icon icon="mdi-server-network" size="32" color="primary" class="card-icon"></v-icon>
+        <v-icon icon="mdi-server-network" size="32" color="accent" class="card-icon"></v-icon>
         <div class="card-title-content">
-          <h3 class="card-title">Kubernetes Clusters</h3>
-          <p class="card-subtitle">Manage your cloud-native infrastructure</p>
+          <h3 class="dashboard-card-title">Kubernetes Clusters</h3>
+          <p class="card-subtitle text-muted">Manage your cloud-native infrastructure</p>
         </div>
       </div>
-      <v-btn 
-        color="secondary" 
-        variant="elevated" 
-        size="small" 
-        class="action-btn kubecloud-glow-orange"
-        @click="goToDeployCluster"
-      >
+      <v-btn class="action-btn" @click="goToDeployCluster">
         <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
         New Cluster
       </v-btn>
     </div>
-
     <div class="card-content">
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-number kubecloud-gradient">12</div>
-          <div class="stat-label">Active Clusters</div>
+          <div class="stat-number">12</div>
+          <div class="stat-label text-muted">Active Clusters</div>
         </div>
         <div class="stat-item">
-          <div class="stat-number kubecloud-gradient">156</div>
-          <div class="stat-label">Total Nodes</div>
+          <div class="stat-number">156</div>
+          <div class="stat-label text-muted">Total Nodes</div>
         </div>
         <div class="stat-item">
-          <div class="stat-number kubecloud-gradient">99.9%</div>
-          <div class="stat-label">Uptime</div>
+          <div class="stat-number">99.9%</div>
+          <div class="stat-label text-muted">Uptime</div>
         </div>
         <div class="stat-item">
-          <div class="stat-number kubecloud-gradient">24/7</div>
-          <div class="stat-label">Monitoring</div>
+          <div class="stat-number">24/7</div>
+          <div class="stat-label text-muted">Monitoring</div>
         </div>
       </div>
-
       <div class="recent-clusters">
         <h4 class="section-title">Recent Clusters</h4>
         <div class="cluster-list">
-          <div 
-            v-for="cluster in recentClusters" 
-            :key="cluster.id" 
-            class="cluster-item"
-            @click="viewCluster(cluster.id)"
-          >
+          <div v-for="cluster in recentClusters" :key="cluster.id" class="cluster-item" @click="viewCluster(cluster.id)">
             <div class="cluster-info">
               <div class="cluster-name">{{ cluster.name }}</div>
-              <div class="cluster-details">
+              <div class="cluster-details text-muted">
                 <span class="cluster-region">{{ cluster.region }}</span>
                 <span class="cluster-status" :class="cluster.status">
                   {{ cluster.status }}
@@ -59,53 +46,23 @@
               </div>
             </div>
             <div class="cluster-actions">
-              <v-btn 
-                icon 
-                variant="text" 
-                size="small" 
-                color="primary"
-                class="cluster-action-btn kubecloud-hover-blue"
-                @click.stop="editCluster(cluster.id)"
-              >
+              <v-btn icon class="action-btn" @click.stop="editCluster(cluster.id)">
                 <v-icon icon="mdi-pencil" size="16"></v-icon>
               </v-btn>
-              <v-btn 
-                icon 
-                variant="text" 
-                size="small" 
-                color="error"
-                class="cluster-action-btn"
-                @click.stop="deleteCluster(cluster.id)"
-              >
+              <v-btn icon class="action-btn" @click.stop="deleteCluster(cluster.id)">
                 <v-icon icon="mdi-delete" size="16"></v-icon>
               </v-btn>
             </div>
           </div>
         </div>
       </div>
-
       <div class="quick-actions">
-        <v-btn 
-          variant="outlined" 
-          color="primary" 
-          size="small" 
-          class="quick-action-btn kubecloud-hover-blue"
-          @click="viewAllClusters"
-        >
+        <v-btn class="action-btn" @click="viewAllClusters">
           View All Clusters
-        </v-btn>
-        <v-btn 
-          variant="outlined" 
-          color="primary" 
-          size="small" 
-          class="quick-action-btn kubecloud-hover-blue"
-          @click="openMetrics"
-        >
-          View Metrics
         </v-btn>
       </div>
     </div>
-  </v-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -165,265 +122,137 @@ const goToDeployCluster = () => {
 </script>
 
 <style scoped>
-.clusters-card {
-  height: 100%;
-  padding: 1.5rem;
+.dashboard-card.clusters-card {
+  background: var(--color-surface);
+  border-radius: var(--rounded);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+  color: var(--color-text);
+  padding: 1.25rem;
   min-width: 100%;
 }
-
+.dashboard-card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 1.5rem;
 }
-
 .card-title-section {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
 }
-
-.card-icon {
-  background: rgba(79, 70, 229, 0.1);
-  border-radius: 12px;
-  padding: 0.75rem;
-  box-shadow: var(--shadow-kubecloud-blue);
-}
-
 .card-title-content {
   display: flex;
   flex-direction: column;
 }
-
-.card-title {
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--kubecloud-white);
-  margin-bottom: 0.25rem;
-  line-height: 1.2;
-}
-
 .card-subtitle {
-  font-size: 0.95rem;
-  color: var(--kubecloud-light-gray);
-  font-weight: 400;
-  line-height: 1.4;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
 }
-
-.action-btn {
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.01em;
-  padding: 0.625rem 1.25rem;
-  height: 44px;
-}
-
 .card-content {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
-
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1rem;
 }
-
 .stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--rounded);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
   padding: 1rem;
-  background: var(--glass-bg-light);
-  border-radius: 12px;
-  border: 1px solid rgba(79, 70, 229, 0.1);
-  transition: all var(--transition-normal);
+  transition: border-color var(--transition), background var(--transition);
 }
-
 .stat-item:hover {
-  border-color: rgba(79, 70, 229, 0.3);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-kubecloud-blue);
+  border-color: var(--color-accent);
 }
-
 .stat-number {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: var(--kubecloud-light-gray);
-  font-weight: 500;
-  text-align: center;
-}
-
-.recent-clusters {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.section-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--kubecloud-white);
-  margin-bottom: 0.5rem;
+  color: var(--color-text);
 }
-
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--color-text);
+}
+.recent-clusters {
+  margin-top: 1.5rem;
+}
 .cluster-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
-
 .cluster-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: var(--glass-bg-light);
-  border-radius: 8px;
-  border: 1px solid rgba(79, 70, 229, 0.1);
-  transition: all var(--transition-normal);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--rounded);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+  padding: 0.75rem 1rem;
   cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
 }
-
 .cluster-item:hover {
-  border-color: rgba(79, 70, 229, 0.3);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--color-accent);
 }
-
-.cluster-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 .cluster-name {
   font-weight: 600;
-  color: var(--kubecloud-white);
-  font-size: 0.95rem;
+  color: var(--color-text);
 }
-
 .cluster-details {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
   display: flex;
-  gap: 1rem;
-  align-items: center;
+  gap: 0.5rem;
 }
-
-.cluster-region {
-  font-size: 0.8rem;
-  color: var(--kubecloud-light-gray);
-  font-weight: 500;
-}
-
 .cluster-status {
-  font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.125rem 0.5rem;
-  border-radius: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--color-accent);
 }
-
-.cluster-status.running {
-  background: rgba(16, 185, 129, 0.2);
-  color: #10B981;
-}
-
-.cluster-status.stopped {
-  background: rgba(239, 68, 68, 0.2);
-  color: #EF4444;
-}
-
-.cluster-status.pending {
-  background: rgba(245, 158, 11, 0.2);
-  color: #F59E0B;
-}
-
 .cluster-actions {
   display: flex;
   gap: 0.5rem;
 }
-
-.cluster-action-btn {
-  opacity: 0.7;
-  transition: all var(--transition-normal);
+.action-btn {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: var(--rounded);
+  border: none;
+  box-shadow: none;
+  font-weight: 500;
+  padding: 0.5rem 1.25rem;
+  transition: background var(--transition);
 }
-
-.cluster-action-btn:hover {
-  opacity: 1;
-  transform: scale(1.1);
+.action-btn:hover {
+  background: var(--color-accent-hover);
 }
-
 .quick-actions {
+  margin-top: 1.5rem;
   display: flex;
   gap: 0.75rem;
-  justify-content: flex-start;
-  margin-top: 0.5rem;
-}
-
-.quick-action-btn {
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0.01em;
-  padding: 0.5rem 1rem;
-  height: 40px;
-}
-
-/* Responsive Design */
-@media (max-width: 960px) {
-  .clusters-card {
-    padding: 1.25rem;
-  }
-  
-  .card-header {
-    margin-bottom: 1.25rem;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .quick-actions {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 600px) {
-  .clusters-card {
-    padding: 1rem;
-  }
-  
-  .card-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .stat-item {
-    padding: 0.875rem;
-  }
-  
-  .cluster-item {
-    padding: 0.875rem;
-  }
-  
-  .cluster-details {
-    flex-direction: column;
-    gap: 0.25rem;
-    align-items: flex-start;
-  }
 }
 </style>

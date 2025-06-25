@@ -730,7 +730,7 @@ onMounted(() => {
 }
 
 .bg-gradient {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
   color: white !important;
   position: relative;
   overflow: hidden;
@@ -755,7 +755,7 @@ onMounted(() => {
 .v-stepper-header {
   box-shadow: none !important;
   background: var(--v-theme-surface, #1E293B) !important;
-  border: 1px solid rgba(79, 70, 229, 0.2) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
   border-radius: 12px !important;
   padding: 1rem !important;
   backdrop-filter: blur(10px);
@@ -794,7 +794,7 @@ onMounted(() => {
 
 /* Enhanced VM Cards */
 .v-card[variant="outlined"] {
-  border: 1.5px solid rgba(79, 70, 229, 0.2) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.2) !important;
   border-radius: 18px !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: var(--v-theme-surface, #1E293B) !important;
@@ -802,9 +802,9 @@ onMounted(() => {
 }
 
 .v-card[variant="outlined"]:hover {
-  border-color: rgba(79, 70, 229, 0.4) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
   transform: translateY(-2px) scale(1.005);
-  box-shadow: 0 0 15px rgba(79, 70, 229, 0.2), 0 0 30px rgba(79, 70, 229, 0.1) !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), 0 0 30px rgba(59, 130, 246, 0.1) !important;
 }
 
 .v-card-title {
@@ -823,13 +823,13 @@ onMounted(() => {
   border-radius: 8px !important;
   transition: all 0.2s ease;
   background: rgba(30, 41, 59, 0.6) !important;
-  border: 1px solid rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.1);
   overflow: hidden !important;
 }
 
 .v-list-item:hover {
-  background: rgba(79, 70, 229, 0.1) !important;
-  border-color: rgba(79, 70, 229, 0.3);
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3);
   transform: translateY(-2px);
 }
 
@@ -847,6 +847,61 @@ onMounted(() => {
 .v-chip {
   font-weight: 500 !important;
   border-radius: 6px !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.v-chip:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2) !important;
+}
+
+.v-chip[color="primary"] {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+}
+
+.v-chip[color="primary"]:hover {
+  background: rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.6) !important;
+}
+
+.v-chip[color="error"] {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+}
+
+.v-chip[color="error"]:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+.v-chip[variant="outlined"] {
+  background: transparent !important;
+  color: #3B82F6 !important;
+  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+}
+
+.v-chip[variant="outlined"]:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #FFFFFF !important;
+}
+
+.v-chip[variant="tonal"] {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.v-chip[variant="tonal"]:hover {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
 }
 
 /* Enhanced Buttons */
@@ -864,7 +919,7 @@ onMounted(() => {
 }
 
 .v-btn[color="primary"] {
-  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
+  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%) !important;
 }
 
 .v-btn[color="success"] {
@@ -893,7 +948,7 @@ onMounted(() => {
 }
 
 .v-field--focused {
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
 }
 
 /* Step Headers Enhancement */
@@ -932,7 +987,7 @@ onMounted(() => {
 
 .vm-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(79, 70, 229, 0.4) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
 }
 
 .v-avatar {
@@ -945,10 +1000,10 @@ onMounted(() => {
 
 /* SSH Key Chips */
 .ssh-keys-container {
-  border: 1px solid rgba(79, 70, 229, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.1);
   border-radius: 8px;
   padding: 1rem;
-  background: rgba(79, 70, 229, 0.02);
+  background: rgba(59, 130, 246, 0.02);
 }
 
 .ssh-key-chip {
@@ -962,8 +1017,8 @@ onMounted(() => {
 }
 
 .ssh-key-chip.v-chip--selected {
-  background: rgba(79, 70, 229, 0.1) !important;
-  border-color: rgba(79, 70, 229, 0.3) !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
 }
 
 /* Responsive Design */

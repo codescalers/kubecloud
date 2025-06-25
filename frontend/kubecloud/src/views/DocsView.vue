@@ -4,9 +4,7 @@
     <section class="hero-section">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
-            Documentation
-          </h1>
+          <h1 class="hero-title">Documentation</h1>
           <p class="hero-description">
             Everything you need to know about KubeCloud and how to get started.
           </p>
@@ -25,10 +23,10 @@
               </div>
               <h3 class="doc-title">{{ doc.title }}</h3>
               <p class="doc-description">{{ doc.description }}</p>
-              <v-btn 
-                color="primary" 
-                variant="outlined" 
-                :href="doc.link" 
+              <v-btn
+                color="primary"
+                variant="outlined"
+                :href="doc.link"
                 target="_blank"
                 class="doc-link"
               >
@@ -132,7 +130,7 @@ onMounted(() => {
 
 .hero-description {
   font-size: 1.25rem;
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   line-height: 1.7;
   opacity: 0.8;
 }
@@ -162,12 +160,12 @@ onMounted(() => {
 .doc-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--kubecloud-text-primary);
   margin-bottom: 1rem;
 }
 
 .doc-description {
-  color: #CBD5E1;
+  color: var(--kubecloud-text-secondary);
   line-height: 1.6;
   margin-bottom: 2rem;
   opacity: 0.8;
@@ -185,15 +183,15 @@ onMounted(() => {
     min-height: 50vh;
     padding: 1rem 0;
   }
-  
+
   .hero-description {
     font-size: 1.125rem;
   }
-  
+
   .docs-content {
     padding: 2rem 0;
   }
-  
+
   .doc-card {
     padding: 2rem;
   }
@@ -203,11 +201,11 @@ onMounted(() => {
   .hero-section {
     min-height: 40vh;
   }
-  
+
   .docs-content {
     padding: 1.5rem 0;
   }
-  
+
   .doc-card {
     padding: 1.5rem;
   }

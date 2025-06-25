@@ -1,22 +1,22 @@
 <template>
   <div class="overview-card card-enhanced">
     <div class="overview-header">
-      <h2 class="overview-title kubecloud-gradient kubecloud-glow-blue">Dashboard Overview</h2>
+      <h2 class="overview-title">Dashboard Overview</h2>
       <p class="overview-subtitle">Your KubeCloud platform at a glance</p>
     </div>
 
     <!-- Stats Grid -->
     <div class="stats-grid">
-      <div 
-        v-for="(stat, index) in statsData" 
-        :key="index" 
+      <div
+        v-for="(stat, index) in statsData"
+        :key="index"
         class="stat-card"
       >
         <div class="stat-icon">
           <v-icon :icon="stat.icon" size="32" color="primary"></v-icon>
         </div>
         <div class="stat-content">
-          <div class="stat-number kubecloud-gradient">{{ stat.value }}</div>
+          <div class="stat-number">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
       </div>
@@ -24,13 +24,13 @@
 
     <!-- Quick Actions -->
     <div class="quick-actions-section">
-      <h3 class="section-title kubecloud-gradient">Quick Actions</h3>
+      <h3 class="section-title">Quick Actions</h3>
       <div class="actions-grid">
-        <v-btn 
-          v-for="(action, index) in quickActions" 
+        <v-btn
+          v-for="(action, index) in quickActions"
           :key="index"
-          :color="action.color" 
-          :variant="action.variant" 
+          :color="action.color"
+          :variant="action.variant"
           class="action-btn btn-enhanced"
           @click="action.handler"
         >
@@ -42,11 +42,11 @@
 
     <!-- Recent Activity -->
     <div class="recent-activity-section">
-      <h3 class="section-title kubecloud-gradient">Recent Activity</h3>
+      <h3 class="section-title">Recent Activity</h3>
       <div class="activity-list">
-        <div 
-          v-for="activity in recentActivity" 
-          :key="activity.id" 
+        <div
+          v-for="activity in recentActivity"
+          :key="activity.id"
           class="activity-item"
         >
           <div class="activity-icon">
@@ -62,11 +62,11 @@
 
     <!-- System Status -->
     <div class="system-status-section">
-      <h3 class="section-title kubecloud-gradient">System Status</h3>
+      <h3 class="section-title">System Status</h3>
       <div class="status-grid">
-        <div 
-          v-for="(status, index) in systemStatus" 
-          :key="index" 
+        <div
+          v-for="(status, index) in systemStatus"
+          :key="index"
           class="status-item"
         >
           <div class="status-indicator running"></div>
@@ -204,48 +204,63 @@ const emit = defineEmits(['navigate'])
 
 <style scoped>
 .overview-card {
-  padding: 1.5rem;
+  background: var(--color-surface);
+  border-radius: var(--rounded);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  box-shadow: none;
+  padding: 1.25rem;
+  transition: border-color var(--transition);
+}
+
+.overview-card:hover {
+  background: var(--color-surface);
+  border-color: var(--color-border);
 }
 
 .overview-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem; /* Adjusted margin */
 }
 
 .overview-title {
-  font-size: 2.25rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
+  font-size: var(--text-3xl); /* Use standardized font size */
+  font-weight: var(--font-bold); /* Use standardized font weight */
+  margin-bottom: 0.5rem; /* Adjusted margin */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
 }
 
 .overview-subtitle {
-  font-size: 1.1rem;
-  color: var(--kubecloud-light-gray);
-  line-height: 1.6;
+  font-size: var(--text-base); /* Use standardized font size */
+  color: var(--kubecloud-text-secondary); /* Use secondary text color */
+  line-height: 1.5; /* Adjusted line height */
 }
 
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Adjusted minmax */
+  gap: 1rem; /* Adjusted gap */
+  margin-bottom: 1.5rem; /* Adjusted margin */
 }
 
-.stat-card {
-  display: flex;
-  align-items: center;
-  padding: 1.25rem;
-  background: var(--glass-bg-light);
-  border-radius: 12px;
-  border: 1px solid rgba(79, 70, 229, 0.2);
-  transition: all var(--transition-normal);
+.stat-card,
+.activity-item,
+.status-item {
+  background: var(--kubecloud-surface-light, #2e2f35);
+  color: var(--kubecloud-text-primary, #e0e0e0);
+  border-radius: var(--rounded-md);
+  border: 1.5px solid var(--kubecloud-border, #3a3b40);
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  transition: box-shadow 0.18s, border-color 0.18s, background 0.18s;
 }
 
-.stat-card:hover {
-  border-color: var(--kubecloud-blue);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-kubecloud-blue);
+.stat-card:hover,
+.activity-item:hover,
+.status-item:hover {
+  border-color: var(--kubecloud-primary, #3B82F6);
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  background: var(--kubecloud-surface-light-hover, #34353b);
 }
 
 .stat-icon {
@@ -253,84 +268,88 @@ const emit = defineEmits(['navigate'])
 }
 
 .stat-number {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  font-size: var(--text-2xl); /* Use standardized font size */
+  font-weight: var(--font-bold); /* Use standardized font weight */
+  margin-bottom: 0.15rem; /* Adjusted margin */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
 }
 
 .stat-label {
-  font-size: 0.9rem;
-  color: var(--kubecloud-light-gray);
-  font-weight: 500;
+  font-size: var(--text-sm); /* Use standardized font size */
+  color: var(--kubecloud-text-secondary, #b0b0b0); /* Use secondary text color */
+  font-weight: var(--font-medium); /* Use standardized font weight */
 }
 
 /* Quick Actions */
 .quick-actions-section {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem; /* Adjusted margin */
 }
 
 .section-title {
-  font-size: 1.375rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  font-size: var(--text-lg); /* Use standardized font size */
+  font-weight: var(--font-semibold); /* Use standardized font weight */
+  margin-bottom: 0.75rem; /* Adjusted margin */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
 }
 
 .actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* Adjusted minmax */
+  gap: 0.75rem; /* Adjusted gap */
 }
 
 .action-btn {
-  height: 44px;
-  font-weight: 600;
+  height: 40px; /* Adjusted height */
+  font-weight: var(--font-medium); /* Use standardized font weight */
   text-transform: none;
-  letter-spacing: 0.01em;
-  padding: 0.625rem 1.25rem;
+  letter-spacing: 0;
+  padding: 0.5rem 1rem; /* Adjusted padding */
 }
 
 /* Recent Activity */
 .recent-activity-section {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem; /* Adjusted margin */
 }
 
 .activity-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem; /* Adjusted gap */
 }
 
 .activity-item {
   display: flex;
   align-items: center;
-  padding: 0.875rem;
-  background: var(--glass-bg-light);
-  border-radius: 8px;
-  border: 1px solid rgba(79, 70, 229, 0.1);
-  transition: all var(--transition-normal);
+  padding: 0.75rem; /* Adjusted padding */
+  background: var(--kubecloud-surface-light, #2e2f35); /* Lighter than card for inner contrast */
+  color: var(--kubecloud-text-primary, #e0e0e0); /* Always light text */
+  border-radius: var(--rounded-md); /* Use standardized border radius */
+  border: 1.5px solid var(--kubecloud-border, #3a3b40); /* Use border color */
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  transition: box-shadow 0.18s, border-color 0.18s, background 0.18s;
 }
 
 .activity-item:hover {
-  border-color: rgba(79, 70, 229, 0.3);
-  transform: translateX(4px);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--kubecloud-primary, #3B82F6); /* Use primary color on hover */
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  background: var(--kubecloud-surface-light-hover, #34353b);
 }
 
 .activity-icon {
-  margin-right: 0.75rem;
+  margin-right: 0.5rem; /* Adjusted margin */
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: rgba(79, 70, 229, 0.1);
-  transition: all var(--transition-normal);
+  width: 28px; /* Adjusted size */
+  height: 28px; /* Adjusted size */
+  border-radius: var(--rounded-sm); /* Use standardized border radius */
+  background: var(--kubecloud-primary-bg, rgba(59, 130, 246, 0.1));
+  transition: all var(--transition-fast); /* Use faster transition */
 }
 
 .activity-item:hover .activity-icon {
-  background: rgba(79, 70, 229, 0.2);
-  transform: scale(1.05);
+  background: var(--kubecloud-primary-bg-hover, rgba(59, 130, 246, 0.2));
+  transform: none; /* Remove scale effect */
 }
 
 .activity-content {
@@ -338,92 +357,94 @@ const emit = defineEmits(['navigate'])
 }
 
 .activity-text {
-  font-weight: 500;
-  color: var(--kubecloud-white);
-  margin-bottom: 0.25rem;
+  font-weight: var(--font-medium); /* Use standardized font weight */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
+  margin-bottom: 0.15rem; /* Adjusted margin */
 }
 
 .activity-time {
-  font-size: 0.85rem;
-  color: var(--kubecloud-light-gray);
+  font-size: var(--text-xs); /* Use standardized font size */
+  color: var(--kubecloud-text-secondary, #b0b0b0); /* Use secondary text color */
 }
 
 /* System Status */
 .system-status-section {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0; /* Adjusted margin */
 }
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* Adjusted minmax */
+  gap: 0.75rem; /* Adjusted gap */
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  padding: 0.875rem;
-  background: var(--glass-bg-light);
-  border-radius: 8px;
-  border: 1px solid rgba(79, 70, 229, 0.1);
-  transition: all var(--transition-normal);
+  padding: 0.75rem; /* Adjusted padding */
+  background: var(--kubecloud-surface-light, #2e2f35); /* Lighter than card for inner contrast */
+  color: var(--kubecloud-text-primary, #e0e0e0); /* Always light text */
+  border-radius: var(--rounded-md); /* Use standardized border radius */
+  border: 1.5px solid var(--kubecloud-border, #3a3b40); /* Use border color */
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  transition: box-shadow 0.18s, border-color 0.18s, background 0.18s;
 }
 
 .status-item:hover {
-  border-color: rgba(79, 70, 229, 0.3);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--kubecloud-primary, #3B82F6); /* Use primary color on hover */
+  box-shadow: 0 2px 16px 0 rgba(59,130,246,0.10), 0 1px 8px 0 rgba(0,0,0,0.12);
+  background: var(--kubecloud-surface-light-hover, #34353b);
 }
 
 .status-indicator {
-  width: 12px;
-  height: 12px;
+  width: 10px; /* Adjusted size */
+  height: 10px; /* Adjusted size */
   border-radius: 50%;
-  margin-right: 0.75rem;
-  transition: all var(--transition-normal);
+  margin-right: 0.5rem; /* Adjusted margin */
+  transition: all var(--transition-fast); /* Use faster transition */
 }
 
 .status-indicator.running {
   background: var(--kubecloud-success);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  box-shadow: var(--kubecloud-success-shadow, 0 0 6px rgba(76, 175, 80, 0.5));
 }
 
 .status-item:hover .status-indicator.running {
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
-  transform: scale(1.1);
+  box-shadow: var(--kubecloud-success-shadow-hover, 0 0 8px rgba(76, 175, 80, 0.7));
+  transform: none; /* Remove scale effect */
 }
 
 .status-label {
-  font-size: 0.85rem;
-  color: var(--kubecloud-light-gray);
-  margin-bottom: 0.25rem;
+  font-size: var(--text-xs); /* Use standardized font size */
+  color: var(--kubecloud-text-secondary, #b0b0b0); /* Use secondary text color */
+  margin-bottom: 0.15rem; /* Adjusted margin */
 }
 
 .status-value {
-  font-weight: 600;
-  color: var(--kubecloud-white);
+  font-weight: var(--font-semibold); /* Use standardized font weight */
+  color: var(--kubecloud-text-primary); /* Use primary text color */
 }
 
-/* Responsive Design */
+/* Responsive Design - Align with updated sizes and padding */
 @media (max-width: 960px) {
   .overview-card {
     padding: 1.25rem;
   }
-  
+
   .overview-title {
-    font-size: 2rem;
+    font-size: var(--text-2xl); /* Adjusted font size */
   }
-  
+
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Adjusted minmax */
   }
-  
+
   .actions-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Adjusted minmax */
   }
-  
+
   .status-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Adjusted minmax */
   }
 }
 
@@ -431,25 +452,29 @@ const emit = defineEmits(['navigate'])
   .overview-card {
     padding: 1rem;
   }
-  
+
   .overview-title {
-    font-size: 1.75rem;
+    font-size: var(--text-xl); /* Adjusted font size */
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .stat-card {
-    padding: 1rem;
+    padding: 0.8rem;
   }
-  
+
   .stat-number {
-    font-size: 1.5rem;
+    font-size: var(--text-lg); /* Adjusted font size */
   }
-  
+
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+
   .status-grid {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>

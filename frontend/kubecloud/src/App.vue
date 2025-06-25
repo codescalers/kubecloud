@@ -1,20 +1,23 @@
 <template>
   <ErrorBoundary>
     <v-app class="kubecloud-app">
+      <!-- Floating Cloud Animation - Site-wide -->
+      <FloatingClouds />
+
       <!-- Shared Moving Background - Persists across route changes -->
       <UnifiedBackground :theme="currentTheme" />
-      
+
       <!-- Navigation Bar -->
       <NavBar v-if="!isAuthPage" />
-      
+
       <!-- Main Content Area -->
       <v-main class="app-main">
         <RouterView />
       </v-main>
-      
+
       <!-- Footer -->
       <AppFooter v-if="!isAuthPage" />
-      
+
       <!-- Global Notifications -->
       <NotificationToast />
     </v-app>
@@ -29,6 +32,7 @@ import AppFooter from './components/AppFooter.vue'
 import ErrorBoundary from './components/ErrorBoundary.vue'
 import NotificationToast from './components/NotificationToast.vue'
 import UnifiedBackground from './components/UnifiedBackground.vue'
+import FloatingClouds from './components/FloatingClouds.vue'
 
 const route = useRoute()
 
@@ -41,7 +45,7 @@ const isAuthPage = computed(() => {
 // Dynamic theme based on current route
 const currentTheme = computed(() => {
   const path = route.path
-  
+
   // Theme mapping for different routes
   const themeMap: Record<string, 'default' | 'home' | 'features' | 'pricing' | 'use-cases' | 'docs' | 'reserve' | 'dashboard'> = {
     '/': 'home',
@@ -52,12 +56,12 @@ const currentTheme = computed(() => {
     '/reserve': 'reserve',
     '/deploy': 'dashboard'
   }
-  
+
   // Check for dashboard routes
   if (path.startsWith('/dashboard')) {
     return 'dashboard'
   }
-  
+
   return themeMap[path] || 'default'
 })
 </script>
@@ -66,7 +70,7 @@ const currentTheme = computed(() => {
 .kubecloud-app {
   min-height: 100vh;
   background: var(--kubecloud-bg);
-  color: var(--kubecloud-white);
+  color: var(--kubecloud-text-primary);
   font-family: 'Space Grotesk', 'Inter', sans-serif;
 }
 

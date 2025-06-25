@@ -3,7 +3,7 @@
     <div class="feature-icon">
       <v-icon color="primary" size="48">mdi-web</v-icon>
     </div>
-    <h3 class="feature-title kubecloud-gradient">Simple Web Gateway Access</h3>
+    <h3 class="feature-title">Simple Web Gateway Access</h3>
     <p class="feature-description">
       Expose any service to the public web with a simple Kubernetes resource. No complex Ingress controllers. Domain and prefix-based routing is built-in.
     </p>
@@ -28,24 +28,54 @@ spec:
 // No logic needed
 </script>
 
+<script lang="ts">
+export default {}
+</script>
+
 <style scoped>
 .feature-code {
-  background: var(--kubecloud-slate);
-  border-radius: 8px;
+  background: var(--kubecloud-surface-dark);
+  border-radius: 10px;
   padding: 1rem;
   margin-bottom: 2rem;
-  border: 1px solid rgba(37, 99, 235, 0.2);
+  border: 1px solid var(--kubecloud-border-dark);
 }
 
 .feature-code pre {
   margin: 0;
   color: var(--kubecloud-light-gray);
   font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .feature-code code {
-  color: var(--kubecloud-blue);
+  color: var(--kubecloud-primary);
 }
-</style> 
+
+.feature-tag {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.15);
+  color: #FFFFFF;
+  border-radius: 6px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: all 0.2s ease;
+}
+
+.feature-tag:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.feature-tags {
+  margin-top: 1rem;
+}
+</style>

@@ -3,13 +3,13 @@
     <div class="auth-background">
       <div class="auth-particles"></div>
     </div>
-    
+
     <v-card class="auth-card card-enhanced">
       <div class="auth-header">
         <h1 class="auth-title kubecloud-gradient">Welcome Back!</h1>
         <p class="auth-subtitle">Sign in to your KubeCloud account</p>
       </div>
-      
+
       <v-form @submit.prevent="handleSignIn" class="auth-form">
         <v-text-field
           v-model="form.email"
@@ -22,7 +22,7 @@
           :disabled="loading"
           required
         />
-        
+
         <v-text-field
           v-model="form.password"
           label="Password"
@@ -34,7 +34,7 @@
           :disabled="loading"
           required
         />
-        
+
         <div class="auth-options-vertical">
           <v-checkbox
             v-model="form.rememberMe"
@@ -42,20 +42,20 @@
             color="primary"
             :disabled="loading"
           />
-          <v-btn 
-            variant="text" 
-            size="small" 
+          <v-btn
+            variant="text"
+            size="small"
             class="forgot-password-btn kubecloud-hover-blue"
             :disabled="loading"
           >
             Forgot Password?
           </v-btn>
         </div>
-        
-        <v-btn 
+
+        <v-btn
           type="submit"
-          color="primary" 
-          block 
+          color="primary"
+          block
           size="large"
           class="auth-submit-btn btn-enhanced kubecloud-glow-blue"
           :loading="loading"
@@ -65,12 +65,12 @@
           {{ loading ? 'Signing In...' : 'Sign In' }}
         </v-btn>
       </v-form>
-      
+
       <div class="auth-footer">
         <span class="auth-footer-text">Don't have an account?</span>
-        <v-btn 
-          variant="text" 
-          color="primary" 
+        <v-btn
+          variant="text"
+          color="primary"
           to="/sign-up"
           class="auth-link kubecloud-hover-blue"
           :disabled="loading"
@@ -111,7 +111,7 @@ const clearErrors = () => {
 
 const validateFormData = () => {
   clearErrors()
-  
+
   const validationFields = {
     email: {
       value: form.email,
@@ -122,9 +122,9 @@ const validateFormData = () => {
       rules: { required: true, minLength: 1 }
     }
   }
-  
+
   const result = validateForm(validationFields)
-  
+
   if (!result.isValid) {
     result.errors.forEach(error => {
       if (error.includes('email')) {
@@ -135,7 +135,7 @@ const validateFormData = () => {
     })
     return false
   }
-  
+
   return true
 }
 
@@ -144,13 +144,13 @@ const handleSignIn = async () => {
     notificationStore.error('Validation Error', 'Please fix the errors above')
     return
   }
-  
+
   try {
     await withLoading(
       async () => {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 2000))
-        
+
         // Simulate success
         if (form.email === 'test@example.com' && form.password === 'password') {
           notificationStore.success('Welcome Back!', 'Successfully signed in to your account')
@@ -187,33 +187,24 @@ const handleSignIn = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--kubecloud-navy) 0%, var(--kubecloud-slate) 100%);
+  background: var(--color-background) !important;
 }
 
 .auth-particles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 20% 80%, rgba(79, 70, 229, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(234, 88, 12, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(8, 145, 178, 0.04) 0%, transparent 50%);
-  animation: float 20s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(180deg); }
+  display: none !important;
 }
 
 .auth-card {
-  min-width: 500px !important;
-  max-width: auto !important;
-  padding: 2.5rem 2rem;
-  position: relative;
-  z-index: 2;
+  min-width: 320px !important;
+  max-width: 400px !important;
+  width: 100%;
+  padding: 2rem 1.5rem;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--rounded);
+  box-shadow: none !important;
+  color: var(--color-text);
+  transition: border-color 0.15s;
 }
 
 .auth-header {
@@ -222,14 +213,17 @@ const handleSignIn = async () => {
 }
 
 .auth-title {
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   margin-bottom: 0.5rem;
+  color: var(--color-text);
+  background: none;
 }
 
 .auth-subtitle {
-  color: var(--kubecloud-light-gray);
+  color: var(--color-text-muted);
   font-size: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .auth-form {
@@ -237,24 +231,22 @@ const handleSignIn = async () => {
 }
 
 .auth-field {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .auth-field :deep(.v-field) {
-  background: rgba(79, 70, 229, 0.03) !important;
-  border: 1px solid rgba(79, 70, 229, 0.15) !important;
-  border-radius: 12px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--rounded) !important;
+  color: var(--color-text) !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s;
 }
 
-.auth-field :deep(.v-field:hover) {
-  border: 1px solid var(--kubecloud-blue) !important;
-  box-shadow: 0 0 8px rgba(79, 70, 229, 0.15);
-}
-
+.auth-field :deep(.v-field:hover),
 .auth-field :deep(.v-field--focused) {
-  border: 2px solid var(--kubecloud-blue) !important;
-  box-shadow: var(--shadow-kubecloud-blue);
+  border-color: var(--color-accent) !important;
+  box-shadow: none !important;
 }
 
 .auth-options-vertical {
@@ -267,26 +259,29 @@ const handleSignIn = async () => {
 .forgot-password-btn {
   margin-top: 0.15rem;
   font-size: 0.98rem;
-  color: var(--kubecloud-blue);
+  color: var(--color-accent);
   align-self: flex-start;
   padding-left: 2px;
   line-height: 1.2;
 }
 
 .auth-submit-btn {
-  background: linear-gradient(135deg, var(--kubecloud-blue), var(--kubecloud-blue-dark)) !important;
-  color: var(--kubecloud-white) !important;
+  background: var(--color-accent) !important;
+  color: #fff !important;
   font-weight: 600;
   font-size: 1rem;
   padding: 1rem;
-  border-radius: 12px;
-  box-shadow: var(--shadow-kubecloud-blue);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: var(--rounded);
+  border: none;
+  box-shadow: none !important;
+  transition: background 0.15s, color 0.15s;
 }
 
-.auth-submit-btn:hover {
-  box-shadow: var(--shadow-hover-blue);
-  transform: translateY(-2px);
+.auth-submit-btn:hover,
+.auth-submit-btn:focus {
+  background: var(--color-accent) !important;
+  color: #fff !important;
+  box-shadow: none !important;
 }
 
 .auth-footer {
@@ -298,32 +293,27 @@ const handleSignIn = async () => {
 }
 
 .auth-footer-text {
-  color: var(--kubecloud-light-gray);
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
 .auth-link {
   font-weight: 600;
-  color: var(--kubecloud-blue) !important;
+  color: #fff !important;
+  text-decoration: underline;
 }
 
 @media (max-width: 600px) {
   .auth-container {
     padding: 1rem;
   }
-  
   .auth-card {
-    padding: 2rem 1.5rem;
+    padding: 1.25rem 0.5rem;
+    min-width: 0 !important;
+    max-width: 100vw !important;
   }
-  
   .auth-title {
-    font-size: 1.75rem;
-  }
-  
-  .auth-options {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+    font-size: 1.2rem;
   }
 }
-</style> 
+</style>
