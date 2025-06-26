@@ -1,0 +1,38 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--certificatesresolvers.default.acme.tlschallenge"
+      - "--certificatesresolvers.default.acme.email=dsafsdajfksdhfkjadsfoo@you.com"
+      - "--certificatesresolvers.default.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.default.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.default.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.gridca.acme.tlschallenge"
+      - "--certificatesresolvers.gridca.acme.email=dsafsdajfksdhfkjadsfoo@you.com"
+      - "--certificatesresolvers.gridca.acme.storage=/data/acme1.json"
+      - "--certificatesresolvers.gridca.acme.caserver=https://ca1.grid.tf"
+      - "--certificatesresolvers.gridca.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.tlschallenge"
+      - "--certificatesresolvers.le.acme.email=dsafsdajfksdhfkjadsfoo@you.com"
+      - "--certificatesresolvers.le.acme.storage=/data/acme2.json"
+      - "--certificatesresolvers.le.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+
+    entryPoints:
+      web:
+        address: ":80"
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+
+      websecure:
+        address: ":443"
+        http:
+          tls: {}
