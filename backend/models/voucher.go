@@ -9,4 +9,5 @@ type Voucher struct {
 	Value     float64   `gorm:"not null"`
 	Redeemed  bool      `json:"redeemed" gorm:"default:false"`
 	CreatedAt time.Time `json:"created_at"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
