@@ -68,6 +68,7 @@ func (s *Sqlite) UpdateUserByID(user *models.User) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	user.UpdatedAt = time.Now() 
 	return s.db.Model(&models.User{}).
 		Where("id = ?", user.ID).
 		Updates(user).Error

@@ -68,6 +68,7 @@ type ChangePasswordInput struct {
 
 // ChargeBalanceInput struct holds required data to charge users' balance
 type ChargeBalanceInput struct {
+	CardType     string  `json:"card_type" binding:"required"`
 	PaymentToken string  `json:"payment_method_id" binding:"required"`
 	Amount       float64 `json:"amount" binding:"required"`
 }
@@ -389,7 +390,6 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	}
 
 	user.CreditCardBalance += float64(request.Amount)
-	user.UpdatedAt = time.Now()
 
 	err = h.db.UpdateUserByID(&user)
 	if err != nil {
@@ -399,7 +399,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":           "Balance charged successfully",
+		"message":           "Balance is charged successfully",
 		"payment_intent_id": intent.ID,
 		"new_balance":       user.CreditCardBalance,
 	})
