@@ -26,7 +26,6 @@ func AdminMiddleware(tokenManager internal.TokenManager) gin.HandlerFunc {
 		}
 
 		c.Set("user_id", strconv.Itoa(claims.UserID))
-		c.Set("username", claims.Username)
 		c.Set("admin", claims.Admin)
 		c.Next()
 	}

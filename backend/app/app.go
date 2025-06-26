@@ -40,7 +40,9 @@ func NewApp(config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
-	handler := NewHandler(tokenHandler, db, config)
+	mailService := internal.NewMailService(config.MailSender.SendGridKey)
+
+	handler := NewHandler(tokenHandler, db, config, mailService)
 
 	app := &App{
 		router:   router,
@@ -59,6 +61,7 @@ func (app *App) registerHandlers() {
 	v1 := app.router.Group("/api/v1")
 	{
 		v1.POST("/register", app.handlers.RegisterHandler)
+		v1.POST("/verify_register", app.handlers.VerifyRegisterCode)
 		v1.POST("/login", app.handlers.LoginUserHandler)
 		v1.POST("/refresh", app.handlers.RefreshTokenHandler)
 		v1.POST("/forgot_password", app.handlers.ForgotPasswordHandler)

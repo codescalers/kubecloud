@@ -17,6 +17,7 @@ type Configuration struct {
 	MailSender   MailSender `json:"mailSender"`
 	Currency     string     `json:"currency" validate:"required"`
 	StripeSecret string     `json:"stripe_secret" validate:"required"`
+	Voucher    Voucher    `json:"voucher"`  
 }
 
 // Server struct holds server's information
@@ -42,6 +43,10 @@ type MailSender struct {
 	Email       string `json:"email" validate:"required,email"`
 	SendGridKey string `json:"sendgrid_key" validate:"required"`
 	Timeout     int    `json:"timeout" validate:"min=30"`
+}
+
+type Voucher struct {
+	NameLength int `json:"name_length" validate:"required,gt=0"`
 }
 
 // ReadConfFile read configurations of json file

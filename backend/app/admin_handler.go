@@ -5,6 +5,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,13 +14,14 @@ import (
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
-	Count int     `json:"count" binding:"required,gt=0"`
-	Value float64 `json:"value" binding:"required,gt=0"`
+	Count int     `json:"count" binding:"required,gt=0" validate:"required,gt=0"`
+	Value float64 `json:"value" binding:"required,gt=0" validate:"required,gt=0"`
 }
 
+// CreditRequestInput represents a request to credit a user's balance
 type CreditRequestInput struct {
-	Amount float64 `json:"amount" binding:"required,gt=0"`
-	Memo   string  `json:"memo" binding:"required"`
+	Amount float64 `json:"amount" binding:"required,gt=0" validate:"required,gt=0"`
+	Memo   string  `json:"memo" binding:"required,min=3,max=255" validate:"required"`
 }
 
 // ListUsersHandler lists all users
@@ -28,7 +30,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 	users, err := h.db.ListAllUsers()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list all users")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error listing users"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -49,14 +51,20 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 		return
 	}
 
-	err := h.db.DeleteUserByID(userID)
+	ID, err := strconv.Atoi(userID)
 	if err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("Failed to delete user")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+	err = h.db.DeleteUserByID(ID)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID).Msg("Failed to delete user")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User is deleted successfully"})
 
 }
 
@@ -73,7 +81,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
-		voucherCode := internal.GenerateRandomVoucher(5)
+		voucherCode := internal.GenerateRandomVoucher(h.config.Voucher.NameLength)
 		timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 		fullCode := fmt.Sprintf("%s-%s", voucherCode, timestampPart)
 
@@ -85,7 +93,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 
 		if err := h.db.CreateVoucher(&voucher); err != nil {
 			log.Error().Err(err).Msg("failed to create voucher")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save voucher"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 			return
 		}
 
@@ -105,7 +113,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 	vouchers, err := h.db.ListAllVouchers()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list all vouchers")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error listing vouchers"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -126,7 +134,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	user, err := h.db.GetUserByID(userID)
+	ID, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := h.db.GetUserByID(ID)
 	if err != nil {
 		log.Error().Err(err).Send()
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -149,13 +163,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	if err := h.db.CreateTransaction(&transaction); err != nil {
 		log.Error().Err(err).Msg("Failed to create credit transaction")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create credit transaction"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 
 	if err := h.db.CreditUserBalance(user.ID, request.Amount); err != nil {
 		log.Error().Err(err).Msg("Failed to credit user")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to credit user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
 

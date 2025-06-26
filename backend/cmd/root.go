@@ -38,34 +38,36 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to create new app: %w", err)
 		}
 
-		// Graceful shutdown
-		ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-		defer stop()
-
-		go func() {
-			log.Info().Msg("Starting KubeCloud server")
-
-			if err := app.Run(); err != nil && err != http.ErrServerClosed {
-				log.Error().Err(err).Msg("Failed to start server")
-				stop()
-			}
-		}()
-
-		<-ctx.Done()
-		log.Info().Msg("Shutting down server...")
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		// Shutdown server
-		if err := app.Shutdown(shutdownCtx); err != nil {
-			log.Error().Err(err).Msg("Server shutdown failed")
-		}
-
-		log.Info().Msg("Server gracefully stopped.")
-
-		return nil
+		return gracefulShutdown(app)
 	},
+}
+
+func gracefulShutdown(app *app.App) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Info().Msg("Starting KubeCloud server")
+
+		if err := app.Run(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("Failed to start server")
+			stop()
+		}
+	}()
+
+	<-ctx.Done()
+	log.Info().Msg("Shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := app.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("Server shutdown failed")
+		return err
+	}
+
+	log.Info().Msg("Server gracefully stopped.")
+	return nil
 }
 
 func Execute() {
