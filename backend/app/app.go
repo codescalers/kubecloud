@@ -11,14 +11,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 // App holds all configurations for the app
 type App struct {
-	router     *gin.Engine
-	httpServer *http.Server
-	config     internal.Configuration
-	handlers   Handler
+	router        *gin.Engine
+	httpServer    *http.Server
+	config        internal.Configuration
+	handlers      Handler
+	redis         *internal.RedisClient
+	sseManager    *internal.SSEManager
+	workerManager *internal.WorkerManager
 }
 
 // NewApp create new instance of the app with all configs
@@ -39,15 +43,43 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 	mailService := internal.NewMailService(config.MailSender.SendGridKey)
 
-	handler := NewHandler(tokenHandler, db, config, mailService)
+	redisClient, err := internal.NewRedisClient(config.Redis)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Redis client")
+		return nil, fmt.Errorf("failed to create Redis client: %w", err)
+	}
+
+	sseManager := internal.NewSSEManager(redisClient)
+
+	// start gridclient
+	gridClient, err := deployer.NewTFPluginClient(
+		config.Grid.Mnemonic,
+		deployer.WithNetwork(config.Grid.Network),
+		// TODO: remove this after testing
+		deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
+		deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create TF plugin client: %w", err)
+	}
+
+	workerManager := internal.NewWorkerManager(redisClient, sseManager, 3, gridClient) // 3 workers
+
+	handler := NewHandler(tokenHandler, db, config, mailService, redisClient, sseManager)
 
 	app := &App{
-		router:   router,
-		config:   config,
-		handlers: *handler,
+		router:        router,
+		config:        config,
+		handlers:      *handler,
+		redis:         redisClient,
+		sseManager:    sseManager,
+		workerManager: workerManager,
 	}
 
 	app.registerHandlers()
+
+	// Start worker manager
+	app.workerManager.Start()
 
 	return app, nil
 
@@ -68,27 +100,34 @@ func (app *App) registerHandlers() {
 		authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
 		{
 			authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+			// Deployment routes
+			authGroup.POST("/deploy", app.handlers.DeployHandler)
+			authGroup.GET("/tasks/:task_id", app.handlers.GetTaskStatusHandler)
+			authGroup.GET("/tasks", app.handlers.ListUserTasksHandler)
+			authGroup.GET("/blueprints", app.handlers.GetAvailableBlueprintsHandler)
+			// SSE endpoint for real-time updates
+			authGroup.GET("/events", app.sseManager.HandleSSE)
 		}
 
-	}
-
-	adminGroup := v1.Group("/admin")
-	adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
-	{
-
-		usersGroup := adminGroup.Group("/users")
+		adminGroup := v1.Group("/admin")
+		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
 		{
-			usersGroup.GET("", app.handlers.ListUsersHandler)
-			usersGroup.POST("", app.handlers.RegisterHandler)
-			usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
-			usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 
-		}
+			usersGroup := adminGroup.Group("/users")
+			{
+				usersGroup.GET("", app.handlers.ListUsersHandler)
+				usersGroup.POST("", app.handlers.RegisterHandler)
+				usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
+				usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 
-		vouchersGroup := adminGroup.Group("/vouchers")
-		{
-			vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
-			vouchersGroup.GET("", app.handlers.ListVouchersHandler)
+			}
+
+			vouchersGroup := adminGroup.Group("/vouchers")
+			{
+				vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
+				vouchersGroup.GET("", app.handlers.ListVouchersHandler)
+
+			}
 
 		}
 
@@ -113,10 +152,19 @@ func (app *App) Run() error {
 	return app.httpServer.ListenAndServe()
 }
 
-// Shutdown gracefully shuts down the server
+// Shutdown gracefully shuts down the server and worker manager
 func (app *App) Shutdown(ctx context.Context) error {
 	if app.httpServer != nil {
-		return app.httpServer.Shutdown(ctx)
+		if err := app.httpServer.Shutdown(ctx); err != nil {
+			log.Error().Err(err).Msg("Failed to shutdown server")
+			return err
+		}
 	}
+
+	if app.workerManager != nil {
+		app.workerManager.Stop()
+		log.Info().Msg("Worker manager stopped")
+	}
+
 	return nil
 }

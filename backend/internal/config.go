@@ -16,6 +16,13 @@ type Configuration struct {
 	Admins     []string   `json:"admins"`
 	MailSender MailSender `json:"mailSender"`
 	Voucher    Voucher    `json:"voucher"`
+	Redis      Redis      `json:"redis" validate:"required,dive"`
+	Grid       GridConfig `json:"grid" validate:"required,dive"`
+}
+
+type GridConfig struct {
+	Mnemonic string `json:"mne" validate:"required"`
+	Network  string `json:"net" validate:"required"`
 }
 
 // Server struct holds server's information
@@ -45,6 +52,14 @@ type MailSender struct {
 
 type Voucher struct {
 	NameLength int `json:"name_length" validate:"required,gt=0"`
+}
+
+// Redis struct holds Redis connection information
+type Redis struct {
+	Host     string `json:"host" validate:"required"`
+	Port     string `json:"port" validate:"required,numeric"`
+	Password string `json:"password"`
+	DB       int    `json:"db" validate:"min=0"`
 }
 
 // ReadConfFile read configurations of json file

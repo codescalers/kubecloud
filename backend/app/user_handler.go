@@ -17,15 +17,19 @@ type Handler struct {
 	db           models.DB
 	config       internal.Configuration
 	mailService  internal.MailService
+	redis        *internal.RedisClient
+	sseManager   *internal.SSEManager
 }
 
 // NewHandler create new handler
-func NewHandler(tokenManager internal.TokenManager, db models.DB, config internal.Configuration, mailService internal.MailService) *Handler {
+func NewHandler(tokenManager internal.TokenManager, db models.DB, config internal.Configuration, mailService internal.MailService, redis *internal.RedisClient, sseManager *internal.SSEManager) *Handler {
 	return &Handler{
 		tokenManager: tokenManager,
 		db:           db,
 		config:       config,
 		mailService:  mailService,
+		redis:        redis,
+		sseManager:   sseManager,
 	}
 }
 
@@ -85,7 +89,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check if user previously exists
 	existingUser, getErr := h.db.GetUserByEmail(request.Email)
-	if getErr == gorm.ErrRecordNotFound {
+	if getErr != nil && getErr != gorm.ErrRecordNotFound {
 		c.JSON(http.StatusConflict, gin.H{"error": "user already registered"})
 		return
 	}
@@ -119,7 +123,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	}
 
 	// If user exists but not verified
-	if getErr != gorm.ErrRecordNotFound {
+	if getErr != nil {
 		if existingUser.Verified {
 			user.ID = existingUser.ID
 			user.UpdatedAt = time.Now()
@@ -241,7 +245,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
-	c.JSON(http.StatusCreated, tokenPair)
+	c.JSON(http.StatusOK, tokenPair)
 
 }
 
