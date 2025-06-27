@@ -1,15 +1,11 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-background">
-      <div class="auth-particles"></div>
-    </div>
-
-    <v-card class="auth-card card-enhanced">
+  <div class="auth-view">
+    <div class="auth-background"></div>
+    <div class="auth-content fade-in">
       <div class="auth-header">
-        <h1 class="auth-title kubecloud-gradient">Create Account</h1>
+        <h1 class="auth-title">Create Account</h1>
         <p class="auth-subtitle">Join KubeCloud and start your journey</p>
       </div>
-
       <v-form @submit.prevent="handleSignUp" class="auth-form">
         <div class="name-fields">
           <v-text-field
@@ -22,7 +18,6 @@
             :disabled="loading"
             required
           />
-
           <v-text-field
             v-model="form.lastName"
             label="Last Name"
@@ -34,7 +29,6 @@
             required
           />
         </div>
-
         <v-text-field
           v-model="form.email"
           label="Email Address"
@@ -46,7 +40,6 @@
           :disabled="loading"
           required
         />
-
         <v-text-field
           v-model="form.password"
           label="Password"
@@ -58,7 +51,6 @@
           :disabled="loading"
           required
         />
-
         <v-text-field
           v-model="form.confirmPassword"
           label="Confirm Password"
@@ -70,7 +62,6 @@
           :disabled="loading"
           required
         />
-
         <div class="auth-options">
           <v-checkbox
             v-model="form.agreeToTerms"
@@ -86,13 +77,12 @@
             :disabled="loading"
           />
         </div>
-
         <v-btn
           type="submit"
-          color="secondary"
+          color="white"
           block
           size="large"
-          class="auth-submit-btn btn-enhanced kubecloud-glow-orange"
+          variant="outlined"
           :loading="loading"
           :disabled="loading"
         >
@@ -100,25 +90,23 @@
           {{ loading ? 'Creating Account...' : 'Create Account' }}
         </v-btn>
       </v-form>
-
       <div class="auth-footer">
         <span class="auth-footer-text">Already have an account?</span>
         <v-btn
-          variant="text"
-          color="primary"
+          variant="outlined"
+          color="white"
           to="/sign-in"
-          class="auth-link kubecloud-hover-blue"
           :disabled="loading"
         >
           Sign In
         </v-btn>
       </div>
-    </v-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationStore } from '../stores/notifications'
 import { useLoading } from '../composables/useLoading'
@@ -239,163 +227,155 @@ const handleSignUp = async () => {
     notificationStore.error('Sign Up Failed', message)
   }
 }
+
+onMounted(() => {
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  }
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible')
+      }
+    })
+  }, observerOptions)
+  document.querySelectorAll('.fade-in').forEach(el => {
+    observer.observe(el)
+  })
+})
 </script>
 
 <style scoped>
-.auth-container {
+.auth-view {
   min-height: 100vh;
-  background: var(--kubecloud-navy);
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
   position: relative;
   overflow: hidden;
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%),
+    radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
-
 .auth-background {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--color-background) !important;
+  z-index: 0;
+  pointer-events: none;
 }
-
-.auth-particles {
-  display: none !important;
-}
-
-.auth-card {
-  min-width: 320px !important;
-  max-width: 400px !important;
+.auth-content {
+  min-width: 320px;
+  max-width: 400px;
   width: 100%;
-  padding: 2rem 1.5rem;
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: var(--rounded);
-  box-shadow: none !important;
-  color: var(--color-text);
-  transition: border-color 0.15s;
+  background: rgba(10, 25, 47, 0.92);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.10);
+  padding: 2.5rem 2rem 2rem 2rem;
+  z-index: 2;
+  border: 1px solid rgba(96, 165, 250, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeInUp 0.7s cubic-bezier(0.4,0,0.2,1);
 }
-
 .auth-header {
   text-align: center;
   margin-bottom: 2rem;
 }
-
 .auth-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--color-text);
-  background: none;
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
-
 .auth-subtitle {
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: #60a5fa;
+  opacity: 0.92;
+  font-weight: 400;
+  margin-bottom: 0;
 }
-
 .auth-form {
-  margin-bottom: 2rem;
+  width: 100%;
 }
-
 .name-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
 }
-
-.auth-field {
-  margin-bottom: 1.25rem;
+@media (max-width: 600px) {
+  .name-fields {
+    flex-direction: column;
+    gap: 0.3rem;
+  }
 }
-
-.auth-field :deep(.v-field) {
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: var(--rounded) !important;
-  color: var(--color-text) !important;
-  box-shadow: none !important;
-  transition: border-color 0.15s;
-}
-
-.auth-field :deep(.v-field:hover),
-.auth-field :deep(.v-field--focused) {
-  border-color: var(--color-accent) !important;
-  box-shadow: none !important;
-}
-
 .auth-options {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
+  gap: 0.3rem;
 }
-
-.terms-checkbox {
-  margin-bottom: 0;
-}
-
 .auth-submit-btn {
-  background: var(--color-accent) !important;
-  color: #fff !important;
-  font-weight: 600;
   font-size: 1rem;
-  padding: 1rem;
-  border-radius: var(--rounded);
-  border: none;
-  box-shadow: none !important;
-  transition: background 0.15s, color 0.15s;
+  padding: 0.9rem 0;
+  border-radius: 1.5rem;
+  font-weight: 500;
+  margin-top: 0.2rem;
+  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.10);
+  background: transparent;
+  color: #fff;
+  border: 2px solid #fff;
+  transition: box-shadow 0.2s, transform 0.2s, background 0.2s, color 0.2s;
 }
-
-.auth-submit-btn:hover,
-.auth-submit-btn:focus {
-  background: var(--color-accent) !important;
-  color: #fff !important;
-  box-shadow: none !important;
+.auth-submit-btn:hover {
+  background: #fff;
+  color: #0a192f;
+  box-shadow: 0 8px 32px 0 rgba(59,130,246,0.18);
+  transform: translateY(-2px) scale(1.04);
 }
-
 .auth-footer {
   text-align: center;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
+  margin-top: 1.5rem;
 }
-
 .auth-footer-text {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+  color: #CBD5E1;
+  margin-right: 0.5rem;
 }
-
 .auth-link {
-  font-weight: 600;
-  color: #fff !important;
-  text-decoration: underline;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0.01em;
 }
-
+.fade-in {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+.fade-in.visible {
+  opacity: 1;
+  transform: none;
+}
 @media (max-width: 600px) {
-  .auth-container {
-    padding: 1rem;
-  }
-  .auth-card {
-    padding: 1.25rem 0.5rem;
-    min-width: 0 !important;
-    max-width: 100vw !important;
+  .auth-content {
+    padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+    min-width: 0;
+    max-width: 98vw;
   }
   .auth-title {
-    font-size: 1.2rem;
+    font-size: clamp(2rem, 8vw, 3rem);
   }
-
-  .name-fields {
-    grid-template-columns: 1fr;
+}
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
   }
-
-  .auth-options {
-    gap: 0.5rem;
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

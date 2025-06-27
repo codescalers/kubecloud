@@ -52,7 +52,7 @@ const router = createRouter({
       component: () => import('../views/PricingView.vue'),
     },
     {
-      path: '/usecases',
+      path: '/use-cases',
       name: 'usecases',
       component: () => import('../views/UseCasesView.vue'),
     },

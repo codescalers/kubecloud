@@ -11,36 +11,23 @@
         </div>
       </div>
     </section>
-
-    <!-- Features Content -->
-    <section class="features-content section-padding">
-      <div class="container-padding">
-        <div class="section-header text-center mb-8">
-          <h2 class="section-title">Enterprise-Grade Capabilities</h2>
-          <p class="section-subtitle">
-            Advanced features designed for modern cloud-native applications
-          </p>
-        </div>
-
-        <v-row>
-          <v-col cols="12" md="4" v-for="feature in features" :key="feature.title">
-            <component :is="feature.component" class="feature-card card-enhanced fade-in" />
-          </v-col>
-        </v-row>
-      </div>
-    </section>
+    <FeatureMyceliumPanel />
+    <FeatureWebGateway />
+    <FeatureGpuOnDemand />
+    <FeatureMultiMaster />
+    <FeatureLoadBalancing />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import FeatureMyceliumNetworking from '../components/features/FeatureMyceliumNetworking.vue'
+import FeatureMyceliumPanel from '../components/features/FeatureMyceliumPanel.vue'
 import FeatureWebGateway from '../components/features/FeatureWebGateway.vue'
 import FeatureGpuOnDemand from '../components/features/FeatureGpuOnDemand.vue'
+import FeatureMultiMaster from '../components/features/FeatureMultiMaster.vue'
+import FeatureLoadBalancing from '../components/features/FeatureLoadBalancing.vue'
 
 const features = [
-  { title: 'Mycelium Networking', component: FeatureMyceliumNetworking },
-  { title: 'Web Gateway', component: FeatureWebGateway },
   { title: 'GPU On-Demand', component: FeatureGpuOnDemand }
 ]
 
@@ -74,9 +61,9 @@ function logout() {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%);
 }
 
-/* Hero Section */
 .hero-section {
   min-height: 60vh;
   display: flex;
@@ -84,7 +71,7 @@ function logout() {
   justify-content: center;
   position: relative;
   z-index: 2;
-  padding: 2rem 0;
+  padding: 6rem 0 4rem 0;
 }
 
 .hero-content {
@@ -99,83 +86,50 @@ function logout() {
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 500;
+  margin-bottom: 2.5rem;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: #fff;
 }
 
 .hero-description {
-  font-size: 1.25rem;
-  color: var(--kubecloud-text-secondary);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  color: #60a5fa;
   line-height: 1.7;
-  opacity: 0.8;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: 400;
 }
 
-/* Features Content */
 .features-content {
   position: relative;
   z-index: 2;
-  padding: 4rem 0;
+  padding: 6rem 0 6rem 0;
 }
 
 .section-header {
-  margin-bottom: 3rem;
+  margin-bottom: 5rem;
 }
 
-.section-title {
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 700;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-}
-
-.section-subtitle {
-  font-size: 1.125rem;
-  color: var(--kubecloud-text-secondary);
-  opacity: 0.8;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.feature-card {
-  height: 100%;
-  padding: 2rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.feature-card:hover {
-  transform: translateY(-8px);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .hero-section {
-    min-height: 50vh;
-    padding: 1rem 0;
+    padding: 3rem 0 2rem 0;
   }
-
-  .hero-description {
-    font-size: 1.125rem;
-  }
-
   .features-content {
-    padding: 2rem 0;
+    padding: 3rem 0 3rem 0;
   }
-
-  .feature-card {
-    padding: 1.5rem;
+  .section-header {
+    margin-bottom: 2.5rem;
   }
 }
-
-@media (max-width: 480px) {
-  .hero-section {
-    min-height: 40vh;
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 3rem);
   }
-
   .features-content {
-    padding: 1.5rem 0;
+    padding: 2rem 0 2rem 0;
   }
 }
 </style>

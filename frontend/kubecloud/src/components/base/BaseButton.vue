@@ -11,6 +11,7 @@
     :aria-pressed="$attrs['aria-pressed'] || undefined"
     :aria-label="$attrs['aria-label'] || undefined"
     ref="buttonRef"
+    :variant="props.variant === 'primary' || props.variant === 'secondary' ? 'outlined' : props.variant"
   >
     <slot />
   </v-btn>
@@ -69,21 +70,22 @@ const buttonClasses = computed(() => [
 
 <style scoped>
 .base-button {
-  background: var(--color-accent);
+  background: transparent;
   color: #fff;
   border-radius: var(--rounded);
   border: none;
   box-shadow: none;
   font-weight: 500;
   padding: 0.5rem 1.25rem;
-  transition: background var(--transition);
+  transition: color var(--transition), box-shadow var(--transition);
 }
 .base-button:hover {
-  background: var(--color-accent-hover);
+  background: transparent;
+  color: #60a5fa;
 }
 .base-button:focus-visible,
 .base-button.focus-ring {
   outline: none;
-  box-shadow: 0 0 0 2px var(--color-accent);
+  box-shadow: 0 0 0 2px #60a5fa;
 }
 </style>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import AdminSidebar from '../components/AdminSidebar.vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+
+// Use defineAsyncComponent to avoid TypeScript issues
+const AdminSidebar = defineAsyncComponent(() => import('../components/AdminSidebar.vue'))
 
 const selected = ref('overview')
 
@@ -78,6 +80,7 @@ const voucherResult = ref('')
 
 // Manual credit form state
 const creditUserId = ref('')
+const creditUserObj = ref<{ id: number; name: string; email: string } | null>(null)
 const creditAmount = ref(0)
 const creditReason = ref('')
 const creditResult = ref('')
@@ -103,8 +106,20 @@ async function generateVouchers() {
 // Placeholder for API call to apply manual credit
 async function applyManualCredit() {
   // TODO: Replace with real API call
-  creditResult.value = `Credited user ${creditUserId.value} with $${creditAmount.value} for: ${creditReason.value}`
+  if (!creditUserObj.value) {
+    showSnackbar('Please select a user.', 'error')
+    return
+  }
+  creditResult.value = `Credited user ${creditUserObj.value.name} with $${creditAmount.value} for: ${creditReason.value}`
   showSnackbar('Manual credit applied!', 'success')
+  // Optionally reset form
+  creditUserObj.value = null
+  creditAmount.value = 0
+  creditReason.value = ''
+}
+
+function editUser(user: { id: number; name: string; email: string }) {
+  alert('Edit user: ' + user.name)
 }
 
 const tabs = [
@@ -114,6 +129,10 @@ const tabs = [
   { key: 'system', label: 'System' },
   { key: 'vouchers', label: 'Vouchers' },
 ]
+
+onMounted(() => {
+  console.log('AdminDashboard mounted, selected:', selected.value)
+})
 </script>
 
 <template>
@@ -125,152 +144,297 @@ const tabs = [
         </div>
         <div class="dashboard-main">
           <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="2500" location="top right">{{ snackbarMsg }}</v-snackbar>
-          <div v-if="selected === 'overview'">
+          <!-- Overview Section -->
+          <div v-if="selected === 'overview'" class="admin-section">
             <div class="section-header">
               <h2 class="dashboard-title">Admin Overview</h2>
+              <p class="section-subtitle">Monitor platform health and key metrics</p>
             </div>
-            <div class="dashboard-cards">
-              <v-card v-for="stat in adminStats" :key="stat.label" class="dashboard-card admin-stat-card cloud-card float-card elevation-2" color="surface-light">
-                <v-icon :icon="stat.icon" :color="stat.color" size="36" class="stat-icon cloud-icon" />
-                <div class="stat-label">{{ stat.label }}</div>
-                <div class="stat-value">{{ stat.value }}</div>
-              </v-card>
+            <div class="stats-grid">
+              <div v-for="stat in adminStats" :key="stat.label" class="stat-item">
+                <div class="stat-icon">
+                  <v-icon :icon="stat.icon" size="24" :color="stat.color"></v-icon>
+                </div>
+                <div class="stat-content">
+                  <div class="stat-number">{{ stat.value }}</div>
+                  <div class="stat-label">{{ stat.label }}</div>
+                </div>
+              </div>
             </div>
           </div>
-          <div v-else-if="selected === 'users'">
+
+          <!-- Users Section -->
+          <div v-else-if="selected === 'users'" class="admin-section">
             <div class="section-header">
               <h2 class="dashboard-title">User Management</h2>
+              <p class="section-subtitle">Manage user accounts and permissions</p>
             </div>
-            <v-card class="mb-6 pa-6 elevation-2" color="surface-light">
-              <v-row class="mb-4" align="center" justify="space-between">
-                <v-col cols="12" md="4">
-                  <v-text-field v-model="searchQuery" label="Search users by name or email" prepend-inner-icon="mdi-magnify" variant="outlined" dense clearable />
-                </v-col>
-                <v-col cols="12" md="8" class="d-flex justify-end">
-                  <v-form @submit.prevent="createUser" class="d-flex align-center" style="gap: 8px;">
-                    <v-text-field v-model="newUserName" label="Name" prepend-inner-icon="mdi-account" variant="outlined" dense required hide-details />
-                    <v-text-field v-model="newUserEmail" label="Email" prepend-inner-icon="mdi-email" variant="outlined" dense required hide-details />
-                    <v-btn type="submit" color="primary" class="ml-2" variant="elevated">Create User</v-btn>
-                  </v-form>
-                </v-col>
-              </v-row>
-              <v-divider class="mb-4" />
-              <v-data-table
-                :headers="[
-                  { title: 'ID', key: 'id' },
-                  { title: 'Name', key: 'name' },
-                  { title: 'Email', key: 'email' },
-                  { title: 'Actions', key: 'actions', sortable: false }
-                ]"
-                :items="filteredUsers"
-                :items-per-page="pageSize"
-                :page.sync="currentPage"
-                class="elevation-0 admin-table"
-                hide-default-footer
-                density="comfortable"
-                color="surface-light"
-                item-class="admin-table-row"
-              >
-                <template v-slot:item.actions="{ item }">
-                  <v-btn color="error" size="small" @click="deleteUser(item.id)" variant="elevated">Delete</v-btn>
-                </template>
-              </v-data-table>
-              <v-pagination
-                v-model="currentPage"
-                :length="totalPages"
-                class="mt-4"
-                color="primary"
-                circle
-                size="small"
-              />
-            </v-card>
-            <v-card class="pa-6 elevation-2" color="surface-light">
-              <div class="section-header mb-4">
-                <v-icon icon="mdi-cash-plus" color="accent" size="28" class="mr-2" />
-                <h3 class="mb-0">Apply Manual Credit</h3>
+            
+            <div class="dashboard-card">
+              <div class="dashboard-card-header">
+                <h3 class="dashboard-card-title">Create New User</h3>
+                <p class="dashboard-card-subtitle">Add a new user to the platform</p>
               </div>
-              <v-form @submit.prevent="applyManualCredit">
-                <v-row>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model="creditUserId" label="User ID" prepend-inner-icon="mdi-account" variant="outlined" dense required />
-                  </v-col>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model.number="creditAmount" label="Amount ($)" type="number" prepend-inner-icon="mdi-currency-usd" variant="outlined" min="0.01" step="0.01" dense required />
-                  </v-col>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model="creditReason" label="Reason/Memo" prepend-inner-icon="mdi-note-text" variant="outlined" dense required />
-                  </v-col>
-                </v-row>
-                <v-btn type="submit" color="primary" class="mt-2" variant="elevated">Apply Credit</v-btn>
+              <v-form @submit.prevent="createUser" class="create-user-form">
+                <div class="form-row">
+                  <v-text-field 
+                    v-model="newUserName" 
+                    label="Name" 
+                    prepend-inner-icon="mdi-account" 
+                    variant="outlined" 
+                    density="comfortable"
+                    required 
+                    hide-details 
+                    class="form-field"
+                  />
+                  <v-text-field 
+                    v-model="newUserEmail" 
+                    label="Email" 
+                    prepend-inner-icon="mdi-email" 
+                    variant="outlined" 
+                    density="comfortable"
+                    required 
+                    hide-details 
+                    class="form-field"
+                  />
+                  <v-btn type="submit" color="primary" variant="elevated" class="btn-primary">
+                    <v-icon icon="mdi-plus" class="mr-2"></v-icon>
+                    Create User
+                  </v-btn>
+                </div>
               </v-form>
-              <v-alert v-if="creditResult" type="success" dense class="mt-4">{{ creditResult }}</v-alert>
-            </v-card>
-          </div>
-          <div v-else-if="selected === 'clusters'">
-            <h2 class="dashboard-title">Cluster Management</h2>
-            <div class="dashboard-card">Cluster management table (coming soon)</div>
-          </div>
-          <div v-else-if="selected === 'credits'">
-            <div class="section-header">
-              <h2 class="dashboard-title">Credits</h2>
             </div>
-            <v-card class="elevation-2 pa-6 cloud-card" color="surface-light">
-              <template v-if="manualCredits.length">
+
+            <div class="dashboard-card">
+              <div class="dashboard-card-header">
+                <h3 class="dashboard-card-title">User Search</h3>
+                <p class="dashboard-card-subtitle">Find and manage existing users</p>
+              </div>
+              <v-text-field 
+                v-model="searchQuery" 
+                label="Search users by name or email" 
+                prepend-inner-icon="mdi-magnify" 
+                variant="outlined" 
+                density="comfortable"
+                clearable 
+                class="search-field"
+              />
+              
+              <div class="table-container">
                 <v-data-table
                   :headers="[
-                    { title: 'User', key: 'user' },
-                    { title: 'Amount', key: 'amount' },
-                    { title: 'Reason', key: 'reason' },
-                    { title: 'Date', key: 'date' }
+                    { title: 'ID', key: 'id', width: '80px' },
+                    { title: 'Name', key: 'name' },
+                    { title: 'Email', key: 'email' },
+                    { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
                   ]"
-                  :items="manualCredits"
-                  class="elevation-0 admin-table"
+                  :items="filteredUsers"
+                  :items-per-page="pageSize"
+                  :page="currentPage"
+                  @update:page="currentPage = $event"
+                  class="admin-table"
                   hide-default-footer
                   density="comfortable"
-                  color="surface-light"
+                >
+                  <template #item.actions="{ item }">
+                    <div style="display: flex; gap: var(--space-4); align-items: center;">
+                      <v-btn size="small" variant="outlined" class="action-btn" @click="editUser(item)">
+                        <v-icon icon="mdi-pencil" size="16" class="mr-1"></v-icon>
+                        Edit
+                      </v-btn>
+                      <v-btn size="small" variant="outlined" class="action-btn" @click="deleteUser(item.id)">
+                        <v-icon icon="mdi-delete" size="16" class="mr-1"></v-icon>
+                        Remove
+                      </v-btn>
+                    </div>
+                  </template>
+                </v-data-table>
+              </div>
+              
+              <div class="pagination-container">
+                <v-pagination
+                  v-model="currentPage"
+                  :length="totalPages"
+                  color="primary"
+                  circle
+                  size="small"
                 />
-              </template>
-              <template v-else>
-                <div class="empty-state-content py-12">
-                  <div class="empty-state-title">No Credits Yet</div>
-                  <div class="empty-state-message">You haven't added any manual credits yet. Use the Users section to apply credits to a user.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Clusters Section -->
+          <div v-else-if="selected === 'clusters'" class="admin-section">
+            <div class="section-header">
+              <h2 class="dashboard-title">Cluster Management</h2>
+              <p class="section-subtitle">Monitor and manage all platform clusters</p>
+            </div>
+            <div class="dashboard-card">
+              <div class="empty-state-content">
+                <v-icon icon="mdi-server-network" size="64" color="var(--color-text-muted)" class="mb-4"></v-icon>
+                <h3 class="empty-state-title">Cluster Management</h3>
+                <p class="empty-state-message">Advanced cluster management features coming soon. Monitor cluster health, performance metrics, and resource utilization.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Credits Section -->
+          <div v-else-if="selected === 'credits'" class="admin-section">
+            <div class="section-header">
+              <h2 class="dashboard-title">Credits History</h2>
+              <p class="section-subtitle">Track all manual credit applications</p>
+            </div>
+            <div class="dashboard-card">
+              <template v-if="manualCredits.length">
+                <div class="dashboard-card-header">
+                  <h3 class="dashboard-card-title">Recent Credits</h3>
+                  <p class="dashboard-card-subtitle">Manual credits applied to user accounts</p>
+                </div>
+                <div class="table-container">
+                  <v-data-table
+                    :headers="[
+                      { title: 'User', key: 'user' },
+                      { title: 'Amount', key: 'amount' },
+                      { title: 'Reason', key: 'reason' },
+                      { title: 'Date', key: 'date' }
+                    ]"
+                    :items="manualCredits"
+                    class="admin-table"
+                    hide-default-footer
+                    density="comfortable"
+                  />
                 </div>
               </template>
-            </v-card>
+              <template v-else>
+                <div class="empty-state-content">
+                  <v-icon icon="mdi-cash-plus" size="64" color="var(--color-text-muted)" class="mb-4"></v-icon>
+                  <h3 class="empty-state-title">No Credits Yet</h3>
+                  <p class="empty-state-message">You haven't added any manual credits yet. Use the Users section to apply credits to a user.</p>
+                </div>
+              </template>
+            </div>
+
+            <div class="dashboard-card">
+              <div class="dashboard-card-header">
+                <h3 class="dashboard-card-title">Manual Credit</h3>
+                <p class="section-subtitle">Apply credits to user accounts</p>
+              </div>
+              <v-form @submit.prevent="applyManualCredit" class="credit-form">
+                <div class="form-row">
+                  <v-select
+                    v-model="creditUserObj"
+                    :items="users"
+                    item-title="name"
+                    item-value="id"
+                    label="User"
+                    return-object
+                    :menu-props="{ maxHeight: '300px' }"
+                    prepend-inner-icon="mdi-account"
+                    variant="outlined"
+                    density="comfortable"
+                    required
+                    class="form-field"
+                    :item-props="user => ({ title: user.name + ' (' + user.email + ')', value: user })"
+                  />
+                  <v-text-field 
+                    v-model.number="creditAmount" 
+                    label="Amount ($)" 
+                    type="number" 
+                    prepend-inner-icon="mdi-currency-usd" 
+                    variant="outlined" 
+                    min="0.01" 
+                    step="0.01" 
+                    density="comfortable"
+                    required 
+                    class="form-field"
+                  />
+                  <v-text-field 
+                    v-model="creditReason" 
+                    label="Reason/Memo" 
+                    prepend-inner-icon="mdi-note-text" 
+                    variant="outlined" 
+                    density="comfortable"
+                    required 
+                    class="form-field"
+                  />
+                </div>
+                <v-btn type="submit" color="primary" variant="elevated" class="btn-primary">
+                  <v-icon icon="mdi-cash-plus" class="mr-2"></v-icon>
+                  Apply Credit
+                </v-btn>
+              </v-form>
+              <v-alert v-if="creditResult" type="success" variant="tonal" class="mt-4">{{ creditResult }}</v-alert>
+            </div>
           </div>
-          <div v-else-if="selected === 'system'">
+
+          <!-- System Section -->
+          <div v-else-if="selected === 'system'" class="admin-section">
             <div class="section-header">
               <h2 class="dashboard-title">System Stats</h2>
+              <p class="section-subtitle">Platform health and performance metrics</p>
             </div>
-            <v-card class="empty-state-card cloud-card elevation-2" color="surface-light">
+            <div class="dashboard-card">
               <div class="empty-state-content">
-                <div class="empty-state-title">System stats and logs (coming soon)</div>
-                <div class="empty-state-message">This section will show system health, logs, and platform status for admins.</div>
+                <v-icon icon="mdi-cog" size="64" color="var(--color-text-muted)" class="mb-4"></v-icon>
+                <h3 class="empty-state-title">System Monitoring</h3>
+                <p class="empty-state-message">Advanced system monitoring, logs, and platform status features coming soon. Monitor system health, performance metrics, and resource utilization.</p>
               </div>
-            </v-card>
+            </div>
           </div>
-          <div v-else-if="selected === 'vouchers'">
+
+          <!-- Vouchers Section -->
+          <div v-else-if="selected === 'vouchers'" class="admin-section">
             <div class="section-header">
               <h2 class="dashboard-title">Voucher Management</h2>
+              <p class="section-subtitle">Generate and manage platform vouchers</p>
             </div>
-            <v-card class="dashboard-card admin-voucher-card elevation-2" color="surface-light">
-              <h3 class="mb-4">Generate Vouchers</h3>
-              <v-form @submit.prevent="generateVouchers">
-                <v-row>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model.number="voucherValue" label="Voucher Value ($)" type="number" prepend-inner-icon="mdi-currency-usd" variant="outlined" min="1" dense required />
-                  </v-col>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model.number="voucherCount" label="Number of Vouchers" type="number" prepend-inner-icon="mdi-pound" variant="outlined" min="1" dense required />
-                  </v-col>
-                  <v-col cols="12" md="4">
-                    <v-text-field v-model="voucherExpiry" label="Expiry Date" type="date" prepend-inner-icon="mdi-calendar" variant="outlined" dense required />
-                  </v-col>
-                </v-row>
-                <v-btn type="submit" color="primary" class="mt-2" variant="elevated">Generate</v-btn>
+            <div class="dashboard-card">
+              <div class="dashboard-card-header">
+                <h3 class="dashboard-card-title">Generate Vouchers</h3>
+                <p class="dashboard-card-subtitle">Create new vouchers for user promotions</p>
+              </div>
+              <v-form @submit.prevent="generateVouchers" class="voucher-form">
+                <div class="form-row">
+                  <v-text-field 
+                    v-model.number="voucherValue" 
+                    label="Voucher Value ($)" 
+                    type="number" 
+                    prepend-inner-icon="mdi-currency-usd" 
+                    variant="outlined" 
+                    min="1" 
+                    density="comfortable"
+                    required 
+                    class="form-field"
+                  />
+                  <v-text-field 
+                    v-model.number="voucherCount" 
+                    label="Number of Vouchers" 
+                    type="number" 
+                    prepend-inner-icon="mdi-pound" 
+                    variant="outlined" 
+                    min="1" 
+                    density="comfortable"
+                    required 
+                    class="form-field"
+                  />
+                  <v-text-field 
+                    v-model="voucherExpiry" 
+                    label="Expiry Date" 
+                    type="date" 
+                    prepend-inner-icon="mdi-calendar" 
+                    variant="outlined" 
+                    density="comfortable"
+                    required 
+                    class="form-field"
+                  />
+                </div>
+                <v-btn type="submit" color="primary" variant="elevated" class="btn-primary">
+                  <v-icon icon="mdi-ticket-percent" class="mr-2"></v-icon>
+                  Generate Vouchers
+                </v-btn>
               </v-form>
-              <v-alert v-if="voucherResult" type="success" dense class="mt-4">{{ voucherResult }}</v-alert>
-            </v-card>
+              <v-alert v-if="voucherResult" type="success" variant="tonal" class="mt-4">{{ voucherResult }}</v-alert>
+            </div>
           </div>
         </div>
       </div>
@@ -281,200 +445,349 @@ const tabs = [
 <style scoped>
 .dashboard-container {
   min-height: 100vh;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-bg, #0F172A);
+  position: relative;
+  overflow-x: hidden;
 }
 
 .dashboard-content-wrapper {
-  padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+  margin-top: 4rem;
 }
 
 .dashboard-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 2rem;
-  align-items: start;
+  display: flex;
+  min-height: 70vh;
+  gap: 2.5rem;
+  position: relative;
+  z-index: 2;
+  align-items: flex-start;
+  margin-top: 10rem;
 }
 
 .admin-sidebar {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
+  height: fit-content;
   position: sticky;
-  top: 2rem;
+  top: 0;
+  align-self: flex-start;
+  margin-top: 0;
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border, #334155);
+  border-radius: var(--radius-xl, 0.75rem);
+  padding: 1.5rem;
+  backdrop-filter: blur(8px);
 }
 
 .dashboard-main {
-  background: var(--glass-bg);
-  border-radius: 16px;
-  padding: 2rem;
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--cloud-shadow);
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .section-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid var(--color-border);
+  text-align: left;
+  margin-bottom: 1rem;
 }
 
 .dashboard-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
+  font-size: var(--font-size-3xl, 1.875rem);
+  font-weight: var(--font-weight-bold, 700);
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  color: var(--color-text, #F8FAFC);
+  letter-spacing: -0.5px;
 }
 
-.dashboard-cards {
+.section-subtitle {
+  font-size: var(--font-size-lg, 1.125rem);
+  color: var(--color-text-secondary, #CBD5E1);
+  line-height: 1.5;
+  margin: 0;
+  font-weight: var(--font-weight-normal, 400);
+}
+
+/* Stats Grid */
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
-.dashboard-card {
-  background: var(--glass-bg-light) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 16px !important;
-  padding: 1.5rem !important;
-  transition: all var(--transition-normal) !important;
-  backdrop-filter: var(--glass-blur) !important;
+.stat-item {
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border, #334155);
+  border-radius: var(--radius-xl, 0.75rem);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: all var(--transition-normal, 0.2s);
+  backdrop-filter: blur(8px);
 }
 
-.dashboard-card:hover {
-  transform: translateY(-4px) !important;
-  box-shadow: var(--shadow-cloud) !important;
-  border-color: var(--color-accent) !important;
-}
-
-.admin-stat-card {
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.admin-stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--cloud-gradient);
-  opacity: 0;
-  transition: opacity var(--transition-normal);
-  pointer-events: none;
-}
-
-.admin-stat-card:hover::before {
-  opacity: 0.1;
+.stat-item:hover {
+  border-color: var(--color-border-light, #475569);
+  background: rgba(15, 30, 52, 0.75);
+  transform: translateY(-1px);
 }
 
 .stat-icon {
-  margin-bottom: 1rem;
-  filter: drop-shadow(0 0 8px var(--color-accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg, 0.5rem);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--color-primary, #3B82F6);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: var(--font-size-2xl, 1.5rem);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text, #F8FAFC);
+  line-height: 1.2;
 }
 
 .stat-label {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-size: var(--font-size-sm, 0.875rem);
+  color: var(--color-text-secondary, #CBD5E1);
+  margin-top: 0.25rem;
 }
 
-.stat-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-text);
+/* Dashboard Cards */
+.dashboard-card {
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border, #334155);
+  border-radius: var(--radius-xl, 0.75rem);
+  padding: 2rem;
+  transition: all var(--transition-normal, 0.2s);
+  backdrop-filter: blur(8px);
 }
 
-.empty-state-card {
-  text-align: center;
-  padding: 4rem 2rem !important;
-  background: var(--glass-bg-light) !important;
-  border: 1px solid var(--color-border) !important;
+.dashboard-card:hover {
+  border-color: var(--color-border-light, #475569);
+  background: rgba(15, 30, 52, 0.75);
 }
 
-.empty-state-content {
-  max-width: 400px;
-  margin: 0 auto;
+.dashboard-card-header {
+  margin-bottom: 1.5rem;
 }
 
-.empty-state-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 1rem;
+.dashboard-card-title {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text, #F8FAFC);
+  margin: 0 0 0.5rem 0;
 }
 
-.empty-state-message {
-  color: var(--color-text-muted);
-  line-height: 1.6;
+.dashboard-card-subtitle {
+  font-size: var(--font-size-base, 1rem);
+  color: var(--color-text-secondary, #CBD5E1);
+  margin: 0;
+}
+
+/* Forms */
+.create-user-form,
+.credit-form,
+.voucher-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.create-user-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.create-user-form .form-row > .form-field {
+  width: 100%;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.form-field {
+  flex: 1;
+}
+
+.search-field {
+  margin-bottom: 1.5rem;
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--color-primary, #3B82F6);
+  color: white;
+  border-color: var(--color-primary, #3B82F6);
+  font-weight: var(--font-weight-medium, 500);
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md, 0.375rem);
+  transition: all var(--transition-normal, 0.2s);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-dark, #1E40AF);
+  border-color: var(--color-primary-dark, #1E40AF);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  border-color: var(--color-error, #EF4444);
+  color: var(--color-error, #EF4444);
+}
+
+.btn-danger:hover {
+  background: var(--color-error, #EF4444);
+  color: white;
+}
+
+.btn-full {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Tables */
+.table-container {
+  margin: 1.5rem 0;
 }
 
 .admin-table {
   background: transparent !important;
 }
 
-.admin-table .v-data-table__wrapper {
+.admin-table :deep(.v-data-table__wrapper) {
   background: transparent !important;
 }
 
-.admin-table .v-data-table__table {
+.admin-table :deep(.v-data-table-header) {
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-bottom: 1px solid var(--color-border, #334155) !important;
+}
+
+.admin-table :deep(.v-data-table__tr) {
   background: transparent !important;
+  border-bottom: 1px solid var(--color-border, #334155) !important;
 }
 
-.admin-table .v-data-table__tr {
-  background: transparent !important;
-  border-bottom: 1px solid var(--color-border) !important;
+.admin-table :deep(.v-data-table__tr:hover) {
+  background: rgba(30, 41, 59, 0.3) !important;
 }
 
-.admin-table .v-data-table__td {
-  color: var(--color-text) !important;
-  border-bottom: 1px solid var(--color-border) !important;
+.admin-table :deep(.v-data-table__td) {
+  color: var(--color-text, #F8FAFC) !important;
+  border-bottom: none !important;
 }
 
-.admin-table .v-data-table__th {
-  color: var(--color-text-muted) !important;
-  font-weight: 600 !important;
-  border-bottom: 2px solid var(--color-border) !important;
+.admin-table :deep(.v-data-table__th) {
+  color: var(--color-text-secondary, #CBD5E1) !important;
+  font-weight: var(--font-weight-medium, 500) !important;
+  border-bottom: none !important;
 }
 
-@media (max-width: 1024px) {
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+/* Empty States */
+.empty-state-content {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.empty-state-title {
+  font-size: var(--font-size-xl, 1.25rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text, #F8FAFC);
+  margin: 1rem 0 0.5rem 0;
+}
+
+.empty-state-message {
+  font-size: var(--font-size-base, 1rem);
+  color: var(--color-text-secondary, #CBD5E1);
+  line-height: 1.6;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
   .dashboard-layout {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 1.5rem;
   }
   
   .admin-sidebar {
+    flex: none;
+    width: 100%;
     position: static;
   }
   
-  .dashboard-content-wrapper {
-    padding: 1rem;
-  }
-  
-  .dashboard-main {
-    padding: 1.5rem;
-  }
-  
-  .dashboard-cards {
+  .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
   }
-}
-
-@media (max-width: 768px) {
-  .dashboard-cards {
+  
+  .form-row {
     grid-template-columns: 1fr;
   }
   
-  .dashboard-title {
-    font-size: 1.5rem;
+  .dashboard-card {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard-content-wrapper {
+    padding: 0 0.5rem;
+    margin-top: 2rem;
   }
   
-  .dashboard-main {
+  .dashboard-title {
+    font-size: var(--font-size-2xl, 1.5rem);
+  }
+  
+  .section-subtitle {
+    font-size: var(--font-size-base, 1rem);
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-card {
     padding: 1rem;
+  }
+  
+  .empty-state-content {
+    padding: 2rem 1rem;
   }
 }
 </style> 

@@ -1,33 +1,42 @@
 <template>
-  <div class="dashboard-card billing-card">
-    <h2 class="dashboard-card-title mb-6">Billing History</h2>
-    <v-table class="mb-6 billing-table">
-      <thead>
-        <tr>
-          <th class="table-header">Date</th>
-          <th class="table-header">Description</th>
-          <th class="table-header">Amount</th>
-          <th class="table-header">Invoice</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="bill in billingHistory" :key="bill.id" class="table-row">
-          <td class="table-cell">{{ bill.date }}</td>
-          <td class="table-cell">{{ bill.description }}</td>
-          <td class="table-cell">
-            {{ bill.amount > 0 ? '+' : '' }}${{ Math.abs(bill.amount).toFixed(2) }}
-          </td>
-          <td class="table-cell">
-            <v-btn class="action-btn">Download</v-btn>
-          </td>
-        </tr>
-      </tbody>
-    </v-table>
-    <div class="d-flex justify-center align-center mt-4 billing-pagination">
-      <v-btn class="action-btn pagination-btn" :disabled="currentPage === 1" @click="prevPage">&lt; Prev</v-btn>
-      <v-btn class="action-btn pagination-btn mx-2" :class="{ 'active-page': currentPage === 1 }" @click="goToPage(1)">1</v-btn>
-      <v-btn class="action-btn pagination-btn mx-2" :class="{ 'active-page': currentPage === 2 }" @click="goToPage(2)">2</v-btn>
-      <v-btn class="action-btn pagination-btn" :disabled="currentPage === 2" @click="nextPage">Next &gt;</v-btn>
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title-section">
+        <div class="dashboard-card-title-content">
+          <h3 class="dashboard-card-title">Billing History</h3>
+          <p class="dashboard-card-subtitle">View and manage your billing history and invoices</p>
+        </div>
+      </div>
+    </div>
+    <div class="billing-table-container">
+      <v-table class="billing-table">
+        <thead>
+          <tr>
+            <th class="table-header">Date</th>
+            <th class="table-header">Description</th>
+            <th class="table-header">Amount</th>
+            <th class="table-header">Invoice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="bill in billingHistory" :key="bill.id" class="table-row">
+            <td class="table-cell">{{ bill.date }}</td>
+            <td class="table-cell description-cell">{{ bill.description }}</td>
+            <td class="table-cell amount-cell">
+              {{ bill.amount > 0 ? '+' : '' }}${{ Math.abs(bill.amount).toFixed(2) }}
+            </td>
+            <td class="table-cell action-cell">
+              <v-btn variant="outlined" size="small" class="action-btn">Download</v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </div>
+    <div class="billing-pagination">
+      <v-btn class="pagination-btn action-btn" :disabled="currentPage === 1" @click="prevPage">&lt; Prev</v-btn>
+      <v-btn class="pagination-btn action-btn mx-2" :class="{ 'active-page': currentPage === 1 }" @click="goToPage(1)">1</v-btn>
+      <v-btn class="pagination-btn action-btn mx-2" :class="{ 'active-page': currentPage === 2 }" @click="goToPage(2)">2</v-btn>
+      <v-btn class="pagination-btn action-btn" :disabled="currentPage === 2" @click="nextPage">Next &gt;</v-btn>
     </div>
   </div>
 </template>
@@ -54,69 +63,139 @@ function goToPage(page: number) {
 </script>
 
 <style scoped>
-.dashboard-card.billing-card {
-  background: var(--color-surface);
-  border-radius: var(--rounded);
+.billing-table-container {
+  margin-bottom: var(--space-6);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
   border: 1px solid var(--color-border);
-  box-shadow: none;
-  color: var(--color-text);
-  padding: 1.25rem;
-  min-width: 100%;
-}
-
-.dashboard-card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
 }
 
 .billing-table {
   background: transparent;
-  border-radius: var(--rounded);
-  overflow: hidden;
+  width: 100%;
 }
+
 .table-header {
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-weight: 600;
-  font-size: 1rem;
-  padding: 1rem;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  padding: var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   text-align: left;
+  white-space: nowrap;
 }
+
 .table-row {
   background: transparent;
-  transition: background var(--transition);
+  transition: all var(--transition-normal);
 }
+
 .table-row:hover {
-  background: var(--color-bg);
+  background: rgba(59, 130, 246, 0.05);
 }
+
 .table-cell {
-  color: var(--color-text);
-  font-size: 1rem;
-  padding: 1rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  padding: var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   text-align: left;
+  vertical-align: middle;
 }
+
+.description-cell {
+  max-width: 200px;
+  word-wrap: break-word;
+}
+
+.amount-cell {
+  text-align: right;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.action-cell {
+  text-align: center;
+  white-space: nowrap;
+}
+
 .action-btn {
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: var(--rounded);
-  border: none;
-  box-shadow: none;
-  font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  transition: background var(--transition);
+  background: transparent !important;
+  border: 1px solid var(--color-border) !important;
+  color: var(--color-text) !important;
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-normal);
+  white-space: nowrap;
 }
+
 .action-btn:hover {
-  background: var(--color-accent-hover);
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
 }
+
 .billing-pagination {
-  gap: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
 }
+
+.pagination-btn {
+  font-size: var(--font-size-sm);
+  min-width: 60px;
+}
+
+.pagination-btn:disabled {
+  background: transparent !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-disabled) !important;
+}
+
 .pagination-btn.active-page {
-  background: var(--color-accent-hover);
-  color: #fff;
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: var(--color-primary) !important;
+  color: var(--color-primary) !important;
+}
+
+@media (max-width: 768px) {
+  .table-header,
+  .table-cell {
+    padding: var(--space-3) var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+  
+  .description-cell {
+    max-width: 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .billing-table-container {
+    overflow-x: auto;
+  }
+  
+  .billing-table {
+    min-width: 400px;
+  }
+
+  .table-header,
+  .table-cell {
+    padding: var(--space-2) var(--space-1);
+    font-size: var(--font-size-xs);
+  }
+
+  .billing-pagination {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-1);
+  }
+
+  .pagination-btn {
+    font-size: var(--font-size-xs);
+    min-width: 50px;
+  }
 }
 </style>

@@ -126,7 +126,7 @@ const goHome = () => {
 
 .error-title {
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 400;
   margin-bottom: 1rem;
 }
 

@@ -1,6 +1,13 @@
 <template>
-  <div class="dashboard-card profile-card">
-    <h2 class="dashboard-card-title mb-6">Profile Settings</h2>
+  <div class="dashboard-card card-enhanced">
+    <div class="card-header">
+      <div class="card-title-section">
+        <div class="card-title-content">
+          <h3 class="dashboard-card-title">Profile Settings</h3>
+          <p class="card-subtitle">Manage your account information and preferences</p>
+        </div>
+      </div>
+    </div>
     <v-form @submit.prevent="saveProfile" class="profile-form">
       <v-row>
         <v-col cols="12" md="6">
@@ -94,7 +101,7 @@
       </v-row>
       <v-row>
         <v-col cols="12" class="d-flex justify-end">
-          <v-btn type="submit" class="action-btn">Save Changes</v-btn>
+          <v-btn type="submit" variant="outlined" color="white" class="action-btn">Save Changes</v-btn>
         </v-col>
       </v-row>
     </v-form>
@@ -135,42 +142,88 @@ function saveProfile() {
 </script>
 
 <style scoped>
-.dashboard-card.profile-card {
-  background: var(--color-surface);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-  color: var(--color-text);
-  padding: 1.25rem;
-  min-width: 100%;
-}
-.dashboard-card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
-}
 .profile-form {
   width: 100%;
 }
+
 .profile-field {
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
+  color: #CBD5E1;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 0.75rem;
   margin-bottom: 1rem;
+  transition: all 0.2s ease;
 }
-.action-btn {
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: var(--rounded);
-  border: none;
-  box-shadow: none;
+
+.profile-field:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.profile-field:focus-within {
+  border-color: rgba(96, 165, 250, 0.6);
+}
+
+/* Vuetify field overrides */
+.profile-field :deep(.v-field) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.profile-field :deep(.v-field__input) {
+  color: #fff !important;
+  font-size: 1rem;
+}
+
+.profile-field :deep(.v-field__outline) {
+  display: none !important;
+}
+
+.profile-field :deep(.v-label) {
+  color: #60a5fa !important;
   font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  transition: background var(--transition);
 }
+
+.profile-field :deep(.v-field--focused .v-label) {
+  color: #60a5fa !important;
+}
+
+.profile-field :deep(.v-field--variant-outlined .v-field__outline__start) {
+  border-color: transparent !important;
+}
+
+.profile-field :deep(.v-field--variant-outlined .v-field__outline__end) {
+  border-color: transparent !important;
+}
+
+.profile-field :deep(.v-field--variant-outlined .v-field__outline__notch) {
+  border-color: transparent !important;
+}
+
+/* Button styling */
+.action-btn {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
 .action-btn:hover {
-  background: var(--color-accent-hover);
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+@media (max-width: 960px) {
+  .profile-form {
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-field {
+    margin-bottom: 0.75rem;
+  }
 }
 </style>

@@ -1,209 +1,136 @@
 <template>
-  <v-app-bar app flat color="#0F172A" class="nav-app-bar minimalist-nav enhanced-nav">
-    <v-row align="center" class="w-100">
-      <v-col cols="2" class="d-flex align-center">
-        <router-link to="/" class="logo-link minimalist-logo">
-          <svg width="32" height="32" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="24" cy="28" rx="16" ry="10" fill="#181A20" stroke="#3B82F6" stroke-width="2.5"/>
-            <ellipse cx="18" cy="22" rx="7" ry="6" fill="#181A20" stroke="#60A5FA" stroke-width="2.5"/>
-            <ellipse cx="30" cy="20" rx="6" ry="5" fill="#181A20" stroke="#93C5FD" stroke-width="2.5"/>
-            <ellipse cx="24" cy="28" rx="10" ry="7" fill="#181A20" stroke="#3B82F6" stroke-width="2.5"/>
-            <ellipse cx="24" cy="28" rx="5" ry="3.5" fill="#3B82F6" fill-opacity="0.7"/>
-          </svg>
-          <span class="logo-title ms-2">KubeCloud</span>
+  <nav class="navbar">
+    <div class="navbar-content">
+      <router-link to="/" class="navbar-logo">KubeCloud</router-link>
+      <div class="navbar-main-links">
+        <router-link v-for="link in mainLinks" :key="link.to" :to="link.to" class="navbar-link" active-class="active-link">
+          {{ link.label }}
         </router-link>
-      </v-col>
-      <v-col cols="8" class="d-flex align-center justify-center nav-links minimalist-links">
-        <router-link v-for="item in navigationItems" :key="item.path" :to="item.path" class="nav-link minimalist-link" :class="{ 'nav-link--active': $route.path === item.path }" style="color: #fff;" @mouseover="(e) => e.target.style.color = '#3B82F6'" @mouseleave="(e) => e.target.style.color = '#fff'">
-          {{ item.label }}
-        </router-link>
-      </v-col>
-      <v-col cols="2" class="d-flex justify-end align-center">
-        <template v-if="isSignedIn">
-          <v-menu offset-y>
-            <template v-slot:activator="{ props }">
-              <v-btn v-bind="props" variant="text" color="accent" class="user-menu-btn minimalist-user-btn">
-                <v-icon icon="mdi-account-circle" color="accent" />
-              </v-btn>
-            </template>
-            <v-list class="user-menu-list minimalist-user-list">
-              <v-list-item @click="handleLogout" class="logout-item minimalist-logout-item">
-                <v-list-item-title class="text-error">Logout</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
-        </template>
-        <router-link v-else to="/sign-up" class="nav-link minimalist-link">Sign Up</router-link>
-      </v-col>
-    </v-row>
-  </v-app-bar>
+      </div>
+      <div class="navbar-signin">
+        <v-btn
+          v-if="signInLink"
+          variant="outlined"
+          color="white"
+          to="/sign-in"
+        >
+          {{ signInLink.label }}
+        </v-btn>
+      </div>
+    </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '../stores/user'
-
-const userStore = useUserStore()
-const router = useRouter()
-
-const isSignedIn = computed(() => userStore.isLoggedIn)
-
-const handleLogout = () => {
-  userStore.logout()
-  router.push('/')
-}
-
-// Minimal navigation items
-const navigationItems = [
-  { label: 'Home', path: '/' },
-  { label: 'Features', path: '/features' },
-  { label: 'Pricing', path: '/pricing' },
-  { label: 'Docs', path: '/docs' },
-  { label: 'Dashboard', path: '/dashboard' }
+const allLinks = [
+  { label: 'Home', to: '/' },
+  { label: 'Features', to: '/features' },
+  { label: 'Pricing', to: '/pricing' },
+  { label: 'Docs', to: '/docs' },
+  { label: 'Use Cases', to: '/use-cases' },
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Admin', to: '/admin' },
+  { label: 'Sign In', to: '/sign-in' },
 ]
+const mainLinks = allLinks.filter(link => ['Home', 'Features', 'Pricing', 'Docs', 'Dashboard', 'Use Cases', 'Admin'].includes(link.label))
+const signInLink = allLinks.find(link => link.label === 'Sign In')
 </script>
 
 <style scoped>
-.nav-app-bar.minimalist-nav {
-  background: #0F172A !important;
-  border-bottom: 2px solid #3B82F6;
-  box-shadow: none;
-  border-radius: 0;
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  position: sticky;
+.navbar {
+  width: 100%;
+  position: fixed;
   top: 0;
-  z-index: 1000;
-  padding: 0.5rem 0;
+  left: 0;
+  z-index: 100;
+  background: rgba(10, 25, 47, 0.65); /* semi-transparent, blends with gradient */
+  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.10); /* soft shadow for readability */
+  border: none;
+  backdrop-filter: blur(8px);
+  transition: background 0.3s;
+}
+.navbar-content {
+  max-width: 1300px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 1.2rem 2.5rem;
 }
-
-.logo-link.minimalist-logo {
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  color: #fff;
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.logo-title {
-  color: #fff;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.nav-links.minimalist-links {
-  gap: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-.nav-link.minimalist-link {
-  color: #fff;
-  text-decoration: none;
-  font-size: 1.05rem;
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
+.navbar-logo {
+  font-size: 2rem;
   font-weight: 500;
-  letter-spacing: 0.02em;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
+  color: #fff;
+  letter-spacing: -1px;
+  text-decoration: none;
+}
+.navbar-main-links {
+  display: flex;
+  gap: 1.2rem;
+  flex: 1;
+  justify-content: flex-start;
+  margin-left: 6rem;
+  align-items: center;
+}
+.navbar-link {
+  color: #e0e7ef;
+  font-size: 1.05rem;
+  font-weight: 500;
+  text-decoration: none;
   position: relative;
-  transition: color 0.2s, background 0.2s, transform 0.18s cubic-bezier(0.4,0,0.2,1);
-  outline: none;
+  padding: 0.2rem 0;
+  transition: color 0.2s;
+  min-width: 0;
 }
-
-.nav-link.minimalist-link:focus-visible {
-  box-shadow: 0 0 0 2px #3B82F6;
-  border-radius: 6px;
+.navbar-link:hover,
+.navbar-link.active-link {
+  color: #60a5fa;
 }
-
-.nav-link.minimalist-link::after {
+.navbar-link::after {
   content: '';
   display: block;
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, #60a5fa 0%, #38bdf8 100%);
+  transition: width 0.3s;
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: 2px;
-  height: 2.5px;
-  background: linear-gradient(90deg, #3B82F6 0%, #60A5FA 100%);
-  border-radius: 2px;
-  opacity: 0;
-  transform: scaleX(0.5);
-  transition: opacity 0.18s, transform 0.18s cubic-bezier(0.4,0,0.2,1);
+  bottom: -2px;
 }
-
-.nav-link.minimalist-link:hover,
-.nav-link--active {
-  color: #3B82F6;
-  background: rgba(59, 130, 246, 0.08);
-  transform: scale(1.06);
+.navbar-link:hover::after,
+.navbar-link.active-link::after {
+  width: 100%;
 }
-
-.nav-link.minimalist-link:hover::after,
-.nav-link--active::after {
-  opacity: 1;
-  transform: scaleX(1);
+.navbar-signin {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
-
-.user-menu-btn.minimalist-user-btn {
-  color: #8B5CF6 !important;
-  background: none;
-  border: none;
-  min-width: 36px;
-  min-height: 36px;
-  border-radius: 50%;
-  padding: 0;
-}
-
-.user-menu-list.minimalist-user-list {
-  background: #181A20;
-  border-radius: 10px;
-  box-shadow: none;
-  min-width: 120px;
-}
-
-.logout-item.minimalist-logout-item {
-  color: #e57373;
+.more-btn {
   font-size: 1rem;
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
-  text-align: center;
-  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  color: #e0e7ef;
+  min-width: 0;
+  padding: 0.2rem 0.8rem;
 }
-
-.logout-item.minimalist-logout-item:hover {
-  background: #2d223a;
-}
-
-.enhanced-nav {
-  box-shadow: 0 6px 32px 0 rgba(59, 130, 246, 0.10);
-}
-
 @media (max-width: 900px) {
-  .nav-links.minimalist-links {
-    gap: 0.5rem;
+  .navbar-content {
+    padding: 1rem 1.2rem;
   }
-  .logo-link.minimalist-logo {
-    font-size: 1.1rem;
+  .navbar-main-links {
+    gap: 0.7rem;
+    margin-left: 1.2rem;
+  }
+  .navbar-logo {
+    font-size: 1.4rem;
   }
 }
-@media (max-width: 600px) {
-  .nav-app-bar.minimalist-nav {
-    padding: 0.25rem 0.5rem !important;
-  }
-  .nav-links.minimalist-links {
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  .nav-link.minimalist-link {
-    font-size: 0.95rem;
-    padding: 0.2rem 0.4rem;
-  }
+.brand-title {
+  color: #60a5fa;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  margin-left: 0.5rem;
+  font-size: 1.2rem;
+  transition: color 0.2s;
 }
 </style>

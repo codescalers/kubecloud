@@ -62,11 +62,11 @@ function handleNavigate(section: string) {
 </script>
 
 <template>
-  <div class="dashboard-container minimalist-bg">
+  <div class="dashboard-container">
     <v-container fluid class="pa-0">
       <div class="dashboard-header mb-6">
-        <h1 class="display-2 kubecloud-gradient mb-3 minimalist-title">Welcome back, {{ userName }}!</h1>
-        <p class="dashboard-subtitle minimalist-subtitle">Manage your clusters, billing, and account settings from your minimalist dashboard.</p>
+        <h1 class="hero-title">Welcome back, {{ userName }}!</h1>
+        <p class="section-subtitle">Manage your clusters, billing, and account settings from your dashboard.</p>
       </div>
       <div class="dashboard-content-wrapper">
         <div class="dashboard-layout">
@@ -98,56 +98,38 @@ function handleNavigate(section: string) {
 </template>
 
 <style scoped>
-.dashboard-container.minimalist-bg {
-  background: var(--color-background);
+.dashboard-container {
+  min-height: 100vh;
   position: relative;
+  overflow-x: hidden;
+  background: var(--kubecloud-bg);
 }
 
-.minimalist-title {
-  font-size: 2rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--color-text);
-  background: none;
+.hero-title {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: var(--kubecloud-text);
 }
 
-.minimalist-subtitle {
-  color: var(--color-text-muted);
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-.minimalist-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--rounded);
-  box-shadow: none;
-  color: var(--color-text);
-  padding: 1.25rem;
-  min-width: 100%;
-  transition: border-color var(--transition), background var(--transition);
-}
-
-.minimalist-card:hover {
-  border-color: var(--color-accent);
-  background: var(--color-surface);
+.section-subtitle {
+  font-size: var(--font-size-h3);
+  color: var(--kubecloud-text-muted);
+  line-height: 1.5;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: var(--font-weight-normal);
 }
 
 .dashboard-header {
   text-align: center;
   max-width: 900px;
-  margin: 3rem auto 2rem auto;
+  margin: 7rem auto 3rem auto;
   position: relative;
   z-index: 2;
   padding: 0 1rem;
-}
-
-.dashboard-subtitle {
-  font-size: 1.25rem;
-  color: #E0E7EF;
-  font-weight: 400;
-  opacity: 0.9;
-  line-height: 1.6;
 }
 
 .dashboard-content-wrapper {
@@ -156,13 +138,13 @@ function handleNavigate(section: string) {
   padding: 0 1rem;
   position: relative;
   z-index: 2;
-  margin-top: 3rem;
+  margin-top: 4rem;
 }
 
 .dashboard-layout {
   display: flex;
   min-height: 70vh;
-  gap: 1.5rem;
+  gap: 2.5rem;
   position: relative;
   z-index: 2;
   align-items: flex-start;
@@ -174,12 +156,6 @@ function handleNavigate(section: string) {
   display: flex;
   flex-direction: column;
   height: fit-content;
-  background: var(--color-surface, #181f2a) !important;
-  border: 1px solid var(--color-border, #232325) !important;
-  border-radius: 12px;
-  box-shadow: none !important;
-  z-index: 3;
-  overflow: hidden;
   position: sticky;
   top: 0;
   align-self: flex-start;
@@ -248,19 +224,13 @@ function handleNavigate(section: string) {
 
 .dashboard-main {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 70vh;
-  max-width: calc(100% - 280px - 1.5rem);
-  align-items: stretch;
-  align-self: flex-start;
-  margin-top: 0;
+  min-width: 0;
 }
 
 .dashboard-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 2.2rem;
   width: 100%;
   align-items: stretch;
 }
@@ -269,127 +239,129 @@ function handleNavigate(section: string) {
   display: flex;
   flex-direction: column;
   width: 100%;
+  background: var(--kubecloud-surface);
+  border: 1px solid var(--kubecloud-border);
+  border-radius: var(--kubecloud-radius);
+  color: var(--kubecloud-text-secondary);
+  padding: var(--kubecloud-spacing);
+  transition: border-color 0.2s;
 }
 
-@media (max-width: 1200px) {
-  .dashboard-content-wrapper {
-    max-width: 1200px;
-  }
-
-  .dashboard-sidebar {
-    flex: 0 0 240px;
-  }
-
-  .dashboard-main {
-    max-width: calc(100% - 240px - 1.5rem);
-  }
+.dashboard-card:hover {
+  border-color: var(--kubecloud-primary);
 }
 
-@media (max-width: 960px) {
-  .dashboard-content-wrapper {
-    max-width: 100%;
-    padding: 0 0.5rem;
-  }
-
-  .dashboard-layout {
-    flex-direction: column;
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-
-  .dashboard-sidebar {
-    flex: none;
-    width: 100%;
-    position: static;
-    align-self: stretch;
-  }
-
-  .dashboard-main {
-    max-width: 100%;
-    align-self: stretch;
-  }
-
-  .dashboard-container {
-    padding: 0.5rem 0;
-  }
-
-  .dashboard-header {
-    margin: 1.5rem auto 1.5rem auto;
-    padding: 0 0.5rem;
-  }
-
-  .dashboard-subtitle {
-    font-size: 1.125rem;
-  }
-
-  .sidebar-content {
-    padding: 1.5rem;
-  }
-
-  .sidebar-title {
-    font-size: 1.25rem;
-  }
-
-  .stat-value {
-    font-size: 1.25rem;
-  }
-
-  .action-btn {
-    padding: 0.875rem 1.25rem;
-    font-size: 0.9rem;
-  }
+.dashboard-card-title {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-bold);
+  color: var(--kubecloud-text);
+  margin-bottom: 0.5rem;
 }
 
+.dashboard-card-subtitle {
+  font-size: 1.05rem;
+  color: var(--kubecloud-text-muted);
+  font-weight: var(--font-weight-bold);
+  opacity: 0.9;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--kubecloud-surface-light);
+  border: 1px solid var(--kubecloud-border);
+  border-radius: var(--kubecloud-radius-md);
+  padding: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover {
+  border-color: var(--kubecloud-primary);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--kubecloud-radius-sm);
+  background: var(--kubecloud-surface);
+  border: 1px solid var(--kubecloud-border);
+}
+
+.stat-number {
+  font-size: 1.3rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--kubecloud-text);
+  margin-bottom: 0.15rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--kubecloud-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+.quick-actions-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.2rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--kubecloud-text);
+  margin-bottom: 1rem;
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.action-btn {
+  background: var(--kubecloud-surface-light) !important;
+  border: 1px solid var(--kubecloud-primary) !important;
+  color: var(--kubecloud-primary) !important;
+  font-weight: var(--font-weight-bold);
+  border-radius: var(--kubecloud-radius-md) !important;
+  transition: background 0.2s, color 0.2s;
+  font-size: 1rem;
+  padding: 0.7rem 1.5rem;
+}
+
+.action-btn:hover {
+  background: var(--kubecloud-primary) !important;
+  color: #fff !important;
+}
+
+/* Floating Action Button for Add Cluster on mobile */
 @media (max-width: 600px) {
-  .dashboard-content-wrapper {
-    padding: 0 0.25rem;
-  }
-
-  .dashboard-layout {
-    margin-top: 0.25rem;
-  }
-
-  .dashboard-container {
-    padding: 0.25rem 0;
-  }
-
-  .dashboard-header {
-    margin: 1rem auto 1rem auto;
-    padding: 0 0.25rem;
-  }
-
-  .dashboard-subtitle {
-    font-size: 1rem;
-  }
-
-  .sidebar-content {
-    padding: 1rem;
-  }
-
-  .sidebar-title {
-    font-size: 1.125rem;
-  }
-
-  .stat-item {
-    padding: 0.75rem;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .stat-value {
-    font-size: 1.125rem;
-  }
-
-  .activity-item {
-    padding: 0.5rem;
-  }
-
-  .action-btn {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
+  .fab-add-cluster {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 1000;
+    background: var(--kubecloud-primary) !important;
+    color: #fff !important;
+    border-radius: 50%;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
   }
 }
 </style>
+
+

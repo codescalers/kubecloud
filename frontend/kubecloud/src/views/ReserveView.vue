@@ -98,12 +98,11 @@
 
               <!-- Clear Filters Button -->
               <v-btn
+                color="white"
                 variant="outlined"
-                color="primary"
-                class="clear-filters-btn"
                 @click="clearFilters"
               >
-                Clear Filters
+                Clear All Filters
               </v-btn>
             </div>
           </v-col>
@@ -393,7 +392,7 @@ onMounted(() => {
 
 .hero-title {
   font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
+  font-weight: 400;
   margin-bottom: 1.5rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -476,7 +475,7 @@ onMounted(() => {
 
 .card-title {
   font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 700;
+  font-weight: 400;
   margin: 0;
   line-height: 1.3;
 }
@@ -549,7 +548,7 @@ onMounted(() => {
 
 .node-price {
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 400;
   color: #10B981;
 }
 
@@ -652,5 +651,28 @@ onMounted(() => {
     align-items: flex-start;
     gap: 0.5rem;
   }
+}
+
+.form-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #e0e7ef;
+  margin-bottom: 0.5rem;
+}
+
+.submit-btn {
+  font-size: 1.1rem;
+  font-weight: 500;
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
+.reservation-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 1rem;
 }
 </style>

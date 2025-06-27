@@ -5,9 +5,7 @@
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">Documentation</h1>
-          <p class="hero-description">
-            Everything you need to know about KubeCloud and how to get started.
-          </p>
+          <p class="section-subtitle">Find guides, API references, and tutorials to get the most out of KubeCloud.</p>
         </div>
       </div>
     </section>
@@ -21,15 +19,9 @@
               <div class="doc-icon">
                 <v-icon :icon="doc.icon" size="48" color="primary"></v-icon>
               </div>
-              <h3 class="doc-title">{{ doc.title }}</h3>
-              <p class="doc-description">{{ doc.description }}</p>
-              <v-btn
-                color="primary"
-                variant="outlined"
-                :href="doc.link"
-                target="_blank"
-                class="doc-link"
-              >
+              <h2 class="card-title">{{ doc.title }}</h2>
+              <p class="body-text">{{ doc.description }}</p>
+              <v-btn color="white" variant="outlined" :href="doc.link" target="_blank" class="doc-link">
                 Read More
               </v-btn>
             </div>
@@ -96,9 +88,9 @@ onMounted(() => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
 
-/* Hero Section */
 .hero-section {
   min-height: 60vh;
   display: flex;
@@ -106,7 +98,7 @@ onMounted(() => {
   justify-content: center;
   position: relative;
   z-index: 2;
-  padding: 2rem 0;
+  padding: 6rem 0 4rem 0;
 }
 
 .hero-content {
@@ -121,93 +113,114 @@ onMounted(() => {
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 500;
+  margin-bottom: 2.5rem;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: #fff;
 }
 
 .hero-description {
-  font-size: 1.25rem;
-  color: var(--kubecloud-text-secondary);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  color: #60a5fa;
   line-height: 1.7;
-  opacity: 0.8;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: 400;
 }
 
-/* Documentation Content */
 .docs-content {
   position: relative;
   z-index: 2;
-  padding: 4rem 0;
+  padding: 6rem 0 6rem 0;
 }
 
 .doc-card {
   height: 100%;
   padding: 2.5rem;
   text-align: center;
+  background: rgba(10, 25, 47, 0.85);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
+  color: #CBD5E1;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
 }
 
 .doc-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 8px 32px rgba(96, 165, 250, 0.18);
+  border: none;
+}
+
+.doc-card * {
+  font-size: 1.1rem;
+  font-weight: 400;
 }
 
 .doc-icon {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.doc-title {
+.card-title {
   font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--kubecloud-text-primary);
+  font-weight: 500;
+  color: #fff;
   margin-bottom: 1rem;
 }
 
 .doc-description {
-  color: var(--kubecloud-text-secondary);
+  font-size: 1.1rem;
+  color: #60a5fa;
+  opacity: 0.85;
+  max-width: 700px;
+  margin: 0 auto 2rem auto;
   line-height: 1.6;
+  font-weight: 400;
+}
+
+.section-title {
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 500;
   margin-bottom: 2rem;
-  opacity: 0.8;
+  line-height: 1.2;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.section-subtitle {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  color: #60a5fa;
+  line-height: 1.7;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: 400;
 }
 
 .doc-link {
-  font-weight: 600;
+  font-weight: 500;
   text-transform: none;
   letter-spacing: 0.01em;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .hero-section {
-    min-height: 50vh;
-    padding: 1rem 0;
+    padding: 3rem 0 2rem 0;
   }
-
-  .hero-description {
-    font-size: 1.125rem;
-  }
-
   .docs-content {
-    padding: 2rem 0;
+    padding: 3rem 0 3rem 0;
   }
-
-  .doc-card {
-    padding: 2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero-section {
-    min-height: 40vh;
-  }
-
-  .docs-content {
-    padding: 1.5rem 0;
-  }
-
   .doc-card {
     padding: 1.5rem;
+  }
+}
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  .docs-content {
+    padding: 2rem 0 2rem 0;
   }
 }
 </style>

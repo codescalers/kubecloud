@@ -1,189 +1,670 @@
 <template>
-  <v-container class="manage-cluster-container" fluid>
-    <v-row no-gutters>
-      <!-- Main Content -->
-      <v-col cols="12" class="main-content-area">
-        <div class="manage-content-wrapper">
-          <div class="manage-header d-flex align-center mb-6">
-            <v-btn icon variant="text" class="mr-2" @click="goBack">
-              <v-icon>mdi-chevron-left</v-icon>
-            </v-btn>
-            <span class="text-h5 font-weight-bold">Clusters</span>
-            <span class="mx-2">/</span>
-            <span class="text-h5 font-weight-bold">{{ cluster.name }}</span>
+  <div class="manage-cluster-container">
+    <div class="container">
+      <v-container fluid class="pa-0">
+        <div class="manage-header mb-6">
+          <div class="manage-header-content">
+            <div class="manage-navigation">
+              <v-btn icon variant="text" class="back-btn mr-3" @click="goBack">
+                <v-icon>mdi-chevron-left</v-icon>
+              </v-btn>
+              <div class="breadcrumb">
+                <span class="breadcrumb-item">Clusters</span>
+                <v-icon icon="mdi-chevron-right" class="breadcrumb-separator"></v-icon>
+                <span class="breadcrumb-item active">{{ cluster.name }}</span>
+              </div>
+            </div>
+            <h1 class="manage-title">{{ cluster.name }}</h1>
+            <p class="manage-subtitle">Manage your Kubernetes cluster configuration and resources</p>
           </div>
-          <div class="dashboard-card manage-status-card">
-            <div class="d-flex flex-wrap align-center status-row">
-              <span class="mr-4 status-label">Status:
-                <span :class="cluster.status === 'Running' ? 'text-accent' : 'text-muted'">{{ cluster.status }}</span>
-                <span class="status-dot ml-1" :class="cluster.status === 'Running' ? 'dot-running' : 'dot-stopped'">●</span>
-              </span>
-              <v-btn class="action-btn mr-2">Download Kubeconfig</v-btn>
-              <v-btn class="action-btn">Open Dashboard</v-btn>
+        </div>
+        
+        <div class="manage-content-wrapper">
+          <!-- Status Bar -->
+          <div class="card status-bar">
+            <div class="status-bar-content">
+              <div class="status-indicator">
+                <span class="status-dot" :class="cluster.status === 'Running' ? 'running' : 'stopped'"></span>
+                <span class="status-text">{{ cluster.status }}</span>
+              </div>
+              <div class="status-actions">
+                <v-btn variant="outlined" class="btn btn-outline">
+                  <v-icon icon="mdi-download" class="mr-2"></v-icon>
+                  Download Kubeconfig
+                </v-btn>
+                <v-btn variant="outlined" class="btn btn-outline">
+                  <v-icon icon="mdi-view-dashboard" class="mr-2"></v-icon>
+                  Open Dashboard
+                </v-btn>
+              </div>
             </div>
           </div>
-          <div class="dashboard-card manage-main-card pa-0">
-            <v-tabs v-model="tab" class="manage-tabs px-6 pt-4" grow>
-              <v-tab value="overview">Overview</v-tab>
-              <v-tab value="nodes">Nodes</v-tab>
-              <v-tab value="storage">Storage</v-tab>
-              <v-tab value="networking">Networking</v-tab>
-              <v-tab value="settings">Settings</v-tab>
+
+          <!-- Main Content Card -->
+          <div class="card main-content-card">
+            <v-tabs v-model="tab" class="manage-tabs" grow>
+              <v-tab value="overview" class="tab-item">
+                <v-icon icon="mdi-view-dashboard" class="mr-2"></v-icon>
+                Overview
+              </v-tab>
+              <v-tab value="nodes" class="tab-item">
+                <v-icon icon="mdi-server" class="mr-2"></v-icon>
+                Nodes
+              </v-tab>
+              <v-tab value="storage" class="tab-item">
+                <v-icon icon="mdi-database" class="mr-2"></v-icon>
+                Storage
+              </v-tab>
+              <v-tab value="networking" class="tab-item">
+                <v-icon icon="mdi-network" class="mr-2"></v-icon>
+                Networking
+              </v-tab>
+              <v-tab value="settings" class="tab-item">
+                <v-icon icon="mdi-cog" class="mr-2"></v-icon>
+                Settings
+              </v-tab>
             </v-tabs>
-            <v-divider class="mb-0" />
-            <v-window v-model="tab" class="px-6 pb-6 pt-4">
+            <v-divider class="tab-divider"></v-divider>
+            <v-window v-model="tab" class="tab-content">
               <v-window-item value="overview">
-                <v-row class="mb-0">
-                  <v-col cols="12" md="6">
-                    <div class="dashboard-card overview-card mb-4">
-                      <h3 class="dashboard-card-title mb-2">Cluster Resources</h3>
-                      <div>3 Nodes</div>
-                      <div>12 vCPU</div>
-                      <div>24 GB RAM</div>
-                      <div>1 TB Storage</div>
+                <div class="overview-grid">
+                  <div class="card overview-card">
+                    <h3 class="dashboard-card-title">
+                      <v-icon icon="mdi-server" class="mr-2"></v-icon>
+                      Cluster Resources
+                    </h3>
+                    <div class="resource-list">
+                      <div class="resource-item">
+                        <span class="resource-label">Nodes:</span>
+                        <span class="resource-value">3</span>
+                      </div>
+                      <div class="resource-item">
+                        <span class="resource-label">vCPU:</span>
+                        <span class="resource-value">12</span>
+                      </div>
+                      <div class="resource-item">
+                        <span class="resource-label">RAM:</span>
+                        <span class="resource-value">24 GB</span>
+                      </div>
+                      <div class="resource-item">
+                        <span class="resource-label">Storage:</span>
+                        <span class="resource-value">1 TB</span>
+                      </div>
                     </div>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <div class="dashboard-card overview-card mb-4">
-                      <h3 class="dashboard-card-title mb-2">Live Usage</h3>
-                      <div class="mb-2">CPU: <v-progress-linear :model-value="70" color="accent" height="12" rounded></v-progress-linear> <span class="ml-2">70%</span></div>
-                      <div>MEM: <v-progress-linear :model-value="50" color="accent" height="12" rounded></v-progress-linear> <span class="ml-2">50%</span></div>
+                  </div>
+                  <div class="card overview-card">
+                    <h3 class="dashboard-card-title">
+                      <v-icon icon="mdi-chart-line" class="mr-2"></v-icon>
+                      Live Usage
+                    </h3>
+                    <div class="usage-metrics">
+                      <div class="usage-item">
+                        <div class="usage-header">
+                          <span class="usage-label">CPU</span>
+                          <span class="usage-value">70%</span>
+                        </div>
+                        <v-progress-linear 
+                          :model-value="70" 
+                          color="var(--color-primary)" 
+                          height="8" 
+                          rounded
+                          class="usage-bar"
+                        ></v-progress-linear>
+                      </div>
+                      <div class="usage-item">
+                        <div class="usage-header">
+                          <span class="usage-label">Memory</span>
+                          <span class="usage-value">50%</span>
+                        </div>
+                        <v-progress-linear 
+                          :model-value="50" 
+                          color="var(--color-primary)" 
+                          height="8" 
+                          rounded
+                          class="usage-bar"
+                        ></v-progress-linear>
+                      </div>
                     </div>
-                  </v-col>
-                </v-row>
-                <div class="dashboard-card overview-card mb-0">
-                  <h3 class="dashboard-card-title mb-2">Details</h3>
-                  <div>API Endpoint: <span class="font-mono">ygg://[mycelium-ip-address]</span></div>
-                  <div>Location: Ghent, Belgium</div>
-                  <div>Created: 2023-07-01</div>
-                  <div>Est. Cost: $125/month</div>
+                  </div>
+                  <div class="card overview-card details-card">
+                    <h3 class="dashboard-card-title">
+                      <v-icon icon="mdi-information" class="mr-2"></v-icon>
+                      Cluster Details
+                    </h3>
+                    <div class="details-grid">
+                      <div class="detail-item">
+                        <span class="detail-label">API Endpoint:</span>
+                        <span class="detail-value font-mono">ygg://[mycelium-ip-address]</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Location:</span>
+                        <span class="detail-value">Ghent, Belgium</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Created:</span>
+                        <span class="detail-value">2023-07-01</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="detail-label">Est. Cost:</span>
+                        <span class="detail-value">$125/month</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </v-window-item>
+              <!-- Nodes Tab with Add Worker -->
               <v-window-item value="nodes">
-                <div class="dashboard-card overview-card">Nodes tab content (coming soon)</div>
+                <div class="card nodes-card">
+                  <div class="nodes-header">
+                    <h3 class="dashboard-card-title">
+                      <v-icon icon="mdi-server" class="mr-2"></v-icon>
+                      Nodes Management
+                    </h3>
+                    <v-btn color="primary" class="btn btn-primary" @click="showAddWorker = true">
+                      <v-icon icon="mdi-plus" class="mr-2"></v-icon>
+                      Add Worker
+                    </v-btn>
+                  </div>
+                  <div class="nodes-content">
+                    <div class="coming-soon-content">
+                      <v-icon icon="mdi-alert-circle-outline" size="40" color="var(--color-primary)" class="mb-2"></v-icon>
+                      <h4 class="coming-soon-title">Worker node management coming soon!</h4>
+                      <p class="coming-soon-text">You'll soon be able to add, remove, and manage worker nodes in your cluster.</p>
+                    </div>
+                  </div>
+                  <!-- Add Worker Modal -->
+                  <v-dialog v-model="showAddWorker" max-width="400">
+                    <v-card class="add-worker-modal">
+                      <v-card-title class="modal-title">
+                        <v-icon icon="mdi-account-plus" class="mr-2"></v-icon>
+                        Add Worker Node
+                      </v-card-title>
+                      <v-card-text>
+                        <div class="modal-coming-soon">
+                          <v-icon icon="mdi-timer-sand" size="32" color="var(--color-primary)" class="mb-2"></v-icon>
+                          <div class="modal-coming-soon-title">Coming Soon</div>
+                          <div class="modal-coming-soon-text">Adding worker nodes will be available in a future update.</div>
+                        </div>
+                      </v-card-text>
+                      <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="primary" text @click="showAddWorker = false">Close</v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-dialog>
+                </div>
               </v-window-item>
+              <!-- Storage Tab -->
               <v-window-item value="storage">
-                <div class="dashboard-card overview-card">Storage tab content (coming soon)</div>
+                <div class="card placeholder-card">
+                  <div class="placeholder-content">
+                    <v-icon icon="mdi-database" size="48" color="var(--color-primary)" class="mb-4"></v-icon>
+                    <h4 class="placeholder-title">Storage Management</h4>
+                    <p class="placeholder-text">Storage configuration and management features are coming soon.</p>
+                  </div>
+                </div>
               </v-window-item>
+              <!-- Networking Tab -->
               <v-window-item value="networking">
-                <div class="dashboard-card overview-card">Networking tab content (coming soon)</div>
+                <div class="card placeholder-card">
+                  <div class="placeholder-content">
+                    <v-icon icon="mdi-network" size="48" color="var(--color-primary)" class="mb-4"></v-icon>
+                    <h4 class="placeholder-title">Network Configuration</h4>
+                    <p class="placeholder-text">Network settings and configuration options will be available soon.</p>
+                  </div>
+                </div>
               </v-window-item>
+              <!-- Settings Tab -->
               <v-window-item value="settings">
-                <div class="dashboard-card overview-card">Settings tab content (coming soon)</div>
+                <div class="card placeholder-card">
+                  <div class="placeholder-content">
+                    <v-icon icon="mdi-cog" size="48" color="var(--color-primary)" class="mb-4"></v-icon>
+                    <h4 class="placeholder-title">Cluster Settings</h4>
+                    <p class="placeholder-text">Advanced cluster configuration and settings will be available soon.</p>
+                  </div>
+                </div>
               </v-window-item>
             </v-window>
           </div>
         </div>
-      </v-col>
-    </v-row>
-  </v-container>
+      </v-container>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 const tab = ref('overview')
+const showAddWorker = ref(false)
+
+// Mock cluster data
 const cluster = ref({
-  name: 'Production API',
-  status: 'Running',
+  name: 'Production Cluster',
+  status: 'Running'
 })
-function goBack() {
-  window.history.back()
-}
-function goToSection(section: string) {
-  // Implement navigation logic if needed
-}
-function logout() {
-  // Implement logout logic
+
+const goBack = () => {
+  router.push('/dashboard')
 }
 </script>
 
 <style scoped>
 .manage-cluster-container {
-  background: var(--color-bg);
   min-height: 100vh;
+  background: var(--color-bg);
   padding: 0;
 }
-.main-content-area {
+
+.manage-header {
+  margin-bottom: var(--space-8);
+}
+
+.manage-header-content {
+  /* Remove max-width and margin, handled by .container */
+}
+
+.manage-navigation {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.back-btn {
+  color: var(--color-text-secondary) !important;
+}
+
+.back-btn:hover {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-subtle) !important;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.breadcrumb-item {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.breadcrumb-item.active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.breadcrumb-separator {
+  color: var(--color-text-muted) !important;
+  font-size: var(--font-size-sm) !important;
+}
+
+.manage-title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.manage-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.manage-content-wrapper {
+  /* Remove max-width and margin, handled by .container */
+}
+
+.status-bar {
+  margin-bottom: var(--space-6);
+}
+
+.status-bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.status-text {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.status-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.main-content-card {
+  padding: unset !important;
+  overflow: hidden;
+}
+
+.manage-tabs {
+  background: transparent;
+  padding: 0 var(--space-8);
+  padding-top: var(--space-6);
+}
+
+.tab-item {
+  color: var(--color-text-muted) !important;
+  font-weight: var(--font-weight-medium) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+  transition: all var(--transition-normal) !important;
+  font-size: var(--font-size-base) !important;
+}
+
+.tab-item:hover {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-subtle) !important;
+}
+
+.v-tab--selected {
+  color: var(--color-primary) !important;
+  background: var(--color-primary-subtle) !important;
+  border-bottom: 2px solid var(--color-primary) !important;
+}
+
+.tab-divider {
+  border-color: var(--color-border);
+  margin: 0;
+}
+
+.tab-content {
+  padding: var(--space-10) var(--space-8) var(--space-8) var(--space-8);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-8);
+}
+
+.overview-card {
+  height: 100%;
+}
+
+.details-card {
+  grid-column: 1 / -1;
+}
+
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.resource-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.resource-item:last-child {
+  border-bottom: none;
+}
+
+.resource-label {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+}
+
+.resource-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  font-family: 'Inter', monospace;
+  font-size: var(--font-size-base);
+}
+
+.usage-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.usage-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.usage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.usage-label {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-base);
+}
+
+.usage-value {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.usage-bar {
+  border-radius: var(--radius-sm);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-primary-subtle);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.detail-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.detail-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.font-mono {
+  font-family: 'Inter', monospace;
+  font-size: var(--font-size-sm);
+}
+
+.nodes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+}
+
+.nodes-content {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.coming-soon-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 2rem;
-  min-height: 100vh;
+  text-align: center;
+  gap: var(--space-2);
 }
-.manage-content-wrapper {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+
+.coming-soon-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.coming-soon-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+}
+
+.placeholder-card {
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-content {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 1.5rem;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
 }
-.manage-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--color-bg);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-  margin-top: 0.5rem;
-  justify-content: flex-start;
-  border-bottom: 1px solid var(--color-border);
-}
-.dashboard-card, .manage-status-card, .manage-main-card, .overview-card {
-  background: var(--color-surface);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
+
+.placeholder-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
-  box-shadow: none;
-  padding: 1.25rem;
-  transition: border-color var(--transition);
 }
-.dashboard-card:hover, .manage-status-card:hover, .manage-main-card:hover, .overview-card:hover {
-  /* Remove background and border color change on hover for minimalist look */
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-.dashboard-card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
-}
-.status-label {
-  font-size: 1rem;
-  color: var(--color-text);
-  font-weight: 600;
-}
-.status-dot.dot-running {
-  color: var(--color-accent);
-}
-.status-dot.dot-stopped {
+
+.placeholder-text {
   color: var(--color-text-muted);
+  font-size: var(--font-size-base);
 }
-.action-btn, .v-btn {
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: var(--rounded);
-  border: none;
-  box-shadow: none;
-  font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  transition: background var(--transition);
+
+.add-worker-modal {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-xl);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
 }
-.action-btn:hover, .v-btn:hover {
-  background: var(--color-accent-hover);
+
+.modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
-.manage-tabs {
-  background: var(--color-surface);
-  border-radius: var(--rounded) var(--rounded) 0 0;
-  border-bottom: 1px solid var(--color-border);
+
+.modal-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
 }
-@media (max-width: 900px) {
-  .main-content-area { padding: 1rem; }
-  .manage-content-wrapper { max-width: 100%; gap: 1rem; }
-  .manage-header { padding-bottom: 0.8rem; margin-bottom: 1rem; }
-  .status-row { gap: 0.8rem; padding: 0.8rem; }
-  .overview-card { padding: 1rem; }
+
+.modal-coming-soon-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.modal-coming-soon-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+}
+
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .details-card {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .manage-cluster-container {
+    padding: var(--space-4);
+  }
+  
+  .manage-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .manage-subtitle {
+    font-size: var(--font-size-base);
+  }
+  
+  .status-bar-content {
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: flex-start;
+  }
+  
+  .status-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .tab-content {
+    padding: var(--space-6) var(--space-4) var(--space-4) var(--space-4);
+  }
+  
+  .manage-tabs {
+    padding: 0 var(--space-4);
+    padding-top: var(--space-4);
+  }
+  
+  .overview-grid {
+    gap: var(--space-4);
+  }
+  
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .manage-cluster-container {
+    padding: var(--space-3);
+  }
+  
+  .manage-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .status-actions {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .tab-content {
+    padding: var(--space-4) var(--space-3) var(--space-3) var(--space-3);
+  }
+  
+  .manage-tabs {
+    padding: 0 var(--space-3);
+    padding-top: var(--space-3);
+  }
 }
 </style>

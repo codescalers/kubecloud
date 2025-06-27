@@ -1,10 +1,34 @@
 <template>
-  <div ref="globeContainer" class="globe-canvas"></div>
+  <div
+    ref="globeContainer"
+    class="globe-canvas"
+    :style="{ width: width + 'px', height: height + 'px', maxWidth: '100%' }"
+  >
+    <slot />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import * as THREE from 'three'
+
+/**
+ * Props for FeatureGlobe
+ * @prop {number} width - Globe canvas width in px
+ * @prop {number} height - Globe canvas height in px
+ * @prop {number} pointCount - Number of points to render (default: 2500)
+ * @prop {[number, number][]} nodes - Optional array of [lat, lng] for node positions
+ * @prop {Array<{from: [number, number], to: [number, number]}>} arcs - Optional array of arcs
+ */
+const props = defineProps({
+  width: { type: Number, default: 480 },
+  height: { type: Number, default: 480 },
+  pointCount: { type: Number, default: 2500 },
+  nodes: { type: Array as () => [number, number][], default: undefined },
+  arcs: { type: Array as () => Array<{from: [number, number], to: [number, number]}>, default: undefined },
+})
+
+const emit = defineEmits(['node-click', 'node-hover', 'arc-hover'])
 
 const globeContainer = ref<HTMLElement | null>(null)
 let renderer: THREE.WebGLRenderer | null = null
@@ -12,7 +36,6 @@ let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
 let animationId: number | null = null
 let pointCloud: THREE.Points | null = null
-let arcMeshes: THREE.Line[] = []
 let raycaster: THREE.Raycaster | null = null
 let mouse = new THREE.Vector2()
 let INTERSECTED: number | null = null
@@ -23,17 +46,19 @@ let rotationY = 0
 let rotationX = 0
 let autoRotate = true
 
-const GLOBE_RADIUS = 2.3
+const GLOBE_RADIUS = 2.9
 const POINT_COLOR = '#60a5fa' // KubeCloud blue
 const POINT_COLOR_HIGHLIGHT = '#fff'
 const ARC_COLOR = '#38bdf8' // Cyan
-const POINT_COUNT = 2500
 
-// Generate fake point cloud data (lat, lng)
+type NodeIndex = number
+import { ref as vueRef } from 'vue'
+const pulsingNodes = vueRef<NodeIndex[]>([])
+let pulseInterval: number | null = null
+
 function randomLatLngPoints(count: number): [number, number][] {
   const points: [number, number][] = []
   for (let i = 0; i < count; i++) {
-    // Uniformly distributed points on a sphere
     const u = Math.random()
     const v = Math.random()
     const theta = 2 * Math.PI * u
@@ -44,15 +69,21 @@ function randomLatLngPoints(count: number): [number, number][] {
   }
   return points
 }
-const nodePositions: [number, number][] = randomLatLngPoints(POINT_COUNT)
+
+function getNodePositions(): [number, number][] {
+  return props.nodes && props.nodes.length > 0
+    ? props.nodes
+    : randomLatLngPoints(props.pointCount)
+}
 
 function createGlobe() {
   scene = new THREE.Scene()
   scene.background = null
-  camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100)
+  camera = new THREE.PerspectiveCamera(60, props.width / props.height, 0.1, 100)
   camera.position.z = 7
 
-  // Point cloud geometry
+  // Point cloud geometry (darker blue palette)
+  const nodePositions = getNodePositions()
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(nodePositions.length * 3)
   const colors = new Float32Array(nodePositions.length * 3)
@@ -66,11 +97,11 @@ function createGlobe() {
     positions[i * 3] = x
     positions[i * 3 + 1] = y
     positions[i * 3 + 2] = z
-    // Blue gradient: brighter at the top
+    // Darker blue gradient (less white, more blue)
     const c = 0.7 + 0.3 * (y / GLOBE_RADIUS)
-    colors[i * 3] = 0.22 * c
-    colors[i * 3 + 1] = 0.65 * c
-    colors[i * 3 + 2] = 0.98 * c
+    colors[i * 3] = 0.18 * c + 0.10 // less white, more blue
+    colors[i * 3 + 1] = 0.40 * c + 0.10 // less white, more blue
+    colors[i * 3 + 2] = 0.80 * c + 0.15 // more blue
   }
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
@@ -79,63 +110,17 @@ function createGlobe() {
     size: 0.08,
     vertexColors: true,
     transparent: true,
-    opacity: 0.95
+    opacity: 0.92
   })
   pointCloud = new THREE.Points(geometry, material)
   scene.add(pointCloud)
 
-  // Animated arcs between random node pairs
-  arcMeshes = []
-  for (let i = 0; i < 10; i++) {
-    const idxA = Math.floor(Math.random() * nodePositions.length)
-    let idxB = Math.floor(Math.random() * nodePositions.length)
-    while (idxB === idxA) idxB = Math.floor(Math.random() * nodePositions.length)
-    const arc = createArc(nodePositions[idxA], nodePositions[idxB])
-    if (arc) {
-      scene.add(arc)
-      arcMeshes.push(arc)
-    }
-  }
-
-  // Lighting (minimal, just for arcs)
+  // Lighting (minimal, just for points)
   const ambientLight = new THREE.AmbientLight('#ffffff', 0.5)
   scene.add(ambientLight)
 
   // Raycaster for hover/click
   raycaster = new THREE.Raycaster()
-}
-
-// Create a curved arc between two lat/lng points
-function createArc(start: [number, number], end: [number, number]) {
-  const [lat1, lng1] = start
-  const [lat2, lng2] = end
-  const phi1 = (90 - lat1) * (Math.PI / 180)
-  const theta1 = (lng1 + 180) * (Math.PI / 180)
-  const phi2 = (90 - lat2) * (Math.PI / 180)
-  const theta2 = (lng2 + 180) * (Math.PI / 180)
-  const p1 = new THREE.Vector3(
-    GLOBE_RADIUS * Math.sin(phi1) * Math.cos(theta1),
-    GLOBE_RADIUS * Math.cos(phi1),
-    GLOBE_RADIUS * Math.sin(phi1) * Math.sin(theta1)
-  )
-  const p2 = new THREE.Vector3(
-    GLOBE_RADIUS * Math.sin(phi2) * Math.cos(theta2),
-    GLOBE_RADIUS * Math.cos(phi2),
-    GLOBE_RADIUS * Math.sin(phi2) * Math.sin(theta2)
-  )
-  // Control point for curve (midpoint, raised above globe)
-  const mid = p1.clone().lerp(p2, 0.5)
-  mid.normalize().multiplyScalar(GLOBE_RADIUS * 1.25)
-  const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2)
-  const points = curve.getPoints(50)
-  const geometry = new THREE.BufferGeometry().setFromPoints(points)
-  const material = new THREE.LineBasicMaterial({
-    color: ARC_COLOR,
-    linewidth: 2,
-    transparent: true,
-    opacity: 0.7
-  })
-  return new THREE.Line(geometry, material)
 }
 
 function animate() {
@@ -148,14 +133,42 @@ function animate() {
   if (pointCloud) {
     pointCloud.rotation.y = rotationY
     pointCloud.rotation.x = rotationX
-  }
-  arcMeshes.forEach((arc, i) => {
-    if (arc && arc.material && 'opacity' in arc.material) {
-      (arc.material as THREE.LineBasicMaterial).opacity = 0.5 + 0.3 * Math.sin(Date.now() * 0.001 + i)
-      arc.rotation.y = rotationY
-      arc.rotation.x = rotationX
+    // Color pulse effect for pulsingNodes
+    const geometry = pointCloud.geometry as THREE.BufferGeometry
+    const colors = geometry.getAttribute('color') as THREE.BufferAttribute
+    const baseColors = geometry.getAttribute('baseColor') as THREE.BufferAttribute | undefined
+    const time = performance.now() * 0.002
+    if (!baseColors) {
+      // Store original colors for pulsing
+      const orig = colors.array.slice()
+      geometry.setAttribute('baseColor', new THREE.BufferAttribute(new Float32Array(orig), 3))
     }
-  })
+    const base = (geometry.getAttribute('baseColor') as THREE.BufferAttribute)?.array
+    if (base) {
+      for (const idx of pulsingNodes.value) {
+        // Animate color: blend between base and 'on' color (white)
+        const t = 0.5 + 0.5 * Math.sin(time * 2 + idx)
+        // Base color
+        const r0 = base[idx * 3]
+        const g0 = base[idx * 3 + 1]
+        const b0 = base[idx * 3 + 2]
+        // 'On' color (white)
+        const r1 = 1.0, g1 = 1.0, b1 = 1.0
+        colors.setX(idx, r0 * (1 - t) + r1 * t)
+        colors.setY(idx, g0 * (1 - t) + g1 * t)
+        colors.setZ(idx, b0 * (1 - t) + b1 * t)
+      }
+      // Reset non-pulsing nodes to base color
+      for (let i = 0; i < colors.count; i++) {
+        if (!pulsingNodes.value.includes(i)) {
+          colors.setX(i, base[i * 3])
+          colors.setY(i, base[i * 3 + 1])
+          colors.setZ(i, base[i * 3 + 2])
+        }
+      }
+      colors.needsUpdate = true
+    }
+  }
   // Hover effect
   if (raycaster && pointCloud && globeContainer.value) {
     raycaster.setFromCamera(mouse, camera!)
@@ -176,6 +189,7 @@ function animate() {
         colors.setX(index * 3, 1.0)
         colors.setY(index * 3 + 1, 1.0)
         colors.setZ(index * 3 + 2, 1.0)
+        emit('node-hover', index)
       }
     } else {
       INTERSECTED = null
@@ -187,10 +201,8 @@ function animate() {
 
 function resizeRenderer() {
   if (!renderer || !camera || !globeContainer.value) return
-  const width = globeContainer.value.clientWidth
-  const height = globeContainer.value.clientHeight
-  renderer.setSize(width, height, false)
-  camera.aspect = width / height
+  renderer.setSize(props.width, props.height, false)
+  camera.aspect = props.width / props.height
   camera.updateProjectionMatrix()
 }
 
@@ -222,6 +234,7 @@ function onPointerMove(event: MouseEvent) {
 }
 function onPointerClick(event: MouseEvent) {
   if (INTERSECTED !== null && pointCloud) {
+    emit('node-click', INTERSECTED)
     // Pulse effect: temporarily enlarge the clicked point
     const geometry = pointCloud.geometry as THREE.BufferGeometry
     const positions = geometry.getAttribute('position') as THREE.BufferAttribute
@@ -233,7 +246,7 @@ function onPointerClick(event: MouseEvent) {
     let t = 0
     function pulse() {
       t += 0.08
-      const scale = 1 + 0.5 * Math.sin(Math.PI * t)
+      const scale = 1 + 0.5 * Math.sin(Math.PI * t) * 0.25
       positions.setX(i * 3, origX * scale)
       positions.setY(i * 3 + 1, origY * scale)
       positions.setZ(i * 3 + 2, origZ * scale)
@@ -251,6 +264,14 @@ function onPointerClick(event: MouseEvent) {
   }
 }
 
+function pickRandomPulsingNodes(count: number, max: number): number[] {
+  const indices = new Set<number>()
+  while (indices.size < count && max > 0) {
+    indices.add(Math.floor(Math.random() * max))
+  }
+  return Array.from(indices)
+}
+
 onMounted(() => {
   if (!globeContainer.value) return
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
@@ -263,6 +284,12 @@ onMounted(() => {
   globeContainer.value.addEventListener('pointerup', onPointerUp)
   globeContainer.value.addEventListener('pointermove', onPointerMove)
   globeContainer.value.addEventListener('click', onPointerClick)
+  // Initialize pulsing nodes
+  const nodeCount = getNodePositions().length
+  pulsingNodes.value = pickRandomPulsingNodes(12, nodeCount)
+  pulseInterval = window.setInterval(() => {
+    pulsingNodes.value = pickRandomPulsingNodes(12, nodeCount)
+  }, 2500)
   animate()
 })
 
@@ -278,28 +305,44 @@ onBeforeUnmount(() => {
   if (renderer && globeContainer.value) {
     globeContainer.value.removeChild(renderer.domElement)
   }
+  if (pulseInterval) clearInterval(pulseInterval)
   renderer = null
   scene = null
   camera = null
   pointCloud = null
-  arcMeshes = []
   raycaster = null
+})
+
+// Watch for prop changes (e.g., size, data)
+watch(() => [props.width, props.height, props.pointCount, props.nodes, props.arcs], () => {
+  if (scene && renderer && camera && globeContainer.value) {
+    // Remove old scene
+    while (scene.children.length > 0) {
+      scene.remove(scene.children[0])
+    }
+    createGlobe()
+    resizeRenderer()
+    // Re-pick pulsing nodes for new geometry
+    const nodeCount = getNodePositions().length
+    pulsingNodes.value = pickRandomPulsingNodes(12, nodeCount)
+  }
 })
 </script>
 
 <style scoped>
 .globe-canvas {
-  width: 100%;
-  height: 480px;
-  min-height: 320px;
-  max-width: 600px;
+  min-width: 200px;
+  min-height: 180px;
   margin: 0 auto;
   position: relative;
   z-index: 3;
   background: none;
   border-radius: 50%;
   box-shadow: none;
-  /* No pointer-events: none, we want interactivity */
+  cursor: grab;
+}
+.globe-canvas:active {
+  cursor: grabbing;
 }
 @media (max-width: 600px) {
   .globe-canvas {

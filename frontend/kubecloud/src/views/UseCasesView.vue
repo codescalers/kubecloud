@@ -5,9 +5,7 @@
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">Use Cases</h1>
-          <p class="hero-description">
-            Discover how KubeCloud powers real-world applications across industries.
-          </p>
+          <p class="section-subtitle">Explore how KubeCloud empowers different industries and teams.</p>
         </div>
       </div>
     </section>
@@ -21,8 +19,8 @@
               <div class="use-case-icon">
                 <v-icon :icon="useCase.icon" size="48" color="primary"></v-icon>
               </div>
-              <h3 class="use-case-title">{{ useCase.title }}</h3>
-              <p class="use-case-description">{{ useCase.description }}</p>
+              <h2 class="section-title">{{ useCase.title }}</h2>
+              <p class="use-case-description card-subtitle">{{ useCase.description }}</p>
               <div class="use-case-features">
                 <div class="feature-tag" v-for="feature in useCase.features" :key="feature">
                   {{ feature }}
@@ -86,9 +84,9 @@ onMounted(() => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
 
-/* Hero Section */
 .hero-section {
   min-height: 60vh;
   display: flex;
@@ -96,7 +94,7 @@ onMounted(() => {
   justify-content: center;
   position: relative;
   z-index: 2;
-  padding: 2rem 0;
+  padding: 6rem 0 4rem 0;
 }
 
 .hero-content {
@@ -111,54 +109,47 @@ onMounted(() => {
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 500;
+  margin-bottom: 2.5rem;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: #fff;
 }
 
-.hero-description {
-  font-size: 1.25rem;
-  color: #CBD5E1;
+.section-subtitle {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  color: #60a5fa;
   line-height: 1.7;
-  opacity: 0.8;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: 400;
 }
 
-/* Use Cases Content */
 .use-cases-content {
   position: relative;
   z-index: 2;
-  padding: 4rem 0;
+  padding: 6rem 0 6rem 0;
 }
+
 
 .use-case-card {
   height: 100%;
   padding: 2.5rem;
   text-align: center;
+  background: rgba(10, 25, 47, 0.85);
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
+  color: #CBD5E1;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .use-case-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 8px 32px rgba(96, 165, 250, 0.18);
 }
-
 .use-case-icon {
-  margin-bottom: 1.5rem;
-}
-
-.use-case-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 1rem;
-}
-
-.use-case-description {
-  color: #CBD5E1;
-  line-height: 1.6;
   margin-bottom: 2rem;
-  opacity: 0.8;
 }
 
 .use-case-features {
@@ -169,51 +160,38 @@ onMounted(() => {
 }
 
 .feature-tag {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3B82F6;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
+  background: transparent;
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 1rem;
   font-size: 0.875rem;
   font-weight: 500;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .hero-section {
-    min-height: 50vh;
-    padding: 1rem 0;
-  }
-
-  .hero-description {
-    font-size: 1.125rem;
-  }
-
-  .use-cases-content {
-    padding: 2rem 0;
-  }
-
-  .use-case-card {
-    padding: 2rem;
-  }
+.feature-tag:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 900px) {
   .hero-section {
-    min-height: 40vh;
+    padding: 3rem 0 2rem 0;
   }
-
   .use-cases-content {
-    padding: 1.5rem 0;
+    padding: 3rem 0 3rem 0;
   }
-
   .use-case-card {
     padding: 1.5rem;
   }
-
-  .feature-tag {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.8rem;
+}
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: clamp(2rem, 8vw, 3rem);
+  }
+  .use-cases-content {
+    padding: 2rem 0 2rem 0;
   }
 }
 </style>

@@ -727,6 +727,7 @@ onMounted(() => {
   backdrop-filter: blur(10px);
   background: var(--v-theme-surface, #1E293B) !important;
   border: 1.5px solid var(--v-theme-outline, #e0e7ef);
+  margin-top: 7rem;
 }
 
 .bg-gradient {

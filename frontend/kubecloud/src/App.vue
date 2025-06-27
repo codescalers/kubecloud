@@ -71,7 +71,7 @@ const currentTheme = computed(() => {
   min-height: 100vh;
   background: var(--kubecloud-bg);
   color: var(--kubecloud-text-primary);
-  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
 .app-main {

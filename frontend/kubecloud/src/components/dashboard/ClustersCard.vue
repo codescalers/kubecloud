@@ -1,14 +1,13 @@
 <template>
-  <div class="dashboard-card clusters-card">
-    <div class="card-header">
-      <div class="card-title-section">
-        <v-icon icon="mdi-server-network" size="32" color="accent" class="card-icon"></v-icon>
-        <div class="card-title-content">
+  <div class="dashboard-card">
+    <div class="dashboard-card-header">
+      <div class="dashboard-card-title-section">
+        <div class="dashboard-card-title-content">
           <h3 class="dashboard-card-title">Kubernetes Clusters</h3>
-          <p class="card-subtitle text-muted">Manage your cloud-native infrastructure</p>
+          <p class="dashboard-card-subtitle">Manage your cloud-native infrastructure</p>
         </div>
       </div>
-      <v-btn class="action-btn" @click="goToDeployCluster">
+      <v-btn variant="outlined" class="btn btn-outline" @click="goToDeployCluster">
         <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
         New Cluster
       </v-btn>
@@ -16,48 +15,94 @@
     <div class="card-content">
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-number">12</div>
-          <div class="stat-label text-muted">Active Clusters</div>
+          <div class="stat-icon">
+            <v-icon icon="mdi-server" size="24" color="var(--color-primary)"></v-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">12</div>
+            <div class="stat-label">Active Clusters</div>
+          </div>
         </div>
         <div class="stat-item">
-          <div class="stat-number">156</div>
-          <div class="stat-label text-muted">Total Nodes</div>
+          <div class="stat-icon">
+            <v-icon icon="mdi-cube-outline" size="24" color="var(--color-primary)"></v-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">156</div>
+            <div class="stat-label">Total Nodes</div>
+          </div>
         </div>
         <div class="stat-item">
-          <div class="stat-number">99.9%</div>
-          <div class="stat-label text-muted">Uptime</div>
+          <div class="stat-icon">
+            <v-icon icon="mdi-chart-line" size="24" color="var(--color-primary)"></v-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">99.9%</div>
+            <div class="stat-label">Uptime</div>
+          </div>
         </div>
         <div class="stat-item">
-          <div class="stat-number">24/7</div>
-          <div class="stat-label text-muted">Monitoring</div>
+          <div class="stat-icon">
+            <v-icon icon="mdi-eye" size="24" color="var(--color-primary)"></v-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">Monitoring</div>
+          </div>
         </div>
       </div>
+
+      <!-- Recent Clusters -->
       <div class="recent-clusters">
-        <h4 class="section-title">Recent Clusters</h4>
+        <h3 class="section-title">Recent Clusters</h3>
         <div class="cluster-list">
-          <div v-for="cluster in recentClusters" :key="cluster.id" class="cluster-item" @click="viewCluster(cluster.id)">
+          <div
+            v-for="cluster in recentClusters"
+            :key="cluster.id"
+            class="list-item-interactive"
+            @click="viewCluster(cluster.id)"
+          >
             <div class="cluster-info">
               <div class="cluster-name">{{ cluster.name }}</div>
-              <div class="cluster-details text-muted">
+              <div class="cluster-details">
                 <span class="cluster-region">{{ cluster.region }}</span>
-                <span class="cluster-status" :class="cluster.status">
-                  {{ cluster.status }}
-                </span>
+                <span>•</span>
+                <span>{{ cluster.nodes }} nodes</span>
               </div>
             </div>
+            <div class="cluster-status" :class="cluster.status.toLowerCase()">
+              <span class="status-dot" :class="cluster.status.toLowerCase()"></span>
+              {{ cluster.status }}
+            </div>
             <div class="cluster-actions">
-              <v-btn icon class="action-btn" @click.stop="editCluster(cluster.id)">
-                <v-icon icon="mdi-pencil" size="16"></v-icon>
+              <v-btn
+                variant="outlined"
+                size="small"
+                class="btn btn-outline btn-sm"
+                @click.stop="openMetrics()"
+              >
+                <v-icon icon="mdi-chart-line" size="16"></v-icon>
               </v-btn>
-              <v-btn icon class="action-btn" @click.stop="deleteCluster(cluster.id)">
+              <v-btn
+                variant="outlined"
+                size="small"
+                class="btn btn-outline btn-sm"
+                @click.stop="deleteCluster(cluster.id)"
+              >
                 <v-icon icon="mdi-delete" size="16"></v-icon>
               </v-btn>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Quick Actions -->
       <div class="quick-actions">
-        <v-btn class="action-btn" @click="viewAllClusters">
+        <v-btn
+          variant="outlined"
+          class="btn btn-outline"
+          @click="viewAllClusters"
+        >
           View All Clusters
         </v-btn>
       </div>
@@ -71,37 +116,33 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
+// Mock data for recent clusters
 const recentClusters = ref([
   {
     id: 1,
-    name: 'production-cluster-01',
-    region: 'us-west-2',
-    status: 'running'
+    name: 'Production API',
+    status: 'Running',
+    region: 'Ghent, Belgium',
+    nodes: 3
   },
   {
     id: 2,
-    name: 'staging-cluster-01',
-    region: 'eu-west-1',
-    status: 'running'
+    name: 'Staging Environment',
+    status: 'Running',
+    region: 'Ghent, Belgium',
+    nodes: 2
   },
   {
     id: 3,
-    name: 'dev-cluster-01',
-    region: 'us-east-1',
-    status: 'stopped'
+    name: 'Development Cluster',
+    status: 'Stopped',
+    region: 'Ghent, Belgium',
+    nodes: 1
   }
 ])
 
-const createCluster = () => {
-  console.log('Create new cluster')
-}
-
 const viewCluster = (id: number) => {
-  console.log('View cluster:', id)
-}
-
-const editCluster = (id: number) => {
-  console.log('Edit cluster:', id)
+  router.push(`/manage-cluster/${id}`)
 }
 
 const deleteCluster = (id: number) => {
@@ -122,137 +163,136 @@ const goToDeployCluster = () => {
 </script>
 
 <style scoped>
-.dashboard-card.clusters-card {
-  background: var(--color-surface);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-  color: var(--color-text);
-  padding: 1.25rem;
-  min-width: 100%;
-}
-.dashboard-card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin-bottom: 0.5rem;
-}
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-.card-title-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.card-title-content {
-  display: flex;
-  flex-direction: column;
-}
-.card-subtitle {
-  font-size: 1rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
 .card-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-8);
+  padding: unset !important;
 }
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 1rem;
-}
-.stat-item {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-  padding: 1rem;
-  transition: border-color var(--transition), background var(--transition);
-}
-.stat-item:hover {
-  border-color: var(--color-accent);
-}
-.stat-number {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-.stat-label {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--color-text);
-}
+
 .recent-clusters {
-  margin-top: 1.5rem;
+  margin-top: var(--space-4);
 }
+
+.section-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-4) 0;
+}
+
 .cluster-list {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
-.cluster-item {
+
+.list-item-interactive {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-radius: var(--rounded);
-  border: 1px solid var(--color-border);
-  box-shadow: none;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition);
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
 }
-.cluster-item:hover {
-  border-color: var(--color-accent);
+
+.cluster-info {
+  flex: 1;
+  min-width: 0;
 }
+
 .cluster-name {
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text);
+  font-size: var(--font-size-base);
 }
+
 .cluster-details {
-  font-size: 0.9rem;
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
-  display: flex;
-  gap: 0.5rem;
 }
+
+.cluster-region {
+  color: var(--color-primary);
+}
+
 .cluster-status {
-  font-weight: 600;
-  color: var(--color-accent);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: var(--space-4);
 }
+
+.cluster-status.running {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.cluster-status.stopped {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
 .cluster-actions {
+  margin-left: var(--space-4);
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
-.action-btn {
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: var(--rounded);
-  border: none;
-  box-shadow: none;
-  font-weight: 500;
-  padding: 0.5rem 1.25rem;
-  transition: background var(--transition);
-}
-.action-btn:hover {
-  background: var(--color-accent-hover);
-}
+
 .quick-actions {
-  margin-top: 1.5rem;
   display: flex;
-  gap: 0.75rem;
+  justify-content: center;
+  margin-top: var(--space-4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .card-content {
+    gap: var(--space-6);
+  }
+
+  .cluster-list {
+    gap: var(--space-2);
+  }
+
+  .cluster-details {
+    font-size: var(--font-size-xs);
+  }
+
+  .cluster-status {
+    font-size: var(--font-size-xs);
+  }
+
+  .cluster-actions {
+    gap: var(--space-1);
+  }
+}
+
+@media (max-width: 480px) {
+  .cluster-list {
+    gap: var(--space-2);
+  }
+
+  .cluster-name {
+    font-size: var(--font-size-sm);
+  }
+
+  .cluster-details {
+    font-size: var(--font-size-xs);
+  }
+
+  .cluster-status {
+    font-size: var(--font-size-xs);
+  }
+
+  .cluster-actions {
+    gap: var(--space-1);
+  }
 }
 </style>
