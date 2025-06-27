@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
 	"github.com/stripe/stripe-go/v82"
@@ -42,7 +45,17 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 	mailService := internal.NewMailService(config.MailSender.SendGridKey)
 
-	handler := NewHandler(tokenHandler, db, config, mailService)
+	gridProxy := proxy.NewRetryingClient(proxy.NewClient(config.GridProxy.URL))
+
+	manager := substrate.NewManager(config.TFChain.URL)
+	substrateClient, err := manager.Substrate()
+
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to substrate client")
+		return nil, fmt.Errorf("failed to connect to substrate client: %w", err)
+	}
+
+	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy, substrateClient)
 
 	app := &App{
 		router:   router,
@@ -73,6 +86,10 @@ func (app *App) registerHandlers() {
 			authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
 			{
 				authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+				authGroup.GET("/nodes", app.handlers.ListNodesHandler)
+				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
+				authGroup.GET("/nodes/reserved", app.handlers.ListReservedNodeHandler)
+				authGroup.POST("/nodes/unreserve/:contract-id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/charge_balance", app.handlers.ChargeBalance)
 			}
 

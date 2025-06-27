@@ -16,11 +16,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TODO: add descriptions
 var rootCmd = &cobra.Command{
 	Use:   "KubeCloud",
-	Short: "This is short description!",
-	Long:  "This is long description!",
+	Short: "Deploy secure, decentralized Kubernetes clusters on TFGrid with Mycelium networking and QSFS storage.",
+	Long: `KubeCloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
+
+It supports:
+- GPU and dedicated nodes for high-performance workloads
+- Built-in storage using QSFS with backup and restore
+- Private networking with Mycelium (no public IPs needed)
+- Web gateway (WebGW) access to expose services
+- Usage-based billing with USD pricing set by farmers
+- Secure access control through Mycelium whitelisting
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configFile, err := cmd.Flags().GetString("config")
 		if err != nil {

@@ -9,6 +9,7 @@ import (
 
 var saltLen = 5
 
+// HashAndSaltPassword hashes given password and append salt to it
 func HashAndSaltPassword(password []byte) ([]byte, error) {
 	salt := make([]byte, saltLen)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {

@@ -10,14 +10,18 @@ import (
 
 // Configuration struct holds all configs for the app
 type Configuration struct {
-	Server       Server     `json:"server" validate:"required,dive"`
-	Database     DB         `json:"database" validate:"required"`
-	JWT          JwtToken   `json:"token" validate:"required"`
-	Admins       []string   `json:"admins"`
-	MailSender   MailSender `json:"mailSender"`
-	Currency     string     `json:"currency" validate:"required"`
-	StripeSecret string     `json:"stripe_secret" validate:"required"`
-	Voucher      Voucher    `json:"voucher"`
+	Server             Server             `json:"server" validate:"required,dive"`
+	Database           DB                 `json:"database" validate:"required"`
+	JWT                JwtToken           `json:"token" validate:"required"`
+	Admins             []string           `json:"admins"`
+	MailSender         MailSender         `json:"mailSender"`
+	Currency           string             `json:"currency" validate:"required"`
+	StripeSecret       string             `json:"stripe_secret" validate:"required"`
+	Voucher            Voucher            `json:"voucher"`
+	GridProxy          GridProxy          `json:"gridproxy"`
+	TFChain            TFChain            `json:"tfchain"`
+	TermsANDConditions TermsANDConditions `json:"terms_and_conditions"`
+	ActivationService  ActivationService  `json:"activation_service"`
 }
 
 // Server struct holds server's information
@@ -47,6 +51,27 @@ type MailSender struct {
 
 type Voucher struct {
 	NameLength int `json:"name_length" validate:"required,gt=0"`
+}
+
+// GridProxy struct to hold url of gridproxy
+type GridProxy struct {
+	URL string `json:"url"`
+}
+
+// TFChain top hold ur of tfchain grid
+type TFChain struct {
+	URL string `json:"url"`
+}
+
+// TermsANDConditions holds required data for accepting terms and conditions
+type TermsANDConditions struct {
+	DocumentLink string `json:"document_link" validate:"required"`
+	DocumentHash string `json:"document_hash" validate:"required"`
+}
+
+// ActivationService struct hold url of tfgrid activation service
+type ActivationService struct {
+	URL string `json:"url" validate:"required"`
 }
 
 // ReadConfFile read configurations of json file

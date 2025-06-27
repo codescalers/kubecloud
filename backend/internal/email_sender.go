@@ -20,10 +20,12 @@ var welcomeMail []byte
 //go:embed templates/signup.html
 var signupTemplate []byte
 
+// MailService struct hods all functionalities of mail service
 type MailService struct {
 	client *sendgrid.Client
 }
 
+// NewMailService creates new instance of mail service
 func NewMailService(sendGridKey string) MailService {
 	return MailService{
 		client: sendgrid.NewSendClient(sendGridKey),
