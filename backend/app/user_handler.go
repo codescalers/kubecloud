@@ -183,6 +183,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 			"email":   request.Email,
 			"timeout": fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
 		})
+		return
 
 	}
 }

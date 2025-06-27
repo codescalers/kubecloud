@@ -52,6 +52,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 		"total": count,
 		"nodes": nodes,
 	})
+	return
 
 }
 
@@ -70,6 +71,14 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 32)
+	if err != nil {
+		log.Error().Err(err).Send()
+		Error(c, http.StatusInternalServerError, "internal server error", "")
+		return
+	}
+	nodeID := uint32(nodeID64)
+
 	userID, ok := userIDVal.(int)
 	if !ok {
 		Error(c, http.StatusInternalServerError, "internal server error", "")
@@ -83,6 +92,24 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	filter := proxyTypes.NodeFilter{
+		NodeID: &nodeID64,
+	}
+
+	// validate user has enough balance for reserving node
+	nodes, _, err := h.proxyClient.Nodes(c.Request.Context(), filter, proxyTypes.Limit{})
+	if err != nil {
+		Error(c, http.StatusInternalServerError, "internal server error", "")
+		return
+	}
+
+	node := nodes[0]
+	userBalance := user.CreditCardBalance + user.CreditedBalance
+	if node.PriceUsd > userBalance {
+		Error(c, http.StatusPaymentRequired, "Insufficient balance", fmt.Sprintf("Node price is %.2f USD/Month, your balance is %.2f USD.  Please charge your balance first to proceed.", node.PriceUsd, userBalance))
+		return
+	}
+
 	// Create identity from mnemonic
 	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
 	if err != nil {
@@ -90,14 +117,6 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		Error(c, http.StatusInternalServerError, "internal server error", "")
 		return
 	}
-
-	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 32)
-	if err != nil {
-		log.Error().Err(err).Send()
-		Error(c, http.StatusInternalServerError, "internal server error", "")
-		return
-	}
-	nodeID := uint32(nodeID64)
 
 	contractID, err := h.substrateClient.CreateRentContract(identity, nodeID, nil)
 	if err != nil {
