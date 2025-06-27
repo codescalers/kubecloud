@@ -89,7 +89,7 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/nodes", app.handlers.ListNodesHandler)
 				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
 				authGroup.GET("/nodes/reserved", app.handlers.ListReservedNodeHandler)
-				authGroup.POST("/nodes/:contract-id/unreserve", app.handlers.UnreserveNodeHandler)
+				authGroup.POST("/nodes/unreserve/:contract-id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/charge_balance", app.handlers.ChargeBalance)
 			}
 
