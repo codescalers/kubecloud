@@ -98,7 +98,6 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	// password and confirm password should match
 	if request.Password != request.ConfirmPassword {
 		Error(c, http.StatusBadRequest, "Validation Error", "password and confirm password don't match")
-
 		return
 	}
 
@@ -137,54 +136,54 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	if err != nil {
 		log.Error().Err(err).Msg("failed to setup user on TFChain")
 		Error(c, http.StatusInternalServerError, "internal server error", "")
+		return
+	}
+	customer, err := internal.CreateStripeCustomer(request.Name, request.Email)
+	if err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating stripe account"})
+		return
+	}
 
-		customer, err := internal.CreateStripeCustomer(request.Name, request.Email)
-		if err != nil {
-			log.Error().Err(err).Send()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating stripe account"})
-			return
-		}
+	user := models.User{
+		StripeCustomerID: customer.ID,
+		Username:         request.Name,
+		Email:            request.Email,
+		Password:         hashedPassword,
+		Admin:            isAdmin,
+		Code:             code,
+		Mnemonic:         mnemonic,
+	}
 
-		user := models.User{
-			StripeCustomerID: customer.ID,
-			Username:         request.Name,
-			Email:            request.Email,
-			Password:         hashedPassword,
-			Admin:            isAdmin,
-			Code:             code,
-			Mnemonic:         mnemonic,
-		}
-
-		// If user exists but not verified
-		if getErr != gorm.ErrRecordNotFound {
-			if !existingUser.Verified {
-				user.ID = existingUser.ID
-				user.UpdatedAt = time.Now()
-				err = h.db.UpdateUserByID(&user)
-				if err != nil {
-					log.Error().Err(err).Send()
-					Error(c, http.StatusInternalServerError, "internal server error", "")
-					return
-				}
-			}
-		}
-
-		// create user model in db
-		if getErr != nil {
-			err = h.db.RegisterUser(&user)
+	// If user exists but not verified
+	if getErr != gorm.ErrRecordNotFound {
+		if !existingUser.Verified {
+			user.ID = existingUser.ID
+			user.UpdatedAt = time.Now()
+			err = h.db.UpdateUserByID(&user)
 			if err != nil {
 				log.Error().Err(err).Send()
 				Error(c, http.StatusInternalServerError, "internal server error", "")
 				return
 			}
 		}
-
-		Success(c, http.StatusOK, "Verification code sent successfully", map[string]interface{}{
-			"email":   request.Email,
-			"timeout": fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
-		})
-
 	}
+
+	// create user model in db
+	if getErr != nil {
+		err = h.db.RegisterUser(&user)
+		if err != nil {
+			log.Error().Err(err).Send()
+			Error(c, http.StatusInternalServerError, "internal server error", "")
+			return
+		}
+	}
+
+	Success(c, http.StatusOK, "Verification code sent successfully", map[string]interface{}{
+		"email":   request.Email,
+		"timeout": fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
+	})
+
 }
 
 // VerifyRegisterCode verifies email when signing uo
