@@ -126,7 +126,6 @@ onMounted(() => {
   color: #60a5fa;
   line-height: 1.7;
   opacity: 0.92;
-  margin-bottom: 0;
   font-weight: 400;
 }
 
@@ -134,6 +133,7 @@ onMounted(() => {
   position: relative;
   z-index: 2;
   padding: 6rem 0 6rem 0;
+  margin: 0 2rem 0 2rem;
 }
 
 .doc-card {

@@ -186,8 +186,7 @@ onMounted(() => {
   justify-content: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%),
-    radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
+  background: var(--color-bg);
 }
 .auth-background {
   position: absolute;
@@ -203,11 +202,11 @@ onMounted(() => {
   max-width: 400px;
   width: 100%;
   background: rgba(10, 25, 47, 0.92);
-  border-radius: 1.5rem;
-  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.10);
-  padding: 2.5rem 2rem 2rem 2rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-10) var(--space-8) var(--space-8) var(--space-8);
   z-index: 2;
-  border: 1px solid rgba(96, 165, 250, 0.15);
+  border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -215,20 +214,20 @@ onMounted(() => {
 }
 .auth-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-8);
 }
 .auth-title {
-  font-size: clamp(2rem, 4vw, 2.5rem);
-  font-weight: 500;
-  color: #fff;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
 .auth-subtitle {
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  color: #60a5fa;
+  font-size: var(--font-size-lg);
+  color: #fff;
   opacity: 0.92;
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
 }
 .auth-form {
   width: 100%;
@@ -238,37 +237,26 @@ onMounted(() => {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: var(--space-4);
 }
-.auth-submit-btn {
-  font-size: 1rem;
-  padding: 0.9rem 0;
-  border-radius: 1.5rem;
-  font-weight: 500;
-  margin-top: 0.2rem;
-  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.10);
-  background: transparent;
-  color: #fff;
-  border: 2px solid #fff;
-  transition: box-shadow 0.2s, transform 0.2s, background 0.2s, color 0.2s;
+.auth-field {
+  margin-bottom: var(--space-4);
 }
-.auth-submit-btn:hover {
-  background: #fff;
-  color: #0a192f;
-  box-shadow: 0 8px 32px 0 rgba(59,130,246,0.18);
-  transform: translateY(-2px) scale(1.04);
+.v-btn[type="submit"] {
+  @apply btn btn-primary btn-full;
+  font-size: var(--font-size-base);
+  padding: var(--space-3) 0;
+  border-radius: var(--radius-xl);
+  font-weight: var(--font-weight-medium);
+  margin-top: var(--space-2);
 }
 .auth-footer {
   text-align: center;
-  margin-top: 1.5rem;
+  margin-top: var(--space-6);
 }
 .auth-footer-text {
-  color: #CBD5E1;
-  margin-right: 0.5rem;
-}
-.auth-link {
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
+  margin-right: var(--space-2);
 }
 .fade-in {
   opacity: 0;
@@ -281,12 +269,12 @@ onMounted(() => {
 }
 @media (max-width: 600px) {
   .auth-content {
-    padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+    padding: var(--space-6) var(--space-2) var(--space-4) var(--space-2);
     min-width: 0;
     max-width: 98vw;
   }
   .auth-title {
-    font-size: clamp(2rem, 8vw, 3rem);
+    font-size: var(--font-size-2xl);
   }
 }
 @keyframes fadeInUp {
