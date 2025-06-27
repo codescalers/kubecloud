@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- ingress_v1_tfgw.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

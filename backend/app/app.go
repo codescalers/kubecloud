@@ -60,39 +60,37 @@ func NewApp(config internal.Configuration) (*App, error) {
 func (app *App) registerHandlers() {
 	v1 := app.router.Group("/api/v1")
 	{
-		v1.POST("/register", app.handlers.RegisterHandler)
-		v1.POST("/verify_register", app.handlers.VerifyRegisterCode)
-		v1.POST("/login", app.handlers.LoginUserHandler)
-		v1.POST("/refresh", app.handlers.RefreshTokenHandler)
-		v1.POST("/forgot_password", app.handlers.ForgotPasswordHandler)
-		v1.POST("/forgot_password/verify_email", app.handlers.VerifyForgetPasswordCodeHandler)
-
-		authGroup := v1.Group("")
-		authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
+		usersGroup := v1.Group("/user")
 		{
-			authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
-			authGroup.POST("/charge_balance", app.handlers.ChargeBalance)
-		}
+			usersGroup.POST("/register", app.handlers.RegisterHandler)
+			usersGroup.POST("/register/verify", app.handlers.VerifyRegisterCode)
+			usersGroup.POST("/login", app.handlers.LoginUserHandler)
+			usersGroup.POST("/refresh", app.handlers.RefreshTokenHandler)
+			usersGroup.POST("/forgot_password", app.handlers.ForgotPasswordHandler)
+			usersGroup.POST("/forgot_password/verify", app.handlers.VerifyForgetPasswordCodeHandler)
 
-	}
+			authGroup := usersGroup.Group("")
+			authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
+			{
+				authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+			}
 
-	adminGroup := v1.Group("/admin")
-	adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
-	{
+			adminGroup := usersGroup.Group("")
+			adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
+			{
 
-		usersGroup := adminGroup.Group("/users")
-		{
-			usersGroup.GET("", app.handlers.ListUsersHandler)
-			usersGroup.POST("", app.handlers.RegisterHandler)
-			usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
-			usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
+				adminGroup.GET("", app.handlers.ListUsersHandler)
+				adminGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
+				adminGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 
-		}
+				vouchersGroup := adminGroup.Group("/vouchers")
+				{
+					vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
+					vouchersGroup.GET("", app.handlers.ListVouchersHandler)
 
-		vouchersGroup := adminGroup.Group("/vouchers")
-		{
-			vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
-			vouchersGroup.GET("", app.handlers.ListVouchersHandler)
+				}
+
+			}
 
 		}
 

@@ -94,12 +94,16 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check if user previously exists
 	existingUser, getErr := h.db.GetUserByEmail(request.Email)
-	if getErr == gorm.ErrRecordNotFound {
-		c.JSON(http.StatusConflict, gin.H{"error": "user already registered"})
-		return
+	if getErr != gorm.ErrRecordNotFound {
+		if existingUser.Verified {
+			c.JSON(http.StatusConflict, gin.H{"error": "user already registered"})
+			return
+		}
+
 	}
 
 	code := internal.GenerateRandomCode()
+	log.Debug().Int("generated_code", code).Send()
 	subject, body := h.mailService.SignUpMailContent(code, h.config.MailSender.Timeout, request.Name, h.config.Server.Host)
 
 	err := h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
@@ -137,7 +141,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// If user exists but not verified
 	if getErr != gorm.ErrRecordNotFound {
-		if existingUser.Verified {
+		if !existingUser.Verified {
 			user.ID = existingUser.ID
 			user.UpdatedAt = time.Now()
 			err = h.db.UpdateUserByID(&user)

@@ -3,7 +3,6 @@ package sqlite
 import (
 	"fmt"
 	"kubecloud/models"
-	"sync"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -12,8 +11,7 @@ import (
 
 // Sqlite struct implements db interface with sqlite
 type Sqlite struct {
-	db    *gorm.DB
-	mutex sync.Mutex
+	db *gorm.DB
 }
 
 // NewSqliteStorage connects to the database file
@@ -43,9 +41,6 @@ func (s *Sqlite) Close() error {
 
 // RegisterUser registers a new user to the system
 func (s *Sqlite) RegisterUser(user *models.User) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	return s.db.Create(user).Error
 }
 
@@ -65,9 +60,6 @@ func (s *Sqlite) GetUserByID(userID int) (models.User, error) {
 
 // UpdateUserByID updates user data by its ID
 func (s *Sqlite) UpdateUserByID(user *models.User) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	user.UpdatedAt = time.Now() 
 	return s.db.Model(&models.User{}).
 		Where("id = ?", user.ID).
@@ -75,9 +67,6 @@ func (s *Sqlite) UpdateUserByID(user *models.User) error {
 }
 
 func (s *Sqlite) UpdatePassword(email string, hashedPassword []byte) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	result := s.db.Model(&models.User{}).
 		Where("email = ?", email).
 		Updates(map[string]interface{}{
@@ -131,9 +120,6 @@ func (s *Sqlite) DeleteUserByID(userID int) error {
 
 // CreateVoucher creates new voucher in system
 func (s *Sqlite) CreateVoucher(voucher *models.Voucher) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	return s.db.Create(voucher).Error
 }
 
@@ -150,9 +136,6 @@ func (s *Sqlite) ListAllVouchers() ([]models.Voucher, error) {
 
 // CreateTransaction creates a payment transaction
 func (s *Sqlite) CreateTransaction(transaction *models.Transaction) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	return s.db.Create(transaction).Error
 }
 

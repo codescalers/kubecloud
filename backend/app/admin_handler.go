@@ -14,8 +14,9 @@ import (
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
-	Count int     `json:"count" binding:"required,gt=0" validate:"required,gt=0"`
-	Value float64 `json:"value" binding:"required,gt=0" validate:"required,gt=0"`
+	Count       int     `json:"count" binding:"required,gt=0" validate:"required,gt=0"`
+	Value       float64 `json:"value" binding:"required,gt=0" validate:"required,gt=0"`
+	ExpireAfter int     `json:"expire_after_days" binding:"required,gt=0"`
 }
 
 // CreditRequestInput represents a request to credit a user's balance
@@ -89,6 +90,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			Voucher:   fullCode,
 			Value:     request.Value,
 			CreatedAt: time.Now(),
+			ExpiresAt: time.Now().Add(time.Duration(request.ExpireAfter) * 24 * time.Hour),
 		}
 
 		if err := h.db.CreateVoucher(&voucher); err != nil {
@@ -147,7 +149,8 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	adminID, exists := c.Get("admin_id")
+	// get admin ID from middleware context
+	adminID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Admin ID not found in context"})
 		return
