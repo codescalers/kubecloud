@@ -17,7 +17,7 @@ type Configuration struct {
 	MailSender   MailSender `json:"mailSender"`
 	Currency     string     `json:"currency" validate:"required"`
 	StripeSecret string     `json:"stripe_secret" validate:"required"`
-	Voucher    Voucher    `json:"voucher"`  
+	Voucher      Voucher    `json:"voucher"`
 }
 
 // Server struct holds server's information

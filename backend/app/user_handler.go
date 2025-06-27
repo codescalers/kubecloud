@@ -4,6 +4,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -132,11 +133,11 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	user := models.User{
 		StripeCustomerID: customer.ID,
-		Username: request.Name,
-		Email:    request.Email,
-		Password: hashedPassword,
-		Admin:    isAdmin,
-		Code:     code,
+		Username:         request.Name,
+		Email:            request.Email,
+		Password:         hashedPassword,
+		Admin:            isAdmin,
+		Code:             code,
 	}
 
 	// If user exists but not verified
@@ -442,7 +443,13 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	user, err := h.db.GetUserByID(userID)
+	ID, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := h.db.GetUserByID(ID)
 	if err != nil {
 		log.Error().Err(err).Send()
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})

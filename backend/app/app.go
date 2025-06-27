@@ -73,6 +73,7 @@ func (app *App) registerHandlers() {
 			authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))
 			{
 				authGroup.POST("/change_password", app.handlers.ChangePasswordHandler)
+				authGroup.POST("/charge_balance", app.handlers.ChargeBalance)
 			}
 
 			adminGroup := usersGroup.Group("")
