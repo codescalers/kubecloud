@@ -15,7 +15,7 @@ type Configuration struct {
 	JWT                JwtToken           `json:"token" validate:"required"`
 	Admins             []string           `json:"admins"`
 	MailSender         MailSender         `json:"mailSender"`
-  Currency           string             `json:"currency" validate:"required"`
+	Currency           string             `json:"currency" validate:"required"`
 	StripeSecret       string             `json:"stripe_secret" validate:"required"`
 	Voucher            Voucher            `json:"voucher"`
 	GridProxy          GridProxy          `json:"gridproxy"`
