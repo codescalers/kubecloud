@@ -5,6 +5,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
+	"strconv"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog/log"
+	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/paymentmethod"
 	"gorm.io/gorm"
 )
 
@@ -74,6 +77,13 @@ type ChangePasswordInput struct {
 	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=Password"`
 }
 
+// ChargeBalanceInput struct holds required data to charge users' balance
+type ChargeBalanceInput struct {
+	CardType     string  `json:"card_type" binding:"required"`
+	PaymentToken string  `json:"payment_method_id" binding:"required"`
+	Amount       float64 `json:"amount" binding:"required"`
+}
+
 // RegisterHandler registers user to the system
 func (h *Handler) RegisterHandler(c *gin.Context) {
 	var request RegisterInput
@@ -123,20 +133,27 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	isAdmin := internal.Contains(h.config.Admins, request.Email)
 
+
 	mnemonic, _, err := internal.SetupUserOnTFChain(h.substrateClient, h.config)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to setup user on TFChain")
 		Error(c, http.StatusInternalServerError, "internal server error", "")
+
+	customer, err := internal.CreateStripeCustomer(request.Name, request.Email)
+	if err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating stripe account"})
 		return
 	}
 
 	user := models.User{
-		Username: request.Name,
-		Email:    request.Email,
-		Password: hashedPassword,
-		Admin:    isAdmin,
-		Code:     code,
-		Mnemonic: mnemonic,
+		StripeCustomerID: customer.ID,
+		Username:         request.Name,
+		Email:            request.Email,
+		Password:         hashedPassword,
+		Admin:            isAdmin,
+		Code:             code,
+    Mnemonic:         mnemonic,
 	}
 
 	// If user exists but not verified
@@ -428,5 +445,77 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	}
 
 	Success(c, http.StatusOK, "password updated successfully", nil)
+
+}
+
+func (h *Handler) ChargeBalance(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to extract user ID from context"})
+		return
+	}
+
+	var request ChargeBalanceInput
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	if request.Amount <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Amount must be greater than zero"})
+		return
+	}
+
+	ID, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	user, err := h.db.GetUserByID(ID)
+	if err != nil {
+		log.Error().Err(err).Send()
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	paymentMethod, err := internal.CreatePaymentMethod("card", request.PaymentToken)
+	if err != nil {
+		log.Error().Err(err).Msg("error creating payment method")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create payment method"})
+		return
+	}
+
+	_, err = paymentmethod.Attach(paymentMethod.ID, &stripe.PaymentMethodAttachParams{
+		Customer: stripe.String(user.StripeCustomerID),
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("error attaching payment method to customer")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to attach payment method"})
+		return
+	}
+
+	intent, err := internal.CreatePaymentIntent(user.StripeCustomerID, paymentMethod.ID, h.config.Currency, request.Amount)
+	if err != nil {
+		log.Error().Err(err).Msg("error creating payment intent")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create payment intent"})
+		return
+	}
+
+	user.CreditCardBalance += float64(request.Amount)
+
+	err = h.db.UpdateUserByID(&user)
+	if err != nil {
+		log.Error().Err(err).Msg("error updating user data")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update user data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":           "Balance is charged successfully",
+		"payment_intent_id": intent.ID,
+		"new_balance":       user.CreditCardBalance,
+	})
 
 }

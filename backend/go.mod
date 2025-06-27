@@ -38,6 +38,7 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/threefoldtech/zosbase v0.1.4 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
+	github.com/stripe/stripe-go/v82 v82.2.1 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 )
