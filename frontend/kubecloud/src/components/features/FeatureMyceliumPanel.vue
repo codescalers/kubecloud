@@ -132,7 +132,7 @@ onMounted(() => {
   camera.position.z = 6
 
   // Create nodes (glowing points)
-  const nodeGeometry = new THREE.SphereGeometry(0.07, 16, 16)
+  const nodeGeometry = new THREE.OctahedronGeometry(0.08, 0) // Diamond/octahedron shape for peers
   const nodeMaterial = new THREE.MeshBasicMaterial({ color: 0x60a5fa })
   for (let i = 0; i < NODE_COUNT; i++) {
     const phi = Math.acos(2 * Math.random() - 1)
@@ -146,9 +146,9 @@ onMounted(() => {
     const mesh = new THREE.Mesh(nodeGeometry, nodeMaterial.clone())
     mesh.position.copy(basePos)
     scene.add(mesh)
-    // Add glow
+    // Add glow - also diamond shaped but larger
     const glowMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.18 })
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), glowMat)
+    const glow = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), glowMat)
     glow.position.copy(basePos)
     scene.add(glow)
     nodes.push({ mesh, basePos, phase: Math.random() * Math.PI * 2, glow })

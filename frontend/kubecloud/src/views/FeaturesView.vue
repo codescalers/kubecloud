@@ -13,23 +13,18 @@
     </section>
     <FeatureMyceliumPanel />
     <FeatureWebGateway />
-    <FeatureGpuOnDemand />
     <FeatureMultiMaster />
     <FeatureLoadBalancing />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import FeatureMyceliumPanel from '../components/features/FeatureMyceliumPanel.vue'
 import FeatureWebGateway from '../components/features/FeatureWebGateway.vue'
-import FeatureGpuOnDemand from '../components/features/FeatureGpuOnDemand.vue'
 import FeatureMultiMaster from '../components/features/FeatureMultiMaster.vue'
 import FeatureLoadBalancing from '../components/features/FeatureLoadBalancing.vue'
 
-const features = [
-  { title: 'GPU On-Demand', component: FeatureGpuOnDemand }
-]
 
 // Add scroll animation observer
 onMounted(() => {
@@ -51,9 +46,6 @@ onMounted(() => {
   })
 })
 
-function logout() {
-  // Logout logic here
-}
 </script>
 
 <style scoped>

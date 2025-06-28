@@ -36,19 +36,15 @@ let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
 
 // Network topology constants
-const CLIENT_COUNT = 6
+const CLIENT_COUNT = 5
 const SERVER_COUNT = 4
 const GATEWAY_NODES = 3
-const PACKET_FLOW_RATE = 0.004
-const NETWORK_RADIUS = 2.8
 const GATEWAY_RADIUS = 0.8
 
 // Sophisticated color palette
 const PRIMARY_COLOR = 0x60a5fa
 const ACCENT_COLOR = 0x8ecfff
 const SUCCESS_COLOR = 0x34d399
-const WARNING_COLOR = 0xfbbf24
-const ERROR_COLOR = 0xf87171
 
 // Network nodes and connections
 const clients: { mesh: THREE.Mesh, glow: THREE.Mesh, basePos: THREE.Vector3, phase: number }[] = []
@@ -61,6 +57,10 @@ const gatewayPulse = Array(GATEWAY_NODES).fill(0)
 
 // Add hover state for node labels
 const hoveredNode = shallowRef<{ mesh: THREE.Mesh, type: string, pos: { x: number, y: number } } | null>(null)
+
+// Add at the top:
+let pulses: { mesh: THREE.Mesh, path: THREE.Vector3[], t: number, stage: 0 | 1, active: boolean }[] = [];
+let pulseCooldown = 0;
 
 // Helper to check if a connection exists between two nodes
 function hasConnection(a: THREE.Mesh, b: THREE.Mesh): boolean {
@@ -135,8 +135,9 @@ onMounted(() => {
   // Create client nodes (left side) - small, elegant points
   const clientGeometry = new THREE.SphereGeometry(0.06, 16, 16)
   for (let i = 0; i < CLIENT_COUNT; i++) {
-    const angle = (i / CLIENT_COUNT) * Math.PI * 1.4 - Math.PI * 0.7
-    const radius = 2.2 + Math.random() * 0.4
+    // Place clients in a leftward arc, closer to center
+    const angle = (i / CLIENT_COUNT) * Math.PI * 1.2 - Math.PI * 1.1 // More leftward
+    const radius = 1.7 + Math.random() * 0.2 // Reduced from 2.2 + Math.random() * 0.4
     const basePos = new THREE.Vector3(
       -radius * Math.cos(angle),
       radius * Math.sin(angle),
@@ -170,7 +171,7 @@ onMounted(() => {
   }
 
   // Create gateway nodes (center) - sophisticated cluster
-  const gatewayGeometry = new THREE.SphereGeometry(0.16, 24, 24)
+  const gatewayGeometry = new THREE.SphereGeometry(0.09, 18, 18)
   for (let i = 0; i < GATEWAY_NODES; i++) {
     const angle = (i / GATEWAY_NODES) * Math.PI * 2
     const radius = GATEWAY_RADIUS * (0.7 + Math.random() * 0.6)
@@ -189,7 +190,7 @@ onMounted(() => {
     scene.add(mesh)
 
     // Enhanced glow for gateway nodes (sphere glow)
-    const glowGeometry = new THREE.SphereGeometry(0.26, 24, 24)
+    const glowGeometry = new THREE.SphereGeometry(0.15, 18, 18)
     const glow = new THREE.Mesh(glowGeometry, new THREE.MeshBasicMaterial({
       color: ACCENT_COLOR,
       transparent: true,
@@ -216,8 +217,9 @@ onMounted(() => {
     [serverTypes[i], serverTypes[j]] = [serverTypes[j], serverTypes[i]];
   }
   for (let i = 0; i < SERVER_COUNT; i++) {
-    const angle = (i / SERVER_COUNT) * Math.PI * 1.2 - Math.PI * 0.6
-    const radius = 2.4 + Math.random() * 0.3
+    // Place servers in a rightward arc, further out
+    const angle = (i / SERVER_COUNT) * Math.PI * 1.2 - Math.PI * 0.1 // More rightward
+    const radius = 2.6 + Math.random() * 0.3 // Increased from 2.4 + Math.random() * 0.3
     const basePos = new THREE.Vector3(
       radius * Math.cos(angle),
       radius * Math.sin(angle),
@@ -393,6 +395,47 @@ onMounted(() => {
       }
     }
 
+    // Animate pulses
+    pulseCooldown--;
+    if (pulseCooldown <= 0) {
+      // Pick a random client, gateway, and server
+      const clientIdx = Math.floor(Math.random() * clients.length);
+      const gatewayIdx = Math.floor(Math.random() * gatewayNodes.length);
+      const serverIdx = Math.floor(Math.random() * servers.length);
+      const path = [
+        clients[clientIdx].mesh.position.clone(),
+        gatewayNodes[gatewayIdx].mesh.position.clone(),
+        servers[serverIdx].mesh.position.clone()
+      ];
+      pulses.push({ mesh: createPulseMesh(), path, t: 0, stage: 0, active: true });
+      pulseCooldown = 30 + Math.random() * 40;
+    }
+    pulses.forEach((pulse, idx) => {
+      if (!pulse.active) return;
+      pulse.t += 0.012;
+      let pos: THREE.Vector3;
+      if (pulse.stage === 0) {
+        // Client to Gateway
+        pos = new THREE.Vector3().lerpVectors(pulse.path[0], pulse.path[1], pulse.t * 2);
+        if (pulse.t >= 0.5) {
+          pulse.stage = 1;
+          pulse.t = 0;
+        }
+      } else {
+        // Gateway to Server
+        pos = new THREE.Vector3().lerpVectors(pulse.path[1], pulse.path[2], pulse.t * 2);
+        if (pulse.t >= 0.5) {
+          pulse.active = false;
+          scene!.remove(pulse.mesh);
+        }
+      }
+      pulse.mesh.position.copy(pos);
+      let mat = pulse.mesh.material;
+      if (Array.isArray(mat)) mat = mat[0];
+      if (mat && 'opacity' in mat) mat.opacity = 0.7 + 0.25 * Math.sin(Math.PI * pulse.t);
+    });
+    pulses = pulses.filter(p => p.active);
+
     renderer?.render(scene!, camera!)
   }
   animate()
@@ -430,6 +473,15 @@ onBeforeUnmount(() => {
   gatewayNodes.length = 0
   connections.length = 0
 })
+
+// Add this helper function if not present:
+function createPulseMesh() {
+  const pulseGeom = new THREE.SphereGeometry(0.06, 16, 16);
+  const pulseMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.95 });
+  const mesh = new THREE.Mesh(pulseGeom, pulseMat);
+  scene!.add(mesh);
+  return mesh;
+}
 </script>
 
 <script lang="ts">

@@ -195,24 +195,6 @@
   transition: transform var(--transition-fast);
 }
 
-/* Secondary Button */
-.btn-secondary {
-  background: var(--color-secondary);
-  color: white;
-  border-color: var(--color-secondary);
-}
-
-.btn-secondary:hover {
-  background: var(--color-secondary-dark);
-  border-color: var(--color-secondary-dark);
-  transform: translateY(-1px);
-}
-
-.btn-secondary:active {
-  transform: translateY(0);
-  transition: transform var(--transition-fast);
-}
-
 /* Outline Button */
 .btn-outline {
   background: transparent;

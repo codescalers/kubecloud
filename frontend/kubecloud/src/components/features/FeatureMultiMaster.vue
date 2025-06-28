@@ -1,6 +1,15 @@
 <template>
   <section class="feature-panel multi-master">
     <div class="feature-content-row">
+      <div class="feature-animation-with-glow">
+        <div class="feature-animation-glow"></div>
+        <div class="feature-animation">
+          <canvas ref="threeCanvas" class="three-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
+          <div v-if="hoveredNode" class="node-label" :style="{ left: hoveredNode.pos.x + 'px', top: hoveredNode.pos.y + 'px' }">
+            {{ hoveredNode.type }}
+          </div>
+        </div>
+      </div>
       <div class="feature-content feature-content-overlay">
         <h2 class="feature-title">Multi-Master Clusters</h2>
         <p class="feature-description">
@@ -12,15 +21,6 @@
           <v-chip class="ma-1" color="white" variant="outlined" size="small">Zero-downtime Upgrades</v-chip>
         </div>
       </div>
-      <div class="feature-animation-with-glow">
-        <div class="feature-animation-glow"></div>
-        <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
-          <div v-if="hoveredNode" class="node-label" :style="nodeLabelStyle">
-            {{ hoveredNode.type }}
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 </template>
@@ -30,7 +30,7 @@ export default {}
 </script>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, shallowRef, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, shallowRef } from 'vue'
 import * as THREE from 'three'
 
 const threeCanvas = ref<HTMLCanvasElement | null>(null)
@@ -41,22 +41,20 @@ let camera: THREE.PerspectiveCamera | null = null
 
 const MASTER_COUNT = 5
 const WORKER_COUNT = 7
-const RING_RADIUS = 1.6
-const WORKER_RADIUS = 2.7
 const PRIMARY_COLOR = 0x60a5fa
-const MASTER_COLOR = 0xfbbf24 // gold/yellow for master
-const LEADER_COLOR = 0xfff200 // bright yellow for leader
+const MASTER_COLOR = 0x8ecfff // More sophisticated light blue instead of cartoonish yellow
+const LEADER_COLOR = 0x60a5fa // Use primary blue for leader instead of bright yellow
 const WORKER_COLOR = 0x34d399
-const CONNECTION_COLOR = 0x8ecfff
+const CONNECTION_COLOR = 0x38bdf8 // Cyan for connections
+
+const MASTER_RING_RADIUS = 1.2
+const WORKER_RING_RADIUS = 2.0
 
 const masters: { mesh: THREE.Mesh, glow: THREE.Mesh, basePos: THREE.Vector3, phase: number, crown?: THREE.Mesh }[] = []
 const workers: { mesh: THREE.Mesh, glow: THREE.Mesh, basePos: THREE.Vector3, phase: number }[] = []
 const connections: { line: THREE.Line, nodes: [THREE.Mesh, THREE.Mesh] }[] = []
 const workerConnections: { line: THREE.Line, nodes: [THREE.Mesh, THREE.Mesh] }[] = []
 
-// Consensus pulses
-let pulses: { mesh: THREE.Mesh, from: number, to: number, t: number, active: boolean }[] = []
-let pulseCooldown = 0
 
 // Leader state
 let leaderIdx = 0
@@ -64,20 +62,19 @@ let leaderChangeCooldown = 0
 let leaderTransition = 0 // 0..1 for smooth transition
 let prevLeaderIdx = 0
 
+// Globe-compatible animation states
+let autoRotate = true
+let rotationY = 0
+
+// Add communication pulses between masters and workers
+let mwCommPulses: { mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3, t: number, active: boolean, direction: 'm2w' | 'w2m', workerIdx: number }[] = []
+let mwCommCooldown = 0
+let workerHighlightTimers: number[] = Array(WORKER_COUNT).fill(0)
+
 const hoveredNode = shallowRef<{ mesh: THREE.Mesh, type: string, pos: { x: number, y: number } } | null>(null)
 
-const WORKER_LABEL_COLOR = '#34d399'
-const MASTER_LABEL_COLOR = '#fbbf24'
-
-const nodeLabelStyle = computed(() => {
-  if (!hoveredNode.value) return {}
-  return {
-    left: hoveredNode.value.pos.x + 'px',
-    top: hoveredNode.value.pos.y + 'px',
-    color: hoveredNode.value.type === 'Worker' ? WORKER_LABEL_COLOR : MASTER_LABEL_COLOR,
-    borderColor: hoveredNode.value.type === 'Worker' ? '#34d39933' : '#fbbf2433',
-  }
-})
+// Declare handleResize outside onMounted so it can be accessed in cleanup
+let handleResize: (() => void) | null = null
 
 function onCanvasMouseMove(event: MouseEvent) {
   if (!threeCanvas.value || !renderer || !camera) return
@@ -111,75 +108,99 @@ function onCanvasMouseLeave() {
 
 onMounted(() => {
   if (!threeCanvas.value) return
+  
+  // Set initial canvas size
+  const canvas = threeCanvas.value
+  const rect = canvas.getBoundingClientRect()
+  
+  // Set explicit canvas size if dimensions are 0
+  if (rect.width === 0 || rect.height === 0) {
+    canvas.width = 800
+    canvas.height = 600
+  }
+  
   renderer = new THREE.WebGLRenderer({
-    canvas: threeCanvas.value,
+    canvas: canvas,
     alpha: true,
     antialias: true,
     powerPreference: 'high-performance'
   })
-  renderer.setSize(threeCanvas.value.clientWidth, threeCanvas.value.clientHeight, false)
-  renderer.setClearColor(0x000000, 0)
+  const renderWidth = rect.width > 0 ? rect.width : 800
+  const renderHeight = rect.height > 0 ? rect.height : 600
+  renderer.setSize(renderWidth, renderHeight, false)
+  renderer.setClearColor(0x000000, 0) // Restore transparent background
+  
   scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(
     60,
-    threeCanvas.value.clientWidth / threeCanvas.value.clientHeight,
+    renderWidth / renderHeight,
     0.1,
     1000
   )
   camera.position.z = 5.5
 
+  // Handle resize
+  handleResize = () => {
+    if (!threeCanvas.value || !renderer || !camera) return
+    const rect = threeCanvas.value.getBoundingClientRect()
+    const renderWidth = rect.width > 0 ? rect.width : 800
+    const renderHeight = rect.height > 0 ? rect.height : 600
+    renderer.setSize(renderWidth, renderHeight, false)
+    camera.aspect = renderWidth / renderHeight
+    camera.updateProjectionMatrix()
+  }
+  
+  window.addEventListener('resize', handleResize)
+
   // Place master nodes in a ring
+  const MASTER_RADIUS = 0.09; // Reduced from 0.18
+  const MASTER_GLOW_RADIUS = 0.15; // Reduced from 0.32
   for (let i = 0; i < MASTER_COUNT; i++) {
     const angle = (i / MASTER_COUNT) * Math.PI * 2 - Math.PI / 2
     const basePos = new THREE.Vector3(
-      RING_RADIUS * Math.cos(angle),
-      RING_RADIUS * Math.sin(angle),
+      MASTER_RING_RADIUS * Math.cos(angle),
+      MASTER_RING_RADIUS * Math.sin(angle),
       0
     )
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 24, 24),
-      new THREE.MeshBasicMaterial({ color: MASTER_COLOR })
-    )
-    mesh.position.copy(basePos)
-    scene.add(mesh)
-    // Glow
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 24, 24),
-      new THREE.MeshBasicMaterial({ color: MASTER_COLOR, transparent: true, opacity: 0.18 })
-    )
-    glow.position.copy(basePos)
-    scene.add(glow)
-    // Crown (for leader)
-    let crown: THREE.Mesh | undefined
+    const masterGeometry = new THREE.SphereGeometry(MASTER_RADIUS, 18, 18);
+    const masterGlowGeometry = new THREE.SphereGeometry(MASTER_GLOW_RADIUS, 18, 18);
+    const mesh = new THREE.Mesh(masterGeometry, new THREE.MeshBasicMaterial({ color: MASTER_COLOR }));
+    mesh.position.copy(basePos);
+    scene.add(mesh);
+    const glow = new THREE.Mesh(masterGlowGeometry, new THREE.MeshBasicMaterial({ color: MASTER_COLOR, transparent: true, opacity: 0.18 }));
+    glow.position.copy(basePos);
+    scene.add(glow);
+    // Add leader highlight (ring) to the leader master
+    let crown = undefined;
     if (i === leaderIdx) {
-      crown = createCrownMesh()
-      crown.position.copy(basePos)
-      scene.add(crown)
+      const ringGeometry = new THREE.TorusGeometry(MASTER_RADIUS + 0.03, 0.012, 16, 32);
+      const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.7 });
+      crown = new THREE.Mesh(ringGeometry, ringMaterial);
+      crown.position.copy(basePos);
+      crown.rotation.x = Math.PI / 2;
+      scene.add(crown);
     }
-    masters.push({ mesh, glow, basePos, phase: Math.random() * Math.PI * 2, crown })
+    masters.push({ mesh, glow, basePos, phase: Math.random() * Math.PI * 2, crown });
   }
   // Place worker nodes in a ring outside
+  const WORKER_RADIUS = 0.07; // Reduced from 0.12
+  const WORKER_GLOW_RADIUS = 0.12; // Reduced from 0.21
   for (let i = 0; i < WORKER_COUNT; i++) {
     const angle = (i / WORKER_COUNT) * Math.PI * 2
     const basePos = new THREE.Vector3(
-      WORKER_RADIUS * Math.cos(angle),
-      WORKER_RADIUS * Math.sin(angle),
+      WORKER_RING_RADIUS * Math.cos(angle),
+      WORKER_RING_RADIUS * Math.sin(angle),
       0
     )
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.12, 18, 18),
-      new THREE.MeshBasicMaterial({ color: WORKER_COLOR })
-    )
-    mesh.position.copy(basePos)
-    scene.add(mesh)
-    // Glow
-    const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.21, 18, 18),
-      new THREE.MeshBasicMaterial({ color: WORKER_COLOR, transparent: true, opacity: 0.18 })
-    )
-    glow.position.copy(basePos)
-    scene.add(glow)
-    workers.push({ mesh, glow, basePos, phase: Math.random() * Math.PI * 2 })
+    const workerGeometry = new THREE.SphereGeometry(WORKER_RADIUS, 18, 18);
+    const workerGlowGeometry = new THREE.SphereGeometry(WORKER_GLOW_RADIUS, 18, 18);
+    const mesh = new THREE.Mesh(workerGeometry, new THREE.MeshBasicMaterial({ color: WORKER_COLOR }));
+    mesh.position.copy(basePos);
+    scene.add(mesh);
+    const glow = new THREE.Mesh(workerGlowGeometry, new THREE.MeshBasicMaterial({ color: WORKER_COLOR, transparent: true, opacity: 0.18 }));
+    glow.position.copy(basePos);
+    scene.add(glow);
+    workers.push({ mesh, glow, basePos, phase: Math.random() * Math.PI * 2 });
   }
   // Connect masters to each other (full mesh)
   for (let i = 0; i < MASTER_COUNT; i++) {
@@ -211,65 +232,52 @@ onMounted(() => {
   function animate(time = 0) {
     animationId = requestAnimationFrame(animate)
     const t = time * 0.001
-    // Animate masters (gentle organic motion)
+
+    // Auto-rotate like globe
+    if (autoRotate) {
+      rotationY += 0.0005
+    }
+
+    // Animate masters with calmer floating motion
     masters.forEach((master, idx) => {
-      master.mesh.position.x = master.basePos.x + Math.sin(t * 0.7 + master.phase + idx) * 0.09
-      master.mesh.position.y = master.basePos.y + Math.cos(t * 0.9 + master.phase + idx * 1.2) * 0.09
-      master.mesh.position.z = master.basePos.z + Math.sin(t * 0.5 + master.phase + idx * 0.7) * 0.07
+      master.mesh.position.x = master.basePos.x + Math.sin(t * 0.7 + master.phase + idx * 0.3) * 0.04
+      master.mesh.position.y = master.basePos.y + Math.cos(t * 0.9 + master.phase + idx * 0.4) * 0.04
+      master.mesh.position.z = master.basePos.z + Math.sin(t * 0.5 + master.phase + idx * 0.2) * 0.03
       master.glow.position.copy(master.mesh.position)
       if (master.crown) master.crown.position.copy(master.mesh.position)
+      master.mesh.rotation.y = rotationY * 0.2 + idx * 0.6
     })
-    // Animate workers (gentle organic motion)
+
+    // Animate workers with calmer floating motion
     workers.forEach((worker, idx) => {
-      worker.mesh.position.x = worker.basePos.x + Math.sin(t * 0.7 + worker.phase + idx) * 0.07
-      worker.mesh.position.y = worker.basePos.y + Math.cos(t * 0.9 + worker.phase + idx * 1.2) * 0.07
-      worker.mesh.position.z = worker.basePos.z + Math.sin(t * 0.5 + worker.phase + idx * 0.7) * 0.05
+      worker.mesh.position.x = worker.basePos.x + Math.sin(t * 0.7 + worker.phase + idx * 0.2) * 0.03
+      worker.mesh.position.y = worker.basePos.y + Math.cos(t * 0.9 + worker.phase + idx * 0.3) * 0.03
+      worker.mesh.position.z = worker.basePos.z + Math.sin(t * 0.5 + worker.phase + idx * 0.1) * 0.02
       worker.glow.position.copy(worker.mesh.position)
+      worker.mesh.rotation.y = rotationY * 0.15 + idx * 0.4
     })
-    // Update connections
-    connections.forEach(conn => {
+
+    // Update connections with enhanced opacity
+    connections.forEach((conn, idx) => {
       conn.line.geometry.setFromPoints([
         conn.nodes[0].position,
         conn.nodes[1].position
       ])
+      // Enhanced opacity animation like globe
+      const material = conn.line.material as THREE.LineBasicMaterial
+      material.opacity = 0.18 + Math.sin(t * 2 + idx * 0.3) * 0.08
     })
-    workerConnections.forEach(conn => {
+
+    workerConnections.forEach((conn, idx) => {
       conn.line.geometry.setFromPoints([
         conn.nodes[0].position,
         conn.nodes[1].position
       ])
+      // Enhanced opacity animation like globe
+      const material = conn.line.material as THREE.LineBasicMaterial
+      material.opacity = 0.12 + Math.sin(t * 2 + idx * 0.3) * 0.06
     })
-    // Consensus pulses between masters
-    pulseCooldown--
-    if (pulseCooldown <= 0) {
-      // Launch a new pulse between two random masters
-      let from = Math.floor(Math.random() * MASTER_COUNT)
-      let to = from
-      while (to === from) to = Math.floor(Math.random() * MASTER_COUNT)
-      pulses.push({
-        mesh: createPulseMesh(),
-        from,
-        to,
-        t: 0,
-        active: true
-      })
-      pulseCooldown = 30 + Math.random() * 40
-    }
-    pulses.forEach((pulse, idx) => {
-      if (!pulse.active) return
-      pulse.t += 0.035
-      const fromPos = masters[pulse.from].mesh.position
-      const toPos = masters[pulse.to].mesh.position
-      pulse.mesh.position.lerpVectors(fromPos, toPos, pulse.t)
-      let mat = pulse.mesh.material
-      if (Array.isArray(mat)) mat = mat[0]
-      if (mat && 'opacity' in mat) mat.opacity = 0.5 + 0.45 * Math.sin(Math.PI * pulse.t)
-      if (pulse.t >= 1) {
-        pulse.active = false
-        scene!.remove(pulse.mesh)
-      }
-    })
-    pulses = pulses.filter(p => p.active)
+
     // Leader election animation
     leaderChangeCooldown--
     if (leaderChangeCooldown <= 0) {
@@ -278,72 +286,161 @@ onMounted(() => {
       leaderTransition = 0
       leaderChangeCooldown = 180 + Math.random() * 80
       // Move crown
-      if (masters[prevLeaderIdx].crown) scene!.remove(masters[prevLeaderIdx].crown!)
+      if (masters[prevLeaderIdx].crown && scene) {
+        scene.remove(masters[prevLeaderIdx].crown!)
+      }
       masters[leaderIdx].crown = createCrownMesh()
-      masters[leaderIdx].crown!.position.copy(masters[leaderIdx].mesh.position)
-      scene!.add(masters[leaderIdx].crown!)
+      if (masters[leaderIdx].crown) {
+        masters[leaderIdx].crown!.position.copy(masters[leaderIdx].mesh.position)
+        if (scene) {
+          scene.add(masters[leaderIdx].crown!)
+        }
+      }
     }
+
     // Animate crown scale for leader
     masters.forEach((master, idx) => {
       if (master.crown) {
         let scale = idx === leaderIdx ? 1 + 0.13 * Math.sin(t * 2.5) : 1
         master.crown.scale.set(scale, scale, scale)
       }
-      // Animate leader glow
+      // Animate leader glow with enhanced effects
       if (idx === leaderIdx) {
         let glowMat = master.glow.material
         if (Array.isArray(glowMat)) glowMat = glowMat[0]
         if (glowMat && 'opacity' in glowMat) {
-          glowMat.opacity = 0.32 + 0.10 * Math.abs(Math.sin(t * 2.5))
+          glowMat.opacity = 0.35 + 0.12 * Math.abs(Math.sin(t * 2.5))
         }
         let meshMat = master.mesh.material
         if (Array.isArray(meshMat)) meshMat = meshMat[0]
-        if (meshMat && 'color' in meshMat && meshMat.color instanceof THREE.Color) meshMat.color.set(LEADER_COLOR)
+        if (meshMat && 'color' in meshMat && meshMat.color instanceof THREE.Color) {
+          meshMat.color.set(LEADER_COLOR)
+        }
       } else {
         let glowMat = master.glow.material
         if (Array.isArray(glowMat)) glowMat = glowMat[0]
         if (glowMat && 'opacity' in glowMat) {
-          glowMat.opacity = 0.18
+          glowMat.opacity = 0.18 + 0.05 * Math.sin(t * 1.5 + idx)
         }
         let meshMat = master.mesh.material
         if (Array.isArray(meshMat)) meshMat = meshMat[0]
-        if (meshMat && 'color' in meshMat && meshMat.color instanceof THREE.Color) meshMat.color.set(MASTER_COLOR)
+        if (meshMat && 'color' in meshMat && meshMat.color instanceof THREE.Color) {
+          meshMat.color.set(MASTER_COLOR)
+        }
       }
     })
+
+    // Generate master→worker and worker→master communication pulses
+    if (mwCommPulses.length === 0) {
+      mwCommCooldown--;
+      if (mwCommCooldown <= 0) {
+        const masterIdx = Math.floor(Math.random() * MASTER_COUNT)
+        const workerIdx = Math.floor(Math.random() * WORKER_COUNT)
+        mwCommPulses.push({
+          mesh: createCommPulseMesh('m2w'),
+          from: masters[masterIdx].mesh.position.clone(),
+          to: workers[workerIdx].mesh.position.clone(),
+          t: 0,
+          active: true,
+          direction: 'm2w',
+          workerIdx
+        })
+        if (Math.random() < 0.5) {
+          mwCommPulses.push({
+            mesh: createCommPulseMesh('w2m'),
+            from: workers[workerIdx].mesh.position.clone(),
+            to: masters[masterIdx].mesh.position.clone(),
+            t: 0,
+            active: true,
+            direction: 'w2m',
+            workerIdx
+          })
+        }
+        mwCommCooldown = 200 + Math.random() * 120
+      }
+    }
+    // Animate communication pulses
+    mwCommPulses = mwCommPulses.filter(pulse => {
+      pulse.t += 0.025
+      if (pulse.t >= 1) {
+        if (scene) scene.remove(pulse.mesh)
+        // Highlight worker node if pulse was master→worker
+        if (pulse.direction === 'm2w') {
+          workerHighlightTimers[pulse.workerIdx] = 12 // frames to highlight
+        }
+        return false
+      }
+      pulse.mesh.position.lerpVectors(pulse.from, pulse.to, pulse.t)
+      const material = pulse.mesh.material as THREE.MeshBasicMaterial
+      material.opacity = 0.7 * (1 - pulse.t)
+      return true
+    })
+    // Animate worker highlight
+    workers.forEach((worker, idx) => {
+      if (workerHighlightTimers[idx] > 0) {
+        workerHighlightTimers[idx]--
+        let mat = worker.mesh.material
+        if (Array.isArray(mat)) mat = mat[0]
+        if (mat && 'color' in mat && mat.color instanceof THREE.Color) {
+          mat.color.lerp(new THREE.Color(WORKER_COLOR), 0.15)
+          mat.color.offsetHSL(0, 0, 0.08)
+        }
+        let glowMat = worker.glow.material
+        if (Array.isArray(glowMat)) glowMat = glowMat[0]
+        if (glowMat && 'opacity' in glowMat) {
+          glowMat.opacity = 0.18 + 0.17 * (workerHighlightTimers[idx] / 12)
+        }
+      } else {
+        let mat = worker.mesh.material
+        if (Array.isArray(mat)) mat = mat[0]
+        if (mat && 'color' in mat && mat.color instanceof THREE.Color) {
+          mat.color.set(WORKER_COLOR)
+        }
+        let glowMat = worker.glow.material
+        if (Array.isArray(glowMat)) glowMat = glowMat[0]
+        if (glowMat && 'opacity' in glowMat) {
+          glowMat.opacity = 0.18
+        }
+      }
+    })
+
     renderer!.render(scene!, camera!)
   }
+
+  function createCrownMesh() {
+    // Sophisticated leader indicator: subtle ring with glow, but as a single mesh
+    const ringGeometry = new THREE.TorusGeometry(0.25, 0.03, 16, 32)
+    const ringMaterial = new THREE.MeshBasicMaterial({ 
+      color: LEADER_COLOR, 
+      transparent: true, 
+      opacity: 0.6
+    })
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial)
+    ring.position.z = 0.15
+    return ring
+  }
+
+  // Helper to create a communication pulse mesh
+  function createCommPulseMesh(direction: 'm2w' | 'w2m') {
+    const color = direction === 'm2w' ? 0x60a5fa : 0x34d399 // blue for master→worker, green for worker→master
+    const geometry = new THREE.SphereGeometry(0.05, 10, 10)
+    const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 })
+    const mesh = new THREE.Mesh(geometry, material)
+    if (scene) scene.add(mesh)
+    return mesh
+  }
+
   animate()
 })
-
-function createPulseMesh() {
-  const pulseGeom = new THREE.SphereGeometry(0.09, 16, 16)
-  const pulseMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.92 })
-  const mesh = new THREE.Mesh(pulseGeom, pulseMat)
-  scene!.add(mesh)
-  return mesh
-}
-function createCrownMesh() {
-  // Simple crown: 3-pointed polygon
-  const shape = new THREE.Shape()
-  shape.moveTo(-0.13, 0)
-  shape.lineTo(-0.09, 0.13)
-  shape.lineTo(0, 0.09)
-  shape.lineTo(0.09, 0.13)
-  shape.lineTo(0.13, 0)
-  shape.lineTo(0, 0)
-  const extrudeSettings = { depth: 0.04, bevelEnabled: false }
-  const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings)
-  const material = new THREE.MeshBasicMaterial({ color: 0xfff200, transparent: true, opacity: 0.92 })
-  const mesh = new THREE.Mesh(geometry, material)
-  mesh.position.z = 0.23
-  return mesh
-}
 
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId)
   if (renderer) {
     renderer.dispose()
     renderer = null
+  }
+  if (handleResize) {
+    window.removeEventListener('resize', handleResize)
   }
 })
 </script>
@@ -375,7 +472,7 @@ onBeforeUnmount(() => {
   height: 600px;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
 }
 .feature-animation-glow {
   position: absolute;
@@ -476,7 +573,8 @@ onBeforeUnmount(() => {
 .node-label {
   position: absolute;
   background: rgba(30, 41, 59, 0.92);
-  font-size: 1rem;
+  color: #8ecfff;
+  font-size: 0.9rem;
   font-weight: 500;
   padding: 0.25rem 0.7rem;
   border-radius: 8px;
@@ -484,7 +582,7 @@ onBeforeUnmount(() => {
   z-index: 20;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
-  border: 1px solid;
+  border: 1px solid #60a5fa33;
   transform: translate(-50%, -120%);
   user-select: none;
 }

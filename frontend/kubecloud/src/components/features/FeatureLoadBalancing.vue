@@ -51,6 +51,12 @@ const serviceLines: THREE.Line[] = []
 let trafficPulses: { mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3, t: number, active: boolean }[] = []
 let trafficCooldown = 0
 
+// Globe-compatible animation states
+let autoRotate = true
+let rotationY = 0
+let scalingPulses: { mesh: THREE.Mesh, from: THREE.Vector3, to: THREE.Vector3, t: number, active: boolean }[] = []
+let scalingCooldown = 0
+
 const hoveredNode = shallowRef<{ mesh: THREE.Mesh, type: string, pos: { x: number, y: number } } | null>(null)
 
 const nodeLabelStyle = computed(() => {
@@ -187,21 +193,64 @@ onMounted(() => {
   function animate(time = 0) {
     animationId = requestAnimationFrame(animate)
     const t = time * 0.001
-    // Animate clients
+
+    // Auto-rotate like globe
+    if (autoRotate) {
+      rotationY += 0.001
+    }
+
+    // Animate clients with globe-like floating motion
     clients.forEach((client, idx) => {
-      client.mesh.position.x = client.basePos.x + Math.sin(t * 0.7 + client.phase + idx) * 0.07
-      client.mesh.position.y = client.basePos.y + Math.cos(t * 0.9 + client.phase + idx * 1.2) * 0.07
-      client.mesh.position.z = client.basePos.z + Math.sin(t * 0.5 + client.phase + idx * 0.7) * 0.05
+      client.mesh.position.x = client.basePos.x + Math.sin(t * 0.7 + client.phase + idx * 0.3) * 0.06
+      client.mesh.position.y = client.basePos.y + Math.cos(t * 0.9 + client.phase + idx * 0.4) * 0.06
+      client.mesh.position.z = client.basePos.z + Math.sin(t * 0.5 + client.phase + idx * 0.2) * 0.04
       client.glow.position.copy(client.mesh.position)
       clientLines[idx].geometry.setFromPoints([client.mesh.position, loadBalancer!.mesh.position])
+      
+      // Rotate around center like globe
+      client.mesh.rotation.y = rotationY * 0.3 + idx * 0.2
     })
-    // Animate load balancer
+
+    // Animate load balancer with enhanced effects
     if (loadBalancer) {
       loadBalancer.mesh.position.x = loadBalancer.basePos.x + Math.sin(t * 0.6) * 0.04
       loadBalancer.mesh.position.y = loadBalancer.basePos.y + Math.cos(t * 0.8) * 0.04
       loadBalancer.mesh.position.z = loadBalancer.basePos.z + Math.sin(t * 0.5) * 0.03
       loadBalancer.glow.position.copy(loadBalancer.mesh.position)
+      
+      // Rotate around center
+      loadBalancer.mesh.rotation.y = rotationY * 0.5
     }
+
+    // Generate scaling pulses
+    scalingCooldown--
+    if (scalingCooldown <= 0 && Math.random() < 0.015) {
+      const activeServices = services.filter(s => s.active && s.opacity > 0.8)
+      if (activeServices.length > 0) {
+        const service = activeServices[Math.floor(Math.random() * activeServices.length)]
+        const pulse = createScalingPulse(loadBalancer!.mesh.position, service.mesh.position)
+        if (pulse) {
+          scalingPulses.push(pulse)
+          scalingCooldown = 50
+        }
+      }
+    }
+
+    // Animate scaling pulses
+    scalingPulses = scalingPulses.filter(pulse => {
+      pulse.t += 0.006
+      if (pulse.t >= 1) {
+        if (scene) {
+          scene.remove(pulse.mesh)
+        }
+        return false
+      }
+      pulse.mesh.position.lerpVectors(pulse.from, pulse.to, pulse.t)
+      const material = pulse.mesh.material as THREE.MeshBasicMaterial
+      material.opacity = 0.7 * (1 - pulse.t)
+      return true
+    })
+
     // Dynamic scaling: randomly activate/deactivate service nodes
     if (Math.random() < 0.012) {
       const actives = services.filter(s => s.active)
@@ -216,7 +265,8 @@ onMounted(() => {
         if (s) s.active = false
       }
     }
-    // Animate service fade/scale
+
+    // Animate service fade/scale with enhanced effects
     services.forEach((service, idx) => {
       const t2 = t + service.phase
       if (service.active && service.opacity < 1) {
@@ -233,24 +283,35 @@ onMounted(() => {
       if (service.scale > 1) service.scale = 1
       service.mesh.scale.set(service.scale, service.scale, service.scale)
       service.glow.scale.set(service.scale, service.scale, service.scale)
-      // Animate position
-      service.mesh.position.x = service.basePos.x + Math.sin(t2 * 0.7 + idx) * 0.06
-      service.mesh.position.y = service.basePos.y + Math.cos(t2 * 0.9 + idx * 1.2) * 0.06
-      service.mesh.position.z = service.basePos.z + Math.sin(t2 * 0.5 + idx * 0.7) * 0.04
+      
+      // Animate position with globe-like motion
+      service.mesh.position.x = service.basePos.x + Math.sin(t2 * 0.7 + idx * 0.2) * 0.05
+      service.mesh.position.y = service.basePos.y + Math.cos(t2 * 0.9 + idx * 0.3) * 0.05
+      service.mesh.position.z = service.basePos.z + Math.sin(t2 * 0.5 + idx * 0.1) * 0.03
       service.glow.position.copy(service.mesh.position)
-      // Update material opacity
+      
+      // Rotate around center
+      service.mesh.rotation.y = rotationY * 0.4 + idx * 0.6
+      
+      // Update material opacity with enhanced effects
       let mat = service.mesh.material
       if (Array.isArray(mat)) mat = mat[0]
       if (mat && 'opacity' in mat) mat.opacity = service.opacity
       let glowMat = service.glow.material
       if (Array.isArray(glowMat)) glowMat = glowMat[0]
-      if (glowMat && 'opacity' in glowMat) glowMat.opacity = 0.18 * service.opacity
-      // Update service connection line
+      if (glowMat && 'opacity' in glowMat) {
+        glowMat.opacity = (0.18 + 0.05 * Math.sin(t * 2 + idx)) * service.opacity
+      }
+      
+      // Update service connection line with enhanced opacity
       serviceLines[idx].geometry.setFromPoints([loadBalancer!.mesh.position, service.mesh.position])
       let lineMat = serviceLines[idx].material
       if (Array.isArray(lineMat)) lineMat = lineMat[0]
-      if (lineMat && 'opacity' in lineMat) lineMat.opacity = 0.18 * service.opacity
+      if (lineMat && 'opacity' in lineMat) {
+        lineMat.opacity = (0.18 + 0.06 * Math.sin(t * 2 + idx * 0.3)) * service.opacity
+      }
     })
+
     // Animate traffic pulses: from random client to load balancer, then to random active service
     trafficCooldown--
     if (trafficCooldown <= 0) {
@@ -275,12 +336,29 @@ onMounted(() => {
       if (mat && 'opacity' in mat) mat.opacity = 0.5 + 0.45 * Math.sin(Math.PI * pulse.t)
       if (pulse.t >= 1) {
         pulse.active = false
-        scene!.remove(pulse.mesh)
+        if (scene) {
+          scene.remove(pulse.mesh)
+        }
       }
     })
     trafficPulses = trafficPulses.filter(p => p.active)
     renderer!.render(scene!, camera!)
   }
+
+  function createScalingPulse(from: THREE.Vector3, to: THREE.Vector3) {
+    if (!scene) return null
+    const geometry = new THREE.SphereGeometry(0.06, 12, 12)
+    const material = new THREE.MeshBasicMaterial({
+      color: SERVICE_COLOR,
+      transparent: true,
+      opacity: 0.7
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.copy(from)
+    scene.add(mesh)
+    return { mesh, from: from.clone(), to: to.clone(), t: 0, active: true }
+  }
+
   animate()
 })
 
