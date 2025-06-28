@@ -33,7 +33,7 @@ const router = createRouter({
     {
       path: '/clusters/:id',
       name: 'manage-cluster',
-      component: () => import('../views/ManageClusterView.vue'),
+      component: () => import('../components/dashboard/ManageClusterView.vue'),
       props: true
     },
     {

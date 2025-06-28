@@ -1,483 +1,284 @@
 <template>
-  <v-container class="fill-height">
-    <v-card class="mx-auto deploy-card" width="100%" max-width="1200" elevation="8">
-      <v-card-title class="text-h4 mb-2 text-center pa-6 bg-gradient">
-        <v-icon icon="mdi-rocket-launch" class="mr-3" size="large"></v-icon>
-        Deploy New Cluster
-        <v-chip class="ml-3" color="primary" variant="outlined" size="small">
-          {{ step }}/3 Steps
-        </v-chip>
-      </v-card-title>
+  <div class="deploy-container">
+    <v-container fluid class="pa-0">
+      <div class="deploy-header mb-6">
+        <h1 class="hero-title">Deploy New Cluster</h1>
+        <p class="section-subtitle">Create and configure your Kubernetes cluster in just a few steps</p>
+      </div>
       
-      <!-- Progress Bar -->
-      <v-progress-linear 
-        :model-value="(step / 3) * 100" 
-        color="primary" 
-        height="4"
-        class="mb-0"
-      ></v-progress-linear>
+      <div class="deploy-content-wrapper">
+        <div class="deploy-card">
+          <!-- Progress Indicator -->
+          <div class="progress-section">
+            <div class="progress-header">
+              <div class="progress-step" :class="{ active: step >= 1, completed: step > 1 }">
+                <div class="step-number">1</div>
+                <div class="step-label">Define VMs</div>
+              </div>
+              <div class="progress-line" :class="{ completed: step > 1 }"></div>
+              <div class="progress-step" :class="{ active: step >= 2, completed: step > 2 }">
+                <div class="step-number">2</div>
+                <div class="step-label">Place VMs</div>
+              </div>
+              <div class="progress-line" :class="{ completed: step > 2 }"></div>
+              <div class="progress-step" :class="{ active: step >= 3 }">
+                <div class="step-number">3</div>
+                <div class="step-label">Review</div>
+              </div>
+            </div>
+          </div>
 
-      <v-stepper v-model="step" class="elevation-0">
-        <v-stepper-header class="mb-4">
-          <v-stepper-item 
-            :complete="step > 1" 
-            :value="1"
-            title="Define VMs"
-            @click="step = 1"
-          >
-            Virtual Machines
-          </v-stepper-item>
-
-          <v-divider></v-divider>
-
-          <v-stepper-item 
-            :complete="step > 2" 
-            :value="2"
-            title="Place VMs"
-            @click="step = 2"
-          >
-            Node Placement
-          </v-stepper-item>
-
-          <v-divider></v-divider>
-
-          <v-stepper-item 
-            :complete="step > 3" 
-            :value="3"
-            title="Review"
-            @click="step = 3"
-          >
-            Configure & Review
-          </v-stepper-item>
-        </v-stepper-header>
-
-        <!-- Step 1: Define Your Cluster's Virtual Machines -->
-        <v-stepper-window v-model="step">
-          <v-stepper-window-item :value="1">
-          <v-card>
-            <v-card-text>
-              <!-- Masters Section -->
-              <v-row>
-                <v-col cols="12" md="6">
-                  <v-card variant="outlined" class="pa-4 mb-4">
-                    <v-card-title class="d-flex align-center">
-                      <v-icon icon="mdi-server" class="mr-2"></v-icon>
-                      Masters
-                      <v-spacer></v-spacer>
-                      <v-btn
-                        color="primary"
-                        :disabled="masters.length >= 3"
-                        prepend-icon="mdi-plus"
-                        size="small"
-                        @click="addMaster"
-                      >
-                        Add Master
-                      </v-btn>
-                    </v-card-title>
-                    <v-list>
-                      <v-list-item v-for="(master, index) in masters" :key="index">
-                        <template v-slot:prepend>
-                          <v-icon icon="mdi-desktop-classic"></v-icon>
-                        </template>
-                        <v-list-item-title class="font-weight-bold">{{ master.name }}</v-list-item-title>
-                        <v-list-item-subtitle>
-                          <v-chip color="primary" size="small" class="mr-2">vCPU: {{ master.vcpu }}</v-chip>
-                          <v-chip color="primary" size="small">RAM: {{ master.ram }}GB</v-chip>
-                        </v-list-item-subtitle>
-                        <template v-slot:append>
-                          <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="removeMaster(index)"></v-btn>
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </v-card>
-                </v-col>
-
-                <v-col cols="12" md="6">
-                  <v-card variant="outlined" class="pa-4 mb-4">
-                    <v-card-title class="d-flex align-center">
-                      <v-icon icon="mdi-desktop-tower-monitor" class="mr-2"></v-icon>
-                      Workers
-                      <v-spacer></v-spacer>
-                      <v-btn
-                        color="primary"
-                        prepend-icon="mdi-plus"
-                        size="small"
-                        @click="addWorker"
-                      >
-                        Add Worker
-                      </v-btn>
-                    </v-card-title>
-                    <v-list>
-                      <v-list-item v-for="(worker, index) in workers" :key="index">
-                        <template v-slot:prepend>
-                          <v-icon icon="mdi-desktop-tower"></v-icon>
-                        </template>
-                        <v-list-item-title class="font-weight-bold">{{ worker.name }}</v-list-item-title>
-                        <v-list-item-subtitle>
-                          <v-chip color="primary" size="small" class="mr-2">vCPU: {{ worker.vcpu }}</v-chip>
-                          <v-chip color="primary" size="small">RAM: {{ worker.ram }}GB</v-chip>
-                        </v-list-item-subtitle>
-                        <template v-slot:append>
-                          <v-btn icon="mdi-delete" variant="text" color="error" size="small" @click="removeWorker(index)"></v-btn>
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </v-card>
-                </v-col>
-              </v-row>
-            </v-card-text>
-            <v-divider></v-divider>
-            <v-card-actions>
-              <v-spacer></v-spacer>
-              <v-btn
-                color="primary"
-                :disabled="!masters.length"
-                @click="nextStep"
-              >
-                Continue
-                <v-icon end icon="mdi-arrow-right"></v-icon>
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-          </v-stepper-window-item>
-
-          <!-- Step 2: Place Your VMs on Your Reserved Nodes -->
-          <v-stepper-window-item :value="2">
-          <v-card>
-            <v-card-text>
-              <h3 class="text-h6 mb-4">
-                <v-icon icon="mdi-server-network" class="mr-2"></v-icon>
-                Assign VMs to Reserved Nodes
-              </h3>
-              <p class="text-body-2 mb-6 text-medium-emphasis">
-                Select which reserved nodes will host your cluster VMs. Each VM will be deployed on the selected node.
-              </p>
+          <!-- Step Content -->
+          <div class="step-content">
+            <!-- Step 1: Define Your Cluster's Virtual Machines -->
+            <div v-if="step === 1" class="step-section">
+              <div class="section-header">
+                <h3 class="section-title">
+                  <v-icon icon="mdi-server" class="mr-2"></v-icon>
+                  Define Virtual Machines
+                </h3>
+                <p class="section-subtitle">Configure the compute resources for your cluster</p>
+              </div>
               
-              <v-row>
-                <v-col cols="12">
-                  <div class="vm-assignment-grid">
-                    <v-card 
-                      v-for="(vm, index) in allVMs" 
-                      :key="index"
-                      variant="outlined" 
-                      class="pa-4 mb-4 vm-card"
-                    >
-                      <div class="d-flex align-center mb-3">
-                        <v-avatar 
-                          :color="vm.name.includes('Master') ? 'primary' : 'secondary'" 
-                          size="40" 
-                          class="mr-3"
-                        >
-                          <v-icon 
-                            :icon="vm.name.includes('Master') ? 'mdi-server' : 'mdi-desktop-tower'" 
-                            color="white"
-                          ></v-icon>
-                        </v-avatar>
-                        <div class="flex-grow-1">
-                          <h4 class="text-h6 mb-1">{{ vm.name }}</h4>
-                          <div class="d-flex gap-2">
-                            <v-chip color="primary" size="small" variant="tonal">
-                              {{ vm.vcpu }} vCPU
-                            </v-chip>
-                            <v-chip color="primary" size="small" variant="tonal">
-                              {{ vm.ram }}GB RAM
-                            </v-chip>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <v-select
-                        :items="availableNodes"
-                        label="Select Reserved Node"
-                        v-model="vm.node"
-                        item-title="label"
-                        item-value="id"
-                        prepend-inner-icon="mdi-server-network"
-                        variant="outlined"
-                        :hint="vm.node ? getNodeInfo(vm.node) : 'Choose a node for this VM'"
-                        persistent-hint
-                        class="mt-2"
-                      >
-                        <template v-slot:item="{ props, item }">
-                          <v-list-item v-bind="props" :title="item.raw.label">
-                            <template v-slot:prepend>
-                              <v-icon icon="mdi-server-network" class="mr-2"></v-icon>
-                            </template>
-                            <v-list-item-title>{{ item.raw.label }}</v-list-item-title>
-                            <v-list-item-subtitle>
-                              {{ item.raw.totalCPU }} vCPU, {{ item.raw.totalRAM }}GB RAM
-                              <v-chip 
-                                v-if="item.raw.hasGPU" 
-                                color="success" 
-                                size="x-small" 
-                                class="ml-2"
-                              >
-                                GPU
-                              </v-chip>
-                            </v-list-item-subtitle>
-                          </v-list-item>
-                        </template>
-                      </v-select>
-                    </v-card>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-card-text>
-            <v-divider></v-divider>
-            <v-card-actions>
-              <v-btn text @click="prevStep">
-                <v-icon start icon="mdi-arrow-left"></v-icon>
-                Back
-              </v-btn>
-              <v-spacer></v-spacer>
-              <v-btn
-                color="primary"
-                @click="nextStep"
-                :disabled="!allVMsAssigned"
-              >
-                Continue
-                <v-icon end icon="mdi-arrow-right"></v-icon>
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-          </v-stepper-window-item>
-
-          <!-- Step 3: Configure and Review -->
-          <v-stepper-window-item :value="3">
-          <v-card>
-            <v-card-text>
-              <!-- Configuration Section -->
-              <div class="mb-6">
-                <h3 class="text-h5 mb-4 d-flex align-center">
-                  <v-icon icon="mdi-cog" class="mr-3" color="primary"></v-icon>
-                  Cluster Configuration
-                </h3>
-                
-                <!-- Cluster Name -->
-                <v-card variant="outlined" class="pa-4 mb-4">
-                  <v-card-title class="text-subtitle-1 pb-2">
-                    <v-icon icon="mdi-kubernetes" class="mr-2" color="primary"></v-icon>
-                    Cluster Name
-                  </v-card-title>
-                  <v-text-field
-                    v-model="clusterName"
-                    label="Enter cluster name"
-                    :rules="[v => !!v || 'Cluster name is required']"
-                    required
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    class="mt-2"
-                  ></v-text-field>
-                </v-card>
-
-                <!-- SSH Keys Selection -->
-                <v-card variant="outlined" class="pa-4 mb-4">
-                  <v-card-title class="text-subtitle-1 pb-2">
-                    <v-icon icon="mdi-key" class="mr-2" color="primary"></v-icon>
-                    SSH Keys
-                    <v-chip color="error" size="x-small" class="ml-2" v-if="selectedSshKeys.length === 0">Required</v-chip>
-                  </v-card-title>
-                  <p class="text-body-2 text-medium-emphasis mb-3">
-                    Select SSH keys to access your cluster nodes. You can select multiple keys.
-                  </p>
-                  
-                  <v-chip-group
-                    v-model="selectedSshKeys"
-                    multiple
-                    column
-                    class="mb-3"
-                  >
-                    <v-chip
-                      v-for="key in availableSshKeys"
-                      :key="key.id"
-                      :value="key.id"
-                      filter
+              <div class="vm-config-grid">
+                <div class="vm-config-card">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <v-icon icon="mdi-server" class="mr-2"></v-icon>
+                      Master Nodes
+                    </h4>
+                    <v-btn
+                      color="primary"
+                      :disabled="masters.length >= 3"
+                      prepend-icon="mdi-plus"
+                      size="small"
                       variant="outlined"
-                      class="ssh-key-chip"
+                      @click="addMaster"
                     >
-                      <template v-slot:prepend>
-                        <v-icon icon="mdi-key-variant" size="small"></v-icon>
-                      </template>
-                      {{ key.name }}
-                      <template v-slot:append>
-                        <v-tooltip activator="parent" location="top">
-                          <div class="text-caption">
-                            <strong>{{ key.name }}</strong><br>
-                            Fingerprint: {{ key.fingerprint }}<br>
-                            Added: {{ key.createdAt }}
-                          </div>
-                        </v-tooltip>
-                      </template>
-                    </v-chip>
-                  </v-chip-group>
-                  
-                  <div v-if="selectedSshKeys.length === 0" class="text-body-2 text-error mb-2">
-                    <v-icon icon="mdi-alert" size="small" class="mr-1"></v-icon>
-                    Please select at least one SSH key
+                      Add Master
+                    </v-btn>
+                  </div>
+                  <div class="vm-list">
+                    <div v-for="(master, index) in masters" :key="index" class="vm-item">
+                      <div class="vm-icon" data-type="master">
+                        <v-icon icon="mdi-desktop-classic" color="var(--color-primary)"></v-icon>
+                      </div>
+                      <div class="vm-details">
+                        <div class="vm-name">{{ master.name }}</div>
+                        <div class="vm-specs">
+                          <span class="spec-chip">{{ master.vcpu }} vCPU</span>
+                          <span class="spec-chip">{{ master.ram }}GB RAM</span>
+                        </div>
+                      </div>
+                      <v-btn 
+                        icon="mdi-delete" 
+                        variant="text" 
+                        color="error" 
+                        size="small" 
+                        @click="removeMaster(index)"
+                      ></v-btn>
+                    </div>
+                    <div v-if="!masters.length" class="empty-state">
+                      <v-icon icon="mdi-plus-circle-outline" size="32" color="var(--color-text-muted)"></v-icon>
+                      <p>No master nodes configured</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="vm-config-card">
+                  <div class="card-header">
+                    <h4 class="card-title">
+                      <v-icon icon="mdi-desktop-tower-monitor" class="mr-2"></v-icon>
+                      Worker Nodes
+                    </h4>
+                    <v-btn
+                      color="primary"
+                      prepend-icon="mdi-plus"
+                      size="small"
+                      variant="outlined"
+                      @click="addWorker"
+                    >
+                      Add Worker
+                    </v-btn>
+                  </div>
+                  <div class="vm-list">
+                    <div v-for="(worker, index) in workers" :key="index" class="vm-item">
+                      <div class="vm-icon" data-type="worker">
+                        <v-icon icon="mdi-desktop-tower" color="var(--color-success)"></v-icon>
+                      </div>
+                      <div class="vm-details">
+                        <div class="vm-name">{{ worker.name }}</div>
+                        <div class="vm-specs">
+                          <span class="spec-chip">{{ worker.vcpu }} vCPU</span>
+                          <span class="spec-chip">{{ worker.ram }}GB RAM</span>
+                        </div>
+                      </div>
+                      <v-btn 
+                        icon="mdi-delete" 
+                        variant="text" 
+                        color="error" 
+                        size="small" 
+                        @click="removeWorker(index)"
+                      ></v-btn>
+                    </div>
+                    <div v-if="!workers.length" class="empty-state">
+                      <v-icon icon="mdi-plus-circle-outline" size="32" color="var(--color-text-muted)"></v-icon>
+                      <p>No worker nodes configured</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <v-btn
+                  color="primary"
+                  :disabled="!masters.length"
+                  @click="nextStep"
+                  class="btn-primary"
+                >
+                  Continue
+                  <v-icon end icon="mdi-arrow-right"></v-icon>
+                </v-btn>
+              </div>
+            </div>
+
+            <!-- Step 2: Place Your VMs on Your Reserved Nodes -->
+            <div v-if="step === 2" class="step-section">
+              <div class="section-header">
+                <h3 class="section-title">
+                  <v-icon icon="mdi-server-network" class="mr-2"></v-icon>
+                  Assign VMs to Reserved Nodes
+                </h3>
+                <p class="section-subtitle">Select which reserved nodes will host your cluster VMs</p>
+              </div>
+              
+              <div class="vm-assignment-grid">
+                <div 
+                  v-for="(vm, index) in allVMs" 
+                  :key="index"
+                  class="vm-assignment-card"
+                >
+                  <div class="vm-assignment-header">
+                    <div class="vm-avatar" :class="vm.name.includes('Master') ? 'master' : 'worker'">
+                      <v-icon 
+                        :icon="vm.name.includes('Master') ? 'mdi-server' : 'mdi-desktop-tower'" 
+                        color="white"
+                      ></v-icon>
+                    </div>
+                    <div class="vm-info">
+                      <h4 class="vm-title">{{ vm.name }}</h4>
+                      <div class="vm-specs">
+                        <span class="spec-chip">{{ vm.vcpu }} vCPU</span>
+                        <span class="spec-chip">{{ vm.ram }}GB RAM</span>
+                      </div>
+                    </div>
                   </div>
                   
-                  <v-btn
-                    variant="text"
-                    color="primary"
-                    prepend-icon="mdi-plus"
-                    size="small"
-                    @click="navigateToSshKeys"
-                  >
-                    Add New SSH Key
-                  </v-btn>
-                </v-card>
-
-                <!-- QSFS Configuration -->
-                <v-card variant="outlined" class="pa-4">
-                  <v-card-title class="text-subtitle-1 pb-2">
-                    <v-icon icon="mdi-folder-network" class="mr-2" color="primary"></v-icon>
-                    QSFS Configuration (Optional)
-                  </v-card-title>
-                  <p class="text-body-2 text-medium-emphasis mb-3">
-                    Quantum Safe File System configuration for distributed storage.
-                  </p>
-                  <v-text-field
-                    v-model="qsfsConfig"
-                    label="QSFS configuration"
+                  <v-select
+                    :items="availableNodes"
+                    label="Select Reserved Node"
+                    v-model="vm.node"
+                    item-title="label"
+                    item-value="id"
+                    prepend-inner-icon="mdi-server-network"
                     variant="outlined"
-                    density="compact"
-                    hide-details
-                    placeholder="Enter QSFS configuration..."
-                  ></v-text-field>
-                </v-card>
+                    :hint="vm.node ? getNodeInfo(vm.node) : 'Choose a node for this VM'"
+                    persistent-hint
+                    class="node-select"
+                  ></v-select>
+                </div>
               </div>
 
-              <v-divider class="my-6"></v-divider>
+              <div class="step-actions">
+                <v-btn variant="outlined" @click="prevStep" class="btn-outline">
+                  <v-icon start icon="mdi-arrow-left"></v-icon>
+                  Back
+                </v-btn>
+                <v-btn
+                  color="primary"
+                  :disabled="!allVMs.every(vm => vm.node)"
+                  @click="nextStep"
+                  class="btn-primary"
+                >
+                  Continue
+                  <v-icon end icon="mdi-arrow-right"></v-icon>
+                </v-btn>
+              </div>
+            </div>
 
-              <!-- Review Section -->
-              <div>
-                <h3 class="text-h5 mb-4 d-flex align-center">
-                  <v-icon icon="mdi-clipboard-check" class="mr-3" color="success"></v-icon>
-                  Deployment Summary
+            <!-- Step 3: Review and Deploy -->
+            <div v-if="step === 3" class="step-section">
+              <div class="section-header">
+                <h3 class="section-title">
+                  <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
+                  Review Configuration
                 </h3>
-                
-                <v-row>
-                  <!-- Cluster Details -->
-                  <v-col cols="12" md="6">
-                    <v-card variant="outlined" class="pa-4 h-100">
-                      <v-card-title class="text-subtitle-1 pb-2">
-                        <v-icon icon="mdi-kubernetes" class="mr-2" color="primary"></v-icon>
-                        Cluster Details
-                      </v-card-title>
-                      <div class="space-y-3">
-                        <div class="d-flex justify-space-between align-center">
-                          <span class="text-body-2 text-medium-emphasis">Name:</span>
-                          <span class="font-weight-medium">{{ clusterName || 'Not set' }}</span>
-                        </div>
-                        <div class="d-flex justify-space-between align-start">
-                          <span class="text-body-2 text-medium-emphasis">SSH Keys:</span>
-                          <div class="text-right">
-                            <v-chip
-                              v-for="keyId in selectedSshKeys"
-                              :key="keyId"
-                              size="x-small"
-                              color="primary"
-                              variant="tonal"
-                              class="mb-1"
-                            >
-                              {{ getSshKeyName(keyId) }}
-                            </v-chip>
-                            <div v-if="selectedSshKeys.length === 0" class="text-medium-emphasis text-caption">
-                              None selected
-                            </div>
-                          </div>
-                        </div>
-                        <div v-if="qsfsConfig" class="d-flex justify-space-between align-center">
-                          <span class="text-body-2 text-medium-emphasis">QSFS:</span>
-                          <span class="font-weight-medium text-truncate">{{ qsfsConfig }}</span>
-                        </div>
-                      </div>
-                    </v-card>
-                  </v-col>
-
-                  <!-- VM Assignments -->
-                  <v-col cols="12" md="6">
-                    <v-card variant="outlined" class="pa-4 h-100">
-                      <v-card-title class="text-subtitle-1 pb-2">
-                        <v-icon icon="mdi-server-network" class="mr-2" color="primary"></v-icon>
-                        VM Assignments
-                        <v-chip 
-                          :color="allVMsAssigned ? 'success' : 'warning'" 
-                          size="x-small" 
-                          class="ml-2"
-                        >
-                          {{ allVMsAssigned ? 'Complete' : 'Incomplete' }}
-                        </v-chip>
-                      </v-card-title>
-                      <div class="space-y-2">
-                        <div 
-                          v-for="(vm, index) in allVMs" 
-                          :key="index" 
-                          class="d-flex align-center py-2 px-3 rounded"
-                          :class="vm.node ? 'bg-success-subtle' : 'bg-warning-subtle'"
-                        >
-                          <v-icon 
-                            :icon="vm.name.includes('Master') ? 'mdi-server' : 'mdi-desktop-tower'"
-                            :color="vm.name.includes('Master') ? 'primary' : 'secondary'"
-                            size="small"
-                            class="mr-3"
-                          ></v-icon>
-                          <div class="flex-grow-1">
-                            <div class="font-weight-medium text-body-2">{{ vm.name }}</div>
-                            <div class="d-flex align-center mt-1">
-                              <v-chip color="primary" size="x-small" class="mr-1">{{ vm.vcpu }}c</v-chip>
-                              <v-chip color="primary" size="x-small" class="mr-2">{{ vm.ram }}GB</v-chip>
-                              <span class="text-caption text-medium-emphasis">
-                                → Node #{{ vm.node || 'Unassigned' }}
-                              </span>
-                            </div>
-                          </div>
-                          <v-icon 
-                            :icon="vm.node ? 'mdi-check-circle' : 'mdi-alert'"
-                            :color="vm.node ? 'success' : 'warning'"
-                            size="small"
-                          ></v-icon>
-                        </div>
-                      </div>
-                    </v-card>
-                  </v-col>
-                </v-row>
-
-                <!-- Validation Status -->
-                <v-alert
-                  v-if="!isFormValid"
-                  type="warning"
-                  variant="tonal"
-                  class="mt-4"
-                  :text="getValidationMessage()"
-                ></v-alert>
+                <p class="section-subtitle">Review your cluster configuration before deployment</p>
               </div>
-            </v-card-text>
-            <v-divider></v-divider>
-            <v-card-actions>
-              <v-btn text @click="prevStep">
-                <v-icon start icon="mdi-arrow-left"></v-icon>
-                Back
-              </v-btn>
-              <v-spacer></v-spacer>
-              <v-btn
-                color="success"
-                @click="deployCluster"
-                :loading="isDeploying"
-                :disabled="!isFormValid"
-                size="large"
-              >
-                <v-icon start icon="mdi-cloud-upload"></v-icon>
-                Deploy Cluster
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-          </v-stepper-window-item>
-        </v-stepper-window>
-      </v-stepper>
-    </v-card>
-  </v-container>
+              
+              <div class="review-grid">
+                <div class="review-card">
+                  <h4 class="review-title">Cluster Summary</h4>
+                  <div class="review-stats">
+                    <div class="review-stat">
+                      <span class="stat-label">Master Nodes:</span>
+                      <span class="stat-value">{{ masters.length }}</span>
+                    </div>
+                    <div class="review-stat">
+                      <span class="stat-label">Worker Nodes:</span>
+                      <span class="stat-value">{{ workers.length }}</span>
+                    </div>
+                    <div class="review-stat">
+                      <span class="stat-label">Total vCPU:</span>
+                      <span class="stat-value">{{ totalVcpu }}</span>
+                    </div>
+                    <div class="review-stat">
+                      <span class="stat-label">Total RAM:</span>
+                      <span class="stat-value">{{ totalRam }}GB</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="review-card">
+                  <h4 class="review-title">Node Assignment</h4>
+                  <div class="node-assignments">
+                    <div v-for="(vm, index) in allVMs" :key="index" class="node-assignment">
+                      <div class="assignment-icon">
+                        <v-icon 
+                          :icon="vm.name.includes('Master') ? 'mdi-server' : 'mdi-desktop-tower'" 
+                          :color="vm.name.includes('Master') ? 'var(--color-primary)' : 'var(--color-success)'"
+                        ></v-icon>
+                      </div>
+                      <div class="assignment-details">
+                        <div class="assignment-name">{{ vm.name }}</div>
+                        <div class="assignment-node">{{ getNodeInfo(vm.node) }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-actions">
+                <v-btn variant="outlined" @click="prevStep" class="btn-outline">
+                  <v-icon start icon="mdi-arrow-left"></v-icon>
+                  Back
+                </v-btn>
+                <v-btn
+                  color="success"
+                  @click="deployCluster"
+                  class="btn-primary"
+                  :loading="deploying"
+                >
+                  <v-icon start icon="mdi-rocket-launch"></v-icon>
+                  Deploy Cluster
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </v-container>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -510,9 +311,18 @@ interface SshKey {
 const step = ref(1);
 const masters = ref<VM[]>([]);
 const workers = ref<VM[]>([]);
-const isDeploying = ref(false);
+const deploying = ref(false);
 
 const allVMs = computed(() => [...masters.value, ...workers.value]);
+
+// Computed properties for totals
+const totalVcpu = computed(() => {
+  return allVMs.value.reduce((total, vm) => total + vm.vcpu, 0);
+});
+
+const totalRam = computed(() => {
+  return allVMs.value.reduce((total, vm) => total + vm.ram, 0);
+});
 
 // Available nodes with better structure
 const availableNodes = ref<Node[]>([
@@ -591,7 +401,8 @@ const isFormValid = computed(() => {
 });
 
 // Helper function to get node info
-function getNodeInfo(nodeId: number) {
+function getNodeInfo(nodeId: number | null) {
+  if (!nodeId) return '';
   const node = availableNodes.value.find(n => n.id === nodeId);
   if (!node) return '';
   return `${node.totalCPU} vCPU, ${node.totalRAM}GB RAM${node.hasGPU ? ', GPU Available' : ''}`;
@@ -680,7 +491,7 @@ function prevStep() {
 async function deployCluster() {
   if (!isFormValid.value) return;
 
-  isDeploying.value = true;
+  deploying.value = true;
   try {
     // Simulating API call
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -702,7 +513,7 @@ async function deployCluster() {
     console.error('Failed to deploy cluster:', error);
     alert('Failed to deploy cluster. Please try again.');
   } finally {
-    isDeploying.value = false;
+    deploying.value = false;
   }
 }
 
@@ -714,408 +525,507 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.fill-height {
-  min-height: calc(100vh - 64px);
-  padding: 2rem;
-  background: var(--v-theme-background, #0F172A);
+/* Deploy Container - matches dashboard layout */
+.deploy-container {
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family);
+}
+
+.deploy-header {
+  text-align: center;
+  max-width: 900px;
+  margin: 7rem auto 3rem auto;
+  position: relative;
+  z-index: 2;
+  padding: 0 1rem;
+}
+
+.hero-title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  color: var(--color-text);
+}
+
+.section-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  opacity: 0.92;
+  margin-bottom: 0;
+  font-weight: var(--font-weight-normal);
+}
+
+.deploy-content-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 2;
+  margin-top: 4rem;
 }
 
 .deploy-card {
-  border-radius: 18px !important;
-  overflow: hidden;
-  box-shadow: 0 6px 32px rgba(60,60,60,0.10) !important;
-  backdrop-filter: blur(10px);
-  background: var(--v-theme-surface, #1E293B) !important;
-  border: 1.5px solid var(--v-theme-outline, #e0e7ef);
-  margin-top: 7rem;
-}
-
-.bg-gradient {
-  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
-  color: white !important;
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8) var(--space-8) 0 var(--space-8);
+  transition: all var(--transition-normal);
   position: relative;
-  overflow: hidden;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-lg);
 }
 
-.bg-gradient::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
-  pointer-events: none;
+.deploy-card:hover {
+  border-color: var(--color-border-light);
 }
 
-.v-stepper {
-  background: transparent !important;
-  padding: 2rem;
+/* Progress Section */
+.progress-section {
+  margin-bottom: var(--space-8);
+  padding: var(--space-6);
+  background: rgba(15, 30, 52, 0.5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
 }
 
-.v-stepper-header {
-  box-shadow: none !important;
-  background: var(--v-theme-surface, #1E293B) !important;
-  border: 1px solid rgba(59, 130, 246, 0.2) !important;
-  border-radius: 12px !important;
-  padding: 1rem !important;
-  backdrop-filter: blur(10px);
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
-.v-stepper-item {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  position: relative;
 }
 
-.v-stepper-item:hover {
-  transform: translateY(-2px);
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  transition: all var(--transition-normal);
 }
 
-.v-stepper-window {
-  margin-top: 2rem;
+.progress-step.active .step-number {
+  background: transparent;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
-.v-stepper-window-item .v-card {
-  border-radius: 18px !important;
-  border: none !important;
-  background: var(--v-theme-surface, #1E293B) !important;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 6px 32px rgba(60,60,60,0.10) !important;
-  overflow: hidden;
+.progress-step.completed .step-number {
+  background: transparent;
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
-.v-card-text {
-  padding: 2rem !important;
+.step-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
-.v-card-actions {
-  padding: 1.5rem 2rem !important;
-  background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: blur(10px);
+.progress-step.active .step-label {
+  color: var(--color-primary);
 }
 
-/* Enhanced VM Cards */
-.v-card[variant="outlined"] {
-  border: 1.5px solid rgba(59, 130, 246, 0.2) !important;
-  border-radius: 18px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: var(--v-theme-surface, #1E293B) !important;
-  backdrop-filter: blur(5px);
+.progress-step.completed .step-label {
+  color: var(--color-success);
 }
 
-.v-card[variant="outlined"]:hover {
-  border-color: rgba(59, 130, 246, 0.4) !important;
-  transform: translateY(-2px) scale(1.005);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), 0 0 30px rgba(59, 130, 246, 0.1) !important;
+.progress-line {
+  flex: 1;
+  height: 2px;
+  background: var(--color-border);
+  transition: all var(--transition-normal);
 }
 
-.v-card-title {
-  font-weight: 600 !important;
-  color: var(--v-theme-on-surface, #F1F5F9) !important;
-  font-size: 1.125rem !important;
+.progress-line.completed {
+  background: var(--color-success);
 }
 
-/* Enhanced List Items */
-.v-list {
-  background: transparent !important;
+/* Step Content */
+.step-content {
+  padding: var(--space-8);
 }
 
-.v-list-item {
-  margin-bottom: 0.75rem !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease;
-  background: rgba(30, 41, 59, 0.6) !important;
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  overflow: hidden !important;
+.step-section {
+  margin-bottom: var(--space-8);
 }
 
-.v-list-item:hover {
-  background: rgba(59, 130, 246, 0.1) !important;
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: translateY(-2px);
+.section-header {
+  margin-bottom: var(--space-6);
+  text-align: center;
 }
 
-.v-list-item-title {
-  font-weight: 600 !important;
-  color: var(--v-theme-on-surface, #F1F5F9) !important;
+.section-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
 }
 
-.v-list-item-subtitle {
-  color: rgba(241, 245, 249, 0.7) !important;
-  margin-top: 0.5rem !important;
+/* VM Configuration Grid */
+.vm-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
-/* Enhanced Chips */
-.v-chip {
-  font-weight: 500 !important;
-  border-radius: 6px !important;
-  background: rgba(59, 130, 246, 0.15) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
-  transition: all 0.2s ease !important;
+.vm-config-card {
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(8px);
 }
 
-.v-chip:hover {
-  background: rgba(59, 130, 246, 0.25) !important;
-  border-color: rgba(59, 130, 246, 0.5) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2) !important;
+.vm-config-card:hover {
+  border-color: var(--color-border-light);
+  background: rgba(15, 30, 52, 0.75);
 }
 
-.v-chip[color="primary"] {
-  background: rgba(59, 130, 246, 0.2) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(59, 130, 246, 0.4) !important;
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.v-chip[color="primary"]:hover {
-  background: rgba(59, 130, 246, 0.3) !important;
-  border-color: rgba(59, 130, 246, 0.6) !important;
+.card-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
 }
 
-.v-chip[color="error"] {
-  background: rgba(239, 68, 68, 0.2) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+.vm-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 
-.v-chip[color="error"]:hover {
-  background: rgba(239, 68, 68, 0.3) !important;
-  border-color: rgba(239, 68, 68, 0.6) !important;
+.vm-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(15, 30, 52, 0.5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-normal);
 }
 
-.v-chip[variant="outlined"] {
-  background: transparent !important;
-  color: #3B82F6 !important;
-  border: 1px solid rgba(59, 130, 246, 0.5) !important;
+.vm-item:hover {
+  border-color: var(--color-primary);
+  background: rgba(59, 130, 246, 0.1);
 }
 
-.v-chip[variant="outlined"]:hover {
-  background: rgba(59, 130, 246, 0.1) !important;
-  color: #FFFFFF !important;
+.vm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--color-primary);
 }
 
-.v-chip[variant="tonal"] {
-  background: rgba(59, 130, 246, 0.15) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+.vm-icon[data-type="master"] {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--color-primary);
 }
 
-.v-chip[variant="tonal"]:hover {
-  background: rgba(59, 130, 246, 0.25) !important;
-  border-color: rgba(59, 130, 246, 0.5) !important;
+.vm-icon[data-type="worker"] {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--color-success);
 }
 
-/* Enhanced Buttons */
-.v-btn {
-  border-radius: 8px !important;
-  font-weight: 600 !important;
-  text-transform: none !important;
-  letter-spacing: 0.025em !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.vm-details {
+  flex: 1;
 }
 
-.v-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+.vm-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
 }
 
-.v-btn[color="primary"] {
-  background: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%) !important;
+.vm-specs {
+  display: flex;
+  gap: var(--space-2);
 }
 
-.v-btn[color="success"] {
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+.spec-chip {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-primary);
 }
 
-/* Enhanced Progress Bars */
-.v-progress-linear {
-  border-radius: 6px !important;
-  overflow: hidden;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+  color: var(--color-text-muted);
+  text-align: center;
 }
 
-.v-progress-linear .v-progress-linear__background {
-  background: rgba(226, 232, 240, 0.8) !important;
+.empty-state p {
+  margin: 0;
+  font-size: var(--font-size-sm);
 }
 
-/* Enhanced Form Fields */
-.v-text-field, .v-textarea, .v-select {
-  margin-bottom: 1.5rem !important;
-}
-
-.v-field {
-  border-radius: 8px !important;
-  background: var(--v-theme-surface, #1E293B) !important;
-  backdrop-filter: blur(5px);
-}
-
-.v-field--focused {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
-}
-
-/* Step Headers Enhancement */
-.text-h6 {
-  color: var(--v-theme-on-surface, #F1F5F9) !important;
-  font-weight: 600 !important;
-  margin-bottom: 1.5rem !important;
-}
-
-/* Animations */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.v-stepper-window-item {
-  animation: fadeInUp 0.4s ease-out;
-}
-
-/* VM Assignment Cards */
+/* VM Assignment Grid */
 .vm-assignment-grid {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
 }
 
-.vm-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.vm-assignment-card {
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(8px);
 }
 
-.vm-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.4) !important;
+.vm-assignment-card:hover {
+  border-color: var(--color-border-light);
+  background: rgba(15, 30, 52, 0.75);
 }
 
-.v-avatar {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.vm-assignment-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
-.text-medium-emphasis {
-  opacity: 0.7;
+.vm-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* SSH Key Chips */
-.ssh-keys-container {
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  border-radius: 8px;
-  padding: 1rem;
-  background: rgba(59, 130, 246, 0.02);
+.vm-avatar.master {
+  background: var(--color-primary);
 }
 
-.ssh-key-chip {
-  margin: 0.25rem;
-  transition: all 0.2s ease;
+.vm-avatar.worker {
+  background: var(--color-secondary);
 }
 
-.ssh-key-chip:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.vm-info {
+  flex: 1;
 }
 
-.ssh-key-chip.v-chip--selected {
-  background: rgba(59, 130, 246, 0.1) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
+.vm-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-2);
+}
+
+.node-select {
+  margin-top: var(--space-4);
+}
+
+/* Review Grid */
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+
+.review-card {
+  background: rgba(10, 25, 47, 0.65);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: all var(--transition-normal);
+  backdrop-filter: blur(8px);
+}
+
+.review-card:hover {
+  border-color: var(--color-border-light);
+  background: rgba(15, 30, 52, 0.75);
+}
+
+.review-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.review-stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.review-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.stat-label {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.stat-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.node-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.node-assignment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(15, 30, 52, 0.5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.assignment-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.assignment-details {
+  flex: 1;
+}
+
+.assignment-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.assignment-node {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Step Actions */
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3) 0;
 }
 
 /* Responsive Design */
 @media (max-width: 960px) {
-  .fill-height {
-    padding: 1rem;
+  .deploy-header {
+    margin: 4rem auto 2rem auto;
   }
   
-  .v-stepper {
-    padding: 1rem;
+  .deploy-content-wrapper {
+    margin-top: 2rem;
   }
   
-  .v-card-text {
-    padding: 1.5rem !important;
+  .vm-config-grid {
+    grid-template-columns: 1fr;
   }
   
-  .v-card-actions {
-    padding: 1rem 1.5rem !important;
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .step-actions {
+    flex-direction: column;
+    gap: var(--space-4);
   }
 }
 
 @media (max-width: 600px) {
-  .fill-height {
-    padding: 0.5rem;
+  .deploy-header {
+    margin: 3rem auto 1.5rem auto;
+    padding: 0 var(--space-4);
   }
   
-  .v-stepper {
-    padding: 0.5rem;
+  .hero-title {
+    font-size: var(--font-size-3xl);
   }
   
-  .v-card-text {
-    padding: 1rem !important;
-  }
-  
-  .v-card-actions {
-    padding: 1rem !important;
-  }
-  
-  .bg-gradient {
-    padding: 1rem !important;
-  }
-  
-  .v-stepper-header {
-    padding: 0.75rem !important;
-  }
-}
-
-/* Light mode overrides for better contrast */
-@media (prefers-color-scheme: light) {
-  .fill-height {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  .deploy-content-wrapper {
+    padding: 0 var(--space-4);
+    margin-top: 1.5rem;
   }
   
   .deploy-card {
-    background: rgba(255, 255, 255, 0.95) !important;
-    border: 1.5px solid rgba(226, 232, 240, 0.8);
+    padding: var(--space-4);
   }
   
-  .v-stepper-header {
-    background: rgba(255, 255, 255, 0.9) !important;
+  .progress-section {
+    padding: var(--space-4);
   }
   
-  .v-stepper-window-item .v-card {
-    background: rgba(255, 255, 255, 0.95) !important;
+  .step-content {
+    padding: var(--space-4);
   }
   
-  .v-card[variant="outlined"] {
-    background: rgba(255, 255, 255, 0.9) !important;
+  .vm-config-card,
+  .vm-assignment-card,
+  .review-card {
+    padding: var(--space-4);
   }
   
-  .v-list-item {
-    background: rgba(255, 255, 255, 0.8) !important;
-  }
-  
-  .v-card-title {
-    color: #1e293b !important;
-  }
-  
-  .v-list-item-title {
-    color: #1e293b !important;
-  }
-  
-  .v-list-item-subtitle {
-    color: #64748b !important;
-  }
-  
-  .text-h6 {
-    color: #1e293b !important;
-  }
-  
-  .v-field {
-    background: rgba(255, 255, 255, 0.9) !important;
-  }
-  
-  .v-card-actions {
-    background: rgba(248, 250, 252, 0.8);
+  .step-actions {
+    padding: var(--space-4);
   }
 }
 </style>

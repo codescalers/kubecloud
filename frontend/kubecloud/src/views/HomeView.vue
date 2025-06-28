@@ -125,9 +125,9 @@ const features = [
             Powerful tools and features designed for modern cloud-native applications
           </p>
         </div>
-        <v-row>
-          <v-col cols="12" md="4" v-for="feature in features" :key="feature.title">
-            <div class="home-card card-enhanced">
+        <v-row class="feature-cards-row">
+          <v-col cols="12" md="4" v-for="feature in features" :key="feature.title" class="feature-col">
+            <div class="home-card card-enhanced fade-in">
               <div class="home-icon">
                 <v-icon :icon="feature.icon" size="48" color="primary"></v-icon>
               </div>
@@ -165,13 +165,11 @@ const features = [
 <style scoped>
 /* Global scrollbar fix */
 :deep(html), :deep(body) {
-  overflow-x: hidden !important;
   width: 100% !important;
 }
 
 .home-view {
   position: relative;
-  overflow-x: hidden;
   width: 100%;
   background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
@@ -184,7 +182,6 @@ const features = [
   border: none;
   margin: 0;
   width: 100%;
-  overflow-x: hidden;
 }
 
 .hero-globe-section {
@@ -196,7 +193,6 @@ const features = [
   margin: 0;
   position: relative;
   z-index: 1;
-  overflow: hidden;
 }
 
 .home-section {
@@ -207,7 +203,6 @@ const features = [
 .cta-section {
   padding-top: 8rem;
   padding-bottom: 8rem;
-  min-height: 60vh;
   margin: 4rem 0 0 0;
 }
 
@@ -221,7 +216,6 @@ const features = [
   position: relative;
   z-index: 2;
   padding: 5rem 0;
-  min-height: 80vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -250,18 +244,16 @@ const features = [
 }
 
 .home-card {
-  padding: 3rem 2.5rem;
   text-align: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(10, 25, 47, 0.85);
-  border: 1px solid var(--color-border);
-  border-radius: 1.5rem;
-  box-shadow: none;
+  height: 100%;
 }
 
-.home-card:hover {
-  transform: translateY(-10px) scale(1.03);
-  box-shadow: none;
+.feature-cards-row {
+  margin: 1rem;
+}
+
+.feature-col {
+  padding: 1rem;
 }
 
 .home-icon {
@@ -346,8 +338,6 @@ const features = [
     width: 60vw;
   }
   .hero-globe-section {
-    height: auto;
-    min-height: 100vh;
     padding: 2rem 0;
   }
 }
@@ -409,7 +399,6 @@ const features = [
   min-width: 320px;
   width: 40vw;
   aspect-ratio: 1/1;
-  overflow: visible;
 }
 .globe-wrapper::before {
   content: '';

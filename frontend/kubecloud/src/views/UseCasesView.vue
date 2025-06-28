@@ -13,8 +13,8 @@
     <!-- Use Cases Content -->
     <section class="use-cases-content section-padding">
       <div class="container-padding">
-        <v-row>
-          <v-col cols="12" md="6" lg="4" v-for="useCase in useCases" :key="useCase.title">
+        <v-row class="use-cases-cards-row">
+          <v-col cols="12" md="6" lg="4" v-for="useCase in useCases" :key="useCase.title" class="use-case-col">
             <div class="use-case-card card-enhanced fade-in">
               <div class="use-case-icon">
                 <v-icon :icon="useCase.icon" size="48" color="primary"></v-icon>
@@ -132,24 +132,24 @@ onMounted(() => {
   padding: 6rem 0 6rem 0;
 }
 
+.use-cases-cards-row {
+  margin: 1rem;
+}
 
 .use-case-card {
-  height: 100%;
-  padding: 2.5rem;
   text-align: center;
-  background: rgba(10, 25, 47, 0.85);
-  border-radius: 1.5rem;
-  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
-  color: #CBD5E1;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.use-case-card:hover {
-  transform: translateY(-10px) scale(1.03);
-  box-shadow: 0 8px 32px rgba(96, 165, 250, 0.18);
-}
 .use-case-icon {
   margin-bottom: 2rem;
+}
+
+.use-case-description {
+  margin-bottom: 2rem;
+  flex: 1;
 }
 
 .use-case-features {
@@ -157,6 +157,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: center;
+  margin-top: auto;
 }
 
 .feature-tag {
@@ -195,3 +196,4 @@ onMounted(() => {
   }
 }
 </style>
+

@@ -41,7 +41,7 @@ withDefaults(defineProps<Props>(), {
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--sky-gradient);
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
   pointer-events: none;
 }
 
@@ -52,10 +52,10 @@ withDefaults(defineProps<Props>(), {
   width: 100%;
   height: 100%;
   background-image: 
-    radial-gradient(circle at 20% 80%, var(--cloud-blue) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, var(--cloud-blue-light) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, var(--cloud-blue-subtle) 0%, transparent 50%),
-    radial-gradient(circle at 60% 60%, var(--cloud-white) 0%, transparent 50%);
+    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(96, 165, 250, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 60% 60%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -66,10 +66,10 @@ withDefaults(defineProps<Props>(), {
   width: 100%;
   height: 100%;
   background-image: 
-    radial-gradient(ellipse 200px 100px at 10% 20%, var(--cloud-white) 0%, transparent 70%),
-    radial-gradient(ellipse 150px 75px at 90% 40%, var(--cloud-white-light) 0%, transparent 70%),
-    radial-gradient(ellipse 180px 90px at 30% 70%, var(--cloud-white) 0%, transparent 70%),
-    radial-gradient(ellipse 120px 60px at 70% 80%, var(--cloud-white-light) 0%, transparent 70%);
+    radial-gradient(ellipse 200px 100px at 10% 20%, rgba(255, 255, 255, 0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 150px 75px at 90% 40%, rgba(255, 255, 255, 0.02) 0%, transparent 70%),
+    radial-gradient(ellipse 180px 90px at 30% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 70%),
+    radial-gradient(ellipse 120px 60px at 70% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 70%);
   pointer-events: none;
   opacity: 0.3;
 }

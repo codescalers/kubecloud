@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-card card-enhanced">
+  <div class="dashboard-card">
     <div class="card-header">
       <div class="card-title-section">
         <div class="card-title-content">

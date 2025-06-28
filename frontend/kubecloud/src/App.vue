@@ -69,8 +69,8 @@ const currentTheme = computed(() => {
 <style scoped>
 .kubecloud-app {
   min-height: 100vh;
-  background: var(--kubecloud-bg);
-  color: var(--kubecloud-text-primary);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: 'Inter', sans-serif;
 }
 

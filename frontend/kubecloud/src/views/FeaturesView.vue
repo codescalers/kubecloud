@@ -53,7 +53,7 @@ onMounted(() => {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%);
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
 
 .hero-section {

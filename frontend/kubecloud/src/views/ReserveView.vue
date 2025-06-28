@@ -109,7 +109,7 @@
 
           <!-- Nodes Column -->
           <v-col cols="12" md="9">
-            <div class="reservation-card card-enhanced fade-in">
+            <v-card class="reservation-card">
               <div class="nodes-header">
                 <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
                   Available Nodes
@@ -138,7 +138,7 @@
               </div>
               
               <div v-else class="nodes-grid">
-                <div v-for="node in filteredNodes" :key="node.id" class="node-card">
+                <div v-for="node in filteredNodes" :key="node.id" class="card node-card">
                   <div class="node-header">
                     <h3 class="node-title">{{ node.name }}</h3>
                     <div class="node-price">${{ node.price }}/month</div>
@@ -175,7 +175,7 @@
                   </v-btn>
                 </div>
               </div>
-            </div>
+            </v-card>
           </v-col>
         </v-row>
       </div>
@@ -370,7 +370,7 @@ onMounted(() => {
 
 /* Hero Section */
 .hero-section {
-  min-height: 60vh;
+  margin: 7rem 0 0 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -409,7 +409,7 @@ onMounted(() => {
 .reservation-content {
   position: relative;
   z-index: 2;
-  padding: 4rem 0;
+  padding: 2rem;
 }
 
 /* Filter Card */
@@ -464,6 +464,7 @@ onMounted(() => {
 /* Reservation Card */
 .reservation-card {
   padding: 3rem;
+  border-radius: var(--radius-xl);
 }
 
 .nodes-header {
@@ -518,18 +519,11 @@ onMounted(() => {
 }
 
 .node-card {
-  background: rgba(15, 23, 42, 0.3);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 12px;
-  padding: 2rem;
   text-align: left;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.node-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
 }
 
 .node-header {
@@ -540,14 +534,14 @@ onMounted(() => {
 }
 
 .node-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: #fff;
   margin: 0;
 }
 
 .node-price {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 400;
   color: #10B981;
 }
@@ -563,6 +557,7 @@ onMounted(() => {
 
 .node-specs {
   margin-bottom: 2rem;
+  flex: 1;
 }
 
 .spec-item {
@@ -586,6 +581,7 @@ onMounted(() => {
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.01em;
+  margin-top: auto;
 }
 
 /* Responsive Design */
@@ -600,7 +596,7 @@ onMounted(() => {
   }
   
   .reservation-content {
-    padding: 2rem 0;
+    padding: 2rem;
   }
   
   .filter-card {
@@ -622,10 +618,6 @@ onMounted(() => {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
-  
-  .node-card {
-    padding: 1.5rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -634,16 +626,12 @@ onMounted(() => {
   }
   
   .reservation-content {
-    padding: 1.5rem 0;
+    padding: 1.5rem;
   }
   
   .filter-card,
   .reservation-card {
     padding: 1.5rem;
-  }
-  
-  .node-card {
-    padding: 1rem;
   }
   
   .node-header {

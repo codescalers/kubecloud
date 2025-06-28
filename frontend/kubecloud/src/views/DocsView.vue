@@ -13,8 +13,8 @@
     <!-- Documentation Content -->
     <section class="docs-content section-padding">
       <div class="container-padding">
-        <v-row>
-          <v-col cols="12" md="6" lg="3" v-for="doc in docs" :key="doc.title">
+        <v-row class="docs-cards-row">
+          <v-col cols="12" md="6" lg="3" v-for="doc in docs" :key="doc.title" class="doc-col">
             <div class="doc-card card-enhanced fade-in">
               <div class="doc-icon">
                 <v-icon :icon="doc.icon" size="48" color="primary"></v-icon>
@@ -136,22 +136,19 @@ onMounted(() => {
   margin: 0 2rem 0 2rem;
 }
 
-.doc-card {
-  height: 100%;
-  padding: 2.5rem;
-  text-align: center;
-  background: rgba(10, 25, 47, 0.85);
-  border-radius: 1.5rem;
-  box-shadow: 0 4px 20px rgba(96, 165, 250, 0.08);
-  color: #CBD5E1;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: none;
+.docs-cards-row {
+  margin: 0 -1rem;
 }
 
-.doc-card:hover {
-  transform: translateY(-10px) scale(1.03);
-  box-shadow: 0 8px 32px rgba(96, 165, 250, 0.18);
-  border: none;
+.doc-col {
+  padding: 1rem;
+}
+
+.doc-card {
+  text-align: center;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .doc-card * {
@@ -199,9 +196,8 @@ onMounted(() => {
 }
 
 .doc-link {
-  font-weight: 500;
-  text-transform: none;
-  letter-spacing: 0.01em;
+  margin-top: auto;
+  margin-top: 2rem;
 }
 
 @media (max-width: 900px) {
