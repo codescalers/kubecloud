@@ -1,14 +1,14 @@
 <script setup lang="ts">
 // Add scroll animation observer
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import FeatureGlobe from '@/components/features/FeatureGlobe.vue'
 
-// Animated stats
+// Animated stats with proper typing
 const stats = ref([
-  { label: 'Clusters Deployed', value: 1280, animatedValue: 0 },
-  { label: 'Active Users', value: 5400, animatedValue: 0 },
-  { label: 'Global Locations', value: 32, animatedValue: 0 },
-  { label: 'Uptime', value: 99.99, animatedValue: 0, isPercent: true },
+  { label: 'Clusters Deployed', value: 1280, animatedValue: 0 as number | string },
+  { label: 'Active Users', value: 5400, animatedValue: 0 as number | string },
+  { label: 'Global Locations', value: 32, animatedValue: 0 as number | string },
+  { label: 'Uptime', value: 99.99, animatedValue: 0 as number | string, isPercent: true },
 ])
 
 const globeSize = ref(700)
@@ -26,12 +26,12 @@ function animateStats() {
     const step = (timestamp: number, startTime: number) => {
       const progress = Math.min((timestamp - startTime) / duration, 1)
       stat.animatedValue = stat.isPercent
-        ? (progress * end).toFixed(2) + '%'
+        ? `${(progress * end).toFixed(2)}%`
         : Math.floor(progress * end)
       if (progress < 1) {
         requestAnimationFrame((t) => step(t, startTime))
       } else {
-        stat.animatedValue = stat.isPercent ? end + '%' : end
+        stat.animatedValue = stat.isPercent ? `${end}%` : end
       }
     }
     requestAnimationFrame((t) => step(t, t))

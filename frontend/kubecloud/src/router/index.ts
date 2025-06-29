@@ -67,6 +67,10 @@ const router = createRouter({
       component: () => import('../views/AdminDashboard.vue'),
     },
   ],
+  scrollBehavior(to, from, savedPosition) {
+    // Always scroll to top on route change
+    return { top: 0 }
+  }
 })
 
 // router.beforeEach((to, from, next) => {

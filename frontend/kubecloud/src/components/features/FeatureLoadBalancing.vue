@@ -379,10 +379,6 @@ onBeforeUnmount(() => {
 })
 </script>
 
-<script lang="ts">
-export default {}
-</script>
-
 <style scoped>
 .feature-panel {
   min-height: 60vh;

@@ -106,7 +106,7 @@ function handleNavigate(section: string) {
 }
 
 .hero-title {
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-4xl);
   font-weight: var(--font-weight-bold);
   margin-bottom: 1.5rem;
   line-height: 1.1;
@@ -115,7 +115,7 @@ function handleNavigate(section: string) {
 }
 
 .section-subtitle {
-  font-size: var(--font-size-h3);
+  font-size: var(--font-size-xl);
   color: var(--kubecloud-text-muted);
   line-height: 1.5;
   opacity: 0.92;

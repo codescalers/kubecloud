@@ -25,9 +25,6 @@
   </section>
 </template>
 
-<script lang="ts">
-export default {}
-</script>
 
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, shallowRef } from 'vue'

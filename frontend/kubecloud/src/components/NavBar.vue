@@ -3,26 +3,28 @@
     <div class="navbar-content">
       <router-link to="/" class="navbar-logo">KubeCloud</router-link>
       <div class="navbar-main-links">
-        <router-link v-for="link in mainLinks" :key="link.to" :to="link.to" class="navbar-link" active-class="active-link">
+        <router-link v-for="link in links" :key="link.to" :to="link.to" class="navbar-link" active-class="active-link">
           {{ link.label }}
         </router-link>
       </div>
       <div class="navbar-signin">
-        <v-btn
-          v-if="signInLink"
-          variant="outlined"
-          color="white"
-          to="/sign-in"
-        >
-          {{ signInLink.label }}
-        </v-btn>
+        <router-link v-if="signInLink" :to="signInLink.to" custom v-slot="{ navigate, isActive }">
+          <v-btn
+            variant="outlined"
+            color="white"
+            @click="navigate"
+            :class="{ 'active-link': isActive }"
+          >
+            {{ signInLink.label }}
+          </v-btn>
+        </router-link>
       </div>
     </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-const allLinks = [
+const links = [
   { label: 'Home', to: '/' },
   { label: 'Features', to: '/features' },
   { label: 'Pricing', to: '/pricing' },
@@ -30,10 +32,8 @@ const allLinks = [
   { label: 'Use Cases', to: '/use-cases' },
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Admin', to: '/admin' },
-  { label: 'Sign In', to: '/sign-in' },
 ]
-const mainLinks = allLinks.filter(link => ['Home', 'Features', 'Pricing', 'Docs', 'Dashboard', 'Use Cases', 'Admin'].includes(link.label))
-const signInLink = allLinks.find(link => link.label === 'Sign In')
+const signInLink = { label: 'Sign In', to: '/sign-in' }
 </script>
 
 <style scoped>

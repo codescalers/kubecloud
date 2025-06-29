@@ -25,7 +25,7 @@
 </template>
 
 <script lang="ts" setup>
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterView, useRoute } from 'vue-router'
 import { computed } from 'vue'
 import NavBar from './components/NavBar.vue'
 import AppFooter from './components/AppFooter.vue'
