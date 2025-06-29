@@ -52,8 +52,6 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 		"total": count,
 		"nodes": nodes,
 	})
-	return
-
 }
 
 // ReserveNodeHandler reserves node for user
