@@ -135,25 +135,36 @@ data:
         "portMappings": true
       },
       "delegates": [
-        {
-          "cniVersion": "0.3.1",
-          "name": "default-cni-network",
-          "plugins": [
+          {
+          "name":"cbr0",
+          "cniVersion":"1.0.0",
+          "plugins":[
             {
-              "type": "flannel",
-              "name": "flannel.1",
-                "delegate": {
-                  "isDefaultGateway": true,
-                  "hairpinMode": true
-                }
-              },
-              {
-                "type": "portmap",
-                "capabilities": {
-                  "portMappings": true
-                }
+              "type":"flannel",
+              "delegate":{
+                "hairpinMode":true,
+                "forceAddress":true,
+                "isDefaultGateway":true
               }
+            },
+            {
+              "type":"portmap",
+              "capabilities":{
+                "portMappings":true
+              }
+            },
+            {
+              "type":"bandwidth",
+              "capabilities":{
+                "bandwidth":true
+              }
+            }
           ]
+        },
+        {
+          "cniVersion": "0.1.0",
+          "name": "mycelium-cni-network",
+          "type": "mycelium-cni"
         }
       ],
       "kubeconfig": "/mnt/data/agent/etc/cni/net.d/multus.d/multus.kubeconfig"
@@ -193,7 +204,7 @@ spec:
         image: ghcr.io/k8snetworkplumbingwg/multus-cni:snapshot
         command: ["/thin_entrypoint"]
         args:
-        - "--multus-conf-file=auto"
+        - "--multus-conf-file=/tmp/multus-conf/01-multus.conf"
         - "--multus-autoconfig-dir=/host/etc/cni/net.d"
         - "--cni-conf-dir=/host/etc/cni/net.d"
         resources:
@@ -246,4 +257,4 @@ spec:
             name: multus-cni-config
             items:
             - key: cni-conf.json
-              path: 70-multus.conf
+              path: 01-multus.conf
