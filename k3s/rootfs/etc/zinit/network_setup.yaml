@@ -1,0 +1,4 @@
+exec: /scripts/network_setup.sh
+oneshot: true
+after: 
+  - mycelium

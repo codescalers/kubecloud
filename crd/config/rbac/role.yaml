@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ingress.grid.tf
+  resources:
+  - tfgws
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ingress.grid.tf
+  resources:
+  - tfgws/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ingress.grid.tf
+  resources:
+  - tfgws/status
+  verbs:
+  - get
+  - patch
+  - update

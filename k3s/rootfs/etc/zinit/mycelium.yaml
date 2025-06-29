@@ -1,0 +1,4 @@
+#TODO: use zos config for the peers
+exec: mycelium --key-file /etc/netseed --peers tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651 
+after:
+  - set_seed

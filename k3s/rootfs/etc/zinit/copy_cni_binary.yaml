@@ -1,0 +1,4 @@
+exec: bash -c "sleep 10 && cp /scripts/mycelium-cni /mnt/data/data/cni"
+oneshot: true
+after:
+  - k3s

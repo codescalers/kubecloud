@@ -1,0 +1,4 @@
+exec: /usr/sbin/sshd -D -e
+log: stdout
+after:
+  - ssh-init
