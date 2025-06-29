@@ -10,12 +10,14 @@ import (
 
 // Configuration struct holds all configs for the app
 type Configuration struct {
-	Server     Server     `json:"server" validate:"required,dive"`
-	Database   DB         `json:"database" validate:"required"`
-	JWT        JwtToken   `json:"token" validate:"required"`
-	Admins     []string   `json:"admins"`
-	MailSender MailSender `json:"mailSender"`
-	Voucher    Voucher    `json:"voucher"`
+	Server       Server     `json:"server" validate:"required,dive"`
+	Database     DB         `json:"database" validate:"required"`
+	JWT          JwtToken   `json:"token" validate:"required"`
+	Admins       []string   `json:"admins"`
+	MailSender   MailSender `json:"mailSender"`
+	Currency     string     `json:"currency" validate:"required"`
+	StripeSecret string     `json:"stripe_secret" validate:"required"`
+	Voucher      Voucher    `json:"voucher"`
 }
 
 // Server struct holds server's information
