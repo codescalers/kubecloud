@@ -9,7 +9,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/signintech/gopdf v0.32.0
 	github.com/spf13/cobra v1.9.1
-	github.com/stripe/stripe-go/v82 v82.2.1
+	github.com/stripe/stripe-go/v82 v82.3.0
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.4
