@@ -171,7 +171,6 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	}
 
 	code := internal.GenerateRandomCode()
-	fmt.Printf("code: %v\n", code)
 	subject, body := h.mailService.SignUpMailContent(code, h.config.MailSender.Timeout, request.Name, h.config.Server.Host)
 
 	err := h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
@@ -350,7 +349,6 @@ func (h *Handler) ResendCodeHandler(c *gin.Context) {
 
 	// Generate new verification code
 	code := internal.GenerateRandomCode()
-	fmt.Printf("code from resend: %v\n", code)
 	user.Code = code
 	user.UpdatedAt = time.Now()
 
