@@ -166,6 +166,7 @@ func (app *App) registerHandlers() {
 			userGroup.POST("/refresh", app.handlers.RefreshTokenHandler)
 			userGroup.POST("/forgot_password", app.handlers.ForgotPasswordHandler)
 			userGroup.POST("/forgot_password/verify", app.handlers.VerifyForgetPasswordCodeHandler)
+			userGroup.POST("/resend_code", app.handlers.ResendCodeHandler)
 
 			authGroup := userGroup.Group("")
 			authGroup.Use(middlewares.UserMiddleware(app.handlers.tokenManager))

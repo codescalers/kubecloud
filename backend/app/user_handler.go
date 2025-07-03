@@ -126,6 +126,12 @@ type SSHKeyInput struct {
 	PublicKey string `json:"public_key" binding:"required"`
 }
 
+// ResendCodeInput struct for resending verification code
+type ResendCodeInput struct {
+	Email string `json:"email" binding:"required,email"`
+	Type  string `json:"type" binding:"required,oneof=verify reset"` // "verify" for sign-up, "reset" for password reset
+}
+
 // @Summary Register a user
 // @Description Registers a new user to the system
 // @Tags users
@@ -165,6 +171,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	}
 
 	code := internal.GenerateRandomCode()
+	fmt.Printf("code: %v\n", code)
 	subject, body := h.mailService.SignUpMailContent(code, h.config.MailSender.Timeout, request.Name, h.config.Server.Host)
 
 	err := h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
@@ -307,6 +314,74 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 	Success(c, http.StatusCreated, "token pair generated", tokenPair)
+}
+
+// @Summary Resend verification code
+// @Description Resends a verification code to the user's email for verification or password reset
+// @Tags users
+// @ID resend-code
+// @Accept json
+// @Produce json
+// @Param body body ResendCodeInput true "Resend Code Input"
+// @Success 200 {object} RegisterResponse
+// @Failure 400 {object} APIResponse "Invalid request format or already verified"
+// @Failure 500 {object} APIResponse
+// @Router /user/resend_code [post]
+func (h *Handler) ResendCodeHandler(c *gin.Context) {
+	var request ResendCodeInput
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+
+	user, err := h.db.GetUserByEmail(request.Email)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to get user by email")
+		Error(c, http.StatusBadRequest, "Invalid request", "email not found")
+		return
+	}
+
+	if request.Type == "verify" && user.Verified {
+		Error(c, http.StatusBadRequest, "Already verified", "user already verified")
+		return
+	}
+
+	// Generate new verification code
+	code := internal.GenerateRandomCode()
+	fmt.Printf("code from resend: %v\n", code)
+	user.Code = code
+	user.UpdatedAt = time.Now()
+
+	if err := h.db.UpdateUserByID(&user); err != nil {
+		log.Error().Err(err).Msg("failed to update verification code")
+		InternalServerError(c)
+		return
+	}
+
+	// Prepare and send email based on type
+	var subject, body string
+	switch request.Type {
+	case "verify":
+		subject, body = h.mailService.SignUpMailContent(code, h.config.MailSender.Timeout, user.Username, h.config.Server.Host)
+	case "reset":
+		subject, body = h.mailService.ResetPasswordMailContent(code, h.config.MailSender.Timeout, user.Username, h.config.Server.Host)
+	default:
+		Error(c, http.StatusBadRequest, "Invalid type", "type must be either 'verify' or 'reset'")
+		return
+	}
+
+	if err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body); err != nil {
+		log.Error().Err(err).Msg("failed to send verification code")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Verification code resent successfully", RegisterResponse{
+		Email:   user.Email,
+		Timeout: fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
+	})
 }
 
 // @Summary Login user
