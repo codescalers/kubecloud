@@ -32,6 +32,25 @@ type CreditUserResponse struct {
 	Memo   string `json:"memo"`
 }
 
+// AdminMailInput represents the input for sending a mail to all users
+// Only accessible by admins
+// @Summary Send mail to all users
+// @Description Allows admin to send a custom email to all users
+// @Tags admin
+// @ID admin-mail-all-users
+// @Accept json
+// @Produce json
+// @Param body body AdminMailInput true "Admin Mail Input"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse "Invalid request format"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /users/mail [post]
+type AdminMailInput struct {
+	Subject string `json:"subject" binding:"required"`
+	Body    string `json:"body" binding:"required"`
+}
+
 // @Summary Get all users
 // @Description Returns a list of all users
 // @Tags admin
@@ -253,4 +272,37 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		Memo:   request.Memo,
 	})
 
+}
+
+func (h *Handler) AdminMailAllUsersHandler(c *gin.Context) {
+	var input AdminMailInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+	users, err := h.db.ListAllUsers()
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+	var (
+		sent     []string
+		failed   []string
+		failures = make(map[string]string)
+	)
+	for _, user := range users {
+		subject, body := h.mailService.AdminCustomMailContent(input.Subject, input.Body)
+		err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body)
+		if err != nil {
+			failed = append(failed, user.Email)
+			failures[user.Email] = err.Error()
+		} else {
+			sent = append(sent, user.Email)
+		}
+	}
+	Success(c, http.StatusOK, "Mail send attempt complete", map[string]interface{}{
+		"sent":     sent,
+		"failed":   failed,
+		"failures": failures,
+	})
 }

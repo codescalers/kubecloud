@@ -51,3 +51,5 @@ watch(() => props.creditReason, val => { creditReasonLocal.value = val })
 watch(creditAmountLocal, val => emit('update:creditAmount', val))
 watch(creditReasonLocal, val => emit('update:creditReason', val))
 </script> 
+
+export default {}; 

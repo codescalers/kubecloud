@@ -137,4 +137,6 @@ function closeInvoiceModal() {
   border-color: var(--color-primary) !important;
   color: var(--color-primary) !important;
 }
-</style> 
+</style>
+
+export default {}; 

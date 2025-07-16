@@ -21,3 +21,5 @@ interface AdminStat {
 
 const { adminStats } = defineProps<{ adminStats: AdminStat[] }>()
 </script>
+
+export default {};

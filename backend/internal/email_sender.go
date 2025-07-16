@@ -117,3 +117,8 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 	return subject, mailBody
 
 }
+
+// AdminCustomMailContent allows admin to send a custom subject and body
+func (service *MailService) AdminCustomMailContent(subject, body string) (string, string) {
+	return subject, body
+}

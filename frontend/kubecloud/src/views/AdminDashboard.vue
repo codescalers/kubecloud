@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent, type Ref } from 'vue'
-import { adminService, type User, type Voucher, type GenerateVouchersRequest, type CreditUserRequest, type Invoice } from '@/utils/adminService'
-import AdminUsersTable from '@/components/AdminUsersTable.vue'
-import AdminStatsCards from '@/components/AdminStatsCards.vue'
-import AdminManualCredit from '@/components/AdminManualCredit.vue'
-import AdminVouchersSection from '@/components/AdminVouchersTable.vue'
-import AdminClustersSection from '@/components/AdminClustersSection.vue'
-import AdminSystemSection from '@/components/AdminSystemCard.vue'
-import AdminInvoicesTable from '@/components/AdminInvoicesTable.vue'
+import { adminService, type User, type Voucher, type GenerateVouchersRequest, type CreditUserRequest, type Invoice } from '../utils/adminService'
+import AdminUsersTable from '../components/AdminUsersTable.vue'
+import AdminStatsCards from '../components/AdminStatsCards.vue'
+import AdminManualCredit from '../components/AdminManualCredit.vue'
+import AdminVouchersSection from '../components/AdminVouchersTable.vue'
+import AdminClustersSection from '../components/AdminClustersSection.vue'
+import AdminSystemSection from '../components/AdminSystemCard.vue'
+import AdminInvoicesTable from '../components/AdminInvoicesTable.vue'
 
 // Use defineAsyncComponent to avoid TypeScript issues
 const AdminSidebar = defineAsyncComponent(() => import('../components/AdminSidebar.vue'))
@@ -70,6 +70,26 @@ const creditResult = ref('')
 
 const creditDialog = ref(false)
 const creditUserDialogObj = ref<User | null>(null)
+
+// State for admin mail to all users
+const mailSubject = ref('')
+const mailBody = ref('')
+const mailResult = ref<{ sent: string[]; failed: string[]; failures: Record<string, string> } | null>(null)
+const mailLoading = ref(false)
+
+const mailMessage = computed(() => {
+  if (!mailResult.value) return ''
+  if (mailResult.value.sent.length && (!mailResult.value.failed || mailResult.value.failed.length === 0)) {
+    return `Mail sent to ${mailResult.value.sent.length} users successfully.`
+  }
+  if (mailResult.value.sent.length && mailResult.value.failed.length) {
+    return `Mail sent to ${mailResult.value.sent.length} users. Some failed.`
+  }
+  if (mailResult.value.failed.length && !mailResult.value.sent.length) {
+    return 'Mail failed to send to all users.'
+  }
+  return ''
+})
 
 function handleSidebarSelect(newSelected: string) {
   selected.value = newSelected
@@ -141,6 +161,25 @@ async function applyManualCreditDialog() {
     closeCreditDialog()
 }
 
+async function sendMailToAllUsers() {
+  mailLoading.value = true
+  mailResult.value = null
+  try {
+    const result = await adminService.mailAllUsers({ subject: mailSubject.value, body: mailBody.value })
+    mailResult.value = {
+      sent: result.sent || [],
+      failed: result.failed || [],
+      failures: result.failures || {},
+    }
+    mailSubject.value = ''
+    mailBody.value = ''
+  } catch (err) {
+    mailResult.value = { sent: [], failed: [], failures: { error: (err as Error).message } }
+  } finally {
+    mailLoading.value = false
+  }
+}
+
 const tabs = [
   { key: 'overview', label: 'Overview' },
   { key: 'users', label: 'Users' },
@@ -173,18 +212,70 @@ async function loadInvoices() {
         </div>
         <div class="dashboard-main">
           <AdminStatsCards v-if="selected === 'overview'" :adminStats="adminStats" />
-          <AdminUsersTable
-            v-else-if="selected === 'users'"
-            :users="paginatedUsers"
-            :searchQuery="searchQuery"
-            :currentPage="currentPage"
-            :pageSize="pageSize"
-            :totalPages="totalPages"
-            @update:searchQuery="searchQuery = $event"
-            @update:currentPage="goToPage($event)"
-            @deleteUser="deleteUser"
-            @creditUser="openCreditDialog"
-          />
+          <template v-else-if="selected === 'users'">
+            <!-- Admin Mail to All Users Form -->
+            <div class="dashboard-card mb-6">
+              <div class="dashboard-card-header">
+                <h3 class="dashboard-card-title">Send Mail to All Users</h3>
+                <p class="dashboard-card-subtitle">Compose and send a message to all users</p>
+              </div>
+              <v-form @submit.prevent="sendMailToAllUsers" class="mail-all-users-form">
+                <v-text-field
+                  v-model="mailSubject"
+                  label="Subject"
+                  required
+                  variant="outlined"
+                  class="mb-4"
+                  :disabled="mailLoading"
+                />
+                <v-textarea
+                  v-model="mailBody"
+                  label="Message Body"
+                  required
+                  variant="outlined"
+                  rows="5"
+                  class="mb-4"
+                  :disabled="mailLoading"
+                />
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  :loading="mailLoading"
+                  :disabled="mailLoading || !mailSubject || !mailBody"
+                  class="btn-primary w-25"
+                >
+                  Send Mail
+                </v-btn>
+              </v-form>
+              <div v-if="mailResult" class="mt-4">
+                <v-alert type="success" v-if="mailResult && mailResult.sent.length" variant="tonal">
+                  {{ mailMessage }}
+                </v-alert>
+                <v-alert type="error" v-if="mailResult && mailResult.failed.length" variant="tonal">
+                  Failed to send to {{ mailResult.failed.length }} users.
+                  <div v-if="Object.keys(mailResult.failures || {}).length">
+                    <ul>
+                      <li v-for="(msg, email) in mailResult.failures" :key="email">
+                        {{ email }}: {{ msg }}
+                      </li>
+                    </ul>
+                  </div>
+                </v-alert>
+              </div>
+            </div>
+            <!-- End Admin Mail to All Users Form -->
+            <AdminUsersTable
+              :users="paginatedUsers"
+              :searchQuery="searchQuery"
+              :currentPage="currentPage"
+              :pageSize="pageSize"
+              :totalPages="totalPages"
+              @update:searchQuery="searchQuery = $event"
+              @update:currentPage="goToPage($event)"
+              @deleteUser="deleteUser"
+              @creditUser="openCreditDialog"
+            />
+          </template>
           <AdminClustersSection v-else-if="selected === 'clusters'" />
           <AdminSystemSection v-else-if="selected === 'system'" />
           <AdminVouchersSection
@@ -386,6 +477,11 @@ async function loadInvoices() {
   margin: 0;
 }
 
+.mail-all-users-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
 /* Responsive Design */
 @media (max-width: 900px) {

@@ -82,3 +82,5 @@ const currentPageLocal = ref(props.currentPage)
 watch(() => props.searchQuery, (val) => { searchQueryLocal.value = val })
 watch(() => props.currentPage, (val) => { currentPageLocal.value = val })
 </script> 
+
+export default {}; 

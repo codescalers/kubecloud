@@ -59,6 +59,17 @@ export interface Invoice {
   created_at: string
 }
 
+export interface AdminMailRequest {
+  subject: string
+  body: string
+}
+
+export interface AdminMailResponse {
+  sent: string[]
+  failed: string[]
+  failures: Record<string, string>
+}
+
 // Admin service class
 export class AdminService {
   private static instance: AdminService
@@ -136,6 +147,18 @@ export class AdminService {
       errorMessage: 'Failed to load invoices'
     })
     return response.data.data.invoices
+  }
+
+  // Send mail to all users (requires admin auth)
+  async mailAllUsers(data: AdminMailRequest): Promise<AdminMailResponse> {
+    const response = await api.post<ApiResponse<AdminMailResponse>>('/v1/users/mail', data, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Sending mail to all users...',
+      successMessage: 'Mail sent to users',
+      errorMessage: 'Failed to send mail to users'
+    })
+    return response.data.data
   }
 }
 
