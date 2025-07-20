@@ -386,3 +386,13 @@ func (s *Sqlite) UpdateCluster(cluster *models.Cluster) error {
 func (s *Sqlite) DeleteCluster(userID string, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&models.Cluster{}).Error
 }
+
+// GetDBStats returns open and idle connection counts for metrics
+func (s *Sqlite) GetDBStats() (open int, idle int, err error) {
+	sqldb, err := s.SQLDB()
+	if err != nil {
+		return 0, 0, err
+	}
+	stats := sqldb.Stats()
+	return stats.OpenConnections, stats.Idle, nil
+}

@@ -232,6 +232,8 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 			InternalServerError(c)
 			return
 		}
+		// Instrument user registration metric
+		internal.IncUsersRegistered()
 	}
 
 	Success(c, http.StatusCreated, "Verification code sent successfully", RegisterResponse{
@@ -637,6 +639,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	intent, err := internal.CreatePaymentIntent(user.StripeCustomerID, paymentMethod.ID, h.config.Currency, request.Amount)
 	if err != nil {
 		log.Error().Err(err).Msg("error creating payment intent")
+		internal.IncStripePayments("failure")
 		InternalServerError(c)
 		return
 	}
@@ -644,12 +647,16 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	err = internal.TransferTFTs(h.substrateClient, request.Amount, user.Mnemonic, h.config.SystemAccount.Mnemonic)
 	if err != nil {
 		log.Error().Err(err).Send()
+		internal.IncStripePayments("failure")
 		if err = internal.CancelPaymentIntent(intent.ID); err != nil {
 			log.Error().Err(err).Msg("error canceling payment intent after transfer failure")
 		}
 		InternalServerError(c)
 		return
 	}
+
+	// Instrument Stripe payment success
+	internal.IncStripePayments("success")
 
 	user.CreditCardBalance += float64(request.Amount)
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/models"
@@ -30,6 +31,97 @@ type CreditUserResponse struct {
 	User   string `json:"user"`
 	Amount uint64 `json:"amount"`
 	Memo   string `json:"memo"`
+}
+
+// MetricsCollector interface for collecting metrics (Single Responsibility Principle)
+type MetricsCollector interface {
+	CollectBasicMetrics() map[string]float64
+	CollectDBMetrics() map[string]float64
+	CollectPaymentMetrics() map[string]float64
+	CollectDeploymentMetrics() map[string]float64
+}
+
+// DependencyHealthChecker interface for health checks (Single Responsibility Principle)
+type DependencyHealthChecker interface {
+	CheckDependencies(ctx context.Context) (map[string]bool, error)
+}
+
+// defaultMetricsCollector implements MetricsCollector
+type defaultMetricsCollector struct{}
+
+func (m *defaultMetricsCollector) CollectBasicMetrics() map[string]float64 {
+	return map[string]float64{
+		"active_clusters":        internal.GetGaugeValue(internal.ActiveClusters),
+		"users_registered_total": internal.GetCounterValue(internal.UsersRegisteredTotal),
+	}
+}
+
+func (m *defaultMetricsCollector) CollectDBMetrics() map[string]float64 {
+	return map[string]float64{
+		"open": internal.GetGaugeValue(internal.GormDBConnections.WithLabelValues("open")),
+		"idle": internal.GetGaugeValue(internal.GormDBConnections.WithLabelValues("idle")),
+	}
+}
+
+func (m *defaultMetricsCollector) CollectPaymentMetrics() map[string]float64 {
+	return map[string]float64{
+		"success": internal.GetCounterValue(internal.StripePaymentsTotal.WithLabelValues("success")),
+		"failure": internal.GetCounterValue(internal.StripePaymentsTotal.WithLabelValues("failure")),
+	}
+}
+
+func (m *defaultMetricsCollector) CollectDeploymentMetrics() map[string]float64 {
+	return map[string]float64{
+		"success": internal.GetCounterValue(internal.ClusterDeploymentsTotal.WithLabelValues("success")),
+		"failure": internal.GetCounterValue(internal.ClusterDeploymentsTotal.WithLabelValues("failure")),
+	}
+}
+
+// defaultHealthChecker implements DependencyHealthChecker
+type defaultHealthChecker struct {
+	h *Handler
+}
+
+func (h *defaultHealthChecker) CheckDependencies(ctx context.Context) (map[string]bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	checks := map[string]HealthChecker{
+		"database":           h.h.checkDatabase,
+		"redis":              h.h.checkRedis,
+		"gridproxy":          h.h.checkGridProxy,
+		"tfchain":            h.h.checkTFChain,
+		"activation_service": h.h.checkActivationService,
+		"graphql":            h.h.checkGraphQL,
+		"firesquid":          h.h.checkFiresquid,
+	}
+
+	dependencyHealth := make(map[string]bool)
+	for name, check := range checks {
+		// Use a goroutine with timeout for each health check
+		healthChan := make(chan bool, 1)
+		go func(checkName string, healthCheck HealthChecker) {
+			defer func() {
+				if r := recover(); r != nil {
+					healthChan <- false
+				}
+			}()
+			status := healthCheck(ctx)
+			healthChan <- status.Status == "healthy"
+		}(name, check)
+
+		// Wait for result with timeout
+		select {
+		case healthy := <-healthChan:
+			dependencyHealth[name] = healthy
+			internal.SetHealthDependencyStatus(name, healthy)
+		case <-ctx.Done():
+			dependencyHealth[name] = false
+			internal.SetHealthDependencyStatus(name, false)
+		}
+	}
+
+	return dependencyHealth, nil
 }
 
 // @Summary Get all users
@@ -98,7 +190,6 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 	}
 
 	Success(c, http.StatusOK, "User is deleted successfully", nil)
-
 }
 
 // @Summary Generate vouchers
@@ -163,7 +254,6 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 // @Router /vouchers [get]
 // ListVouchersHandler returns all vouchers in system
 func (h *Handler) ListVouchersHandler(c *gin.Context) {
-
 	vouchers, err := h.db.ListAllVouchers()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to list all vouchers")
@@ -252,5 +342,60 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		Amount: request.Amount,
 		Memo:   request.Memo,
 	})
+}
 
+// GetMetricsSummaryHandler returns a summary of key metrics for the dashboard
+func (h *Handler) GetMetricsSummaryHandler(c *gin.Context) {
+	metricsCollector := h.createMetricsCollector()
+	healthChecker := h.createHealthChecker()
+
+	summary, err := h.buildMetricsSummary(c.Request.Context(), metricsCollector, healthChecker)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to build metrics summary")
+		InternalServerError(c)
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}
+
+// createMetricsCollector creates a metrics collector (Factory Pattern)
+func (h *Handler) createMetricsCollector() MetricsCollector {
+	return &defaultMetricsCollector{}
+}
+
+// createHealthChecker creates a health checker (Factory Pattern)
+func (h *Handler) createHealthChecker() DependencyHealthChecker {
+	return &defaultHealthChecker{h: h}
+}
+
+// buildMetricsSummary builds the complete metrics summary (Single Responsibility)
+func (h *Handler) buildMetricsSummary(ctx context.Context, collector MetricsCollector, checker DependencyHealthChecker) (map[string]interface{}, error) {
+	// Collect all metrics
+	basicMetrics := collector.CollectBasicMetrics()
+	dbMetrics := collector.CollectDBMetrics()
+	paymentMetrics := collector.CollectPaymentMetrics()
+	deploymentMetrics := collector.CollectDeploymentMetrics()
+
+	// Get dependency health
+	dependencyHealth, err := checker.CheckDependencies(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check dependencies: %w", err)
+	}
+
+	// Build summary
+	summary := map[string]interface{}{
+		"active_clusters":           basicMetrics["active_clusters"],
+		"users_registered_total":    basicMetrics["users_registered_total"],
+		"db_connections":            dbMetrics,
+		"stripe_payments_total":     paymentMetrics,
+		"cluster_deployments_total": deploymentMetrics,
+		"dependency_health":         dependencyHealth,
+		"system_info": map[string]interface{}{
+			"uptime":  time.Since(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)).String(),
+			"version": "1.0.0",
+		},
+	}
+
+	return summary, nil
 }

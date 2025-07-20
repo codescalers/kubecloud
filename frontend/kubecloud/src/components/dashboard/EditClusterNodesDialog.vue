@@ -138,7 +138,7 @@ const props = defineProps<{
   canAssignToNode: boolean,
   addNodeLoading: boolean
 }>();
-const emit = defineEmits(['update:modelValue', 'add-node', 'nodes-updated']);
+const emit = defineEmits(['update:modelValue', 'add-node', 'nodes-updated', 'remove-node']);
 const dialog = computed({
   get: () => props.modelValue,
   set: (val: boolean) => emit('update:modelValue', val)

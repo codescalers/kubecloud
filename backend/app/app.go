@@ -42,7 +42,14 @@ type App struct {
 
 // NewApp create new instance of the app with all configs
 func NewApp(config internal.Configuration) (*App, error) {
+	fmt.Println("NewApp called")
 	router := gin.Default()
+
+	// Initialize Prometheus metrics
+	internal.InitMetrics()
+
+	// Add metrics middleware as the first middleware
+	router.Use(metricsMiddleware())
 
 	stripe.Key = config.StripeSecret
 
@@ -115,6 +122,18 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 	workerManager := internal.NewWorkerManager(redisClient, sseManager, config.DeployerWorkersNum, sshPublicKey, db, config.SystemAccount.Network)
 
+	// Set metrics callback for all workers
+	for _, worker := range workerManager.Workers() {
+		worker.SetMetricsCallback(func(resultStatus string, activeClusters int) {
+			if resultStatus == "completed" {
+				internal.IncClusterDeployments("success")
+			} else if resultStatus == "failed" {
+				internal.IncClusterDeployments("failure")
+			}
+			internal.SetActiveClusters(activeClusters)
+		})
+	}
+
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, config.SystemAccount.Network)
@@ -133,6 +152,17 @@ func NewApp(config internal.Configuration) (*App, error) {
 
 	app.registerHandlers()
 
+	// Start periodic GORM DB connection metrics reporting
+	go func() {
+		for {
+			open, idle, err := db.GetDBStats()
+			if err == nil {
+				internal.SetGormDBConnections(open, idle)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
+
 	app.workerManager.Start()
 
 	return app, nil
@@ -142,10 +172,15 @@ func NewApp(config internal.Configuration) (*App, error) {
 // registerHandlers registers all routes
 func (app *App) registerHandlers() {
 	app.router.Use(middlewares.CorsMiddleware())
+
+	// Register /metrics endpoint at root
+	app.router.GET("/metrics", internal.MetricsHandler())
+
 	v1 := app.router.Group("/api/v1")
 	{
 		v1.GET("/health", app.handlers.HealthHandler)
 		v1.GET("/nodes", app.handlers.ListNodesHandler)
+		v1.GET("/metrics/summary", app.handlers.GetMetricsSummaryHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
@@ -229,6 +264,30 @@ func (app *App) registerHandlers() {
 
 	}
 	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+}
+
+// metricsMiddleware instruments HTTP requests for Prometheus
+func metricsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Start timer
+		start := time.Now()
+		c.Next()
+		// Handler name (route pattern or fallback)
+		handler := c.FullPath()
+		if handler == "" {
+			handler = "unknown"
+		}
+		method := c.Request.Method
+		status := fmt.Sprintf("%d", c.Writer.Status())
+		duration := time.Since(start).Seconds()
+		internal.HttpRequestsTotal.WithLabelValues(handler, method, status).Inc()
+		internal.HttpRequestDuration.WithLabelValues(handler, method, status).Observe(duration)
+		if c.Writer.Status() >= 200 && c.Writer.Status() < 400 {
+			internal.HttpRequestsSuccess.WithLabelValues(handler, method, status).Inc()
+		} else {
+			internal.HttpRequestsError.WithLabelValues(handler, method, status).Inc()
+		}
+	}
 }
 
 func (app *App) StartBackgroundWorkers() {

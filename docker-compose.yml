@@ -1,4 +1,4 @@
-version: "3"
+version: "3.7"
 services:
   redis-db:
     image: redis:alpine
@@ -21,11 +21,33 @@ services:
     command: ["/kubecloud", "--config", "/app/config.json"]
 
   frontend:
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8080/api
-      - VITE_STRIPE_PUBLISHABLE_KEY=""
     build:
       context: frontend/kubecloud/.
       dockerfile: Dockerfile
     ports:
-       - "8000:80"
+      - "8000:80"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api
+      - VITE_STRIPE_PUBLISHABLE_KEY=""
+    depends_on:
+      - backend
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus

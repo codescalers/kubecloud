@@ -9,13 +9,14 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue'
-import StatsGrid from './StatsGrid.vue'
+import { defineProps, defineAsyncComponent } from 'vue'
+
+const StatsGrid = defineAsyncComponent(() => import('./StatsGrid.vue'))
 
 interface AdminStat {
   icon: string;
   color: string;
-  value: number;
+  value: number | string;
   label: string;
 }
 

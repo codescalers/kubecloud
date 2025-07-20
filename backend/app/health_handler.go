@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"kubecloud/internal"
 	"kubecloud/models/sqlite"
 
 	"github.com/gin-gonic/gin"
@@ -118,7 +119,9 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 	}
 	resp := make(map[string]HealthStatus)
 	for name, check := range checks {
-		resp[name] = check(ctx)
+		status := check(ctx)
+		resp[name] = status
+		internal.SetHealthDependencyStatus(name, status.Status == "healthy")
 	}
 	c.JSON(http.StatusOK, resp)
 }

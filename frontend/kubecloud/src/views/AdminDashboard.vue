@@ -16,8 +16,78 @@ const selected = ref('overview')
 
 const adminStats = ref([
   { label: 'Total Users', value: 0, icon: 'mdi-account-group', color: '#3B82F6' },
-  { label: 'Active Clusters', value: 42, icon: 'mdi-server', color: '#3B82F6' },
+  { label: 'Active Clusters', value: 0, icon: 'mdi-server', color: '#10B981' },
+  { label: 'Total Deployments', value: 0, icon: 'mdi-rocket-launch', color: '#F59E0B' },
+  { label: 'Successful Payments', value: 0, icon: 'mdi-cash-check', color: '#22C55E' },
+  { label: 'Failed Payments', value: 0, icon: 'mdi-cash-remove', color: '#EF4444' },
+  { label: 'Open DB Connections', value: 0, icon: 'mdi-database', color: '#8B5CF6' },
+  { label: 'Idle DB Connections', value: 0, icon: 'mdi-database-clock', color: '#06B6D4' },
+  { label: 'System Uptime', value: '0h 0m', icon: 'mdi-clock-outline', color: '#6366F1' },
 ])
+
+const metricsSummary = ref({})
+const systemUptime = ref('0h 0m')
+const lastUpdate = ref('')
+const metricsLoading = ref(true)
+
+async function loadMetricsSummary() {
+  try {
+    metricsLoading.value = true
+    const res = await fetch('/api/v1/metrics/summary')
+    const data = await res.json()
+    metricsSummary.value = data
+    lastUpdate.value = new Date().toLocaleTimeString()
+    
+    // Format system uptime from backend data
+    const backendUptime = data.system_info?.uptime || '0h 0m'
+    const formattedUptime = formatUptime(backendUptime)
+    systemUptime.value = formattedUptime
+    
+    // Update admin stats with real data
+    adminStats.value = [
+      { label: 'Total Users', value: data.users_registered_total ?? 0, icon: 'mdi-account-group', color: '#3B82F6' },
+      { label: 'Active Clusters', value: data.active_clusters ?? 0, icon: 'mdi-server', color: '#10B981' },
+      { label: 'Total Deployments', value: (data.cluster_deployments_total?.success ?? 0) + (data.cluster_deployments_total?.failure ?? 0), icon: 'mdi-rocket-launch', color: '#F59E0B' },
+      { label: 'Successful Payments', value: data.stripe_payments_total?.success ?? 0, icon: 'mdi-cash-check', color: '#22C55E' },
+      { label: 'Failed Payments', value: data.stripe_payments_total?.failure ?? 0, icon: 'mdi-cash-remove', color: '#EF4444' },
+      { label: 'Open DB Connections', value: data.db_connections?.open ?? 0, icon: 'mdi-database', color: '#8B5CF6' },
+      { label: 'Idle DB Connections', value: data.db_connections?.idle ?? 0, icon: 'mdi-database-clock', color: '#06B6D4' },
+      { label: 'System Uptime', value: formattedUptime, icon: 'mdi-clock-outline', color: '#6366F1' },
+    ]
+  } catch (e) {
+    console.error('Failed to load metrics:', e)
+    // fallback: keep zeros
+  } finally {
+    metricsLoading.value = false
+  }
+}
+
+// Format uptime from Go duration format
+function formatUptime(uptime: string): string {
+  if (!uptime) return '0h 0m'
+  // Parse Go duration format like "13561h4m54.974215702s" to "13561h 4m"
+  const match = uptime.match(/(\d+)h(\d+)m/)
+  if (match) {
+    return `${match[1]}h ${match[2]}m`
+  }
+  return uptime
+}
+
+// Update system uptime every minute
+function updateSystemUptime() {
+  const startTime = new Date('2024-01-01T00:00:00Z') // Replace with actual start time
+  const now = new Date()
+  const diff = now.getTime() - startTime.getTime()
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  systemUptime.value = `${hours}h ${minutes}m`
+  
+  // Update the uptime in admin stats
+  const uptimeIndex = adminStats.value.findIndex(stat => stat.label === 'System Uptime')
+  if (uptimeIndex !== -1) {
+    adminStats.value[uptimeIndex].value = systemUptime.value
+  }
+}
 
 // User management state
 const users = ref<User[]>([])
@@ -141,6 +211,10 @@ async function applyManualCreditDialog() {
     closeCreditDialog()
 }
 
+function openGrafanaDashboard() {
+  window.open('http://localhost:3000/d/00395a2a-f6ba-45de-82d6-012d28e59d7c/kubecloud?orgId=1', '_blank');
+}
+
 const tabs = [
   { key: 'overview', label: 'Overview' },
   { key: 'users', label: 'Users' },
@@ -153,10 +227,17 @@ const tabs = [
 const invoices: Ref<Invoice[]> = ref([])
 
 onMounted(async () => {  
-  // Load initial data
+  await loadMetricsSummary()
   await loadUsers()
   await loadVouchers()
   await loadInvoices()
+  
+  // Update uptime immediately and then every minute
+  updateSystemUptime()
+  setInterval(updateSystemUptime, 60000)
+  
+  // Refresh metrics every 30 seconds
+  setInterval(loadMetricsSummary, 30000)
 })
 
 async function loadInvoices() {
@@ -172,6 +253,26 @@ async function loadInvoices() {
           <AdminSidebar :selected="selected" @update:selected="handleSidebarSelect" />
         </div>
         <div class="dashboard-main">
+          <div v-if="selected === 'overview'" class="overview-header">
+            <div class="overview-controls">
+              <button
+                class="grafana-btn"
+                @click="openGrafanaDashboard"
+              >
+                Open System Metrics Dashboard
+              </button>
+              <button
+                class="refresh-btn"
+                @click="loadMetricsSummary"
+              >
+                <v-icon icon="mdi-refresh" size="16"></v-icon>
+                Refresh Metrics
+              </button>
+            </div>
+            <div v-if="lastUpdate" class="last-update">
+              Last updated: {{ lastUpdate }}
+            </div>
+          </div>
           <AdminStatsCards v-if="selected === 'overview'" :adminStats="adminStats" />
           <AdminUsersTable
             v-else-if="selected === 'users'"
@@ -186,7 +287,7 @@ async function loadInvoices() {
             @creditUser="openCreditDialog"
           />
           <AdminClustersSection v-else-if="selected === 'clusters'" />
-          <AdminSystemSection v-else-if="selected === 'system'" />
+          <AdminSystemSection v-else-if="selected === 'system'" :metrics="metricsSummary" :loading="metricsLoading" />
           <AdminVouchersSection
             v-else-if="selected === 'vouchers'"
             :voucherValue="voucherValue"
@@ -386,6 +487,54 @@ async function loadInvoices() {
   margin: 0;
 }
 
+.overview-header {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 2rem;
+}
+
+.overview-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.grafana-btn {
+  background: #222f3e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.grafana-btn:hover {
+  background: #3b82f6;
+}
+
+.refresh-btn {
+  background: #222f3e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+}
+.refresh-btn:hover {
+  background: #3b82f6;
+}
+
+.last-update {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #CBD5E1);
+  text-align: right;
+}
 
 /* Responsive Design */
 @media (max-width: 900px) {

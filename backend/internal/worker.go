@@ -19,6 +19,8 @@ type Worker struct {
 	sshKey     string
 	db         models.DB
 	gridNet    string // Network name for the grid
+	// Metrics callback: func(resultStatus string, activeClusters int)
+	metricsCallback func(resultStatus string, activeClusters int)
 }
 
 // NewWorker creates a new worker instance
@@ -127,6 +129,13 @@ func (w *Worker) processTask(ctx context.Context, task *DeploymentTask) error {
 				}
 			}
 		}
+		if w.metricsCallback != nil {
+			if count, err := w.countActiveClusters(); err == nil {
+				w.metricsCallback(string(result.Status), count)
+			} else {
+				w.metricsCallback(string(result.Status), 0)
+			}
+		}
 	}
 
 	log.Info().Str("task_id", task.TaskID).Str("status", string(result.Status)).Msg("Task completed")
@@ -207,6 +216,20 @@ func (w *Worker) performDeployment(ctx context.Context, task *DeploymentTask) *D
 	return result
 }
 
+// countActiveClusters returns the number of active clusters in the DB
+func (w *Worker) countActiveClusters() (int, error) {
+	clusters, err := w.db.ListUserClusters("") // empty string to get all clusters
+	if err != nil {
+		return 0, err
+	}
+	return len(clusters), nil
+}
+
+// SetMetricsCallback sets the metrics callback for the worker
+func (w *Worker) SetMetricsCallback(cb func(resultStatus string, activeClusters int)) {
+	w.metricsCallback = cb
+}
+
 // WorkerManager manages multiple workers
 type WorkerManager struct {
 	workers []*Worker
@@ -244,4 +267,9 @@ func (wm *WorkerManager) Start() {
 // Stop stops all workers immediately
 func (wm *WorkerManager) Stop() {
 	wm.cancel()
+}
+
+// Workers returns the slice of workers
+func (wm *WorkerManager) Workers() []*Worker {
+	return wm.workers
 }
