@@ -21,7 +21,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.9-0.20250714083056-4943cdc054d8
 	github.com/threefoldtech/zosbase v0.1.10
 	github.com/tyler-smith/go-bip39 v1.1.0
-	github.com/vedhavyas/go-subkey v1.0.3
+	github.com/vedhavyas/go-subkey v1.0.4
 	gorm.io/gorm v1.30.0
 )
 
