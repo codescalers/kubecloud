@@ -54,6 +54,7 @@
 import { defineProps, defineEmits, watch, ref, computed } from 'vue';
 import type { PropType } from 'vue';
 import type { VM, SshKey } from '../composables/useDeployCluster';
+import { validateNodeName, validateCPU, validateRAM, validateDisk } from '../utils/validation';
 const props = defineProps({
   node: { type: Object as PropType<VM>, required: true },
   visible: { type: Boolean, required: true },
@@ -82,10 +83,10 @@ watch(
 const errors = computed(() => {
   const node = localNode.value;
   const errs: Record<string, string> = {};
-  if (!node.name || !node.name.trim()) errs.name = 'Name is required.';
-  if (!node.vcpu || node.vcpu <= 0) errs.vcpu = 'vCPU must be a positive number.';
-  if (!node.ram || node.ram <= 0) errs.ram = 'RAM must be a positive number.';
-  if (!node.disk || node.disk <= 0) errs.disk = 'Disk size must be positive.';
+  errs.name = validateNodeName(node.name);
+  errs.vcpu = validateCPU(node.vcpu);
+  errs.ram = validateRAM(node.ram);
+  errs.disk = validateDisk(node.disk);
   // Only require SSH key if there are any available
   if (props.availableSshKeys.length > 0 && !selectedSshKeyId.value) errs.ssh = 'At least one SSH key must be selected.';
   return errs;
