@@ -54,7 +54,7 @@
 import { defineProps, defineEmits, watch, ref, computed } from 'vue';
 import type { PropType } from 'vue';
 import type { VM, SshKey } from '../composables/useDeployCluster';
-import { validateNodeName, validateCPU, validateRAM, validateDisk } from '../utils/validation';
+import { required, min, isAlphanumericExpectUnderscore, max } from '@/utils/validation';
 const props = defineProps({
   node: { type: Object as PropType<VM>, required: true },
   visible: { type: Boolean, required: true },
@@ -83,20 +83,22 @@ watch(
 const errors = computed(() => {
   const node = localNode.value;
   const errs: Record<string, string> = {};
-  errs.name = validateNodeName(node.name);
-  errs.vcpu = validateCPU(node.vcpu);
-  errs.ram = validateRAM(node.ram);
-  errs.disk = validateDisk(node.disk);
+  errs.name = required('Name is required')(node.name) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(node.name) || "";
+  errs.vcpu = min('vCPU must be at least 1', 1)(node.vcpu)|| max('vCPU must be at most 32', 32)(node.vcpu) || "";
+  errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 32GB', 32)(node.ram) || "";
+  errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 1000GB', 1000)(node.disk) || "";
   // Only require SSH key if there are any available
   if (props.availableSshKeys.length > 0 && !selectedSshKeyId.value) errs.ssh = 'At least one SSH key must be selected.';
   return errs;
 });
+
 const valid = computed(() => Object.keys(errors.value).length === 0);
 function onSave() {
   if (valid.value) {
     emit('save', { ...localNode.value, sshKeyIds: selectedSshKeyId.value !== null ? [selectedSshKeyId.value] : [] });
   }
 }
+
 </script>
 <style scoped>
 .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }

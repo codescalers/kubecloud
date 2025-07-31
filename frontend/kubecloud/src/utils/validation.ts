@@ -182,30 +182,37 @@ export const validateAsync = async (
   return syncResult
 } 
 
-export function validateRAM(ram: number): string {
-  if (!ram || ram <= 0) return 'RAM must be a positive number.';
-  if (ram > 32) return 'RAM must be less than or equal to 32GB.';
-  if (ram < 0.5) return 'RAM must be at least 512MB.';
-  return '';
+
+
+
+
+export function required(msg: string) {
+  return (value: string) => {
+    if (!value) {
+      return msg;
+    }
+  };
+}
+export function min(msg: string, min: number) {
+  return (value: number) => {
+    if (value < min) {
+      return msg ;
+    }
+  };
 }
 
-export function validateCPU(cpu: number): string {
-  if (!cpu || cpu <= 0) return 'CPU must be a positive number.';
-  if (cpu > 32) return 'CPU must be less than or equal to 32.';
-  if (cpu < 1) return 'CPU must be at least 1.';
-  return '';
+export function max(msg: string, max: number) {
+  return (value: number) => {
+    if (+value > max) {
+      return msg;
+    }
+  };
 }
 
-export function validateDisk(disk: number): string {
-  if (!disk || disk <= 0) return 'Disk size must be a positive number.';
-  if (disk > 10000) return 'Disk size must be less than or equal to 10000GB.';
-  if (disk < 15) return 'Disk size must be at least 15GB.';
-  return '';
-}
-
-export function validateNodeName(name: string): string {
-  if (!name || !name.trim()) return 'Name is required.';
-  if (name.length < 2 || name.length > 35) return 'Node name must be between 2 and 35 characters.'
-  if (!/^[a-zA-Z0-9_]*$/.test(name)) return 'Node name can only contain letters, numbers, and underscores.'
-  return ''
+export function isAlphanumericExpectUnderscore(msg: string) {
+  return (value: string) => {
+    if (!/^[a-zA-Z0-9_]*$/.test(value)) {
+      return msg;
+    }
+  };
 }

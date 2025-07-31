@@ -42,10 +42,10 @@
         </div>
         <div v-else-if="editTab === 'add'">
           <div class="add-form-wrapper">
-            <v-text-field v-model="addFormName" label="Name" />
-            <v-text-field v-model.number="addFormCpu" label="CPU" type="number" min="1" />
-            <v-text-field v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
-            <v-text-field v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
+            <v-text-field :rules="[validateNodeName]" v-model="addFormName" label="Name" />
+            <v-text-field :rules="[validateCPU]" v-model.number="addFormCpu" label="CPU" type="number" min="1" />
+            <v-text-field :rules="[validateRAM]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
+            <v-text-field :rules="[validateStorage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
             <v-select
               v-model="addFormNodeId"
               :items="availableNodesWithName"
@@ -154,7 +154,7 @@ import type { RentedNode } from '../../composables/useNodeManagement';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { useNotificationStore } from '../../stores/notifications';
-
+import {isAlphanumericExpectUnderscore, required, min, max} from "../../utils/validation"
 const notificationStore = useNotificationStore();
 const props = defineProps<{
   modelValue: boolean,
@@ -198,6 +198,22 @@ const sshKeys = ref<any[]>([]);
 const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
 
+const validateNodeName = (value: string) :string|boolean =>  {
+  const msg = required('Name is required')(value) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(value);
+  return msg ? msg : true;
+};
+const validateCPU = (value: string) :string|boolean =>  {
+  const msg = required('CPU is required')(value) || min('CPU must be at least 1',1)(+value);
+  return msg ? msg : true;
+};
+const validateRAM = (value: string) :string|boolean =>  {
+  const msg = required('RAM is required')(value) || min('RAM must be at least 0.5GB',0.5)(+value)|| max('RAM must be at most 32GB',32)(+value);
+  return msg ? msg : true;
+};
+const validateStorage = (value: string) :string|boolean =>  {
+  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 1000GB',1000)(+value);
+  return msg ? msg : true;
+};
 onMounted(async () => {
   sshKeysLoading.value = true;
   try {
@@ -225,8 +241,8 @@ const canAssignToNode = computed(() => {
 });
 watch([addFormNodeId, addFormRam, addFormStorage], () => {
   const node = addFormNode.value;
+  addFormError.value = '';
   if (!node) {
-    addFormError.value = '';
     return;
   }
   if (
@@ -268,3 +284,8 @@ const availableNodesWithName = computed(() =>
   }) as RentedNode & { name: string })
 );
 </script>
+<style scoped>
+.polished-error {
+  color: red;
+}
+</style>
