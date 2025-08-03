@@ -206,15 +206,15 @@ const validateNodeName = (value: string) :string|boolean =>  {
   return msg ? msg : true;
 };
 const validateCPU = (value: string) :string|boolean =>  {
-  const msg = required('CPU is required')(value) || min('CPU must be at least 1',1)(+value);
+  const msg = required('CPU is required')(value) || min('CPU must be at least 1',1)(+value)|| max('CPU must be at most 32',32)(+value);
   return msg ? msg : true;
 };
 const validateRAM = (value: string) :string|boolean =>  {
-  const msg = required('RAM is required')(value) || min('RAM must be at least 0.5GB',0.5)(+value)|| max('RAM must be at most 32GB',32)(+value);
+  const msg = required('RAM is required')(value) || min('RAM must be at least 0.5GB',0.5)(+value)|| max('RAM must be at most 256GB',256)(+value);
   return msg ? msg : true;
 };
 const validateStorage = (value: string) :string|boolean =>  {
-  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 1000GB',1000)(+value);
+  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 1000GB',10000)(+value);
   return msg ? msg : true;
 };
 onMounted(async () => {

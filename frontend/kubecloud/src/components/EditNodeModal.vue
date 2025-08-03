@@ -85,8 +85,8 @@ const errors = computed(() => {
   const errs: Record<string, string> = {};
   errs.name = required('Name is required')(node.name) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(node.name) || "";
   errs.vcpu = min('vCPU must be at least 1', 1)(node.vcpu)|| max('vCPU must be at most 32', 32)(node.vcpu) || "";
-  errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 32GB', 32)(node.ram) || "";
-  errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 1000GB', 1000)(node.disk) || "";
+  errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 256GB', 256)(node.ram) || "";
+  errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 10000GB', 10000)(node.disk) || "";
   // Only require SSH key if there are any available
   if (props.availableSshKeys.length > 0 && !selectedSshKeyId.value) errs.ssh = 'At least one SSH key must be selected.';
   return errs;
