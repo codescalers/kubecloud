@@ -131,13 +131,13 @@ const features = [
         </div>
         <v-row class="feature-cards-row">
           <v-col cols="12" md="4" v-for="feature in features" :key="feature.title" class="feature-col">
-            <div class="home-card card-enhanced fade-in">
-              <div class="home-icon">
+            <v-card color="surface-variant" class="pa-6 text-center fade-in" height="100%">
+              <div class="mb-6">
                 <v-icon :icon="feature.icon" size="48" color="primary"></v-icon>
               </div>
-              <h3 class="home-title">{{ feature.title }}</h3>
-              <p class="home-description">{{ feature.description }}</p>
-            </div>
+              <h3 class="text-h5 font-weight-medium mb-4">{{ feature.title }}</h3>
+              <p class="text-body-1 text-medium-emphasis">{{ feature.description }}</p>
+            </v-card>
           </v-col>
         </v-row>
       </div>
@@ -159,7 +159,7 @@ const features = [
             size="x-large"
             to="/deploy"
           >
-            Deploy Cluster  
+            Deploy Cluster
           </v-btn>
           <v-btn
             v-else
@@ -253,36 +253,12 @@ const features = [
   font-weight: 400;
 }
 
-.home-card {
-  text-align: center;
-  height: 100%;
-}
-
 .feature-cards-row {
   margin: 9rem;
 }
 
 .feature-col {
   padding: 1rem;
-}
-
-.home-icon {
-  margin-bottom: 2.5rem;
-}
-
-.home-title {
-  font-size: 1.5rem;
-  color: #fff;
-  margin-bottom: 1.5rem;
-  font-weight: 500;
-}
-
-.home-description {
-  color: #CBD5E1;
-  line-height: 1.7;
-  opacity: 0.85;
-  font-size: 1.1rem;
-  font-weight: 400;
 }
 
 /* CTA Section */

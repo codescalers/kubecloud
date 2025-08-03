@@ -1,39 +1,51 @@
 <template>
-  <div class="card vm-card">
-    <div class="vm-header">
-      <h3 class="vm-title">
-        {{ vm.name }} <span class="vm-type">({{ type }})</span>
-      </h3>
-      <div class="vm-actions">
-        <v-btn icon="mdi-pencil" size="small" @click="$emit('edit')" aria-label="Edit VM" />
-        <v-btn icon="mdi-delete" size="small" @click="$emit('delete')" aria-label="Delete VM" />
+  <v-card color="surface-variant" class="pa-4 mb-3">
+    <div class="d-flex justify-space-between align-center mb-3">
+      <div>
+        <h3 class="text-h6 font-weight-medium">
+          {{ vm.name }} <v-chip size="small" color="primary" variant="outlined" class="ml-2">{{ type }}</v-chip>
+        </h3>
+      </div>
+      <div class="d-flex">
+        <v-btn icon="mdi-pencil" size="small" variant="text" @click="$emit('edit')" aria-label="Edit VM" />
+        <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="$emit('delete')" aria-label="Delete VM" />
       </div>
     </div>
-    <div class="vm-specs">
-      <v-chip color="primary" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-cpu-64-bit</v-icon>
+
+    <div class="d-flex flex-wrap ga-2 mb-3">
+      <v-chip color="primary" size="small" variant="outlined">
+        <v-icon size="16" class="me-1">mdi-cpu-64-bit</v-icon>
         {{ vm.vcpu }} vCPU
       </v-chip>
-      <v-chip color="success" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-memory</v-icon>
+      <v-chip color="success" size="small" variant="outlined">
+        <v-icon size="16" class="me-1">mdi-memory</v-icon>
         {{ vm.ram }} GB RAM
       </v-chip>
-      <v-chip color="info" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-harddisk</v-icon>
+      <v-chip color="info" size="small" variant="outlined">
+        <v-icon size="16" class="me-1">mdi-harddisk</v-icon>
         {{ vm.disk }} GB Disk
       </v-chip>
-      <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-nvidia</v-icon>
+      <v-chip v-if="vm.gpu" color="deep-purple-accent-2" size="small" variant="outlined">
+        <v-icon size="16" class="me-1">mdi-nvidia</v-icon>
         GPU
       </v-chip>
-      <div class="spec-item" style="margin-top: 0.7em;">
-        <span class="spec-label">SSH Keys:</span>
-        <span v-for="id in vm.sshKeyIds" :key="id" class="ssh-key-chip">
+    </div>
+
+    <div v-if="vm.sshKeyIds?.length">
+      <div class="text-body-2 text-medium-emphasis mb-2">SSH Keys:</div>
+      <div class="d-flex flex-wrap ga-1">
+        <v-chip
+          v-for="id in vm.sshKeyIds"
+          :key="id"
+          size="x-small"
+          color="primary"
+          variant="tonal"
+        >
           {{ availableSshKeys.find(k => k.ID === id)?.name }}
-        </span>
+        </v-chip>
       </div>
     </div>
-  </div>
+  </v-card>
 </template>
 <script setup lang="ts">
 import type { VM, SshKey } from '../../composables/useDeployCluster';
@@ -42,54 +54,4 @@ const props = defineProps<{ vm: VM; type: 'master' | 'worker'; availableSshKeys:
 const emit = defineEmits(['edit', 'delete']);
 </script>
 
-<style scoped>
-.card.vm-card {
-  background: var(--color-surface-1, #18192b);
-  border-radius: 16px;
-  padding: 1.5rem 1.2rem;
-  margin-bottom: 1.2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-.vm-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-.vm-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-.vm-type {
-  font-size: 0.95em;
-  color: var(--color-text-muted, #7c7fa5);
-  margin-left: 0.5em;
-}
-.vm-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.vm-specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.2rem;
-  margin-top: 0.5rem;
-}
-.spec-item {
-  font-size: 1em;
-  color: var(--color-text, #cfd2fa);
-  min-width: 110px;
-}
-.spec-label {
-  color: var(--color-text-muted, #7c7fa5);
-  margin-right: 0.5em;
-}
-.ssh-key-chip {
-  background: var(--color-surface-2, #23243a);
-  color: var(--color-primary, #6366f1);
-  border-radius: 8px;
-  padding: 0.1em 0.7em;
-  margin-right: 0.4em;
-  font-size: 0.97em;
-}
-</style> 
+

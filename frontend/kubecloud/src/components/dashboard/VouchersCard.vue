@@ -1,13 +1,13 @@
 <template>
-  <div class="dashboard-card vouchers-card spacious">
-    <div class="dashboard-card-header">
-      <h3 class="dashboard-card-title single-line">Redeem Voucher</h3>
-      <p class="dashboard-card-subtitle">Add credits to your balance using a voucher code</p>
+  <v-card color="surface-variant" class="pa-6" style="max-width: 50rem;">
+    <div class="mb-6">
+      <h3 class="text-h5 font-weight-bold mb-2">Redeem Voucher</h3>
+      <p class="text-body-1 text-primary">Add credits to your balance using a voucher code</p>
     </div>
-    <div class="dashboard-card-content">
+
+    <div class="d-flex flex-column ga-4">
       <v-text-field
         v-model="code"
-        class="voucher-input-field"
         label="Voucher Code"
         :disabled="loading"
         @keyup.enter="onRedeem"
@@ -20,18 +20,19 @@
       />
       <v-btn
         color="primary"
+        variant="elevated"
+        size="large"
         :loading="loading"
         :disabled="loading || !code.trim()"
-        class="redeem-btn"
         @click="onRedeem"
         prepend-icon="mdi-gift"
       >
         Redeem
       </v-btn>
-      <div v-if="successMessage" class="success-message mt-3">{{ successMessage }}</div>
-      <div v-if="errorMessage" class="error-message mt-3">{{ errorMessage }}</div>
+      <div v-if="successMessage" class="text-success font-weight-medium">{{ successMessage }}</div>
+      <div v-if="errorMessage" class="text-error font-weight-medium">{{ errorMessage }}</div>
     </div>
-  </div>
+  </v-card>
 </template>
 
 <script setup lang="ts">
@@ -64,71 +65,4 @@ async function onRedeem() {
 
 </script>
 
-<style scoped>
-.dashboard-card.vouchers-card.spacious {
-  background: #181f35;
-  border-radius: 1.25rem;
-  border: 1.5px solid #334155;
-  max-width: 50rem;
-  margin-left: 0;
-  padding: 2.2rem 2.5rem 2.2rem 2.5rem;
-  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.12);
-  display: flex;
-  flex-direction: column;
-}
-.dashboard-card-header {
-  margin-bottom: 1.5rem;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-}
-.dashboard-card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.2rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.single-line {
-  white-space: nowrap;
-}
-.dashboard-card-subtitle {
-  font-size: 1.05rem;
-  color: #60a5fa;
-  margin-bottom: 0.5rem;
-  margin-left: 1.5rem;
-  flex-shrink: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dashboard-card-content {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  align-items: stretch;
-}
-.voucher-input-field {
-  width: 100%;
-}
-.redeem-btn {
-  max-width: 12rem;
-  font-size: 1.1rem;
-  border-radius: 0.7rem;
-  margin-top: 0.2rem;
-}
-.success-message {
-  color: #10B981;
-  font-weight: 500;
-  font-size: 1rem;
-}
-.error-message {
-  color: #EF4444;
-  font-weight: 500;
-  font-size: 1rem;
-}
-</style>
+

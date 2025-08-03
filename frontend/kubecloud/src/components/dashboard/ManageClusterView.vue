@@ -9,83 +9,94 @@
           <h2>Cluster Not Found</h2>
           <v-btn color="primary" @click="goBack">Back to Dashboard</v-btn>
         </div>
-        <div v-else-if="cluster" class="manage-header mb-6">
-          <div class="manage-header-content">
-            <h1 class="manage-title">{{ cluster?.cluster?.name || '-' }}</h1>
-            <p class="manage-subtitle">Manage your Kubernetes cluster configuration and resources</p>
+        <div v-else-if="cluster" class="mb-6">
+          <div>
+            <h1 class="text-h3 font-weight-bold text-white mb-2">{{ cluster?.cluster?.name || '-' }}</h1>
+            <p class="text-h6 text-medium-emphasis">Manage your Kubernetes cluster configuration and resources</p>
           </div>
         </div>
         <div v-if="!loading && !notFound && cluster" class="manage-content-wrapper">
-          <div class="status-actions align-end">
-            <v-btn variant="outlined" class="btn btn-outline" @click="openKubeconfigModal">
-              <v-icon icon="mdi-eye" class="mr-2"></v-icon>
+          <div class="d-flex justify-end ga-3 mb-4">
+            <v-btn variant="outlined" color="primary" @click="openKubeconfigModal">
+              <v-icon icon="mdi-eye" class="me-2"></v-icon>
               Show Kubeconfig
             </v-btn>
-            <v-btn variant="outlined" class="btn btn-outline" @click="openEditClusterNodesDialog">
-              <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
+            <v-btn variant="outlined" color="primary" @click="openEditClusterNodesDialog">
+              <v-icon icon="mdi-pencil" class="me-2"></v-icon>
               Edit Cluster
             </v-btn>
-            <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
-              <v-icon icon="mdi-delete" class="mr-2"></v-icon>
+            <v-btn variant="outlined" color="error" @click="openDeleteModal">
+              <v-icon icon="mdi-delete" class="me-2"></v-icon>
               Delete
             </v-btn>
           </div>
-          <div class="main-content-card modern-cluster-card">
-            <div class="modern-cluster-info">
-              <div class="cluster-info-grid">
-                <div class="info-label">Project Name</div>
-                <div>{{ cluster.cluster.name || '-' }}</div>
-                <div class="info-label">CPU</div>
-                <div>{{ totalCPU }}</div>
-                <div class="info-label">Created</div>
-                <div>{{ formatDate(cluster.created_at) }}</div>
-                <div class="info-label">Storage</div>
-                <div>{{ Math.round(totalStorage / 1024) }} GB</div>
-                <div class="info-label">Last Updated</div>
-                <div>{{ formatDate(cluster.updated_at) }}</div>
-
-                <div class="info-label">RAM</div>
-                <div>{{ Math.round(totalRam / 1024) }} GB</div>
-              </div>
+          <v-card color="surface-variant" class="pa-6">
+            <div class="mb-6">
+              <v-row>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">Project Name</div>
+                  <div class="text-h6 font-weight-medium text-white">{{ cluster.cluster.name || '-' }}</div>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">CPU</div>
+                  <div class="text-h6 font-weight-medium text-white">{{ totalCPU }}</div>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">Created</div>
+                  <div class="text-body-1 text-white">{{ formatDate(cluster.created_at) }}</div>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">Storage</div>
+                  <div class="text-h6 font-weight-medium text-white">{{ Math.round(totalStorage / 1024) }} GB</div>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">Last Updated</div>
+                  <div class="text-body-1 text-white">{{ formatDate(cluster.updated_at) }}</div>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <div class="text-body-2 text-medium-emphasis mb-1">RAM</div>
+                  <div class="text-h6 font-weight-medium text-white">{{ Math.round(totalRam / 1024) }} GB</div>
+                </v-col>
+              </v-row>
             </div>
-            <div class="nodes-section mt-8">
-              <h3 class="dashboard-card-title mb-4">
-                <v-icon icon="mdi-lan" class="mr-2"></v-icon>
+            <div class="mt-6">
+              <h3 class="text-h6 font-weight-medium mb-4 d-flex align-center text-white">
+                <v-icon icon="mdi-lan" class="me-2" color="primary"></v-icon>
                 Cluster Nodes
               </h3>
-              <v-table v-if="filteredNodes.length">
+              <v-table v-if="filteredNodes.length" theme="dark">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>CPU</th>
-                    <th>RAM</th>
-                    <th>Storage</th>
-                    <th>IP</th>
-                    <th>Mycelium IP</th>
-                    <th>Planetary IP</th>
-                    <th>Contract ID</th>
+                    <th class="text-white">Name</th>
+                    <th class="text-white">Type</th>
+                    <th class="text-white">CPU</th>
+                    <th class="text-white">RAM</th>
+                    <th class="text-white">Storage</th>
+                    <th class="text-white">IP</th>
+                    <th class="text-white">Mycelium IP</th>
+                    <th class="text-white">Planetary IP</th>
+                    <th class="text-white">Contract ID</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="node in filteredNodes" :key="node.node_id">
-                    <td>{{ node.original_name }}</td>
-                    <td>{{ node.type }}</td>
-                    <td>{{ node.cpu }}</td>
-                    <td>{{ Math.round(node.memory / 1024) }} GB</td>
-                    <td>{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
-                    <td>
+                    <td class="text-white">{{ node.original_name }}</td>
+                    <td class="text-white">{{ node.type }}</td>
+                    <td class="text-white">{{ node.cpu }}</td>
+                    <td class="text-white">{{ Math.round(node.memory / 1024) }} GB</td>
+                    <td class="text-white">{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
+                    <td class="text-white">
                       <span class="truncate-cell">
                         {{ node.ip || '-' }}
                       </span>
                     </td>
-                    <td>
+                    <td class="text-white">
                       <span v-if="node.mycelium_ip" class="full-ip-cell">
                         {{ node.mycelium_ip }}
                       </span>
                       <span v-else>-</span>
                     </td>
-                    <td>
+                    <td class="text-white">
                       <v-tooltip activator="parent" location="top" v-if="node.planetary_ip">
                         <template #activator="{ props }">
                           <span class="truncate-cell" v-bind="props">
@@ -96,13 +107,13 @@
                       </v-tooltip>
                       <span v-else>-</span>
                     </td>
-                    <td>{{ node.contract_id || '-' }}</td>
+                    <td class="text-white">{{ node.contract_id || '-' }}</td>
                   </tr>
                 </tbody>
               </v-table>
               <div v-else class="empty-message">No node details available.</div>
             </div>
-          </div>
+          </v-card>
         </div>
       </v-container>
     </div>
@@ -420,70 +431,7 @@ async function handleRemoveNode(nodeName: string) {
 .manage-header {
   margin-bottom: var(--space-8);
 }
-.manage-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text);
-  margin: 0 0 var(--space-2) 0;
-}
-.manage-subtitle {
-  font-size: var(--font-size-lg);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-.status-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-.status-actions.align-end {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
-}
-.main-content-card {
-  padding: unset !important;
-  overflow: hidden;
-}
-.modern-cluster-card {
-  background: rgba(255,255,255,0.03);
-  border-radius: 0.25rem;
-  padding: 2.5rem 2.5rem 2rem 2.5rem !important;
-}
-.modern-cluster-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  margin-bottom: 2.5rem;
-}
-.cluster-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: 1.5rem;
-}
-.cluster-info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
-  gap: 0.7rem 2.5rem;
-  align-items: center;
-}
-.info-label {
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: right;
-}
-.nodes-section {
-  margin-top: 2rem;
-}
-.dashboard-card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--color-text);
-  display: flex;
-  align-items: center;
-}
+/* Most styling now handled by Vuetify utilities */
 .truncate-cell {
   display: inline-flex;
   align-items: center;

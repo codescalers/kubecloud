@@ -422,32 +422,32 @@ function getNodeInfoString(id: string) {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--color-surface-2, #23243a);
-  color: var(--color-primary, #6366f1);
+  background: #334155;
+  color: #3B82F6;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   font-size: 1.1rem;
   margin-bottom: 0.3rem;
-  border: 2px solid var(--color-surface-2, #23243a);
+  border: 2px solid #334155;
   transition: background 0.2s, color 0.2s, border 0.2s;
   position: relative;
   z-index: 2;
 }
 .step.active .step-circle {
-  background: var(--color-primary, #6366f1);
+  background: #3B82F6;
   color: #fff;
-  border: 2px solid var(--color-primary, #6366f1);
+  border: 2px solid #3B82F6;
 }
 .step.completed .step-circle {
-  background: var(--color-success, #22d3ee);
+  background: #10B981;
   color: #fff;
-  border: 2px solid var(--color-success, #22d3ee);
+  border: 2px solid #10B981;
 }
 
 .step-label {
-  color: var(--color-text-muted, #7c7fa5);
+  color: #94A3B8;
   font-size: 1rem;
   margin-top: 0.2rem;
   text-align: center;
@@ -455,11 +455,11 @@ function getNodeInfoString(id: string) {
   letter-spacing: 0.01em;
 }
 .step.active .step-label {
-  color: var(--color-primary, #6366f1);
+  color: #3B82F6;
   font-weight: 600;
 }
 .step.completed .step-label {
-  color: var(--color-success, #22d3ee);
+  color: #10B981;
   font-weight: 600;
 }
 .step:not(:last-child)::after {
@@ -469,11 +469,11 @@ function getNodeInfoString(id: string) {
   right: -50%;
   width: 100%;
   height: 4px;
-  background: var(--color-surface-2, #23243a);
+  background: #334155;
   z-index: 0;
 }
 .step.completed:not(:last-child)::after {
-  background: var(--color-success, #22d3ee);
+  background: #10B981;
 }
 @media (max-width: 900px) {
   .deploy-card {

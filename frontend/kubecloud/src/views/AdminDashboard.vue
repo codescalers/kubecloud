@@ -82,7 +82,7 @@ async function generateVouchers() {
       value: voucherValue.value,
       expire_after_days: voucherExpiry.value
     }
-    
+
     const response = await adminService.generateVouchers(data)
     voucherResult.value = response.message
     // Refresh vouchers list
@@ -97,12 +97,12 @@ async function loadVouchers() {
 // Apply manual credit using real API
 async function applyManualCredit() {
     if (!creditUserObj.value) return
-    
+
     const data: CreditUserRequest = {
       amount: creditAmount.value,
       memo: creditReason.value
     }
-    
+
     const response = await adminService.creditUser(creditUserObj.value.id, data)
     creditResult.value = response.message
     // Reset form
@@ -152,7 +152,7 @@ const tabs = [
 
 const invoices: Ref<Invoice[]> = ref([])
 
-onMounted(async () => {  
+onMounted(async () => {
   // Load initial data
   await loadUsers()
   await loadVouchers()
@@ -354,37 +354,7 @@ async function loadInvoices() {
   margin-top: 0.25rem;
 }
 
-/* Dashboard Cards */
-.dashboard-card {
-  background: rgba(10, 25, 47, 0.65);
-  border: 1px solid var(--color-border, #334155);
-  border-radius: var(--radius-xl, 0.75rem);
-  padding: 2rem;
-  transition: all var(--transition-normal, 0.2s);
-  backdrop-filter: blur(8px);
-}
-
-.dashboard-card:hover {
-  border-color: var(--color-border-light, #475569);
-  background: rgba(15, 30, 52, 0.75);
-}
-
-.dashboard-card-header {
-  margin-bottom: 1.5rem;
-}
-
-.dashboard-card-title {
-  font-size: var(--font-size-xl, 1.25rem);
-  font-weight: var(--font-weight-semibold, 600);
-  color: var(--color-text, #F8FAFC);
-  margin: 0 0 0.5rem 0;
-}
-
-.dashboard-card-subtitle {
-  font-size: var(--font-size-base, 1rem);
-  color: var(--color-text-secondary, #CBD5E1);
-  margin: 0;
-}
+/* Dashboard Cards - Now using v-card */
 
 
 /* Responsive Design */
@@ -393,15 +363,11 @@ async function loadInvoices() {
     flex-direction: column;
     gap: 1.5rem;
   }
-  
+
   .admin-sidebar {
     flex: none;
     width: 100%;
     position: static;
-  }
-  
-  .dashboard-card {
-    padding: 1.5rem;
   }
 }
 
@@ -410,9 +376,5 @@ async function loadInvoices() {
     padding: 0 0.5rem;
     margin-top: 2rem;
   }
-  
-  .dashboard-card {
-    padding: 1rem;
-  }
 }
-</style> 
+</style>

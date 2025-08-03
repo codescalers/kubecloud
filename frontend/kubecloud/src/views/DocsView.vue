@@ -15,16 +15,17 @@
       <div class="container-padding">
         <v-row class="docs-cards d-flex justify-center" :gap="10">
           <v-col cols="12" md="6" lg="3" v-for="doc in docs" :key="doc.title" class="doc-col">
-            <div class="doc-card card-enhanced fade-in">
-              <div class="doc-icon">
+            <v-card color="surface-variant" class="pa-6 text-center fade-in d-flex flex-column" height="100%">
+              <div class="mb-6">
                 <v-icon :icon="doc.icon" size="48" color="primary"></v-icon>
               </div>
-              <h2 class="card-title">{{ doc.title }}</h2>
-              <p class="body-text">{{ doc.description }}</p>
-              <v-btn color="white" variant="outlined" :href="doc.link" target="_blank" class="doc-link">
+              <h2 class="text-h5 font-weight-medium mb-4">{{ doc.title }}</h2>
+              <p class="text-body-1 text-medium-emphasis mb-6">{{ doc.description }}</p>
+              <v-spacer />
+              <v-btn color="primary" variant="outlined" :href="doc.link" target="_blank">
                 Read More
               </v-btn>
-            </div>
+            </v-card>
           </v-col>
         </v-row>
       </div>

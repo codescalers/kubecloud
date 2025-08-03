@@ -1,29 +1,29 @@
 <template>
-  <div class="dashboard-card">
+  <v-card color="surface-variant" class="pa-6">
     <div class="mb-8">
-      <h3 class="dashboard-card-title">Dashboard Overview</h3>
-      <p class="dashboard-card-subtitle">Your KubeCloud platform at a glance</p>
+      <h3 class="text-h5 font-weight-semibold mb-2">Dashboard Overview</h3>
+      <p class="text-body-1 text-medium-emphasis">Your KubeCloud platform at a glance</p>
     </div>
     <!-- Stats Grid -->
     <StatsGrid :stats="statsData" />
 
     <!-- Quick Actions -->
-    <div class="quick-actions-section">
-      <h3 class="section-title">Quick Actions</h3>
-      <div class="actions-grid">
+    <div class="mt-8">
+      <h3 class="text-h6 font-weight-medium mb-4">Quick Actions</h3>
+      <div class="d-flex flex-wrap ga-3">
         <v-btn
           v-for="(action, index) in quickActions"
           :key="index"
           variant="outlined"
-          class="btn btn-outline"
+          color="primary"
           @click="action.handler"
         >
-          <v-icon :icon="action.icon" class="mr-2"></v-icon>
+          <v-icon :icon="action.icon" class="me-2"></v-icon>
           {{ action.label }}
         </v-btn>
       </div>
     </div>
-  </div>
+  </v-card>
 </template>
 
 <script setup lang="ts">
@@ -130,45 +130,4 @@ const quickActions = [
 const emit = defineEmits(['navigate'])
 </script>
 
-<style scoped>
-.dashboard-card-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-}
-
-.dashboard-card-subtitle {
-  font-size: var(--font-size-base);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-  opacity: 0.9;
-}
-
-.section-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
-  margin: 0 0 var(--space-4) 0;
-}
-
-.actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-4);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .actions-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--space-3);
-  }
-}
-
-@media (max-width: 480px) {
-  .actions-grid {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
 

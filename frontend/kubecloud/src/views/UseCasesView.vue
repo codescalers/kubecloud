@@ -15,18 +15,18 @@
       <div class="container-padding">
         <v-row class="use-cases-cards-row">
           <v-col cols="12" md="6" lg="4" v-for="useCase in useCases" :key="useCase.title" class="use-case-col">
-            <div class="use-case-card card-enhanced fade-in">
-              <div class="use-case-icon">
+            <v-card color="surface-variant" class="pa-6 text-center fade-in" height="100%">
+              <div class="mb-6">
                 <v-icon :icon="useCase.icon" size="48" color="primary"></v-icon>
               </div>
-              <h2 class="section-title">{{ useCase.title }}</h2>
-              <p class="use-case-description card-subtitle">{{ useCase.description }}</p>
-              <div class="use-case-features">
-                <div class="feature-tag" v-for="feature in useCase.features" :key="feature">
+              <h2 class="text-h5 font-weight-medium mb-4">{{ useCase.title }}</h2>
+              <p class="text-body-1 text-medium-emphasis mb-4">{{ useCase.description }}</p>
+              <div class="d-flex flex-wrap justify-center ga-2">
+                <v-chip v-for="feature in useCase.features" :key="feature" size="small" color="primary" variant="outlined">
                   {{ feature }}
-                </div>
+                </v-chip>
               </div>
-            </div>
+            </v-card>
           </v-col>
         </v-row>
       </div>

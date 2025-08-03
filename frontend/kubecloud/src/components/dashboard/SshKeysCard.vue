@@ -1,21 +1,20 @@
 <template>
-  <div class="dashboard-card">
-    <div class="dashboard-card-header row-between">
+  <v-card color="surface-variant" class="pa-6">
+    <div class="d-flex justify-space-between align-start mb-6">
       <div>
-        <h3 class="dashboard-card-title">SSH Keys</h3>
-        <p class="dashboard-card-subtitle">Manage your SSH keys for secure server access</p>
+        <h3 class="text-h5 font-weight-semibold mb-2">SSH Keys</h3>
+        <p class="text-body-1 text-medium-emphasis">Manage your SSH keys for secure server access</p>
       </div>
-      <v-btn variant="outlined" class="add-key-btn" @click="openAddDialog">
-        <v-icon icon="mdi-plus" size="20" class="mr-2"></v-icon>
+      <v-btn variant="outlined" color="primary" @click="openAddDialog">
+        <v-icon icon="mdi-plus" size="20" class="me-2"></v-icon>
         Add SSH Key
       </v-btn>
     </div>
-    <div v-if="sshKeys.length === 0" class="ssh-keys-empty">
-      <div class="empty-card">
-        <v-icon icon="mdi-key" size="38" color="primary" class="empty-icon mb-3"></v-icon>
-        <div class="empty-title">No SSH Keys Added</div>
-        <div class="empty-desc">SSH keys are required to access your deployed clusters securely.<br>Add your first SSH key to get started.</div>
-      </div>
+
+    <div v-if="sshKeys.length === 0" class="text-center py-8">
+      <v-icon icon="mdi-key" size="64" color="primary" class="mb-4"></v-icon>
+      <h4 class="text-h6 mb-2">No SSH Keys Added</h4>
+      <p class="text-body-1 text-medium-emphasis">SSH keys are required to access your deployed clusters securely.<br>Add your first SSH key to get started.</p>
     </div>
     <div v-else class="ssh-keys-list">
       <div v-for="key in sshKeys" :key="key.ID" class="ssh-key-item">
@@ -91,7 +90,7 @@
         </v-card>
       </template>
     </v-dialog>
-  </div>
+  </v-card>
 </template>
 
 <script setup lang="ts">

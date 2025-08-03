@@ -1,33 +1,31 @@
 <template>
-  <div class="dashboard-card">
-    <div class="dashboard-card-header">
-      <div class="dashboard-card-title-section">
-        <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Kubernetes Clusters</h3>
-          <p class="dashboard-card-subtitle">Manage your cloud-native infrastructure</p>
-        </div>
+  <v-card color="surface-variant" class="pa-6">
+    <div class="d-flex justify-space-between align-start mb-6">
+      <div>
+        <h3 class="text-h5 font-weight-semibold mb-2">Kubernetes Clusters</h3>
+        <p class="text-body-1 text-medium-emphasis">Manage your cloud-native infrastructure</p>
       </div>
-      <v-btn variant="outlined" class="btn btn-outline" @click="goToDeployCluster">
-        <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
+      <v-btn variant="outlined" color="primary" @click="goToDeployCluster">
+        <v-icon icon="mdi-plus" size="16" class="me-1"></v-icon>
         New Cluster
       </v-btn>
     </div>
-    <div class="card-content">
-      <div class="clusters-list-toolbar">
-        <v-text-field
-          v-model="search"
-          label="Search by name"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          class="search-bar"
-        />
-        <v-select
-          v-model="sortBy"
-          :items="sortOptions"
-          label="Sort by"
-          class="filter-select"
-        />
-      </div>
+
+    <div class="d-flex flex-column flex-sm-row ga-4 mb-6">
+      <v-text-field
+        v-model="search"
+        label="Search by name"
+        prepend-inner-icon="mdi-magnify"
+        clearable
+        class="flex-grow-1"
+      />
+      <v-select
+        v-model="sortBy"
+        :items="sortOptions"
+        label="Sort by"
+        style="min-width: 160px;"
+      />
+    </div>
       <v-divider class="mb-4" />
       <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
       <v-progress-linear v-if="isLoading" indeterminate color="primary" class="mb-4" />
@@ -65,19 +63,18 @@
         total-visible="7"
         class="mt-4"
       />
-    </div>
+
     <v-dialog v-model="showDeleteModal" max-width="400">
-      <v-card>
-        <v-card-title>Confirm Delete</v-card-title>
-        <v-card-text>Are you sure you want to delete this cluster? This action cannot be undone.</v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn color="primary" @click="showDeleteModal = false">Cancel</v-btn>
-          <v-btn color="error" @click="confirmDelete" :loading="deleting">Delete</v-btn>
+      <v-card color="surface-variant" style="border: 2px solid white !important;">
+        <v-card-title class="text-h5 font-weight-semibold text-white pa-6 pb-4">Confirm Delete</v-card-title>
+        <v-card-text class="pa-6 pt-0 text-white">Are you sure you want to delete this cluster? This action cannot be undone.</v-card-text>
+        <v-card-actions class="pa-6 pt-0 justify-end">
+          <v-btn variant="outlined" color="primary" @click="showDeleteModal = false">Cancel</v-btn>
+          <v-btn variant="elevated" color="error" @click="confirmDelete" :loading="deleting">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </div>
+  </v-card>
 </template>
 
 <script setup lang="ts">
@@ -171,53 +168,4 @@ function formatDate(dateStr: string) {
 }
 </script>
 
-<style scoped>
-.clusters-list-toolbar {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.search-bar {
-  min-width: 220px;
-  flex: 1 1 220px;
-}
-.filter-select {
-  min-width: 160px;
-}
-.clusters-table {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--color-surface-1, #18192b);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-th, td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-}
-th {
-  background: var(--color-surface-2, #23243a);
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-}
-th.active-sort {
-  color: var(--color-primary, #6366f1);
-}
-tr {
-  border-bottom: 1px solid var(--color-surface-2, #23243a);
-}
-tr:last-child {
-  border-bottom: none;
-}
-.cluster-name-cell {
-  font-weight: 600;
-  color: var(--color-primary, #6366f1);
-}
-.empty-message {
-  text-align: center;
-  color: var(--color-text-muted, #7c7fa5);
-  margin-top: 3rem;
-}
-</style>
+
