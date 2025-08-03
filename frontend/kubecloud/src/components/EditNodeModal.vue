@@ -92,7 +92,9 @@ const errors = computed(() => {
   return errs;
 });
 
-const valid = computed(() => Object.keys(errors.value).length === 0);
+const valid = computed(() => {
+  return Object.values(errors.value).every(e => !e);
+});
 function onSave() {
   if (valid.value) {
     emit('save', { ...localNode.value, sshKeyIds: selectedSshKeyId.value !== null ? [selectedSshKeyId.value] : [] });
@@ -102,7 +104,7 @@ function onSave() {
 </script>
 <style scoped>
 .modal-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
-.edit-node-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #232946; color: #fff; border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.25); padding: 2rem 2.5rem; z-index: 1001; min-width: 320px; max-width: 90vw; }
+.edit-node-modal { position: fixed; top: 55%; left: 50%; transform: translate(-50%, -50%); background: #232946; color: #fff; border-radius: 16px; box-shadow: 0 8px 32px 0 rgba(0,0,0,0.25); padding: 2rem 2.5rem; z-index: 1001; width: 60vw; min-width: 320px; max-width: 90vw; }
 .edit-node-modal h3 { margin-top: 0; margin-bottom: 1.2rem; font-size: 1.3rem; font-weight: 700; }
 .modal-fields label { display: block; margin-top: 1rem; font-weight: 500; }
 .modal-fields input[type="number"], .modal-fields input[type="text"] { width: 100%; margin-top: 0.3rem; padding: 0.4em 0.7em; border-radius: 6px; border: 1px solid #4f8cff; background: #1a1f2b; color: #fff; }
