@@ -41,11 +41,12 @@
           <div v-else class="empty-list">No nodes in this cluster.</div>
         </div>
         <div v-else-if="editTab === 'add'">
-          <div class="add-form-wrapper">
-            <v-text-field :rules="[validateNodeName]" v-model="addFormName" label="Name" />
-            <v-text-field :rules="[validateCPU]" v-model.number="addFormCpu" label="CPU" type="number" min="1" />
-            <v-text-field :rules="[validateRAM]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
-            <v-text-field :rules="[validateStorage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
+          <v-form  v-model="formValid">
+            <div class="add-form-wrapper">
+              <v-text-field validate-on="eager" :rules="[validateNodeName]" v-model="addFormName" label="Name" />
+              <v-text-field validate-on="eager" :rules="[validateCPU]" v-model.number="addFormCpu" label="CPU" type="number" min="1" />
+              <v-text-field validate-on="eager" :rules="[validateRAM]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
+              <v-text-field validate-on="eager" :rules="[validateStorage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
             <v-select
               v-model="addFormNodeId"
               :items="availableNodesWithName"
@@ -133,13 +134,14 @@
                 <span>No SSH keys found. Please add one in your dashboard.</span>
               </div>
             </div>
-            <div v-if="addFormError" class="polished-error">{{ addFormError }}</div>
+            <div v-if="addFormError && formValid" class="polished-error">{{ addFormError }}</div>
           </div>
+        </v-form>
         </div>
       </template>
       <template #actions>
         <div v-if="editTab === 'add'" class="add-form-actions">
-          <v-btn color="primary" :loading="addNodeLoading" :disabled="!canAssignToNode || addNodeLoading" @click="confirmAddForm" class="add-node-btn">Add Node</v-btn>
+          <v-btn color="primary" :loading="addNodeLoading" :disabled="!canAssignToNode || addNodeLoading || !formValid" @click="confirmAddForm" class="add-node-btn">Add Node</v-btn>
           <v-btn variant="text" @click="editTab = 'list'">Cancel</v-btn>
         </div>
       </template>
@@ -197,6 +199,7 @@ const addFormSshKey = ref<number|null>(null);
 const sshKeys = ref<any[]>([]);
 const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
+const formValid = ref(false);
 
 const validateNodeName = (value: string) :string|boolean =>  {
   const msg = required('Name is required')(value) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(value);
