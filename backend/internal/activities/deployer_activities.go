@@ -25,6 +25,11 @@ func isWorkloadAlreadyDeployedError(err error) bool {
 	return strings.Contains(errMsg, "exists: conflict")
 }
 
+func isWorkloadInvalid(err error) bool {
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "invalid deployment")
+}
+
 func ensureClient(state ewf.State) {
 	// Get config first
 	config, err := getConfig(state)
@@ -72,6 +77,9 @@ func DeployNetworkStep() ewf.StepFn {
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
 				return fmt.Errorf("network already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+			}
+			if isWorkloadInvalid(err) {
+				return fmt.Errorf("network invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
 			return fmt.Errorf("failed to deploy network: %w", err)
 		}
@@ -195,6 +203,10 @@ func DeployNodeStep() ewf.StepFn {
 			if isWorkloadAlreadyDeployedError(err) {
 				return fmt.Errorf("node already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
+			if isWorkloadInvalid(err) {
+				return fmt.Errorf("node invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+			}
+			return fmt.Errorf("failed to deploy node %s: %w", node.Name, err)
 		}
 
 		// Save GridClient state after node deployment
