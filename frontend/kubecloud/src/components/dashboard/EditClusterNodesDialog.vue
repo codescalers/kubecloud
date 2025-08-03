@@ -53,6 +53,7 @@
               item-title="name"
               item-value="nodeId"
               label="Select Node"
+              :error-messages="addFormError"
             >
               <template #item="{ item, props }">
                 <div class="d-flex pa-3" v-bind="props">
@@ -134,7 +135,7 @@
                 <span>No SSH keys found. Please add one in your dashboard.</span>
               </div>
             </div>
-            <div v-if="addFormError && formValid" class="polished-error">{{ addFormError }}</div>
+            
           </div>
         </v-form>
         </div>
