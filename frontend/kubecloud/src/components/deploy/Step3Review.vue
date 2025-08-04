@@ -50,7 +50,7 @@
         <v-icon start icon="mdi-arrow-left"></v-icon>
         Back
       </v-btn>
-      <v-btn color="success" :loading="deploying" @click="$emit('onDeployCluster')">
+      <v-btn variant="outlined" color="success" :loading="deploying" @click="$emit('onDeployCluster')">
         <v-icon start icon="mdi-rocket-launch"></v-icon>
         Deploy Cluster
       </v-btn>
@@ -158,4 +158,4 @@ const emit = defineEmits(['onDeployCluster', 'prevStep']);
   gap: 1rem;
   margin-top: 2rem;
 }
-</style> 
+</style>

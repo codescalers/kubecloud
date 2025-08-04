@@ -8,8 +8,8 @@
         <div class="delete-message">Are you sure you want to delete this cluster? This action cannot be undone.</div>
       </template>
       <template #actions>
-        <v-btn color="error" :loading="loading" @click="emit('confirm')">Delete</v-btn>
-        <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
+        <v-btn variant="outlined" color="error" :loading="loading" @click="emit('confirm')">Delete</v-btn>
+        <v-btn variant="outlined" @click="closeDialog">Cancel</v-btn>
       </template>
     </BaseDialogCard>
   </v-dialog>
@@ -36,4 +36,4 @@ function closeDialog() { emit('update:modelValue', false); }
   font-weight: 500;
   margin-bottom: 1rem;
 }
-</style> 
+</style>

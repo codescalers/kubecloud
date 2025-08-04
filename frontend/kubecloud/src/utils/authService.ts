@@ -189,7 +189,7 @@ export class AuthService {
 
   // Change password (requires authentication)
   async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
-    const response = await api.post<ApiResponse<ChangePasswordResponse>>('/v1/user/change_password', data, {
+    const response = await api.put<ApiResponse<ChangePasswordResponse>>('/v1/user/change_password', data, {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Updating password...',

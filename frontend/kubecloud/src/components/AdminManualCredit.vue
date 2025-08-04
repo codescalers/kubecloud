@@ -6,25 +6,26 @@
     </div>
     <v-form @submit.prevent="$emit('applyManualCredit')" class="credit-form">
       <div class="form-row">
-        <v-text-field 
-          v-model.number="creditAmountLocal" 
-          label="Amount ($)" 
-          type="number" 
-          prepend-inner-icon="mdi-currency-usd" 
-          variant="outlined" 
-          min="0.01" 
-          step="0.01" 
+        <v-text-field
+          v-model.number="creditAmountLocal"
+          label="Amount ($)"
+          type="number"
+          prepend-inner-icon="mdi-currency-usd"
+          variant="outlined"
+          min="0.01"
+          step="0.01"
           density="comfortable"
-          required 
+          required
           class="form-field"
         />
-        <v-text-field 
-          v-model="creditReasonLocal" 
-          label="Reason/Memo" 
-          prepend-inner-icon="mdi-note-text" 
-          variant="outlined" 
+        <v-text-field
+          v-model="creditReasonLocal"
+          label="Reason/Memo"
+          prepend-inner-icon="mdi-note-text"
+          variant="outlined"
           density="comfortable"
-          required 
+          min-length="3"
+          required
           class="form-field"
         />
       </div>
@@ -50,4 +51,4 @@ watch(() => props.creditAmount, val => { creditAmountLocal.value = val })
 watch(() => props.creditReason, val => { creditReasonLocal.value = val })
 watch(creditAmountLocal, val => emit('update:creditAmount', val))
 watch(creditReasonLocal, val => emit('update:creditReason', val))
-</script> 
+</script>

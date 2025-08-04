@@ -4,13 +4,13 @@
       <h3 class="dashboard-card-title">User Search</h3>
       <p class="dashboard-card-subtitle">Find and manage existing users</p>
     </div>
-    <v-text-field 
-      v-model="searchQueryLocal" 
-      label="Search users by name or email" 
-      prepend-inner-icon="mdi-magnify" 
-      variant="outlined" 
+    <v-text-field
+      v-model="searchQueryLocal"
+      label="Search users by name or email"
+      prepend-inner-icon="mdi-magnify"
+      variant="outlined"
       density="comfortable"
-      clearable 
+      clearable
       class="search-field"
       @input="$emit('update:searchQuery', searchQueryLocal)"
     />
@@ -32,7 +32,7 @@
       >
         <template #item.actions="{ item }">
           <div style="display: flex; gap: var(--space-4); align-items: center;">
-            <v-btn size="small" variant="outlined" class="action-btn" @click="$emit('creditUser', item)">
+            <v-btn size="small" variant="outlined" class="action-btn" :disabled="!item.verified" @click="$emit('creditUser', item)">
               <v-icon icon="mdi-cash-plus" size="16" class="mr-1"></v-icon>
               Credit Balance
             </v-btn>
@@ -59,13 +59,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  // Add other fields as needed
-}
+import type { User } from '../stores/user'
 
 const props = defineProps({
   users: Array as () => User[],
@@ -81,4 +75,4 @@ const currentPageLocal = ref(props.currentPage)
 
 watch(() => props.searchQuery, (val) => { searchQueryLocal.value = val })
 watch(() => props.currentPage, (val) => { currentPageLocal.value = val })
-</script> 
+</script>

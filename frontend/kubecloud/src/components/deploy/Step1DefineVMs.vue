@@ -2,7 +2,7 @@
   <div>
     <div v-if="!props.sshKeysLoading && !availableSshKeys.length" class="ssh-key-warning">
       <v-alert type="warning" border="start" prominent>
-        <div>No SSH keys found. <v-btn color="primary" variant="text" @click="$emit('navigateToSshKeys')">Add SSH Key</v-btn></div>
+        <div>No SSH keys found. <v-btn color="primary" variant="outlined" @click="$emit('navigateToSshKeys')">Add SSH Key</v-btn></div>
       </v-alert>
     </div>
     <div v-else-if="props.sshKeysLoading" class="ssh-key-loading">
@@ -39,7 +39,7 @@
       </div>
     </div>
     <div class="step-actions">
-      <v-btn color="primary" :disabled="!isStep1Valid" @click="$emit('nextStep')">
+      <v-btn variant="outlined" color="primary" :disabled="!isStep1Valid" @click="$emit('nextStep')">
         Continue
         <v-icon end icon="mdi-arrow-right"></v-icon>
       </v-btn>
@@ -118,4 +118,4 @@ const emit = defineEmits(['navigateToSshKeys', 'nextStep']);
   justify-content: flex-end;
   margin-top: 2rem;
 }
-</style> 
+</style>

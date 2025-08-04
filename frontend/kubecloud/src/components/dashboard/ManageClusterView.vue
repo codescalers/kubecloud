@@ -7,7 +7,7 @@
         </div>
         <div v-else-if="notFound" class="d-flex flex-column justify-center align-center" style="min-height: 60vh;">
           <h2>Cluster Not Found</h2>
-          <v-btn color="primary" @click="goBack">Back to Dashboard</v-btn>
+          <v-btn variant="outlined" color="primary" @click="goBack">Back to Dashboard</v-btn>
         </div>
         <div v-else-if="cluster" class="manage-header mb-6">
           <div class="manage-header-content">

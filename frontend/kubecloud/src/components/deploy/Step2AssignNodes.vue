@@ -12,7 +12,7 @@
         <v-icon icon="mdi-server-network-off" size="38" color="primary" class="empty-icon mb-3"></v-icon>
         <div class="empty-title">No Reserved Nodes</div>
         <div class="empty-desc">You have not reserved any nodes yet.<br>To deploy a cluster, you must first reserve at least one node.</div>
-        <v-btn color="primary" class="mt-4" variant="elevated" to="/nodes">
+        <v-btn color="primary" class="mt-4" variant="outlined" to="/nodes">
           <v-icon icon="mdi-plus" size="20" class="mr-2"></v-icon>
           Reserve Node
         </v-btn>
@@ -105,7 +105,7 @@
         <v-icon start icon="mdi-arrow-left"></v-icon>
         Back
       </v-btn>
-      <v-btn color="primary" :disabled="!isStep2Valid" @click="$emit('nextStep')">
+      <v-btn variant="outlined" color="primary" :disabled="!isStep2Valid" @click="$emit('nextStep')">
         Continue
         <v-icon end icon="mdi-arrow-right"></v-icon>
       </v-btn>
@@ -268,4 +268,4 @@ function nodeLabel(node: any) {
   margin-bottom: 1.2rem;
   line-height: 1.5;
 }
-</style> 
+</style>

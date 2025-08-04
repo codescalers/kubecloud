@@ -83,7 +83,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn color="primary" :disabled="!newKey.name || !newKey.public_key" @click="handleAddKey">
+            <v-btn variant="outlined" color="primary" :disabled="!newKey.name || !newKey.public_key" @click="handleAddKey">
               Add
             </v-btn>
             <v-btn variant="outlined" @click="addDialog = false">Cancel</v-btn>

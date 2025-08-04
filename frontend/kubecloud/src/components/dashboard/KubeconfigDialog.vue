@@ -13,8 +13,8 @@
         <div v-else-if="!loading && !error" class="empty-message">No kubeconfig available.</div>
       </template>
       <template #actions>
-        <v-btn color="primary" @click="emit('copy')">Copy</v-btn>
-        <v-btn color="primary" @click="emit('download')">Download</v-btn>
+        <v-btn variant="outlined" color="primary" @click="emit('copy')">Copy</v-btn>
+        <v-btn variant="outlined" color="primary" @click="emit('download')">Download</v-btn>
       </template>
     </BaseDialogCard>
   </v-dialog>
@@ -58,4 +58,4 @@ pre {
   font-style: italic;
   margin-bottom: 0.5rem;
 }
-</style> 
+</style>
