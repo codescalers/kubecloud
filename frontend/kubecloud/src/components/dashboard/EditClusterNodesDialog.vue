@@ -157,7 +157,7 @@ import type { RentedNode } from '../../composables/useNodeManagement';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { useNotificationStore } from '../../stores/notifications';
-import {isAlphanumericExpectUnderscore, required, min, max} from "../../utils/validation"
+import {isAlphanumeric, required, min, max} from "../../utils/validation"
 const notificationStore = useNotificationStore();
 const props = defineProps<{
   modelValue: boolean,
@@ -203,7 +203,7 @@ const sshKeysError = ref('');
 const formValid = ref(false);
 
 const validateNodeName = (value: string) :string|boolean =>  {
-  const msg = required('Name is required')(value) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(value);
+  const msg = required('Name is required')(value) || isAlphanumeric('Node name can only contain letters, and numbers.')(value);
   return msg ? msg : true;
 };
 const validateCPU = (value: string) :string|boolean =>  {

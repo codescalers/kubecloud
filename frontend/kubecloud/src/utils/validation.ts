@@ -209,9 +209,9 @@ export function max(msg: string, max: number) {
   };
 }
 
-export function isAlphanumericExpectUnderscore(msg: string) {
+export function isAlphanumeric(msg: string) {
   return (value: string) => {
-    if (!/^[a-zA-Z0-9_]*$/.test(value)) {
+    if (!/^[a-zA-Z0-9]*$/.test(value)) {
       return msg;
     }
   };

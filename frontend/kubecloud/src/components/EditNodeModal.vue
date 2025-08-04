@@ -54,7 +54,7 @@
 import { defineProps, defineEmits, watch, ref, computed } from 'vue';
 import type { PropType } from 'vue';
 import type { VM, SshKey } from '../composables/useDeployCluster';
-import { required, min, isAlphanumericExpectUnderscore, max } from '@/utils/validation';
+import { required, min, isAlphanumeric, max } from '@/utils/validation';
 const props = defineProps({
   node: { type: Object as PropType<VM>, required: true },
   visible: { type: Boolean, required: true },
@@ -83,7 +83,7 @@ watch(
 const errors = computed(() => {
   const node = localNode.value;
   const errs: Record<string, string> = {};
-  errs.name = required('Name is required')(node.name) || isAlphanumericExpectUnderscore('Node name can only contain letters, numbers, and underscores.')(node.name) || "";
+  errs.name = required('Name is required')(node.name) || isAlphanumeric('Node name can only contain letters, and numbers.')(node.name) || "";
   errs.vcpu = min('vCPU must be at least 1', 1)(node.vcpu)|| max('vCPU must be at most 32', 32)(node.vcpu) || "";
   errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 256GB', 256)(node.ram) || "";
   errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 10000GB', 10000)(node.disk) || "";
