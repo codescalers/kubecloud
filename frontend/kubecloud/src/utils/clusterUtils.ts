@@ -3,23 +3,17 @@
  * @returns Random cluster name
  */
 export function generateClusterName(): string {
-  const adjectives = [
-    'swift', 'bright', 'cosmic', 'quantum', 'stellar', 'azure', 'crimson', 'golden',
-    'silver', 'emerald', 'sapphire', 'crystal', 'thunder', 'lightning', 'storm',
-    'ocean', 'mountain', 'forest', 'desert', 'arctic', 'tropical', 'mystic'
-  ]
 
   const nouns = [
     'cluster', 'cloud', 'node', 'server', 'engine', 'core', 'hub', 'nexus',
     'forge', 'vault', 'tower', 'citadel', 'fortress', 'sanctuary', 'haven',
-    'realm', 'domain', 'sphere', 'matrix', 'grid', 'network', 'system'
+    'realm', 'domain', 'sphere', 'matrix', 'grid', 'system'
   ]
 
-  const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)]
   const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
   const randomNumber = Math.floor(Math.random() * 999) + 1
   
-  return `${randomAdjective}_${randomNoun}_${randomNumber}`
+  return `${randomNoun}${randomNumber}`
 }
 
 /**
