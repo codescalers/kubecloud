@@ -215,7 +215,7 @@ const validateRAM = (value: string) :string|boolean =>  {
   return msg ? msg : true;
 };
 const validateStorage = (value: string) :string|boolean =>  {
-  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 1000GB',10000)(+value);
+  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 10000GB',10000)(+value);
   return msg ? msg : true;
 };
 onMounted(async () => {
