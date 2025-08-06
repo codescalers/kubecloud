@@ -30,10 +30,50 @@ export interface ApiOptions {
 class ApiClient {
   private baseURL: string
   private defaultTimeout: number
+  private activeRequests: Set<AbortController> = new Set()
+  private isLoggingOut: boolean = false
 
   constructor(baseURL?: string, timeout: number = 10000) {
     this.baseURL = baseURL || (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
     this.defaultTimeout = timeout
+  }
+
+  private abortAllRequests(): void {
+    this.activeRequests.forEach(controller => {
+      try {
+        controller.abort()
+      } catch (error) {
+        // Ignore abort errors
+      }
+    })
+    this.activeRequests.clear()
+  }
+
+  private handleAuthenticationFailure(userStore: any, router: any, notificationStore: any, status: number, message: string) {
+    // Prevent multiple logout processes
+    if (!this.isLoggingOut) {
+     
+    this.isLoggingOut = true
+    this.abortAllRequests()
+    userStore.logout()
+    router.push('/sign-in')
+    
+    // Reset flag after a short delay to allow for navigation
+    setTimeout(() => {
+      this.isLoggingOut = false
+    }, 1000)
+    notificationStore.clearAllNotifications()
+    notificationStore.error(
+      'Error',
+      message,
+      { duration: 5000 }
+    )
+  }
+    throw {
+      message: message,
+      status: status,
+      code: 'AUTHENTICATION_ERROR'
+    } as ApiError
   }
 
   private getAuthHeaders(): Record<string, string> {
@@ -68,6 +108,8 @@ class ApiClient {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
 
+    this.activeRequests.add(controller)
+
     // Track loading notification state
     let loadingNotificationId: string | null = null
     let loadingTimeoutId: NodeJS.Timeout | null = null
@@ -96,29 +138,54 @@ class ApiClient {
 
       clearTimeout(timeoutId)
 
-      // Handle 401/403 for token refresh
-      if ((response.status === 401 || response.status === 403) && requiresAuth) {
-        try {
-          await userStore.refreshToken()
-          // Retry the original request with the new token
-          requestHeaders['Authorization'] = `Bearer ${localStorage.getItem('token')}`
-          response = await fetch(`${this.baseURL}${endpoint}`, {
-            method,
-            headers: requestHeaders,
-            body: body ? JSON.stringify(body) : undefined,
-            signal: controller.signal
-          })
-          if (!response.ok) throw new Error('Retry after refresh failed')
-        } catch (refreshError) {
-          userStore.logout()
-          router.push('/sign-in')
-          throw new Error('Session expired. Please log in again.')
+      if (response.status === 401) {
+        if (loadingNotificationId) {
+          notificationStore.removeNotification(loadingNotificationId)
         }
+        if (loadingTimeoutId) {
+          clearTimeout(loadingTimeoutId)
+        }
+        
+        if (requiresAuth) {
+          try {
+            await userStore.refreshToken()
+            // Retry the original request with the new token
+            requestHeaders['Authorization'] = `Bearer ${localStorage.getItem('token')}`
+            response = await fetch(`${this.baseURL}${endpoint}`, {
+              method,
+              headers: requestHeaders,
+              body: body ? JSON.stringify(body) : undefined,
+              signal: controller.signal
+            })
+            if (response.status === 401) {
+              throw new Error('Session expired. Please log in again.')
+            }
+          } catch (refreshError) {
+            this.handleAuthenticationFailure(userStore, router, notificationStore, response.status, 'Session expired. Please log in again.')
+          }
+        } else {
+          this.handleAuthenticationFailure(userStore, router, notificationStore, response.status, 'Authentication required. Please log in.')
+        }
+      }
+      
+      if (response.status === 403 && requiresAuth) {
+        if (loadingNotificationId) {
+          notificationStore.removeNotification(loadingNotificationId)
+        }
+        if (loadingTimeoutId) {
+          clearTimeout(loadingTimeoutId)
+        }
+        
+        this.handleAuthenticationFailure(userStore, router, notificationStore , response.status , 'Access forbidden. Please log in again.')
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`)
+        throw {
+          message: errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          status: response.status,
+          code: 'UNKNOWN_ERROR'
+        } as ApiError
       }
 
       // Handle 204 No Content
@@ -172,7 +239,7 @@ class ApiClient {
       }
 
       // Show error notification if requested
-      if (showNotifications) {
+      if (showNotifications && !this.isLoggingOut) {
         notificationStore.error(
           'Error',
           errorMessage || errorMessage,
@@ -182,7 +249,7 @@ class ApiClient {
 
       throw {
         message: errorMessage,
-        status: 500,
+        status: (error as ApiError).status || 500,
         code: 'UNKNOWN_ERROR'
       } as ApiError
     } finally {

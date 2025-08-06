@@ -3,7 +3,7 @@ import { api, createWorkflowStatusChecker } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
-
+import type { ApiError } from './api'
 export interface ReserveNodeRequest {
   // Add any required fields if needed
 }
@@ -273,10 +273,11 @@ export class UserService {
     const { balance_usd, debt_usd, pending_balance_usd } = response.data.data
     return {balance: (balance_usd || 0) - (debt_usd || 0), pending_balance: pending_balance_usd || 0}
   }catch(e){
+    if(  (e as ApiError).status !== 401){
     useNotificationStore().error(
       'Error',
       'Failed to fetch balance',
-    )
+    )}
     return {balance: 0, pending_balance: 0}
   }
   }
