@@ -30,6 +30,8 @@
               <div class="vm-specs">
                 <span class="spec-chip">{{ vm.vcpu }} vCPU</span>
                 <span class="spec-chip">{{ vm.ram }}GB RAM</span>
+                <span class="spec-chip">{{ vm.disk }}GB Disk</span>
+                <span v-if="vm.gpu" class="spec-chip">GPU</span>
               </div>
             </div>
           </div>
@@ -61,7 +63,7 @@
                       {{ item.raw.storage }} GB Disk
                     </v-chip>
                     <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
+                      <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
                       GPU
                     </v-chip>
                     <v-chip color="secondary" text-color="white" size="x-small" class="mr-1" variant="outlined">
@@ -88,7 +90,7 @@
                   {{ item.raw.storage }} GB Disk
                 </v-chip>
                 <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
+                  <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
                   GPU
                 </v-chip>
                 <v-chip color="secondary" text-color="white" size="x-small" class="mr-1" variant="outlined">
