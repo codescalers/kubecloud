@@ -146,13 +146,13 @@
               <span class="spec-label">Storage:</span>
               <span>{{ formatStorage(node.resources?.storage ?? (node.total_resources?.sru ? node.total_resources.sru / (1024*1024*1024) : 0)) }}</span>
             </div>
+            <div v-if="node.gpu || (node.gpus && node.gpus.length > 0)" class="spec-item">
+              <v-icon size="18" class="mr-1" color="info">mdi-expansion-card</v-icon>
+              <span class="spec-label">GPU:</span>
+              <span>{{ node.gpus?.length }}</span>
+            </div>
           </div>
-          <div class="node-chips">
-            <v-chip v-if="node.gpu || (node.gpus && node.gpus.length > 0)" color="deep-purple-accent-2" text-color="white" size="small" variant="elevated">
-              <v-icon size="16" class="mr-1">mdi-nvidia</v-icon>
-              GPU
-            </v-chip>
-          </div>
+
           <v-btn
             color="error"
             variant="outlined"
