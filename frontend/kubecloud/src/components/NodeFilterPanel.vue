@@ -40,7 +40,7 @@
         {{ formatStorage(modelValue.storage[0]) }} - {{ formatStorage(modelValue.storage[1]) }}
       </div>
     </div>
-    <div class="filter-section">
+    <!-- <div class="filter-section">
       <label class="filter-label">GPU</label>
       <v-switch
         v-model="modelValue.gpu"
@@ -49,7 +49,7 @@
         color="primary"
         hide-details
       />
-    </div>
+    </div> -->
     <div class="filter-section">
       <label class="filter-label">Price Range ($/mo)</label>
       <v-range-slider

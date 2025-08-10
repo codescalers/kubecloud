@@ -16,7 +16,7 @@
         <label>Disk Size (GB)</label>
         <input type="number" v-model.number="localNode.disk" />
         <div v-if="errors.disk" class="field-error">{{ errors.disk }}</div>
-        <v-switch v-model="localNode.gpu" label="GPU" inset class="mt-2" color="primary" />
+        <!-- <v-switch v-model="localNode.gpu" label="GPU" inset class="mt-2" color="primary" /> -->
         <div class="ssh-key-section" style="margin-top: 1.5rem;">
           <label class="ssh-key-label">SSH Key</label>
           <v-chip-group
