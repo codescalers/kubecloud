@@ -3,7 +3,6 @@ export interface NormalizedNode {
   cpu: number; // vCPU
   ram: number; // GB
   storage: number; // GB
-  available_cpu?: number; // vCPU
   available_ram?: number; // GB
   available_storage?: number; // GB
   price_usd: number | null;

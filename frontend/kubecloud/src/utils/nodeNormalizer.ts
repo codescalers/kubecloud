@@ -7,7 +7,6 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     nodeId: node.nodeId,
     cpu: node.total_resources?.cru ?? 0,
     ram: node.total_resources?.mru ? Math.round(node.total_resources.mru / (1024 * 1024 * 1024)) : 0,
-    available_cpu: getAvailableCPU(node),
     available_ram: getAvailableRAM(node),
     available_storage: getAvailableStorage(node),
     storage: node.total_resources?.sru ? Math.round(node.total_resources.sru / (1024 * 1024 * 1024)) : 0,
@@ -60,7 +59,7 @@ export function getUsedCPU(node: RentedNode): number {
 }
 export function getAvailableCPU(node: RentedNode): number {
   if (!node) return 0;
-  return Math.max(getTotalCPU(node) - getUsedCPU(node), 0);
+  return getTotalCPU(node);
 }
 export function getTotalRAM(node: RentedNode): number {
   return getResourceValue(node, 'mru', false);
