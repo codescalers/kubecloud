@@ -150,7 +150,7 @@ function nodeLabel(node: any) {
 
 // Calculate allocated resources for all VMs except the current one being assigned
 function getAllocatedResources(excludeVmIndex?: number) {
-  const allocations: Record<number, { cpu: number; ram: number; storage: number }> = {};
+  const allocations: Record<number, { ram: number; storage: number }> = {};
   
   props.allVMs.forEach((vm, index) => {
     // Skip the current VM being assigned to avoid self-blocking
@@ -158,9 +158,8 @@ function getAllocatedResources(excludeVmIndex?: number) {
     
     if (vm.node != null) {
       if (!allocations[vm.node]) {
-        allocations[vm.node] = { cpu: 0, ram: 0, storage: 0 };
+        allocations[vm.node] = { ram: 0, storage: 0 };
       }
-      allocations[vm.node].cpu += vm.vcpu;
       allocations[vm.node].ram += vm.ram;
       allocations[vm.node].storage += vm.disk || 0;
     }
@@ -171,9 +170,9 @@ function getAllocatedResources(excludeVmIndex?: number) {
 
 function getNodeAvailableResources(node: any, excludeVmIndex?: number) {
   const allocations = getAllocatedResources(excludeVmIndex);
-  const allocated = allocations[node.nodeId] || { cpu: 0, ram: 0, storage: 0 };
+  const allocated = allocations[node.nodeId] || { ram: 0, storage: 0 };
   return {
-    cpu: Math.max(0, (node.available_cpu || 0) - allocated.cpu),
+    cpu: node.cpu || 0, // CPU is always available (can be oversubscribed)
     ram: Math.max(0, (node.available_ram || 0) - allocated.ram),
     storage: Math.max(0, (node.available_storage || 0) - allocated.storage)
   };
@@ -185,7 +184,10 @@ function getAvailableNodesForVM(vmIndex: number) {
   
   return props.availableNodes.filter(node => {
     const available = getNodeAvailableResources(node, vmIndex);
-    return available.cpu >= vm.vcpu && 
+    // CPU check: ensure node has minimum required CPU (but allow oversubscription)
+    const hasSufficientCpu = (node.cpu || 0) >= vm.vcpu;
+    
+    return hasSufficientCpu && 
            available.ram >= vm.ram && 
            available.storage >= (vm.disk || 0);
   });

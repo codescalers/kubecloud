@@ -159,7 +159,7 @@ const nodeResourceErrors = computed(() => {
   allVMs.value.forEach(vm => {
     if (vm.node != null) {
       if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0};
-      nodeUsage[vm.node].cpu += vm.vcpu;
+      nodeUsage[vm.node].cpu = Math.max(nodeUsage[vm.node].cpu, vm.vcpu);
       nodeUsage[vm.node].ram += vm.ram;
       nodeUsage[vm.node].disk += vm.disk;
     }
