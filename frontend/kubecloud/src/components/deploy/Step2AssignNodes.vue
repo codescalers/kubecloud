@@ -35,7 +35,7 @@
           </div>
           <v-select
             v-model="vm.node"
-            :items="availableNodes"
+            :items="getAvailableNodesForVM(index)"
             :item-title="nodeLabel"
             item-value="nodeId"
             label="Select Reserved Node"
@@ -50,15 +50,15 @@
                   <div class="chip-row">
                     <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
                       <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
-                      {{ item.raw.cpu }} vCPU
+                      {{ getNodeAvailableResources(item.raw).cpu }} vCPU
                     </v-chip>
                     <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
                       <v-icon size="14" class="mr-1">mdi-memory</v-icon>
-                      {{ item.raw.ram }} GB RAM
+                      {{ getNodeAvailableResources(item.raw).ram }} GB RAM
                     </v-chip>
                     <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
                       <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                      {{ item.raw.storage }} GB Disk
+                      {{ getNodeAvailableResources(item.raw).storage }} GB Disk
                     </v-chip>
                     <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
                       <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
@@ -77,15 +77,15 @@
               <div class="chip-row">
                 <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
-                  {{ item.raw.cpu }} vCPU
+                  {{ getNodeAvailableResources(item.raw).cpu }} vCPU
                 </v-chip>
                 <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-memory</v-icon>
-                  {{ item.raw.ram }} GB RAM
+                  {{ getNodeAvailableResources(item.raw).ram }} GB RAM
                 </v-chip>
                 <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                  {{ item.raw.storage }} GB Disk
+                  {{ getNodeAvailableResources(item.raw).storage }} GB Disks
                 </v-chip>
                 <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
@@ -114,7 +114,7 @@
 </template>
 <script setup lang="ts">
 import type { VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits } from 'vue';
+import { defineProps, withDefaults, defineEmits, computed } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
   availableNodes: {
@@ -146,6 +146,49 @@ const emit = defineEmits(['nextStep', 'prevStep']);
 function nodeLabel(node: any) {
   if (!node) return '';
   return `Node ${node.nodeId}`;
+}
+
+// Calculate allocated resources for all VMs except the current one being assigned
+function getAllocatedResources(excludeVmIndex?: number) {
+  const allocations: Record<number, { cpu: number; ram: number; storage: number }> = {};
+  
+  props.allVMs.forEach((vm, index) => {
+    // Skip the current VM being assigned to avoid self-blocking
+    if (excludeVmIndex !== undefined && index === excludeVmIndex) return;
+    
+    if (vm.node != null) {
+      if (!allocations[vm.node]) {
+        allocations[vm.node] = { cpu: 0, ram: 0, storage: 0 };
+      }
+      allocations[vm.node].cpu += vm.vcpu;
+      allocations[vm.node].ram += vm.ram;
+      allocations[vm.node].storage += vm.disk || 0;
+    }
+  });
+  
+  return allocations;
+}
+
+function getNodeAvailableResources(node: any, excludeVmIndex?: number) {
+  const allocations = getAllocatedResources(excludeVmIndex);
+  const allocated = allocations[node.nodeId] || { cpu: 0, ram: 0, storage: 0 };
+  return {
+    cpu: Math.max(0, (node.available_cpu || 0) - allocated.cpu),
+    ram: Math.max(0, (node.available_ram || 0) - allocated.ram),
+    storage: Math.max(0, (node.available_storage || 0) - allocated.storage)
+  };
+}
+
+function getAvailableNodesForVM(vmIndex: number) {
+  const vm = props.allVMs[vmIndex];
+  if (!vm) return [];
+  
+  return props.availableNodes.filter(node => {
+    const available = getNodeAvailableResources(node, vmIndex);
+    return available.cpu >= vm.vcpu && 
+           available.ram >= vm.ram && 
+           available.storage >= (vm.disk || 0);
+  });
 }
 </script>
 <style scoped>
