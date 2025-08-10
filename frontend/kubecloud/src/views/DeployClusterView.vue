@@ -342,7 +342,7 @@ const editNodeValidation = computed(() => {
 function setSelectedSshKeys(keys: number[]) {
   selectedSshKeys.value = keys;
 }
-function onAssignNode(vmIdx: number, nodeId: number) {
+function onAssignNode(vmIdx: number, nodeId: number | null) {
   if (vmIdx < masters.value.length) {
     masters.value[vmIdx].node = nodeId != null ? nodeId : null;
   } else {

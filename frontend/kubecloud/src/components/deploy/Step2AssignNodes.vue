@@ -114,7 +114,7 @@
 </template>
 <script setup lang="ts">
 import type { VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits, computed } from 'vue';
+import { defineProps, withDefaults, defineEmits, computed, onMounted } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
   availableNodes: {
@@ -136,7 +136,7 @@ const props = withDefaults(defineProps<{
     [key: string]: any;
   }[];
   getNodeInfo: (id: number) => string;
-  onAssignNode: (vmIdx: number, nodeId: number) => void;
+  onAssignNode: (vmIdx: number, nodeId: number | null) => void;
   isStep2Valid?: boolean;
 }>(), {
   isStep2Valid: false
@@ -192,6 +192,34 @@ function getAvailableNodesForVM(vmIndex: number) {
            available.storage >= (vm.disk || 0);
   });
 }
+
+// Validate existing VM assignments on mount and clear invalid ones
+onMounted(() => {
+  props.allVMs.forEach((vm, vmIndex) => {
+    if (vm.node != null) {
+      // Find the assigned node
+      const assignedNode = props.availableNodes.find(node => node.nodeId === vm.node);
+      
+      if (!assignedNode) {
+        // Node doesn't exist anymore, clear assignment
+        props.onAssignNode(vmIndex, null);
+        return;
+      }
+      
+      // Check if the node can still accommodate this VM
+      const available = getNodeAvailableResources(assignedNode, vmIndex);
+      const hasSufficientCpu = (assignedNode.cpu || 0) >= vm.vcpu;
+      
+      const canAccommodate = hasSufficientCpu && 
+                           available.ram >= vm.ram && 
+                           available.storage >= (vm.disk || 0);
+      
+      if (!canAccommodate) {
+        props.onAssignNode(vmIndex, null);
+      }
+    }
+  });
+});
 </script>
 <style scoped>
 .section-header {
