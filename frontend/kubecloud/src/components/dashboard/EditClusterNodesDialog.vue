@@ -152,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
+import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RentedNode } from '../../composables/useNodeManagement';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
@@ -287,8 +287,9 @@ const availableNodesWithName = computed(() =>
       // Only show nodes that have sufficient available resources
       const availableRAM = getAvailableRAM(node);
       const availableStorage = getAvailableStorage(node);
-      
+      const availableCPU = getAvailableCPU(node);
       return (
+        addFormCpu.value <= availableCPU &&
         addFormRam.value <= availableRAM &&
         addFormStorage.value <= availableStorage
       );
