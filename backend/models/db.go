@@ -1,7 +1,11 @@
 package models
 
+import "gorm.io/gorm"
+
 // DB interface for databases
 type DB interface {
+	Close() error
+	GetDB() *gorm.DB
 	RegisterUser(user *User) error
 	GetUserByEmail(email string) (User, error)
 	GetUserByID(userID int) (User, error)

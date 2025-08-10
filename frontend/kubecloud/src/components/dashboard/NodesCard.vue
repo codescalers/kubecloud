@@ -10,7 +10,18 @@
           Manage your rented nodes and their resources.
         </p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+        <v-btn
+          color="primary"
+          variant="outlined"
+          :disabled="loading"
+          prepend-icon="mdi-refresh"
+          @click="fetchRentedNodes"
+          class="refresh-btn"
+          style="min-width: 110px;"
+        >
+          Refresh
+        </v-btn>
         <v-btn
           color="primary"
           variant="elevated"
@@ -25,54 +36,21 @@
     <!-- Stats Cards -->
     <div class="stats-section">
       <v-row>
-        <v-col cols="12" sm="6" md="3">
+        <v-col
+          v-for="(stat, index) in statCards"
+          :key="index"
+          cols="12"
+          sm="6"
+          md="3"
+        >
           <v-card class="stat-card" flat>
             <div class="stat-content">
               <div class="stat-icon">
-                <v-icon size="32" color="primary">mdi-server-network</v-icon>
+                <v-icon size="32" :color="stat.color">{{ stat.icon }}</v-icon>
               </div>
               <div class="stat-info">
-                <div class="stat-value">{{ rentedNodes.length }}</div>
-                <div class="stat-label">Total Nodes</div>
-              </div>
-            </div>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="stat-card" flat>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <v-icon size="32" color="success">mdi-check-circle</v-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ healthyNodes.length }}</div>
-                <div class="stat-label">Healthy</div>
-              </div>
-            </div>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="stat-card" flat>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <v-icon size="32" color="warning">mdi-alert-circle</v-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">{{ unhealthyNodes.length }}</div>
-                <div class="stat-label">Unhealthy</div>
-              </div>
-            </div>
-          </v-card>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="stat-card" flat>
-            <div class="stat-content">
-              <div class="stat-icon">
-                <v-icon size="32" color="info">mdi-currency-usd</v-icon>
-              </div>
-              <div class="stat-info">
-                <div class="stat-value">${{ totalMonthlyCost.toFixed(2) }}</div>
-                <div class="stat-label">Monthly Cost</div>
+                <div class="stat-value">{{ stat.value() }}</div>
+                <div class="stat-label">{{ stat.label }}</div>
               </div>
             </div>
           </v-card>
@@ -118,53 +96,26 @@
       </v-btn>
     </div>
 
-    <!-- Nodes Grid -->
     <div v-else class="nodes-section">
-      <div class="nodes-grid">
-        <div v-for="node in rentedNodes" :key="node.id" class="node-card">
-          <div class="node-header">
-            <h3 class="node-title">Node {{ node.nodeId || node.id }}</h3>
-            <div class="node-price">${{ node.price_usd?.toFixed(2) ?? 'N/A' }}/month</div>
-          </div>
-          <div class="node-location" v-if="node.country">
-            <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
-            {{ node.country }}
-          </div>
-          <div class="node-specs">
-            <div class="spec-item">
-              <v-icon size="18" class="mr-1" color="primary">mdi-cpu-64-bit</v-icon>
-              <span class="spec-label">CPU:</span>
-              <span>{{ Math.round(node.resources?.cpu ?? node.total_resources?.cru ?? 0) }} vCPU</span>
-            </div>
-            <div class="spec-item">
-              <v-icon size="18" class="mr-1" color="success">mdi-memory</v-icon>
-              <span class="spec-label">RAM:</span>
-              <span>{{ Math.round(node.resources?.memory ?? (node.total_resources?.mru ? node.total_resources.mru / (1024*1024*1024) : 0)) }} GB</span>
-            </div>
-            <div class="spec-item">
-              <v-icon size="18" class="mr-1" color="info">mdi-harddisk</v-icon>
-              <span class="spec-label">Storage:</span>
-              <span>{{ formatStorage(node.resources?.storage ?? (node.total_resources?.sru ? node.total_resources.sru / (1024*1024*1024) : 0)) }}</span>
-            </div>
-            <div v-if="node.gpu || (node.gpus && node.gpus.length > 0)" class="spec-item">
-              <v-icon size="18" class="mr-1" color="info">mdi-expansion-card</v-icon>
-              <span class="spec-label">GPU:</span>
-              <span>{{ node.gpus?.length }}</span>
-            </div>
-          </div>
-
-          <v-btn
-            color="error"
-            variant="outlined"
-            class="reserve-btn"
-            @click="confirmUnreserve(node)"
-            :loading="unreservingNode === node.rentContractId?.toString()"
-            style="margin-top: auto; width: 100%;"
-          >
-            Unreserve
-          </v-btn>
-        </div>
-      </div>
+      <v-row class="nodes-grid">
+        <v-col
+          v-for="(node, idx) in normalizedNodes"
+          :key="node.id"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="4"
+        >
+          <NodeCard
+            :node="node"
+            :isAuthenticated="true"
+            :loading="unreservingNode === rentedNodes[idx]?.rentContractId?.toString()"
+            :disabled="false"
+            :buttonLabel="'Unreserve Node'"
+            @action="handleNodeAction(node, $event)"
+          />
+        </v-col>
+      </v-row>
     </div>
 
     <!-- Unreserve Confirmation Dialog -->
@@ -198,10 +149,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNodeManagement, type RentedNode } from '../../composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
+import NodeCard from '../NodeCard.vue'
 
 const router = useRouter()
 const {
@@ -249,54 +201,64 @@ const handleUnreserve = async () => {
   }
 }
 
-// Resource calculation functions
-function getTotalCPU(node: RentedNode) {
-  return node.total_resources?.cru ?? node.resources?.cpu ?? 0
-}
-
-function getUsedCPU(node: RentedNode) {
-  return node.used_resources?.cru ?? 0
-}
-
-function getAvailableCPU(node: RentedNode) {
-  return Math.max(getTotalCPU(node) - getUsedCPU(node), 0)
-}
-
-function getTotalRAM(node: RentedNode) {
-  return node.total_resources?.mru ? Math.round(node.total_resources.mru / (1024 * 1024 * 1024)) : (node.resources?.memory ?? 0)
-}
-
-function getUsedRAM(node: RentedNode) {
-  return node.used_resources?.mru ? Math.round(node.used_resources.mru / (1024 * 1024 * 1024)) : 0
-}
-
-function getAvailableRAM(node: RentedNode) {
-  return Math.max(getTotalRAM(node) - getUsedRAM(node), 0)
-}
-
-function getTotalStorage(node: RentedNode) {
-  return node.total_resources?.sru ? Math.round(node.total_resources.sru / (1024 * 1024 * 1024)) : (node.resources?.storage ?? 0)
-}
-
-function getUsedStorage(node: RentedNode) {
-  return node.used_resources?.sru ? Math.round(node.used_resources.sru / (1024 * 1024 * 1024)) : 0
-}
-
-function getAvailableStorage(node: RentedNode) {
-  return Math.max(getTotalStorage(node) - getUsedStorage(node), 0)
-}
-
-function formatStorage(val: number) {
-  if (val >= 1024) {
-    return (val / 1024).toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' TB';
+function handleNodeAction(node: any, payload: { nodeId: number; action: string }) {
+  if (payload.action === 'unreserve') {
+    const found = rentedNodes.value.find(n => n.nodeId === payload.nodeId);
+    if (found) confirmUnreserve(found);
   }
-  return Math.round(val).toLocaleString() + ' GB';
 }
-</script>
 
+const statCards = [
+  {
+    icon: 'mdi-server-network',
+    color: 'primary',
+    value: () => rentedNodes.value.length,
+    label: 'Total Nodes'
+  },
+  {
+    icon: 'mdi-check-circle',
+    color: 'success',
+    value: () => healthyNodes.value.length,
+    label: 'Healthy'
+  },
+  {
+    icon: 'mdi-alert-circle',
+    color: 'warning',
+    value: () => unhealthyNodes.value.length,
+    label: 'Unhealthy'
+  },
+  {
+    icon: 'mdi-currency-usd',
+    color: 'info',
+    value: () => totalMonthlyCost.value,
+    label: 'Monthly Cost'
+  }
+]
+
+const normalizedNodes = computed(() =>
+  rentedNodes.value.map(node => ({
+    nodeId: node.nodeId,
+    price_usd: node.price_usd ?? 'N/A',
+    cpu: Math.round(node.total_resources?.cru ?? 0),
+    ram: Math.round(node.total_resources?.mru ? node.total_resources.mru / (1024*1024*1024) : 0),
+    storage: Math.round(node.total_resources?.sru ? node.total_resources.sru / (1024*1024*1024) : 0),
+    country: node.country,
+    gpu: !!node.num_gpu,
+    id: node.id,
+    extraFee: node.extraFee || 0,
+    locationString: node.country || '',
+    city: node.city || '',
+    status: node.status || '',
+    healthy: node.healthy ?? true,
+    rentable: false,
+    rented: true,
+    dedicated: false,
+    certificationType: '',
+  }))
+);
+</script>
 <style scoped>
 .nodes-card {
-  background: rgba(10, 25, 47, 0.85);
   border: 1px solid rgba(96, 165, 250, 0.15);
   border-radius: 1rem;
   padding: 2rem;
@@ -316,7 +278,7 @@ function formatStorage(val: number) {
 }
 
 .card-title {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
   line-height: 1.2;
@@ -334,15 +296,15 @@ function formatStorage(val: number) {
 }
 
 .stat-card {
-  background: rgba(15, 23, 42, 0.6) !important;
-  border: 1px solid rgba(96, 165, 250, 0.1) !important;
+  background: transparent !important;
+  border: 1px solid #23263a !important;
   border-radius: 0.75rem !important;
   padding: 1.5rem;
   transition: all 0.3s ease;
 }
 
 .stat-card:hover {
-  border-color: rgba(96, 165, 250, 0.3) !important;
+  border-color: #3b82f6 !important;
   transform: translateY(-2px);
 }
 
@@ -392,114 +354,18 @@ function formatStorage(val: number) {
   margin-top: 2rem;
 }
 
-.nodes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 1.5rem;
-}
 
-.node-card {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(96, 165, 250, 0.1);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.node-card:hover {
-  border-color: rgba(96, 165, 250, 0.3);
-  transform: translateY(-2px);
-}
-
-.node-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.node-title-section {
-  flex: 1;
-}
-
-.node-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #F8FAFC;
-  margin: 0 0 0.5rem 0;
-  line-height: 1.2;
-}
-
-.node-status {
-  margin-bottom: 0.5rem;
-}
-
-.node-price {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #10B981;
-  text-align: right;
-}
-
-.node-location {
-  display: flex;
-  align-items: center;
-  color: #94A3B8;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
-.node-specs {
-  margin-bottom: 1rem;
-}
-
-.spec-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.spec-label {
-  font-size: 0.875rem;
-  color: #94A3B8;
-  min-width: 60px;
-  margin-right: 0.5rem;
-}
-
-.node-chips {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 1rem;
-}
-
-.node-actions {
-  display: flex;
-  justify-content: flex-end;
-}
 
 @media (max-width: 768px) {
   .card-header {
     flex-direction: column;
     align-items: stretch;
   }
-
   .header-actions {
     align-self: stretch;
   }
-
   .nodes-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .node-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .node-price {
-    text-align: left;
-    margin-top: 0.5rem;
+    gap: 1rem;
   }
 }
 </style>

@@ -14,5 +14,6 @@ export interface NormalizedNode {
   rented: boolean;
   dedicated: boolean;
   certificationType: string;
+  extraFee: number;
   // Add any other UI fields needed
-} 
+}

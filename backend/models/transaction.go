@@ -5,9 +5,9 @@ import "time"
 // Transaction model holds all data for any transaction
 type Transaction struct {
 	ID        int       `gorm:"primaryKey;autoIncrement"`
-	UserID    int       `json:"user_id"`
-	AdminID   int       `json:"admin_id"`
-	Amount    uint64    `json:"amount"`
-	Memo      string    `json:"memo"`
-	CreatedAt time.Time `json:"created_at"`
+	UserID    int       `json:"user_id" validate:"required"`
+	AdminID   int       `json:"admin_id" validate:"required"`
+	Amount    uint64    `json:"amount" validate:"required,gt=0"`
+	Memo      string    `json:"memo" validate:"required,min=3,max=255"`
+	CreatedAt time.Time `json:"created_at" validate:"required"`
 }

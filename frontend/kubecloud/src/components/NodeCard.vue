@@ -1,160 +1,147 @@
 <template>
-  <div class="card node-card">
-    <div class="node-header">
-      <h3 class="node-title">
-        Node {{ node.nodeId }}
-      </h3>
-      <div class="node-price">${{ node.price_usd ?? 'N/A' }}/month</div>
-    </div>
-    <div class="node-location d-flex justify-space-between" v-if="node.country">
-      <div>
-        <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
-        {{ node.country }}
+  <v-card class="node-card mb-4" elevation="0">
+    <div class="price-area px-4 pt-4 pb-2 mb-3">
+      <div class="d-flex align-center mb-1">
+        <span :style="`color:${priceColor}; font-size:1.5rem; font-weight:700; letter-spacing:0.01em;`">${{ monthlyPrice }}</span>
+        <span class="text-caption ml-2" :style="`color:${priceLabelColor}; font-size:1.1rem; font-weight:500;`">/month</span>
       </div>
-      <div class="spec-item" v-if="node.gpu">
-        <v-chip color="white" variant="outlined" size="small" class="mr-1">GPU</v-chip>
+      <div class="d-flex align-center">
+        <span :style="`color:${priceColor}; font-size:1.1rem; font-weight:600;`">${{ hourlyPrice }}</span>
+        <span class="text-caption ml-1" :style="`color:${priceLabelColor}; font-size:1.05rem; font-weight:500;`">/hr</span>
       </div>
     </div>
-    <hr class="node-divider" />
-    <div class="node-specs">
-      <div class="spec-item">
-        <v-icon size="18" class="mr-1" color="primary">mdi-cpu-64-bit</v-icon>
-        <span class="spec-label">CPU:</span>
-        <span>{{ node.cpu }} vCPU</span>
-      </div>
-      <div class="spec-item">
-        <v-icon size="18" class="mr-1" color="success">mdi-memory</v-icon>
-        <span class="spec-label">RAM:</span>
-        <span>{{ node.ram }} GB</span>
-      </div>
-      <div class="spec-item">
-        <v-icon size="18" class="mr-1" color="info">mdi-harddisk</v-icon>
-        <span class="spec-label">Storage:</span>
-        <span>{{ node.storage }} GB</span>
-      </div>
+    <div class="d-flex align-center justify-space-between px-4 pb-1 mb-3">
+      <span class="text-h6 font-weight-bold text-white">Node {{ node.nodeId }}</span>
+      <v-chip v-if="node.gpu" color="#0ea5e9" variant="outlined" size="small" class="ml-2">GPU</v-chip>
     </div>
-    <v-btn 
-      v-if="isAuthenticated"
-      color="primary" 
-      variant="elevated" 
-      class="reserve-btn"
-      @click="$emit('reserve', node.nodeId)"
-      aria-label="Reserve Node"
-      :loading="loading"
-      :disabled="disabled || loading"
-    >
-      Reserve Node
-    </v-btn>
-    <v-btn 
-      v-else
-      color="primary" 
-      variant="outlined" 
-      class="reserve-btn"
-      @click="$emit('signin')"
-      aria-label="Sign In to Reserve"
-    >
-      Sign In to Reserve
-    </v-btn>
-  </div>
+    <div v-if="node.country" class="d-flex align-center px-4 pb-1">
+      <v-icon size="16" class="mr-1" :color="priceLabelColor">mdi-map-marker</v-icon>
+      <span class="text-body-2" :style="`color:${priceLabelColor};`">{{ node.country }}</span>
+    </div>
+    <v-card-text class="py-0 px-4">
+      <div v-for="r in resources" :key="r.label" class="resource-row">
+        <span class="resource-icon"><v-icon size="18" :color="r.color">{{ r.icon }}</v-icon></span>
+        <span class="font-weight-medium" :style="`color:${priceLabelColor}; min-width:40px;`">{{ r.label }}</span>
+        <span class="text-white ml-1">{{ r.value() }}</span>
+      </div>
+    </v-card-text>
+    <v-card-actions class="pt-3 px-4 pb-4">
+      <v-btn
+        :color="buttonColor"
+        variant="outlined"
+        block
+        class="font-weight-bold"
+        style="border-radius:8px;"
+        @click="handleAction"
+        :aria-label="buttonLabel"
+        :loading="loading"
+        :disabled="disabled || loading"
+      >
+        {{ buttonLabel }}
+      </v-btn>
+    </v-card-actions>
+  </v-card>
 </template>
 
 <script setup lang="ts">
 import type { NormalizedNode } from '../types/normalizedNode';
-import { defineProps, defineEmits } from 'vue';
+import { defineProps, defineEmits, computed } from 'vue';
 
-const props = defineProps<{ node: NormalizedNode; isAuthenticated: boolean; loading?: boolean; disabled?: boolean }>();
-const emit = defineEmits(['reserve', 'signin']);
 
-function formatStorage(val: number) {
-  if (val >= 1024) {
-    return (val / 1024).toLocaleString(undefined, { maximumFractionDigits: 1, minimumFractionDigits: 1 }) + ' TB';
-  }
-  return Math.round(val).toLocaleString() + ' GB';
+const props = defineProps<{ node: NormalizedNode; loading?: boolean; disabled?: boolean; buttonLabel?: string }>();
+const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
+const buttonColor = computed(() =>
+  buttonLabel.value.toLowerCase().includes('unreserve') ? 'error' : 'primary'
+);
+const emit = defineEmits(['action', 'signin']);
+
+const actionType = computed(() =>
+  buttonLabel.value.toLowerCase().includes('unreserve') ? 'unreserve' : 'reserve'
+);
+
+function handleAction() {
+  emit('action', { nodeId: props.node.nodeId, action: actionType.value });
 }
+
+const baseNodePrice = computed(() => {
+  const base = Number(props.node.price_usd ?? 0);
+  const extra = Number(props.node.extraFee ?? 0);
+  const price = base + extra;
+  return isNaN(price) ? null : price;
+});
+
+const monthlyPrice = computed(() => {
+  return baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2);
+});
+
+const hourlyPrice = computed(() => {
+  return baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2);
+});
+
+const resources = [
+  {
+    icon: 'mdi-cpu-64-bit',
+    color: '#0ea5e9',
+    label: 'CPU:',
+    value: () => `${props.node.cpu} vCPU`
+  },
+  {
+    icon: 'mdi-memory',
+    color: '#10B981',
+    label: 'RAM:',
+    value: () => `${props.node.ram} GB`
+  },
+  {
+    icon: 'mdi-harddisk',
+    color: '#38bdf8',
+    label: 'Storage:',
+    value: () => `${props.node.storage} GB`
+  }
+];
+
+const priceColor = '#10B981';
+const priceLabelColor = '#a3a3a3';
 </script>
 
 <style scoped>
-.card.node-card {
+.node-card {
   border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  padding: 1.5rem 1.25rem 1.25rem 1.25rem;
-  margin: 0.5rem 0;
   transition: box-shadow 0.2s, transform 0.2s;
-  min-height: 20rem;
-  display: flex;
-  flex-direction: column;
 }
-.card.node-card:hover {
-  box-shadow: 0 6px 24px rgba(0,0,0,0.10);
-  transform: translateY(-2px) scale(1.01);
+.node-card:hover {
+  transform: translateY(-3px) scale(1.015);
 }
-.node-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+.price-area {
+  background: rgba(16,185,129,0.07);
 }
-.node-title {
-  font-size: 1.15rem;
-  font-weight: 600;
-  margin: 0;
+.v-card-text {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
 }
-.node-price {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: #10B981;
-  padding: 0.2rem 0.7rem;
-}
-.node-location {
-  font-size: 0.98rem;
-  color: #64748b;
-}
-.node-divider {
-  border: none;
-  margin: 0 0 1.1rem 0;
-}
-.node-specs {
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-}
-.spec-item {
+.resource-row {
+  background: rgba(16,185,129,0.03);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 1.01em;
-  margin-bottom: 0.1rem;
 }
-.spec-label {
-  font-size: 0.97em;
-  color: #475569;
-  min-width: 54px;
+.resource-row:last-child {
+  margin-bottom: 0;
+}
+.resource-icon {
+  background: rgba(16,185,129,0.10);
+  border-radius: 6px;
+  padding: 4px;
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.font-weight-medium {
   font-weight: 500;
 }
-.reserve-btn {
-  width: 100%;
-  margin-top: auto;
-  font-weight: 600;
-  font-size: 1.05em;
-  letter-spacing: 0.01em;
-  border-radius: 8px;
-  transition: background 0.18s, color 0.18s;
-}
-.reserve-btn[variant="elevated"] {
-  background: #2563eb;
-  color: #fff;
-}
-.reserve-btn[variant="elevated"]:hover {
-  background: #1d4ed8;
-}
-.reserve-btn[variant="outlined"] {
-  border: 1.5px solid #2563eb;
-  color: #2563eb;
-  background: #fff;
-}
-.reserve-btn[variant="outlined"]:hover {
-  background: #e0e7ff;
-  color: #1d4ed8;
+.text-white {
+  color: #f8fafc;
 }
 </style>

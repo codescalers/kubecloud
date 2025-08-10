@@ -16,15 +16,15 @@ import (
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
-	Count       int     `json:"count" binding:"required,gt=0" validate:"required,gt=0"`
-	Value       float64 `json:"value" binding:"required,gt=0" validate:"required,gt=0"`
-	ExpireAfter int     `json:"expire_after_days" binding:"required,gt=0"`
+	Count       int     `json:"count" validate:"required,gt=0"`
+	Value       float64 `json:"value" validate:"required,gt=0"`
+	ExpireAfter int     `json:"expire_after_days" validate:"required,gt=0"`
 }
 
 // CreditRequestInput represents a request to credit a user's balance
 type CreditRequestInput struct {
-	Amount uint64 `json:"amount" binding:"required,gt=0" validate:"required,gt=0"`
-	Memo   string `json:"memo" binding:"required,min=3,max=255" validate:"required"`
+	Amount uint64 `json:"amount" validate:"required,gt=0"`
+	Memo   string `json:"memo" validate:"required,min=3,max=255"`
 }
 
 // CreditUserResponse holds the response data after crediting a user
@@ -135,6 +135,11 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		return
 	}
 
+	if err := internal.ValidateStruct(request); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		return
+	}
+
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
 		voucherCode := internal.GenerateRandomVoucher(h.config.VoucherNameLength)
@@ -211,6 +216,11 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+
+	if err := internal.ValidateStruct(request); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 

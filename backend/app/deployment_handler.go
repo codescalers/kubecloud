@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/activities"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
@@ -348,6 +349,11 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
+	if err := internal.ValidateStruct(cluster); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		return
+	}
+
 	wfName := fmt.Sprintf("deploy_%d_nodes_%s", len(cluster.Nodes), config.UserID)
 	activities.NewDynamicDeployWorkflowTemplate(h.ewfEngine, wfName, len(cluster.Nodes))
 
@@ -421,6 +427,11 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		return
+	}
+
+	if err := internal.ValidateStruct(cluster); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 

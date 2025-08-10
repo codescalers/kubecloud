@@ -20,9 +20,9 @@ const (
 )
 
 type Cluster struct {
-	Name  string `json:"name"`
-	Token string `json:"token"`
-	Nodes []Node `json:"nodes"`
+	Name  string `json:"name" validate:"required,min=3,alphanum"`
+	Token string `json:"token" validate:"required"`
+	Nodes []Node `json:"nodes" validate:"required,min=1,dive"`
 
 	// Computed
 	Network     workloads.ZNet `json:"network,omitempty"`
@@ -30,15 +30,15 @@ type Cluster struct {
 }
 
 type Node struct {
-	Name   string   `json:"name"`
-	Type   NodeType `json:"type"`
-	NodeID uint32   `json:"node_id"`
+	Name   string   `json:"name" validate:"required,min=3,alphanum"`
+	Type   NodeType `json:"type" validate:"required,oneof=worker master leader"`
+	NodeID uint32   `json:"node_id" validate:"required"`
 
-	CPU      uint8             `json:"cpu"`
-	Memory   uint64            `json:"memory"`    // Memory in MB
-	RootSize uint64            `json:"root_size"` // Storage in MB
-	DiskSize uint64            `json:"disk_size"` // Storage in MB
-	EnvVars  map[string]string `json:"env_vars"`  // SSH_KEY, etc.
+	CPU      uint8             `json:"cpu" validate:"required,gt=0"`
+	Memory   uint64            `json:"memory" validate:"required,gt=0"`    // Memory in MB
+	RootSize uint64            `json:"root_size" validate:"required,gt=0"` // Storage in MB
+	DiskSize uint64            `json:"disk_size" validate:"required,gt=0"` // Storage in MB
+	EnvVars  map[string]string `json:"env_vars"`
 
 	// Optional fields
 	Flist      string `json:"flist,omitempty"`

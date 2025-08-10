@@ -39,38 +39,52 @@
         <v-divider class="my-4"></v-divider>
         <div class="change-password-section">
           <h4 class="section-title">Change Password</h4>
-          <v-form @submit.prevent="changePassword" ref="passwordForm">
+            <v-form
+            @submit.prevent="changePassword"
+            ref="passwordForm"
+            v-model="isFormValid"
+            >
             <div class="profile-row">
               <div class="profile-col">
-                <v-text-field
-                  v-model="passwordFormData.password"
-                  :type="showPassword ? 'text' : 'password'"
-                  label="New Password"
-                  variant="outlined"
-                  :rules="passwordRules"
-                  required
-                  class="password-field compact"
-                  density="compact"
-                  :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                  @click:append-inner="showPassword = !showPassword"
-                />
+              <v-text-field
+                v-model="passwordFormData.password"
+                :type="showPassword ? 'text' : 'password'"
+                label="New Password"
+                variant="outlined"
+                :rules="passwordRules"
+                required
+                class="password-field compact"
+                density="compact"
+                :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append-inner="() => { showPassword = !showPassword }"
+                @input="triggerFormValidation"
+              />
               </div>
               <div class="profile-col">
-                <v-text-field
-                  v-model="passwordFormData.confirmPassword"
-                  :type="showConfirmPassword ? 'text' : 'password'"
-                  label="Confirm New Password"
-                  variant="outlined"
-                  :rules="confirmPasswordRules"
-                  required
-                  class="password-field compact"
-                  density="compact"
-                  :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                  @click:append-inner="showConfirmPassword = !showConfirmPassword"
-                />
+              <v-text-field
+                v-model="passwordFormData.confirmPassword"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                label="Confirm New Password"
+                variant="outlined"
+                :rules="confirmPasswordRules"
+                required
+                class="password-field compact"
+                density="compact"
+                :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append-inner="() => { showConfirmPassword = !showConfirmPassword }"
+                @input="triggerFormValidation"
+              />
               </div>
             </div>
-            <v-btn type="submit" color="primary" variant="outlined" :loading="loading" :disabled="loading" prepend-icon="mdi-lock-reset" class="action-btn compact">
+            <v-btn
+              type="submit"
+              color="primary"
+              variant="outlined"
+              :loading="loading"
+              :disabled="loading || !isFormValid"
+              prepend-icon="mdi-lock-reset"
+              class="action-btn compact"
+            >
               Change Password
             </v-btn>
           </v-form>
@@ -81,14 +95,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '../../stores/user'
 import { authService } from '../../utils/authService'
-import { useNotificationStore } from '../../stores/notifications'
 
 const { user } = storeToRefs(useUserStore())
-const notificationStore = useNotificationStore()
 const userStore = useUserStore()
 
 // Change password form data
@@ -99,6 +111,7 @@ const passwordFormData = ref({
 })
 
 const loading = ref(false)
+const isFormValid = ref(false)
 
 // Show/hide password toggles
 const showPassword = ref(false)
@@ -115,6 +128,17 @@ const confirmPasswordRules = [
   (v: string) => !!v || 'Please confirm your password',
   (v: string) => v === passwordFormData.value.password || 'Passwords do not match'
 ]
+
+function triggerFormValidation() {
+  if (passwordForm.value && passwordForm.value.validate) {
+    passwordForm.value.validate()
+  }
+}
+
+watch(
+  () => [passwordFormData.value.password, passwordFormData.value.confirmPassword],
+  triggerFormValidation
+)
 
 const passwordForm = ref()
 
@@ -251,10 +275,6 @@ async function changePassword() {
   margin-bottom: 0.75rem;
 }
 
-.password-field.compact {
-  margin-bottom: 0.75rem;
-}
-
 .password-field.compact :deep(.v-field) {
   background: rgba(96, 165, 250, 0.08) !important;
   border: 1px solid rgba(96, 165, 250, 0.12) !important;
@@ -286,7 +306,6 @@ async function changePassword() {
 }
 
 .action-btn.compact {
-  margin-top: 0.75rem;
   height: 40px;
   font-size: 0.9rem;
 }
@@ -295,12 +314,10 @@ async function changePassword() {
   .dashboard-card.profile-card.compact {
     padding: 1rem;
   }
-  
   .profile-row {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
   .profile-col {
     min-width: auto;
   }

@@ -74,20 +74,33 @@
           <!-- Nodes Column -->
           <v-col cols="12" md="9">
             <v-card class="reservation-card">
-              <div class="nodes-header">
-                <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
-                  Available Nodes
-                </h2>
-                <div class="nodes-count">
-                  {{ filteredNodes.length }} of {{ total }} nodes
+              <div class="nodes-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1.2rem;">
+                  <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
+                    Available Nodes
+                  </h2>
+                  <div class="nodes-count">
+                    {{ filteredNodes.length }} of {{ total }} nodes
+                  </div>
                 </div>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  :disabled="loading"
+                  @click="fetchNodes"
+                  prepend-icon="mdi-refresh"
+                  class="refresh-btn"
+                  style="min-width: 120px;"
+                >
+                  Refresh
+                </v-btn>
               </div>
               <p class="card-description">
                 Browse through our available nodes and select the one that best fits your requirements.
               </p>
-              
+
               <v-divider class="my-6" color="primary" />
-              
+
               <div v-if="loading" class="loading-section">
                 <v-skeleton-loader type="card, card, card, card" :loading="loading" class="w-100" />
                 <p class="loading-text">Loading available nodes...</p>
@@ -117,7 +130,7 @@
                         :isAuthenticated="isAuthenticated"
                         :loading="reservingNodeId === node.nodeId"
                         :disabled="reservingNodeId === node.nodeId"
-                        @reserve="reserveNode"
+                        @action="handleNodeAction(node, $event)"
                         @signin="handleSignIn"
                         tabindex="0"
                         aria-label="Node card"
@@ -151,12 +164,10 @@ import { useNormalizedNodes } from '../composables/useNormalizedNodes'
 import { useNodeFilters } from '../composables/useNodeFilters'
 import NodeFilterPanel from '../components/NodeFilterPanel.vue'
 import NodeCard from '../components/NodeCard.vue'
-import { useNotificationStore } from '../stores/notifications'
 
 const router = useRouter()
 const userStore = useUserStore()
 const isAuthenticated = computed(() => userStore.isLoggedIn)
-const notificationStore = useNotificationStore()
 
 const { nodes, total, loading, fetchNodes } = useNodes()
 const normalizedNodes = useNormalizedNodes(() => nodes.value)
@@ -224,6 +235,12 @@ const totalPages = computed(() => Math.max(1, Math.ceil(filteredNodes.value.leng
 const paginatedNodes = computed(() =>
   filteredNodes.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize)
 )
+
+function handleNodeAction(node: any, payload: { nodeId: number; action: string }) {
+  if (payload.action === 'reserve') {
+    reserveNode(payload.nodeId);
+  }
+}
 
 watch(filteredNodes, () => {
   if (currentPage.value > totalPages.value) {

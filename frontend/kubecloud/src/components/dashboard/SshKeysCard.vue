@@ -30,13 +30,13 @@
                 <pre class="ssh-key-fingerprint">{{ truncateKey(key.public_key) }}</pre>
                 <v-tooltip location="top">
                   <template #activator="{ props }">
-                    <v-btn icon small v-bind="props" @click="copyKey(key.public_key)" title="Copy full public key">
+                    <v-btn icon small v-bind="props" @click="copyKey(key.public_key, key.ID)" title="Copy full public key">
                       <v-icon size="18">mdi-content-copy</v-icon>
                     </v-btn>
                   </template>
                   <span>Copy full public key</span>
                 </v-tooltip>
-                <span v-if="copySuccess" class="copy-success">{{ copySuccess }}</span>
+                <span v-if="lastCopiedId === key.ID" class="copy-success">Copied!</span>
               </div>
               <div class="ssh-key-date">Added {{ new Date(key.created_at).toLocaleDateString() }}</div>
             </div>
@@ -67,26 +67,27 @@
               autofocus
               class="mb-4"
               @keyup.enter="handleAddKey"
+              @blur="nameTouched = true"
+              @input="nameTouched = true"
             />
             <v-textarea
               v-model="newKey.public_key"
               label="Public Key"
               required
               rows="4"
-              :error-messages="keyError"
+              :error-messages="publicKeyErrors"
               class="mb-4"
               append-inner-icon="mdi-content-paste"
               @click:append-inner="pasteFromClipboard"
               @keyup.enter="handleAddKey"
             />
-            <div v-if="addError" class="field-error">{{ addError }}</div>
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn variant="outlined" color="primary" :disabled="!newKey.name || !newKey.public_key" @click="handleAddKey">
+            <v-btn variant="outlined" color="primary" :disabled="isAddDisabled" @click="handleAddKey">
               Add
             </v-btn>
-            <v-btn variant="outlined" @click="addDialog = false">Cancel</v-btn>
+            <v-btn variant="outlined" @click="handleCancelDialog">Cancel</v-btn>
           </v-card-actions>
         </v-card>
       </template>
@@ -95,47 +96,58 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { userService, type SshKey, type AddSshKeyRequest } from '../../utils/userService'
 
 const sshKeys = ref<SshKey[]>([])
 const addDialog = ref(false)
 const newKey = ref<AddSshKeyRequest>({ name: '', public_key: '' })
-const addError = ref('')
-const nameError = ref('')
-const keyError = ref('')
 const nameField = ref()
-const copySuccess = ref('')
+const lastCopiedId = ref<number | null>(null)
+
+const isValidSshKey = (key: string): boolean =>
+  /^(ssh-(rsa|ed25519|dss|ecdsa)|ecdsa-sha2-nistp\d+|sk-ecdsa-sha2-nistp\d+|sk-ssh-ed25519) [A-Za-z0-9+/=]+( [^@\s]+@[^@\s]+)?$/.test(key.trim())
+
+const isDuplicateKey = computed(() => {
+  const val = newKey.value.public_key.trim()
+  return !!val && sshKeys.value.some(k => k.public_key.trim() === val)
+})
+
+const nameTouched = ref(false)
+const nameError = computed(() => {
+  if (!nameTouched.value) return ''
+  if (!newKey.value.name) return 'Key name is required.'
+  if (sshKeys.value.some(k => k.name.trim().toLowerCase() === newKey.value.name.trim().toLowerCase())) {
+    return 'Key name must be unique.'
+  }
+  return ''
+})
+
+const publicKeyErrors = computed(() => {
+  const errors: string[] = []
+  if (!newKey.value.public_key) return errors
+  if (!isValidSshKey(newKey.value.public_key)) errors.push('Invalid SSH public key format.')
+  if (isDuplicateKey.value) errors.push('This SSH public key already exists.')
+  return errors
+})
+
+const isAddDisabled = computed(() => {
+  return !newKey.value.name || !newKey.value.public_key || !!nameError.value || publicKeyErrors.value.length > 0
+})
 
 async function fetchSshKeys() {
   sshKeys.value = await userService.listSshKeys()
 }
 
 async function handleAddKey() {
-  addError.value = ''
-  nameError.value = ''
-  keyError.value = ''
-  if (!newKey.value.name) {
-    nameError.value = 'Key name is required.'
-    return
-  }
-  if (!newKey.value.public_key) {
-    keyError.value = 'Public key is required.'
-    return
-  }
+  if (isAddDisabled.value) return
   try {
     const added = await userService.addSshKey(newKey.value)
     sshKeys.value.push(added)
     addDialog.value = false
     newKey.value = { name: '', public_key: '' }
+    nameTouched.value = false
   } catch (e: any) {
-    if (e?.message?.toLowerCase().includes('name')) {
-      nameError.value = e.message
-    } else if (e?.message?.toLowerCase().includes('key')) {
-      keyError.value = e.message
-    } else {
-      addError.value = e?.message || 'Failed to add SSH key'
-    }
   }
 }
 
@@ -145,26 +157,28 @@ async function handleDeleteKey(id: number) {
 }
 
 async function pasteFromClipboard() {
-  try {
-    newKey.value.public_key = await navigator.clipboard.readText()
-  } catch (e) {
-    keyError.value = 'Could not read from clipboard'
-  }
+  newKey.value.public_key = await navigator.clipboard.readText()
 }
+
 
 function openAddDialog() {
   addDialog.value = true
+  nameTouched.value = false
   nextTick(() => {
     if (nameField.value?.focus) nameField.value.focus()
   })
 }
 
-async function copyKey(key: string) {
-  try {
-    await navigator.clipboard.writeText(key)
-    copySuccess.value = 'Copied!'
-    setTimeout(() => (copySuccess.value = ''), 1200)
-  } catch {}
+async function copyKey(key: string, id: number) {
+  await navigator.clipboard.writeText(key)
+  lastCopiedId.value = id
+  setTimeout(() => lastCopiedId.value = null, 1200)
+}
+
+
+function handleCancelDialog() {
+  addDialog.value = false
+  nameTouched.value = false
 }
 
 function truncateKey(key: string) {
