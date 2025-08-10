@@ -280,12 +280,23 @@ function confirmAddForm() {
   notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.');
   editTab.value = 'list';
 }
-// Ensure every node has a 'name' property for v-select display
+// Filter available nodes based on form requirements and add 'name' property for v-select display
 const availableNodesWithName = computed(() =>
-  (props.availableNodes || []).map(n => ({
-    ...n,
-    name: `Node ${n.nodeId}`
-  }) as RentedNode & { name: string })
+  (props.availableNodes || [])
+    .filter(node => {
+      // Only show nodes that have sufficient available resources
+      const availableRAM = getAvailableRAM(node);
+      const availableStorage = getAvailableStorage(node);
+      
+      return (
+        addFormRam.value <= availableRAM &&
+        addFormStorage.value <= availableStorage
+      );
+    })
+    .map(n => ({
+      ...n,
+      name: `Node ${n.nodeId}`
+    }) as RentedNode & { name: string })
 );
 </script>
 <style scoped>
