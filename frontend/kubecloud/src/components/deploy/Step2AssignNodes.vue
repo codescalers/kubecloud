@@ -85,7 +85,7 @@
                 </v-chip>
                 <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                  {{ getNodeAvailableResources(item.raw).storage }} GB Disks
+                  {{ getNodeAvailableResources(item.raw).storage }} GB Disk
                 </v-chip>
                 <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
                   <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
