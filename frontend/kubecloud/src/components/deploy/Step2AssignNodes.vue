@@ -113,28 +113,12 @@
   </div>
 </template>
 <script setup lang="ts">
+import type { NormalizedNode } from '@/types/normalizedNode';
 import type { VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits, computed, onMounted } from 'vue';
+import { defineProps, withDefaults, defineEmits, onMounted } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
-  availableNodes: {
-    nodeId: number;
-    cpu: number;
-    ram: number;
-    storage: number;
-    price_usd: number | null;
-    gpu: boolean;
-    locationString: string;
-    country: string;
-    city: string;
-    status: string;
-    healthy: boolean;
-    rentable: boolean;
-    rented: boolean;
-    dedicated: boolean;
-    certificationType: string;
-    [key: string]: any;
-  }[];
+  availableNodes: NormalizedNode[];
   getNodeInfo: (id: number) => string;
   onAssignNode: (vmIdx: number, nodeId: number | null) => void;
   isStep2Valid?: boolean;
@@ -168,7 +152,7 @@ function getAllocatedResources(excludeVmIndex?: number) {
   return allocations;
 }
 
-function getNodeAvailableResources(node: any, excludeVmIndex?: number) {
+function getNodeAvailableResources(node: NormalizedNode, excludeVmIndex?: number) {
   const allocations = getAllocatedResources(excludeVmIndex);
   const allocated = allocations[node.nodeId] || { ram: 0, storage: 0 };
   return {
