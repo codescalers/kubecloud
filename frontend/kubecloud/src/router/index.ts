@@ -11,6 +11,11 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('../views/ResetPasswordView.vue'),
+    },
+    {
       path: '/sign-in',
       name: 'sign-in',
       component: () => import('../views/SignInView.vue'),
@@ -85,17 +90,20 @@ const router = createRouter({
       component: () => import('../views/PendingRecordsView.vue')
     },
   ],
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior() {
     // Always scroll to top on route change
     return { top: 0 }
   }
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const userStore = useUserStore()
 
   // Check if user is authenticated
   const isAuthenticated = userStore.isLoggedIn
+
+  // Note: Password reset cleanup is handled in the components themselves
+  // to avoid interfering with multi-tab usage
 
   // If route requires guest (sign-in, sign-up) and user is authenticated
   if (to.meta.requiresGuest && isAuthenticated) {

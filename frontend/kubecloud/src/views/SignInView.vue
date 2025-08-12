@@ -1,7 +1,7 @@
 <template>
   <div class="auth-view">
     <div class="auth-background"></div>
-    <div class="auth-content fade-in">
+    <div class="auth-content">
       <div class="auth-header">
         <h1 class="auth-title">Welcome Back!</h1>
         <p class="auth-subtitle">Sign in to your KubeCloud account</p>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { validateForm, VALIDATION_RULES } from '../utils/validation'
@@ -146,22 +146,7 @@ const handleSignIn = async () => {
   }
 }
 
-onMounted(() => {
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  }
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible')
-      }
-    })
-  }, observerOptions)
-  document.querySelectorAll('.fade-in').forEach(el => {
-    observer.observe(el)
-  })
-})
+
 </script>
 
 <style scoped>
@@ -242,15 +227,7 @@ onMounted(() => {
   color: var(--color-text-secondary);
   margin-right: var(--space-2);
 }
-.fade-in {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1);
-}
-.fade-in.visible {
-  opacity: 1;
-  transform: none;
-}
+
 @media (max-width: 600px) {
   .auth-content {
     padding: var(--space-6) var(--space-2) var(--space-4) var(--space-2);

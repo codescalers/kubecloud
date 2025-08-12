@@ -123,7 +123,7 @@ export class AuthService {
       )
       throw new Error('Failed to register user')
     }
-    
+
   }
 
   // Verify registration code
@@ -188,9 +188,17 @@ export class AuthService {
   }
 
   // Change password (requires authentication)
-  async changePassword(data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+  async changePassword(data: ChangePasswordRequest, useTemporaryToken = false): Promise<ChangePasswordResponse> {
+    let customToken: string | undefined
+
+    if (useTemporaryToken) {
+      const tempTokens = this.getTempTokens()
+      customToken = tempTokens.accessToken || undefined
+    }
+
     const response = await api.put<ApiResponse<ChangePasswordResponse>>('/v1/user/change_password', data, {
       requiresAuth: true,
+      customToken,
       showNotifications: true,
       loadingMessage: 'Updating password...',
       successMessage: 'Password updated successfully!',
@@ -199,11 +207,57 @@ export class AuthService {
     return response.data.data
   }
 
+
+
   // Store tokens in localStorage
   storeTokens(accessToken: string, refreshToken: string): void {
     localStorage.setItem('token', accessToken)
     localStorage.setItem('refreshToken', refreshToken)
   }
+
+  // Store temporary tokens for password reset (separate from main auth)
+  storeTempTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem('temp_reset_token', accessToken)
+    localStorage.setItem('temp_reset_refresh_token', refreshToken)
+    // Set expiration time (15 minutes from now)
+    const expirationTime = Date.now() + (15 * 60 * 1000)
+    localStorage.setItem('temp_reset_token_expires', expirationTime.toString())
+  }
+
+  // Get temporary tokens for password reset
+  getTempTokens(): { accessToken: string | null; refreshToken: string | null } {
+    const token = localStorage.getItem('temp_reset_token')
+    const refreshToken = localStorage.getItem('temp_reset_refresh_token')
+    const expirationTime = localStorage.getItem('temp_reset_token_expires')
+
+    // Check if tokens are expired
+    if (token && expirationTime && Date.now() > parseInt(expirationTime)) {
+      // Tokens expired, clean up
+      this.clearTempTokens()
+      return { accessToken: null, refreshToken: null }
+    }
+
+    return {
+      accessToken: token,
+      refreshToken: refreshToken
+    }
+  }
+
+  // Clear temporary tokens
+  clearTempTokens(): void {
+    localStorage.removeItem('temp_reset_token')
+    localStorage.removeItem('temp_reset_refresh_token')
+    localStorage.removeItem('temp_reset_token_expires')
+  }
+
+  // Check if password reset session is valid
+  isPasswordResetSessionValid(): boolean {
+    const hasSession = localStorage.getItem('password_reset_session') === 'true'
+    const tempTokens = this.getTempTokens()
+    return hasSession && !!tempTokens.accessToken
+  }
+
+
 
   // Get stored tokens
   getTokens(): { accessToken: string | null; refreshToken: string | null } {
@@ -219,6 +273,15 @@ export class AuthService {
     localStorage.removeItem('refreshToken')
   }
 
+  // Clear all auth-related localStorage items
+  clearAllAuthData(): void {
+    localStorage.removeItem('token')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('password_reset_session')
+    localStorage.removeItem('user')
+    this.clearTempTokens()
+  }
+
   // Check if user is authenticated
   isAuthenticated(): boolean {
     return !!localStorage.getItem('token')
@@ -226,4 +289,4 @@ export class AuthService {
 }
 
 // Export singleton instance
-export const authService = AuthService.getInstance() 
+export const authService = AuthService.getInstance()

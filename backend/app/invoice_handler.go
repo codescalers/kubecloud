@@ -173,7 +173,7 @@ func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) er
 	now := time.Now()
 
 	var nodeItems []models.NodeItem
-	var totalInvoiceCost float64
+	var totalInvoiceCostUSD float64
 
 	for _, record := range records {
 		billReports, err := internal.ListContractBillReportsPerMonth(h.graphqlClient, record.ContractID, now)
@@ -185,7 +185,7 @@ func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) er
 		if err != nil {
 			return err
 		}
-		totalAmountUSD, err := internal.FromTFTtoUSD(h.substrateClient, totalAmountTFT)
+		totalAmountUSDMillicent, err := internal.FromTFTtoUSDMillicent(h.substrateClient, totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -205,6 +205,8 @@ func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) er
 			totalHours = GetHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
+		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+
 		nodeItems = append(nodeItems, models.NodeItem{
 			NodeID:        record.NodeID,
 			ContractID:    record.ContractID,
@@ -212,13 +214,13 @@ func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) er
 			PeriodInHours: float64(totalHours),
 			Cost:          totalAmountUSD,
 		})
-		totalInvoiceCost += totalAmountUSD
+		totalInvoiceCostUSD += totalAmountUSD
 
 	}
 
 	invoice := models.Invoice{
 		UserID:    user.ID,
-		Total:     totalInvoiceCost,
+		Total:     totalInvoiceCostUSD,
 		Nodes:     nodeItems,
 		Tax:       0, //TODO:
 		CreatedAt: time.Now(),
@@ -234,7 +236,7 @@ func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) er
 		return err
 	}
 
-	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCost, h.config.Currency, invoice.ID)
+	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCostUSD, h.config.Currency, invoice.ID)
 	err = h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body, internal.Attachment{
 		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
 		Data:     invoice.FileData,

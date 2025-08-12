@@ -52,7 +52,7 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 
 		}
 
-		totalDebtUSD, err := internal.FromTFTtoUSD(h.substrateClient, uint64(totalDebt))
+		totalDebtUSD, err := internal.FromTFTtoUSDMillicent(h.substrateClient, uint64(totalDebt))
 		if err != nil {
 			log.Error().Err(err).Send()
 			continue

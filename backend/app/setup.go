@@ -126,6 +126,8 @@ func SetUp(t testing.TB) (*App, error) {
 		return nil, err
 	}
 
+	internal.InitValidator()
+
 	app.httpServer = nil
 
 	t.Cleanup(func() {

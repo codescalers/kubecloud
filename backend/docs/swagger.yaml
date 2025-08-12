@@ -28,7 +28,7 @@ definitions:
   app.ChargeBalanceInput:
     properties:
       amount:
-        type: integer
+        type: number
       card_type:
         type: string
       payment_method_id:
@@ -48,7 +48,7 @@ definitions:
   app.CreditRequestInput:
     properties:
       amount:
-        type: integer
+        type: number
       memo:
         maxLength: 255
         minLength: 3
@@ -60,7 +60,7 @@ definitions:
   app.CreditUserResponse:
     properties:
       amount:
-        type: integer
+        type: number
       memo:
         type: string
       user:
@@ -95,13 +95,14 @@ definitions:
       code:
         type: integer
       credit_card_balance:
-        description: money from credit card
-        type: number
+        description: millicent, money from credit card
+        type: integer
       credited_balance:
-        description: manually added by admin or from vouchers
-        type: number
+        description: millicent, manually added by admin or from vouchers
+        type: integer
       debt:
-        type: number
+        description: millicent
+        type: integer
       email:
         type: string
       id:
@@ -341,13 +342,14 @@ definitions:
       code:
         type: integer
       credit_card_balance:
-        description: money from credit card
-        type: number
+        description: millicent, money from credit card
+        type: integer
       credited_balance:
-        description: manually added by admin or from vouchers
-        type: number
+        description: millicent, manually added by admin or from vouchers
+        type: integer
       debt:
-        type: number
+        description: millicent
+        type: integer
       email:
         type: string
       id:
@@ -387,6 +389,11 @@ definitions:
         type: boolean
       value:
         type: number
+    required:
+    - code
+    - created_at
+    - expires_at
+    - value
     type: object
 info:
   contact: {}

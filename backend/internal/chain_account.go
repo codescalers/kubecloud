@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"time"
 
@@ -100,14 +101,15 @@ func TransferTFTs(substrateClient *substrate.Substrate, tftBalance uint64, userM
 	return substrateClient.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
 }
 
-// GetUserBalanceUSD gets balance of user in USD
-func GetUserBalanceUSD(substrateClient *substrate.Substrate, userMnemonic string) (float64, error) {
+// GetUserBalanceUSDMillicent gets balance of user in USD Millicent
+// This avoids floating point precision issues by returning an integer value
+func GetUserBalanceUSDMillicent(substrateClient *substrate.Substrate, userMnemonic string) (uint64, error) {
 	tftBalance, err := GetUserTFTBalance(substrateClient, userMnemonic)
 	if err != nil {
 		return 0, err
 	}
 
-	return FromTFTtoUSD(substrateClient, tftBalance)
+	return FromTFTtoUSDMillicent(substrateClient, tftBalance)
 }
 
 // GetUserBalanceUSD gets balance of user in TFT
@@ -132,26 +134,35 @@ func GetUserTFTBalance(substrateClient *substrate.Substrate, userMnemonic string
 	return tftBalance.Free.Uint64(), nil
 }
 
-func FromTFTtoUSD(substrateClient *substrate.Substrate, amount uint64) (float64, error) {
-	rawTFT := float64(amount)
-	tft := rawTFT / 1e7
-
-	// convert balance to USDC to show it to user
+// FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
+func FromTFTtoUSDMillicent(substrateClient *substrate.Substrate, amount uint64) (uint64, error) {
 	price, err := substrateClient.GetTFTPrice()
 	if err != nil {
 		return 0, err
 	}
 
-	usdBalance := float64(tft) * (float64(price) / 1000)
-	return usdBalance, nil
+	usdMillicentBalance := uint64(math.Round((float64(amount) / 1e7) * float64(price)))
+	return usdMillicentBalance, nil
 }
 
-func FromUSDToTFT(substrateClient *substrate.Substrate, amount float64) (uint64, error) {
+// FromUSDMillicentToTFT converts USD Millicent to TFT amount
+// This avoids floating point precision issues by accepting an integer value
+func FromUSDMillicentToTFT(substrateClient *substrate.Substrate, amountMillicent uint64) (uint64, error) {
 	price, err := substrateClient.GetTFTPrice()
 	if err != nil {
 		return 0, err
 	}
 
-	tft := (amount * 1e7) / (float64(price) / 1000)
+	// Convert Millicent to dollars for the calculation
+	amountUSD := FromUSDMilliCentToUSD(amountMillicent)
+	tft := (amountUSD * 1e7) / (float64(price) / 1000)
 	return uint64(tft), nil
+}
+
+func FromUSDMilliCentToUSD(amountMillicent uint64) float64 {
+	return float64(amountMillicent) / 1000
+}
+
+func FromUSDToUSDMillicent(amountUSD float64) uint64 {
+	return uint64(amountUSD * 1000)
 }

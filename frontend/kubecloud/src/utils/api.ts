@@ -25,6 +25,7 @@ export interface ApiOptions {
   successMessage?: string
   errorMessage?: string
   requiresAuth?: boolean
+  customToken?: string
 }
 
 class ApiClient {
@@ -36,8 +37,8 @@ class ApiClient {
     this.defaultTimeout = timeout
   }
 
-  private getAuthHeaders(): Record<string, string> {
-    const token = localStorage.getItem('token')
+  private getAuthHeaders(customToken?: string): Record<string, string> {
+    const token = customToken || localStorage.getItem('token')
     if (token) {
       return {
         'Authorization': `Bearer ${token}`
@@ -59,7 +60,8 @@ class ApiClient {
       loadingMessage,
       successMessage,
       errorMessage,
-      requiresAuth = false
+      requiresAuth = false,
+      customToken
     } = options
 
     const notificationStore = useNotificationStore()
@@ -83,7 +85,7 @@ class ApiClient {
       // Add auth headers if required
       const requestHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...(requiresAuth ? this.getAuthHeaders() : {}),
+        ...(requiresAuth ? this.getAuthHeaders(customToken) : {}),
         ...headers
       }
 
@@ -280,16 +282,16 @@ export async function getWorkflowStatus(workflowID: string): Promise<ApiResponse
  * @param options - Configuration options
  * @param options.delay - Initial delay before first check in milliseconds (default: 6000ms)
  * @param options.interval - Polling interval in milliseconds (default: 1000ms)
- * 
+ *
  * @returns An object containing:
  *   - status: A promise that resolves with the final workflow status (completed or failed)
  *   - cancel: A function to cancel the polling process
- * 
+ *
  * @description
  * This function implements a polling pattern with two timing mechanisms:
  * 1. An initial delay (delay) before the first status check
  * 2. Regular interval checks (interval) that continue until completion or cancellation
- * 
+ *
  * The polling continues until one of these conditions is met:
  * - The workflow completes successfully (StatusCompleted)
  * - The workflow fails (StatusFailed)
@@ -330,11 +332,11 @@ export function createWorkflowStatusChecker(workflowID: string, options?: {
         reject(error);
       }
     };
-    
+
     // First, wait for the delay before doing anything
     timeoutId = setTimeout(() => {
       check();
-      
+
       // Then start the interval for subsequent checks
       intervalId = setInterval(check, interval);
     }, delay);
