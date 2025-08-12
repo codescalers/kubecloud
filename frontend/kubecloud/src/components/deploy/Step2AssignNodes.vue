@@ -116,7 +116,7 @@
 </template>
 <script setup lang="ts">
 import type { NormalizedNode } from '@/types/normalizedNode';
-import type { VM } from '../../composables/useDeployCluster';
+import { ROOTFS, type VM } from '../../composables/useDeployCluster';
 import { defineProps, withDefaults, defineEmits, onMounted, computed } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
@@ -144,6 +144,7 @@ const currentAllocations = computed(() => {
       }
       allocations[vm.node].ram += vm.ram;
       allocations[vm.node].storage += vm.disk || 0;
+      allocations[vm.node].storage += vm.rootfs;
     }
   });
   
@@ -160,7 +161,7 @@ const availableNodesPerVM = computed(() => {
       if (vm.node != null && allocationsExcludingThisVM[vm.node]) {
         allocationsExcludingThisVM[vm.node] = {
           ram: allocationsExcludingThisVM[vm.node].ram - vm.ram,
-          storage: allocationsExcludingThisVM[vm.node].storage - (vm.disk || 0)
+          storage: allocationsExcludingThisVM[vm.node].storage - (vm.disk || 0) - vm.rootfs   
         };
         if (allocationsExcludingThisVM[vm.node].ram <= 0 && allocationsExcludingThisVM[vm.node].storage <= 0) {
           delete allocationsExcludingThisVM[vm.node];
@@ -176,7 +177,7 @@ const availableNodesPerVM = computed(() => {
       
       return hasSufficientCpu && 
              availableRam >= vm.ram && 
-             availableStorage >= (vm.disk || 0);
+             availableStorage >= (vm.disk || 0)+(vm.rootfs);
     });
   });
 });
@@ -194,7 +195,7 @@ function getNodeAvailableResources(node: NormalizedNode, excludeVmIndex?: number
       if (allocations[vm.node]) {
         allocations[vm.node] = {
           ram: allocations[vm.node].ram - vm.ram,
-          storage: allocations[vm.node].storage - (vm.disk || 0)
+          storage: allocations[vm.node].storage - (vm.disk || 0)-(vm.rootfs)
         };
         if (allocations[vm.node].ram <= 0 && allocations[vm.node].storage <= 0) {
           delete allocations[vm.node];
@@ -230,7 +231,7 @@ onMounted(() => {
       
       const canAccommodate = hasSufficientCpu && 
                            available.ram >= vm.ram && 
-                           available.storage >= (vm.disk || 0);
+                           available.storage >= (vm.disk || 0)+(vm.rootfs);
       
       if (!canAccommodate) {
         props.onAssignNode(vmIndex, null);

@@ -1,5 +1,9 @@
 import { ref, computed } from 'vue';
 
+/**
+ * Root filesystem size in GB
+ */
+export const ROOTFS = 5;
 export interface VM {
   name: string;
   vcpu: number;
@@ -27,7 +31,7 @@ export function useDeployCluster() {
         vcpu: 2,
         ram: 4,
         node: null,
-        rootfs: 10,
+        rootfs: ROOTFS,
         disk: 25,
         gpu: false,
         sshKeyIds: availableSshKeys.value.length ? [availableSshKeys.value[0].ID] : [],
@@ -42,7 +46,7 @@ export function useDeployCluster() {
       vcpu: 2,
       ram: 4,
       node: null,
-      rootfs: 10,
+      rootfs: ROOTFS,
       disk: 25,
       gpu: false,
       sshKeyIds: availableSshKeys.value.length ? [availableSshKeys.value[0].ID] : [],
