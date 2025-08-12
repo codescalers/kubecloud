@@ -162,6 +162,7 @@ function getAllocatedResources(excludeVmIndex?: number) {
       }
       allocations[vm.node].ram += vm.ram;
       allocations[vm.node].storage += vm.disk || 0;
+      allocations[vm.node].storage += vm.rootfs || 0;
     }
   });
   
@@ -189,7 +190,7 @@ function getAvailableNodesForVM(vmIndex: number) {
     
     return hasSufficientCpu && 
            available.ram >= vm.ram && 
-           available.storage >= (vm.disk || 0);
+           available.storage >= (vm.disk || 0) + (vm.rootfs || 0);
   });
 }
 
@@ -212,7 +213,7 @@ onMounted(() => {
       
       const canAccommodate = hasSufficientCpu && 
                            available.ram >= vm.ram && 
-                           available.storage >= (vm.disk || 0);
+                           available.storage >= (vm.disk || 0) + (vm.rootfs || 0);
       
       if (!canAccommodate) {
         props.onAssignNode(vmIndex, null);
