@@ -31,9 +31,9 @@ func CreatePaymentMethod(cardType, paymentMethodID string) (*stripe.PaymentMetho
 	return paymentmethod.New(paymentMethodParams)
 }
 
-func CreatePaymentIntent(customerID, paymentMethodID, currency string, amount uint64) (*stripe.PaymentIntent, error) {
+func CreatePaymentIntent(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error) {
 	params := &stripe.PaymentIntentParams{
-		Amount:        stripe.Int64(int64(amount * 100)),
+		Amount:        stripe.Int64(int64(usdMillicentAmount / 10)),
 		Currency:      stripe.String(currency),
 		Customer:      stripe.String(customerID),
 		PaymentMethod: stripe.String(paymentMethodID),

@@ -116,9 +116,9 @@ type ChangePasswordInput struct {
 
 // ChargeBalanceInput struct holds required data to charge users' balance
 type ChargeBalanceInput struct {
-	CardType     string `json:"card_type" validate:"required"`
-	PaymentToken string `json:"payment_method_id" validate:"required"`
-	Amount       uint64 `json:"amount" validate:"required,gt=0"`
+	CardType     string  `json:"card_type" validate:"required"`
+	PaymentToken string  `json:"payment_method_id" validate:"required"`
+	Amount       float64 `json:"amount" validate:"required,gt=0"`
 }
 
 // RegisterResponse struct holds data returned when user registers
@@ -649,7 +649,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"user_id":            userID,
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
-		"amount":             int(request.Amount),
+		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
 		"mnemonic":           user.Mnemonic,
 	}
 
@@ -693,16 +693,16 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
 	}
 
-	usdPendingAmount, err := internal.FromTFTtoUSD(h.substrateClient, tftPendingAmount)
+	usdMillicentPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to convert tft to usd")
+		log.Error().Err(err).Msg("failed to convert tft to usd millicent")
 		InternalServerError(c)
 		return
 	}
 
 	userResponse := GetUserResponse{
 		User:              user,
-		PendingBalanceUSD: usdPendingAmount,
+		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
 	}
 
 	Success(c, http.StatusOK, "User is retrieved successfully", gin.H{
@@ -730,7 +730,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	usdBalance, err := internal.GetUserBalanceUSD(h.substrateClient, user.Mnemonic)
+	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 	if err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
@@ -749,17 +749,17 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
 	}
 
-	usdPendingAmount, err := internal.FromTFTtoUSD(h.substrateClient, tftPendingAmount)
+	usdPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to convert tft to usd")
+		log.Error().Err(err).Msg("failed to convert tft to usd millicent")
 		InternalServerError(c)
 		return
 	}
 
 	Success(c, http.StatusOK, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        usdBalance,
-		DebtUSD:           user.Debt,
-		PendingBalanceUSD: usdPendingAmount,
+		BalanceUSD:        internal.FromUSDMilliCentToUSD(usdMillicentBalance),
+		DebtUSD:           internal.FromUSDMilliCentToUSD(user.Debt),
+		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdPendingAmount),
 	})
 }
 
@@ -824,7 +824,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	wf.State = map[string]interface{}{
 		"user_id":  user.ID,
-		"amount":   voucher.Value,
+		"amount":   internal.FromUSDToUSDMillicent(voucher.Value),
 		"mnemonic": user.Mnemonic,
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
@@ -1025,14 +1025,14 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 	var pendingRecordsResponse []PendingRecordsResponse
 	for _, record := range pendingRecords {
-		usdAmount, err := internal.FromTFTtoUSD(h.substrateClient, record.TFTAmount)
+		usdMillicentAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to convert tft to usd amount")
 			InternalServerError(c)
 			return
 		}
 
-		usdTransferredAmount, err := internal.FromTFTtoUSD(h.substrateClient, record.TransferredTFTAmount)
+		usdMillicentTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to convert tft to usd transferred amount")
 			InternalServerError(c)
@@ -1041,8 +1041,8 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
 			PendingRecord:        record,
-			USDAmount:            usdAmount,
-			TransferredUSDAmount: usdTransferredAmount,
+			USDAmount:            internal.FromUSDMilliCentToUSD(usdMillicentAmount),
+			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdMillicentTransferredAmount),
 		})
 	}
 

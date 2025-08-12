@@ -39,7 +39,7 @@ onErrorCaptured((error: Error) => {
 
 // Determine if current page is an authentication page
 const isAuthPage = computed(() => {
-  const authRoutes = ['/sign-in', '/sign-up', '/register/verify']
+  const authRoutes = ['/sign-in', '/sign-up', '/register/verify', '/forgot-password', '/reset-password']
   return authRoutes.includes(route.path)
 })
 

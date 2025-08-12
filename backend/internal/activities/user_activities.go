@@ -314,17 +314,17 @@ func CreatePaymentIntentStep(currency string) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amountInt int
+		var amount uint64
 		switch v := amountVal.(type) {
 		case int:
-			amountInt = v
+			amount = uint64(v)
 		case float64:
-			amountInt = int(v)
+			amount = uint64(v)
 		default:
 			return fmt.Errorf("'amount' in state is not a number")
 		}
 
-		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, uint64(amountInt))
+		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
 		if err != nil {
 			return fmt.Errorf("error creating payment intent: %w", err)
 		}
@@ -339,12 +339,12 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amountInt int
+		var amount uint64
 		switch v := amountVal.(type) {
 		case int:
-			amountInt = v
+			amount = uint64(v)
 		case float64:
-			amountInt = int(v)
+			amount = uint64(v)
 		default:
 			return fmt.Errorf("'amount' in state is not a number")
 		}
@@ -358,7 +358,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return fmt.Errorf("'userID' in state is not a int")
 		}
 
-		requestedTFTs, err := internal.FromUSDToTFT(substrateClient, float64(amountInt))
+		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
 			log.Error().Err(err).Msg("error converting usd")
 			return err
@@ -391,12 +391,12 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount float64
+		var amount uint64
 		switch v := amountVal.(type) {
 		case float64:
-			amount = v
+			amount = uint64(v)
 		case int:
-			amount = float64(v)
+			amount = uint64(v)
 		default:
 			return fmt.Errorf("'amount' in state is not a float64 or int")
 		}
@@ -432,20 +432,21 @@ func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount float64
+		var amount uint64
 		switch v := amountVal.(type) {
 		case float64:
-			amount = v
+			amount = uint64(v)
 		case int:
-			amount = float64(v)
+			amount = uint64(v)
 		default:
 			return fmt.Errorf("'amount' in state is not a float64 or int")
 		}
 
 		user, err := db.GetUserByID(userID)
 		if err != nil {
-			return fmt.Errorf("user not found: %w", err)
+			return fmt.Errorf("user is not found: %w", err)
 		}
+
 		user.CreditedBalance += amount
 		if err := db.UpdateUserByID(&user); err != nil {
 			return fmt.Errorf("error updating user: %w", err)

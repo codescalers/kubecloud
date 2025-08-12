@@ -23,15 +23,15 @@ type GenerateVouchersInput struct {
 
 // CreditRequestInput represents a request to credit a user's balance
 type CreditRequestInput struct {
-	Amount uint64 `json:"amount" validate:"required,gt=0"`
-	Memo   string `json:"memo" validate:"required,min=3,max=255"`
+	AmountUSD float64 `json:"amount" validate:"required,gt=0"`
+	Memo      string  `json:"memo" validate:"required,min=3,max=255"`
 }
 
 // CreditUserResponse holds the response data after crediting a user
 type CreditUserResponse struct {
-	User   string `json:"user"`
-	Amount uint64 `json:"amount"`
-	Memo   string `json:"memo"`
+	User      string  `json:"user"`
+	AmountUSD float64 `json:"amount"`
+	Memo      string  `json:"memo"`
 }
 
 type PendingRecordsResponse struct {
@@ -244,24 +244,26 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	transaction := models.Transaction{
 		UserID:    user.ID,
 		AdminID:   adminID,
-		Amount:    request.Amount,
+		Amount:    request.AmountUSD,
 		Memo:      request.Memo,
 		CreatedAt: time.Now(),
 	}
 
-	systemBalanceUSD, err := internal.GetUserBalanceUSD(h.substrateClient, h.config.SystemAccount.Mnemonic)
+	systemBalanceUSDMilliCent, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, h.config.SystemAccount.Mnemonic)
 	if err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
+	systemBalanceUSD := internal.FromUSDMilliCentToUSD(systemBalanceUSDMilliCent)
 
-	if systemBalanceUSD < float64(request.Amount) {
+	requestAmountMilliCent := internal.FromUSDToUSDMillicent(request.AmountUSD)
+	if systemBalanceUSDMilliCent < requestAmountMilliCent {
 		Error(c, http.StatusBadRequest, fmt.Sprintf("System balance is not enough, only %v$ is available", systemBalanceUSD), "")
 		return
 	}
 
-	requestedTFTs, err := internal.FromUSDToTFT(h.substrateClient, float64(request.Amount))
+	requestedTFTs, err := internal.FromUSDMillicentToTFT(h.substrateClient, requestAmountMilliCent)
 	if err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
@@ -281,16 +283,16 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.CreditUserBalance(user.ID, request.Amount); err != nil {
+	if err := h.db.CreditUserBalance(user.ID, requestAmountMilliCent); err != nil {
 		log.Error().Err(err).Msg("Failed to credit user")
 		InternalServerError(c)
 		return
 	}
 
 	Success(c, http.StatusCreated, "User is credited successfully", CreditUserResponse{
-		User:   user.Email,
-		Amount: request.Amount,
-		Memo:   request.Memo,
+		User:      user.Email,
+		AmountUSD: request.AmountUSD,
+		Memo:      request.Memo,
 	})
 }
 
@@ -315,14 +317,14 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 
 	var pendingRecordsResponse []PendingRecordsResponse
 	for _, record := range pendingRecords {
-		usdAmount, err := internal.FromTFTtoUSD(h.substrateClient, record.TFTAmount)
+		usdAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to convert tft to usd amount")
 			InternalServerError(c)
 			return
 		}
 
-		usdTransferredAmount, err := internal.FromTFTtoUSD(h.substrateClient, record.TransferredTFTAmount)
+		usdTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to convert tft to usd transferred amount")
 			InternalServerError(c)
@@ -331,8 +333,8 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 
 		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
 			PendingRecord:        record,
-			USDAmount:            usdAmount,
-			TransferredUSDAmount: usdTransferredAmount,
+			USDAmount:            internal.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 

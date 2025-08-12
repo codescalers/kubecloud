@@ -32,7 +32,7 @@
                   {{ vm.disk }} GB Disk
                 </v-chip>
                 <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-nvidia</v-icon>
+                  <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
                   GPU
                 </v-chip>
                 <span class="ssh-key-label">SSH Key: <b>{{ getSshKeyName(vm.sshKeyIds[0]) }}</b></span>

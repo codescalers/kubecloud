@@ -23,7 +23,7 @@
         {{ vm.disk }} GB Disk
       </v-chip>
       <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-nvidia</v-icon>
+        <v-icon size="16" class="mr-1">mdi-expansion-card</v-icon>
         GPU
       </v-chip>
       <div class="spec-item" style="margin-top: 0.7em;">

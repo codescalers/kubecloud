@@ -318,8 +318,8 @@ func TestCreditUserHandler(t *testing.T) {
 	t.Run("Test Credit user successfully", func(t *testing.T) {
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
-			Amount: 1,
-			Memo:   "Manual credit",
+			AmountUSD: 1,
+			Memo:      "Manual credit",
 		}
 		body, _ := json.Marshal(payload)
 		req, _ := http.NewRequest("POST", "/api/v1/users/2/credit", bytes.NewReader(body))
@@ -354,8 +354,8 @@ func TestCreditUserHandler(t *testing.T) {
 	t.Run("Test Credit user with invalid user id", func(t *testing.T) {
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
-			Amount: 1,
-			Memo:   "Manual credit",
+			AmountUSD: 1,
+			Memo:      "Manual credit",
 		}
 		body, _ := json.Marshal(payload)
 		req, _ := http.NewRequest("POST", "/api/v1/users/abc/credit", bytes.NewReader(body))
@@ -369,8 +369,8 @@ func TestCreditUserHandler(t *testing.T) {
 	t.Run("Test Credit non-existing user", func(t *testing.T) {
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
-			Amount: 1,
-			Memo:   "Manual credit",
+			AmountUSD: 1,
+			Memo:      "Manual credit",
 		}
 		body, _ := json.Marshal(payload)
 		req, _ := http.NewRequest("POST", "/api/v1/users/9999/credit", bytes.NewReader(body))
@@ -383,8 +383,8 @@ func TestCreditUserHandler(t *testing.T) {
 
 	t.Run("Test Credit user with no token", func(t *testing.T) {
 		payload := CreditRequestInput{
-			Amount: 1,
-			Memo:   "Manual credit",
+			AmountUSD: 1,
+			Memo:      "Manual credit",
 		}
 		body, _ := json.Marshal(payload)
 		req, _ := http.NewRequest("POST", "/api/v1/users/2/credit", bytes.NewReader(body))
@@ -397,8 +397,8 @@ func TestCreditUserHandler(t *testing.T) {
 	t.Run("Test Credit user with non-admin user", func(t *testing.T) {
 		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
 		payload := CreditRequestInput{
-			Amount: 1,
-			Memo:   "Manual credit",
+			AmountUSD: 1,
+			Memo:      "Manual credit",
 		}
 		body, _ := json.Marshal(payload)
 		req, _ := http.NewRequest("POST", "/api/v1/users/2/credit", bytes.NewReader(body))
