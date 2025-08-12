@@ -117,7 +117,7 @@
 <script setup lang="ts">
 import type { NormalizedNode } from '@/types/normalizedNode';
 import type { VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits, onMounted } from 'vue';
+import { defineProps, withDefaults, defineEmits, onMounted, computed } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
   availableNodes: NormalizedNode[];
@@ -134,14 +134,10 @@ function nodeLabel(node: any) {
   return `Node ${node.nodeId}`;
 }
 
-// Calculate allocated resources for all VMs except the current one being assigned
-function getAllocatedResources(excludeVmIndex?: number) {
+const currentAllocations = computed(() => {
   const allocations: Record<number, { ram: number; storage: number }> = {};
-  
-  props.allVMs.forEach((vm, index) => {
-    // Skip the current VM being assigned to avoid self-blocking
-    if (excludeVmIndex !== undefined && index === excludeVmIndex) return;
-    
+
+  props.allVMs.forEach((vm) => {
     if (vm.node != null) {
       if (!allocations[vm.node]) {
         allocations[vm.node] = { ram: 0, storage: 0 };
@@ -152,31 +148,67 @@ function getAllocatedResources(excludeVmIndex?: number) {
   });
   
   return allocations;
+});
+
+const availableNodesPerVM = computed(() => {
+  return props.allVMs.map((vm) => {
+    if (!vm) return [];
+    
+    return props.availableNodes.filter(node => {
+      // Calculate what would be allocated if we exclude this VM's current assignment
+      const allocationsExcludingThisVM = { ...currentAllocations.value };
+      if (vm.node != null && allocationsExcludingThisVM[vm.node]) {
+        allocationsExcludingThisVM[vm.node] = {
+          ram: allocationsExcludingThisVM[vm.node].ram - vm.ram,
+          storage: allocationsExcludingThisVM[vm.node].storage - (vm.disk || 0)
+        };
+        if (allocationsExcludingThisVM[vm.node].ram <= 0 && allocationsExcludingThisVM[vm.node].storage <= 0) {
+          delete allocationsExcludingThisVM[vm.node];
+        }
+      }
+      
+      const allocated = allocationsExcludingThisVM[node.nodeId] || { ram: 0, storage: 0 };
+      const availableRam = Math.max(0, (node.available_ram || 0) - allocated.ram);
+      const availableStorage = Math.max(0, (node.available_storage || 0) - allocated.storage);
+      
+      // CPU check: ensure node has minimum required CPU (but allow oversubscription)
+      const hasSufficientCpu = (node.cpu || 0) >= vm.vcpu;
+      
+      return hasSufficientCpu && 
+             availableRam >= vm.ram && 
+             availableStorage >= (vm.disk || 0);
+    });
+  });
+});
+
+function getAvailableNodesForVM(vmIndex: number) {
+  return availableNodesPerVM.value[vmIndex] || [];
 }
 
 function getNodeAvailableResources(node: NormalizedNode, excludeVmIndex?: number) {
-  const allocations = getAllocatedResources(excludeVmIndex);
+  let allocations = currentAllocations.value;
+  
+  if (excludeVmIndex !== undefined) {
+    const vm = props.allVMs[excludeVmIndex];
+    if (vm && vm.node != null) {
+      if (allocations[vm.node]) {
+        allocations[vm.node] = {
+          ram: allocations[vm.node].ram - vm.ram,
+          storage: allocations[vm.node].storage - (vm.disk || 0)
+        };
+        if (allocations[vm.node].ram <= 0 && allocations[vm.node].storage <= 0) {
+          delete allocations[vm.node];
+        }
+      }
+    }
+  }
+  
   const allocated = allocations[node.nodeId] || { ram: 0, storage: 0 };
   return {
     cpu: node.cpu || 0, // CPU is always available (can be oversubscribed)
     ram: Math.max(0, (node.available_ram || 0) - allocated.ram),
     storage: Math.max(0, (node.available_storage || 0) - allocated.storage)
   };
-}
-
-function getAvailableNodesForVM(vmIndex: number) {
-  const vm = props.allVMs[vmIndex];
-  if (!vm) return [];
-  
-  return props.availableNodes.filter(node => {
-    const available = getNodeAvailableResources(node, vmIndex);
-    // CPU check: ensure node has minimum required CPU (but allow oversubscription)
-    const hasSufficientCpu = (node.cpu || 0) >= vm.vcpu;
-    
-    return hasSufficientCpu && 
-           available.ram >= vm.ram && 
-           available.storage >= (vm.disk || 0);
-  });
 }
 
 // Validate existing VM assignments on mount and clear invalid ones
