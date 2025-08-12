@@ -3,11 +3,14 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io"
 	"kubecloud/internal"
 	"kubecloud/models"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -396,16 +399,17 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(users))
-	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
-	for i, attachment := range attachments {
-		log.Info().Int("attachment_index", i).Str("filename", attachment.FileName).Int("size_bytes", len(attachment.Data)).Msg("attachment details")
-	}
+	const maxConcurrentSends = 20
+	emailConcurrencyLimiter := make(chan struct{}, maxConcurrentSends)
 
+	var wg sync.WaitGroup
+	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
 	for _, user := range users {
+		wg.Add(1)
+		emailConcurrencyLimiter <- struct{}{}
 		go func(user models.User) {
 			defer wg.Done()
+			defer func() { <-emailConcurrencyLimiter }()
 			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, input.Body, attachments...)
 			if err != nil {
 				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
@@ -423,6 +427,12 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 		return nil, nil
 	}
 
+	const maxFileSize = 10 * 1024 * 1024 // 10MB
+	allowedTypes := map[string]bool{
+		".pdf": true, ".doc": true, ".docx": true, ".txt": true,
+		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".zip": true,
+	}
+
 	var (
 		mu       sync.Mutex
 		multiErr *multierror.Error
@@ -431,9 +441,18 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 	)
 
 	wg.Add(len(fileHeaders))
-	for i, fileHeader := range fileHeaders {
-		go func(index int, fh *multipart.FileHeader) {
+	for _, fileHeader := range fileHeaders {
+		go func(fh *multipart.FileHeader) {
 			defer wg.Done()
+
+			// Validate file type
+			ext := strings.ToLower(filepath.Ext(fh.Filename))
+			if !allowedTypes[ext] {
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("file type %s not allowed for %s", ext, fh.Filename))
+				mu.Unlock()
+				return
+			}
 
 			file, err := fh.Open()
 			if err != nil {
@@ -445,8 +464,7 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 			}
 			defer file.Close()
 
-			fileData := make([]byte, fh.Size)
-			_, err = file.Read(fileData)
+			fileData, err := io.ReadAll(file)
 			if err != nil {
 				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to read attachment file")
 				mu.Lock()
@@ -463,7 +481,7 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 			mu.Lock()
 			results = append(results, attachment)
 			mu.Unlock()
-		}(i, fileHeader)
+		}(fileHeader)
 	}
 
 	wg.Wait()
