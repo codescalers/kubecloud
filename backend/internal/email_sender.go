@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"mime"
 	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -56,11 +57,11 @@ func (service *MailService) SendMail(sender, receiver, subject, body string, att
 		mail.NewContent("text/html", body),
 	}
 
-	if len(attachments) > 0 {
+	for _, att := range attachments {
 		attachment := mail.NewAttachment()
-		attachment = attachment.SetContent(base64.StdEncoding.EncodeToString(attachments[0].Data))
-		attachment = attachment.SetType("application/pdf")
-		attachment = attachment.SetFilename(attachments[0].FileName)
+		attachment = attachment.SetContent(base64.StdEncoding.EncodeToString(att.Data))
+		attachment = attachment.SetType(mime.TypeByExtension(att.FileName))
+		attachment = attachment.SetFilename(att.FileName)
 		attachment = attachment.SetDisposition("attachment")
 		message = message.AddAttachment(attachment)
 	}

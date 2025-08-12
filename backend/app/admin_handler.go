@@ -45,9 +45,9 @@ type PendingRecordsResponse struct {
 
 // AdminMailInput represents the form data for sending emails to all users
 type AdminMailInput struct {
-	Subject     string                 `form:"subject" binding:"required"`
-	Body        string                 `form:"body" binding:"required"`
-	Attachments []multipart.FileHeader `form:"attachments"`
+	Subject     string                  `form:"subject" binding:"required"`
+	Body        string                  `form:"body" binding:"required"`
+	Attachments []*multipart.FileHeader `form:"attachments"`
 }
 
 // @Summary Get all users
