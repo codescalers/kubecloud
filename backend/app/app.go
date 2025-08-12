@@ -212,6 +212,7 @@ func (app *App) registerHandlers() {
 				usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
 				usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 			}
+			usersGroup.POST("/mail", app.handlers.SendMailToAllUsersHandler)
 
 			adminGroup.GET("/invoices", app.handlers.ListAllInvoicesHandler)
 			adminGroup.GET("/pending-records", app.handlers.ListPendingRecordsHandler)

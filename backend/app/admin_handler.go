@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/models"
+	"mime/multipart"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -38,6 +41,13 @@ type PendingRecordsResponse struct {
 	models.PendingRecord
 	USDAmount            float64 `json:"usd_amount"`
 	TransferredUSDAmount float64 `json:"transferred_usd_amount"`
+}
+
+// AdminMailInput represents the form data for sending emails to all users
+type AdminMailInput struct {
+	Subject     string                 `form:"subject" binding:"required"`
+	Body        string                 `form:"body" binding:"required"`
+	Attachments []multipart.FileHeader `form:"attachments"`
 }
 
 // @Summary Get all users
@@ -341,4 +351,121 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
 	})
+}
+
+// Only accessible by admins
+// @Summary Send mail to all users
+// @Description Allows admin to send a custom email to all users with optional file attachments
+// @Tags admin
+// @ID admin-mail-all-users
+// @Accept multipart/form-data
+// @Produce json
+// @Param subject formData string true "Email subject"
+// @Param body formData string true "Email body content"
+// @Param attachments formData file false "Email attachments (multiple files allowed)"
+// @Success 200 {object} APIResponse
+// @Failure 400 {object} APIResponse "Invalid request format"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /users/mail [post]
+func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
+	var input AdminMailInput
+	if err := c.ShouldBind(&input); err != nil {
+		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+
+	var attachments []internal.Attachment
+	if form, err := c.MultipartForm(); err == nil {
+		if uploaded, ok := form.File["attachments"]; ok {
+			log.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
+
+			attachments, err = parseAttachments(uploaded)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to parse attachments")
+				InternalServerError(c)
+				return
+			}
+		}
+	}
+
+	users, err := h.db.ListAllUsers()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to list all users")
+		InternalServerError(c)
+		return
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(users))
+	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
+	for i, attachment := range attachments {
+		log.Info().Int("attachment_index", i).Str("filename", attachment.FileName).Int("size_bytes", len(attachment.Data)).Msg("attachment details")
+	}
+
+	for _, user := range users {
+		go func(user models.User) {
+			defer wg.Done()
+			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, input.Body, attachments...)
+			if err != nil {
+				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+			}
+		}(user)
+	}
+
+	wg.Wait()
+
+	Success(c, http.StatusOK, "Mail sent successfully", nil)
+}
+
+func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
+	if len(fileHeaders) == 0 {
+		return nil, nil
+	}
+
+	var (
+		mu       sync.Mutex
+		multiErr *multierror.Error
+		results  []internal.Attachment
+		wg       sync.WaitGroup
+	)
+
+	wg.Add(len(fileHeaders))
+	for i, fileHeader := range fileHeaders {
+		go func(index int, fh *multipart.FileHeader) {
+			defer wg.Done()
+
+			file, err := fh.Open()
+			if err != nil {
+				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to open attachment file")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, err)
+				mu.Unlock()
+				return
+			}
+			defer file.Close()
+
+			fileData := make([]byte, fh.Size)
+			_, err = file.Read(fileData)
+			if err != nil {
+				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to read attachment file")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, err)
+				mu.Unlock()
+				return
+			}
+
+			attachment := internal.Attachment{
+				FileName: fh.Filename,
+				Data:     fileData,
+			}
+
+			mu.Lock()
+			results = append(results, attachment)
+			mu.Unlock()
+		}(i, fileHeader)
+	}
+
+	wg.Wait()
+	return results, multiErr.ErrorOrNil()
 }
