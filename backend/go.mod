@@ -4,7 +4,7 @@ go 1.24.3
 
 require (
 	github.com/hashicorp/go-retryablehttp v0.7.8
-	github.com/mattn/go-sqlite3 v1.14.29
+	github.com/mattn/go-sqlite3 v1.14.31
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.12.0
