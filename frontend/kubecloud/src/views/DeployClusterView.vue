@@ -155,17 +155,18 @@ const allVMsAssigned = computed(() => allVMs.value.length > 0 && allVMs.value.ev
 // Resource validation for each node
 const nodeResourceErrors = computed(() => {
   const errors: Record<number, string[]> = {};
-  const nodeUsage: Record<number, {cpu: number, ram: number, disk: number}> = {};
+  const nodeUsage: Record<number, {cpu: number, ram: number, disk: number, rootfs: number}> = {};
   allVMs.value.forEach(vm => {
     if (vm.node != null) {
-      if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0};
+      if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0, rootfs: 0};
       nodeUsage[vm.node].cpu = Math.max(nodeUsage[vm.node].cpu, vm.vcpu);
       nodeUsage[vm.node].ram += vm.ram;
       nodeUsage[vm.node].disk += vm.disk;
+      nodeUsage[vm.node].disk += vm.rootfs;
     }
   });
   availableNodes.value.forEach(node => {
-    const usage = nodeUsage[node.nodeId] || {cpu: 0, ram: 0, disk: 0};
+    const usage = nodeUsage[node.nodeId] || {cpu: 0, ram: 0, disk: 0, rootfs: 0};
     const cpuOk = usage.cpu <= (node.cpu || 0);
     const ramOk = usage.ram <= (node.ram || 0);
     const diskOk = usage.disk <= (node.storage || 0);
