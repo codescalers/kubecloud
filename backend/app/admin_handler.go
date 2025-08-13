@@ -483,7 +483,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 				return
 			}
 
-			maxFileSizeBytes := h.config.MailSender.MaxAttachmentSize * 1024 * 1024
+			maxFileSizeBytes := h.config.MailSender.MaxAttachmentSizeMB * 1024 * 1024
 
 			if fh.Size > maxFileSizeBytes {
 				mu.Lock()
