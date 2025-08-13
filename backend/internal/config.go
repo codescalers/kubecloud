@@ -63,9 +63,10 @@ type JwtToken struct {
 
 // MailSender struct to hold sender's email, password
 type MailSender struct {
-	Email       string `json:"email" validate:"required,email"`
-	SendGridKey string `json:"sendgrid_key" validate:"required"`
-	Timeout     int    `json:"timeout" validate:"min=30"`
+	Email              string `json:"email" validate:"required,email"`
+	SendGridKey        string `json:"sendgrid_key" validate:"required"`
+	Timeout            int    `json:"timeout" validate:"min=30"`
+	MaxConcurrentSends int    `json:"max_concurrent_sends" validate:"min=1"`
 }
 
 // TermsANDConditions holds required data for accepting terms and conditions

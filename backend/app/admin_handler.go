@@ -408,8 +408,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 
 	body := h.mailService.SystemAnnouncementMailBody(input.Subject, input.Body)
 
-	const maxConcurrentSends = 20
-	emailConcurrencyLimiter := make(chan struct{}, maxConcurrentSends)
+	emailConcurrencyLimiter := make(chan struct{}, h.config.MailSender.MaxConcurrentSends)
 
 	var (
 		wg           sync.WaitGroup
