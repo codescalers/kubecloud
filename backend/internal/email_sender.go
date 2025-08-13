@@ -137,7 +137,7 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 
 func (service *MailService) SystemAnnouncementMailBody(subject, body string) string {
 	template := string(systemAnnouncementMail)
-
+	body = strings.ReplaceAll(body, "\n", "<br>")
 	template = strings.ReplaceAll(template, "-subject-", subject)
 	template = strings.ReplaceAll(template, "-body-", body)
 
