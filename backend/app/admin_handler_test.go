@@ -490,7 +490,6 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		result := extractSendMailResponse(t, resp.Body)
-		fmt.Println(result)
 		assert.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, 27, result.TotalUsers)
 		assert.Equal(t, 27, result.SuccessfulEmails)
@@ -516,7 +515,6 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 
 		result := extractSendMailResponse(t, resp.Body)
-		fmt.Println(result)
 		assert.Equal(t, 2, result.TotalUsers)
 		assert.Equal(t, 1, result.SuccessfulEmails)
 		assert.Equal(t, 1, result.FailedEmailsCount)
@@ -530,14 +528,10 @@ func createMultipartEmailForm(t *testing.T, subject, body string) (*bytes.Buffer
 	writer := multipart.NewWriter(&buffer)
 
 	err := writer.WriteField("subject", subject)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = writer.WriteField("body", body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	writer.Close()
 	return &buffer, writer
@@ -547,14 +541,13 @@ func extractSendMailResponse(t *testing.T, responseBody *bytes.Buffer) SendMailR
 	t.Helper()
 	var apiResponse APIResponse
 	err := json.Unmarshal(responseBody.Bytes(), &apiResponse)
-	assert.NoError(t, err)
-	fmt.Println(apiResponse)
+	require.NoError(t, err)
 	resultBytes, err := json.Marshal(apiResponse.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var result SendMailResponse
 	err = json.Unmarshal(resultBytes, &result)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return result
 }
