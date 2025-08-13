@@ -53,6 +53,13 @@ type AdminMailInput struct {
 	Attachments []*multipart.FileHeader `form:"attachments"`
 }
 
+type SendMailResponse struct {
+	TotalUsers       int      `json:"total_users"`
+	SuccessfulEmails int      `json:"successful_emails"`
+	FailedEmailsCount int     `json:"failed_emails_count"`
+	FailedEmails     []string `json:"failed_emails,omitempty"`
+}
+
 // @Summary Get all users
 // @Description Returns a list of all users
 // @Tags admin
@@ -358,17 +365,17 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 
 // Only accessible by admins
 // @Summary Send mail to all users
-// @Description Allows admin to send a custom email to all users with optional file attachments
+// @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
 // @Tags admin
 // @ID admin-mail-all-users
 // @Accept multipart/form-data
 // @Produce json
 // @Param subject formData string true "Email subject"
 // @Param body formData string true "Email body content"
-// @Param attachments formData file false "Email attachments (multiple files allowed)"
-// @Success 200 {object} APIResponse
+// @Param attachments formData file false "Email attachments (multiple files allowed, max 10MB each)"
+// @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
 // @Failure 400 {object} APIResponse "Invalid request format"
-// @Failure 500 {object} APIResponse
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Security AdminMiddleware
 // @Router /users/mail [post]
 func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
@@ -404,7 +411,13 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	const maxConcurrentSends = 20
 	emailConcurrencyLimiter := make(chan struct{}, maxConcurrentSends)
 
-	var wg sync.WaitGroup
+	var (
+		wg sync.WaitGroup
+		mu sync.Mutex
+		multiErr *multierror.Error
+		failedEmails []string
+	)
+	
 	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
 	for _, user := range users {
 		wg.Add(1)
@@ -415,13 +428,32 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, body, attachments...)
 			if err != nil {
 				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to send email to %s: %w", user.Email, err))
+				failedEmails = append(failedEmails, user.Email)
+				mu.Unlock()
 			}
 		}(user)
 	}
 
 	wg.Wait()
 
-	Success(c, http.StatusOK, "Mail sent successfully", nil)
+	totalUsers := len(users)
+	successfulEmails := totalUsers - len(failedEmails)
+	
+	responseData := map[string]any{
+		"total_users": totalUsers,
+		"successful_emails": successfulEmails,
+		"failed_emails_count": len(failedEmails),
+	}
+	
+	if len(failedEmails) > 0 {
+		responseData["failed_emails"] = failedEmails
+		log.Warn().Int("failed_count", len(failedEmails)).Strs("failed_emails", failedEmails).Msg("some emails failed to send")
+		Success(c, http.StatusOK, fmt.Sprintf("Mail sent to %d/%d users successfully", successfulEmails, totalUsers), responseData)
+	} else {
+		Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
+	}
 }
 
 func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {

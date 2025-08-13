@@ -1162,7 +1162,7 @@ const docTemplate = `{
                         "AdminMiddleware": []
                     }
                 ],
-                "description": "Allows admin to send a custom email to all users with optional file attachments",
+                "description": "Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1191,16 +1191,28 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Email attachments (multiple files allowed)",
+                        "description": "Email attachments (multiple files allowed, max 10MB each)",
                         "name": "attachments",
                         "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Email sending results with delivery statistics",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.SendMailResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -1210,7 +1222,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1828,6 +1840,26 @@ const docTemplate = `{
                 },
                 "public_key": {
                     "type": "string"
+                }
+            }
+        },
+        "app.SendMailResponse": {
+            "type": "object",
+            "properties": {
+                "failed_emails": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "failed_emails_count": {
+                    "type": "integer"
+                },
+                "successful_emails": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
                 }
             }
         },

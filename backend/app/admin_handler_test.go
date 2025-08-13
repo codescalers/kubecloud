@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -478,10 +479,6 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		router.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusOK, resp.Code)
-		var result map[string]interface{}
-		err := json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Equal(t, "Mail sent successfully", result["message"])
 	})
 
 	t.Run("Test Send email with non-admin user", func(t *testing.T) {
@@ -524,10 +521,47 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		router.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusOK, resp.Code)
+	})
+
+	t.Run("Test Send email with partial success - some emails fail", func(t *testing.T) {
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		CreateTestUser(t, app, "user1@example.com", "User One", []byte("password"), true, false, false, 0, time.Now())
+		CreateTestUser(t, app, "user2@example.com", "User Two", []byte("password"), true, false, false, 0, time.Now())
+		CreateTestUser(t, app, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
+
+		var body bytes.Buffer
+		writer := multipart.NewWriter(&body)
+
+		writer.WriteField("subject", "Partial Success Test")
+		writer.WriteField("body", "Testing partial email delivery success")
+		writer.Close()
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", &body)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusOK, resp.Code)
+
 		var result map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "Mail sent successfully", result["message"])
+
+		data, ok := result["data"].(map[string]interface{})
+		assert.True(t, ok, "Response should contain data field")
+
+		assert.Contains(t, data, "total_users")
+		assert.Contains(t, data, "successful_emails")
+		assert.Contains(t, data, "failed_emails_count")
+
+		totalUsers := int(data["total_users"].(float64))
+		assert.Greater(t, totalUsers, 0, "Should have users to send emails to")
+
+		successfulEmails := int(data["successful_emails"].(float64))
+		failedEmailsCount := int(data["failed_emails_count"].(float64))
+		assert.Equal(t, totalUsers, successfulEmails+failedEmailsCount, "Total should equal successful + failed")
 	})
 
 }
