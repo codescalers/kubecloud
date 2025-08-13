@@ -425,7 +425,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, body, attachments...)
+			err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, input.Subject, body, attachments...)
 			if err != nil {
 				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
