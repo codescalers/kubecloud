@@ -54,10 +54,10 @@ type AdminMailInput struct {
 }
 
 type SendMailResponse struct {
-	TotalUsers       int      `json:"total_users"`
-	SuccessfulEmails int      `json:"successful_emails"`
-	FailedEmailsCount int     `json:"failed_emails_count"`
-	FailedEmails     []string `json:"failed_emails,omitempty"`
+	TotalUsers        int      `json:"total_users"`
+	SuccessfulEmails  int      `json:"successful_emails"`
+	FailedEmailsCount int      `json:"failed_emails_count"`
+	FailedEmails      []string `json:"failed_emails,omitempty"`
 }
 
 // @Summary Get all users
@@ -412,12 +412,12 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	emailConcurrencyLimiter := make(chan struct{}, maxConcurrentSends)
 
 	var (
-		wg sync.WaitGroup
-		mu sync.Mutex
-		multiErr *multierror.Error
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+		multiErr     *multierror.Error
 		failedEmails []string
 	)
-	
+
 	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
 	for _, user := range users {
 		wg.Add(1)
@@ -440,13 +440,13 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 
 	totalUsers := len(users)
 	successfulEmails := totalUsers - len(failedEmails)
-	
+
 	responseData := map[string]any{
-		"total_users": totalUsers,
-		"successful_emails": successfulEmails,
+		"total_users":         totalUsers,
+		"successful_emails":   successfulEmails,
 		"failed_emails_count": len(failedEmails),
 	}
-	
+
 	if len(failedEmails) > 0 {
 		responseData["failed_emails"] = failedEmails
 		log.Warn().Int("failed_count", len(failedEmails)).Strs("failed_emails", failedEmails).Msg("some emails failed to send")
@@ -461,7 +461,6 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 		return nil, nil
 	}
 
-	const maxFileSize = 10 * 1024 * 1024 // 10MB
 	allowedTypes := map[string]bool{
 		".pdf": true, ".doc": true, ".docx": true, ".txt": true,
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".zip": true,

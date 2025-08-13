@@ -533,8 +533,14 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		var body bytes.Buffer
 		writer := multipart.NewWriter(&body)
 
-		writer.WriteField("subject", "Partial Success Test")
-		writer.WriteField("body", "Testing partial email delivery success")
+		err := writer.WriteField("subject", "Partial Success Test")
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = writer.WriteField("body", "Testing partial email delivery success")
+		if err != nil {
+			t.Fatal(err)
+		}
 		writer.Close()
 
 		req, _ := http.NewRequest("POST", "/api/v1/users/mail", &body)
@@ -546,7 +552,7 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.Code)
 
 		var result map[string]interface{}
-		err := json.Unmarshal(resp.Body.Bytes(), &result)
+		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
 
 		data, ok := result["data"].(map[string]interface{})
