@@ -67,6 +67,7 @@ type MailSender struct {
 	SendGridKey        string `json:"sendgrid_key" validate:"required"`
 	Timeout            int    `json:"timeout" validate:"min=30"`
 	MaxConcurrentSends int    `json:"max_concurrent_sends" validate:"min=1"`
+	MaxAttachmentSize  int64  `json:"max_attachment_size_mb" validate:"min=1"`
 }
 
 // TermsANDConditions holds required data for accepting terms and conditions

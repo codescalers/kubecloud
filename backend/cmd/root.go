@@ -66,6 +66,9 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "mailSender.max_concurrent_sends", 20, "Max concurrent sends"); err != nil {
 		return fmt.Errorf("failed to bind mailSender.max_concurrent_sends flag: %w", err)
 	}
+	if err := bindIntFlag(rootCmd, "mailSender.max_attachment_size_mb", 10, "Max attachment size (MB)"); err != nil {
+		return fmt.Errorf("failed to bind mailSender.max_attachment_size_mb flag: %w", err)
+	}
 
 	// === Stripe ===
 	if err := bindStringFlag(rootCmd, "currency", "", "Currency (e.g., USD)"); err != nil {

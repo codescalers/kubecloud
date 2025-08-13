@@ -372,7 +372,7 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 // @Produce json
 // @Param subject formData string true "Email subject"
 // @Param body formData string true "Email body content"
-// @Param attachments formData file false "Email attachments (multiple files allowed, max 10MB each)"
+// @Param attachments formData file false "Email attachments (multiple files allowed)"
 // @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -390,7 +390,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		if uploaded, ok := form.File["attachments"]; ok {
 			log.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
 
-			attachments, err = parseAttachments(uploaded)
+			attachments, err = h.parseAttachments(uploaded)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to parse attachments")
 				InternalServerError(c)
@@ -453,7 +453,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
 }
 
-func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
+func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
 	if len(fileHeaders) == 0 {
 		return nil, nil
 	}
@@ -475,11 +475,19 @@ func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachmen
 		go func(fh *multipart.FileHeader) {
 			defer wg.Done()
 
-			// Validate file type
 			ext := strings.ToLower(filepath.Ext(fh.Filename))
 			if !allowedTypes[ext] {
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("file type %s not allowed for %s", ext, fh.Filename))
+				mu.Unlock()
+				return
+			}
+
+			maxFileSizeBytes := h.config.MailSender.MaxAttachmentSize * 1024 * 1024
+
+			if fh.Size > maxFileSizeBytes {
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes))
 				mu.Unlock()
 				return
 			}

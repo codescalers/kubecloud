@@ -1191,7 +1191,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "Email attachments (multiple files allowed, max 10MB each)",
+                        "description": "Email attachments (multiple files allowed)",
                         "name": "attachments",
                         "in": "formData"
                     }

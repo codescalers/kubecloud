@@ -1252,7 +1252,7 @@ paths:
         name: body
         required: true
         type: string
-      - description: Email attachments (multiple files allowed, max 10MB each)
+      - description: Email attachments (multiple files allowed)
         in: formData
         name: attachments
         type: file
