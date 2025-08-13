@@ -453,3 +453,81 @@ func TestListPendingRecordsHandler(t *testing.T) {
 	})
 
 }
+
+func TestSendMailToAllUsersHandler(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+
+	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+
+	t.Run("Test Send email to all users successfully without attachments", func(t *testing.T) {
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		payload := AdminMailInput{
+			Subject: "Test Subject",
+			Body:    "Test email body content",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusOK, resp.Code)
+		var result map[string]interface{}
+		err := json.Unmarshal(resp.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, "Mail sent successfully", result["message"])
+	})
+
+	t.Run("Test Send email with non-admin user", func(t *testing.T) {
+		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+
+		payload := AdminMailInput{
+			Subject: "Test Subject",
+			Body:    "Test email body content",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+	})
+
+	t.Run("Test Send email validates concurrency handling", func(t *testing.T) {
+		// This test ensures the handler can handle multiple users without issues
+		// Create additional test users to test concurrency limiter
+		for i := 0; i < 25; i++ {
+			CreateTestUser(t, app, fmt.Sprintf("testuser%d@example.com", i), fmt.Sprintf("Test User %d", i), []byte("securepassword"), true, false, false, 0, time.Now())
+		}
+
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		payload := AdminMailInput{
+			Subject: "Concurrency Test Subject",
+			Body:    "Testing concurrent email sending",
+		}
+		body, _ := json.Marshal(payload)
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusOK, resp.Code)
+		var result map[string]interface{}
+		err := json.Unmarshal(resp.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, "Mail sent successfully", result["message"])
+	})
+
+}
