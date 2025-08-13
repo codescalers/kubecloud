@@ -399,6 +399,8 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
+	body := h.mailService.SystemAnnouncementMailBody(input.Subject, input.Body)
+
 	const maxConcurrentSends = 20
 	emailConcurrencyLimiter := make(chan struct{}, maxConcurrentSends)
 
@@ -410,7 +412,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, input.Body, attachments...)
+			err := h.mailService.SendMail("noreply@kubecloud.com", user.Email, input.Subject, body, attachments...)
 			if err != nil {
 				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 			}

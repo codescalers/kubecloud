@@ -25,6 +25,9 @@ var signUpTemplate []byte
 //go:embed templates/pending_record_notification.html
 var notifyPaymentRecordsMail []byte
 
+//go:embed templates/system_announcement.html
+var systemAnnouncementMail []byte
+
 // MailService struct hods all functionalities of mail service
 type MailService struct {
 	client *sendgrid.Client
@@ -130,4 +133,13 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 	subject := "Invoice Notification"
 	return subject, mailBody
 
+}
+
+func (service *MailService) SystemAnnouncementMailBody(subject, body string) string {
+	template := string(systemAnnouncementMail)
+
+	template = strings.ReplaceAll(template, "-subject-", subject)
+	template = strings.ReplaceAll(template, "-body-", body)
+
+	return template
 }
