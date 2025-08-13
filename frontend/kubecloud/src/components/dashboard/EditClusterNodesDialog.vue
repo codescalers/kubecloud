@@ -53,7 +53,6 @@
               item-title="name"
               item-value="nodeId"
               label="Select Node"
-              :error-messages="addFormError"
             >
               <template #item="{ item, props }">
                 <div class="d-flex pa-3" v-bind="props">
@@ -166,7 +165,6 @@ const props = defineProps<{
   nodes: any[],
   loading: boolean,
   availableNodes: RentedNode[],
-  addFormError: string,
   addFormNode: RentedNode | undefined,
   canAssignToNode: boolean,
   addNodeLoading: boolean,
@@ -195,7 +193,6 @@ const addFormRole = ref('master');
 const addFormCpu = ref(2);
 const addFormRam = ref(4);
 const addFormStorage = ref(25);
-const addFormError = ref('');
 const addFormName = ref('');
 const addFormSshKey = ref<number|null>(null);
 const sshKeys = ref<any[]>([]);
@@ -246,7 +243,6 @@ const canAssignToNode = computed(() => {
 });
 watch([addFormNodeId, addFormRam, addFormStorage], () => {
   const node = addFormNode.value;
-  addFormError.value = '';
   if (!node) {
     return;
   }
@@ -254,9 +250,7 @@ watch([addFormNodeId, addFormRam, addFormStorage], () => {
     addFormRam.value > getAvailableRAM(node) ||
     addFormStorage.value > getAvailableStorage(node)
   ) {
-    addFormError.value = 'Requested resources exceed available for the selected node.';
-  } else {
-    addFormError.value = '';
+    addFormNodeId.value=null;
   }
 });
 function confirmAddForm() {
