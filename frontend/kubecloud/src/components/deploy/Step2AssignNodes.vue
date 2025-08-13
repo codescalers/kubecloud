@@ -216,24 +216,9 @@ function getNodeAvailableResources(node: NormalizedNode, excludeVmIndex?: number
 onMounted(() => {
   props.allVMs.forEach((vm, vmIndex) => {
     if (vm.node != null) {
-      // Find the assigned node
-      const assignedNode = props.availableNodes.find(node => node.nodeId === vm.node);
-      
+      const availableNodes = getAvailableNodesForVM(vmIndex);
+      const assignedNode = availableNodes.find(node => node.nodeId === vm.node);
       if (!assignedNode) {
-        // Node doesn't exist anymore, clear assignment
-        props.onAssignNode(vmIndex, null);
-        return;
-      }
-      
-      // Check if the node can still accommodate this VM
-      const available = getNodeAvailableResources(assignedNode, vmIndex);
-      const hasSufficientCpu = (assignedNode.cpu || 0) >= vm.vcpu;
-      
-      const canAccommodate = hasSufficientCpu && 
-                           available.ram >= vm.ram && 
-                           available.storage >= (vm.disk || 0)+(vm.rootfs);
-      
-      if (!canAccommodate) {
         props.onAssignNode(vmIndex, null);
       }
     }
