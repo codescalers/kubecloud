@@ -463,36 +463,13 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
 	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
-	t.Run("Test Send email to all users successfully without attachments", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
-
-		payload := AdminMailInput{
-			Subject: "Test Subject",
-			Body:    "Test email body content",
-		}
-		body, _ := json.Marshal(payload)
-
-		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-
 	t.Run("Test Send email with non-admin user", func(t *testing.T) {
+		body, writer := createMultipartEmailForm(t, "Test Subject", "Test email body")
 		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
 
-		payload := AdminMailInput{
-			Subject: "Test Subject",
-			Body:    "Test email body content",
-		}
-		body, _ := json.Marshal(payload)
-
-		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
 		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", writer.FormDataContentType())
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 
@@ -500,74 +477,84 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Send email validates concurrency handling", func(t *testing.T) {
-		// This test ensures the handler can handle multiple users without issues
-		// Create additional test users to test concurrency limiter
 		for i := 0; i < 25; i++ {
 			CreateTestUser(t, app, fmt.Sprintf("testuser%d@example.com", i), fmt.Sprintf("Test User %d", i), []byte("securepassword"), true, false, false, 0, time.Now())
 		}
 
+		body, writer := createMultipartEmailForm(t, "Concurrency Test", "Testing concurrent email delivery")
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
 
-		payload := AdminMailInput{
-			Subject: "Concurrency Test Subject",
-			Body:    "Testing concurrent email sending",
-		}
-		body, _ := json.Marshal(payload)
-
-		req, _ := http.NewRequest("POST", "/api/v1/users/mail", bytes.NewReader(body))
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-
-	t.Run("Test Send email with partial success - some emails fail", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
-
-		CreateTestUser(t, app, "user1@example.com", "User One", []byte("password"), true, false, false, 0, time.Now())
-		CreateTestUser(t, app, "user2@example.com", "User Two", []byte("password"), true, false, false, 0, time.Now())
-		CreateTestUser(t, app, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
-
-		var body bytes.Buffer
-		writer := multipart.NewWriter(&body)
-
-		err := writer.WriteField("subject", "Partial Success Test")
-		if err != nil {
-			t.Fatal(err)
-		}
-		err = writer.WriteField("body", "Testing partial email delivery success")
-		if err != nil {
-			t.Fatal(err)
-		}
-		writer.Close()
-
-		req, _ := http.NewRequest("POST", "/api/v1/users/mail", &body)
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-
+		result := extractSendMailResponse(t, resp.Body)
+		fmt.Println(result)
 		assert.Equal(t, http.StatusOK, resp.Code)
-
-		var result map[string]interface{}
-		err = json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-
-		data, ok := result["data"].(map[string]interface{})
-		assert.True(t, ok, "Response should contain data field")
-
-		assert.Contains(t, data, "total_users")
-		assert.Contains(t, data, "successful_emails")
-		assert.Contains(t, data, "failed_emails_count")
-
-		totalUsers := int(data["total_users"].(float64))
-		assert.Greater(t, totalUsers, 0, "Should have users to send emails to")
-
-		successfulEmails := int(data["successful_emails"].(float64))
-		failedEmailsCount := int(data["failed_emails_count"].(float64))
-		assert.Equal(t, totalUsers, successfulEmails+failedEmailsCount, "Total should equal successful + failed")
+		assert.Equal(t, 27, result.TotalUsers)
+		assert.Equal(t, 27, result.SuccessfulEmails)
+		assert.Equal(t, 0, result.FailedEmailsCount)
 	})
 
+	t.Run("Test Send email with partial success - some emails fail", func(t *testing.T) {
+		app, err := SetUp(t)
+		require.NoError(t, err)
+		router := app.router
+
+		adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+		body, writer := createMultipartEmailForm(t, "Partial Success Test", "Testing partial email delivery success")
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		CreateTestUser(t, app, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+
+		result := extractSendMailResponse(t, resp.Body)
+		fmt.Println(result)
+		assert.Equal(t, 2, result.TotalUsers)
+		assert.Equal(t, 1, result.SuccessfulEmails)
+		assert.Equal(t, 1, result.FailedEmailsCount)
+	})
+
+}
+
+func createMultipartEmailForm(t *testing.T, subject, body string) (*bytes.Buffer, *multipart.Writer) {
+	t.Helper()
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+
+	err := writer.WriteField("subject", subject)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = writer.WriteField("body", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writer.Close()
+	return &buffer, writer
+}
+
+func extractSendMailResponse(t *testing.T, responseBody *bytes.Buffer) SendMailResponse {
+	t.Helper()
+	var apiResponse APIResponse
+	err := json.Unmarshal(responseBody.Bytes(), &apiResponse)
+	assert.NoError(t, err)
+	fmt.Println(apiResponse)
+	resultBytes, err := json.Marshal(apiResponse.Data)
+	assert.NoError(t, err)
+
+	var result SendMailResponse
+	err = json.Unmarshal(resultBytes, &result)
+	assert.NoError(t, err)
+
+	return result
 }
