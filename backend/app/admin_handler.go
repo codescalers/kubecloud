@@ -413,7 +413,6 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	var (
 		wg           sync.WaitGroup
 		mu           sync.Mutex
-		multiErr     *multierror.Error
 		failedEmails []string
 	)
 
@@ -428,7 +427,6 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 			if err != nil {
 				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to send email to %s: %w", user.Email, err))
 				failedEmails = append(failedEmails, user.Email)
 				mu.Unlock()
 			}
@@ -438,21 +436,21 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	wg.Wait()
 
 	totalUsers := len(users)
-	successfulEmails := totalUsers - len(failedEmails)
-
-	responseData := map[string]any{
-		"total_users":         totalUsers,
-		"successful_emails":   successfulEmails,
-		"failed_emails_count": len(failedEmails),
+	responseData := SendMailResponse{
+		TotalUsers:        totalUsers,
+		SuccessfulEmails:  totalUsers - len(failedEmails),
+		FailedEmailsCount: len(failedEmails),
 	}
 
-	if len(failedEmails) > 0 {
-		responseData["failed_emails"] = failedEmails
-		log.Warn().Int("failed_count", len(failedEmails)).Strs("failed_emails", failedEmails).Msg("some emails failed to send")
-		Success(c, http.StatusOK, fmt.Sprintf("Mail sent to %d/%d users successfully", successfulEmails, totalUsers), responseData)
-	} else {
-		Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
+	if responseData.SuccessfulEmails == 0 {
+		Error(c, http.StatusInternalServerError, "failed to send mail to all users", "")
+		return
 	}
+	if responseData.FailedEmailsCount > 0 {
+		Success(c, http.StatusOK, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
+		return
+	}
+	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
 }
 
 func parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
