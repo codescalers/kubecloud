@@ -158,6 +158,7 @@ import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { useNotificationStore } from '../../stores/notifications';
 import {isAlphanumeric, required, min, max} from "../../utils/validation"
+import { ROOTFS } from '../../composables/useDeployCluster';
 const notificationStore = useNotificationStore();
 const props = defineProps<{
   modelValue: boolean,
@@ -271,7 +272,7 @@ function confirmAddForm() {
         node_id: addFormNodeId.value, // backend expects node_id
         cpu: addFormCpu.value,
         memory: addFormRam.value * 1024, // Convert GB to MB
-        root_size: 25 * 1024, // MB
+        root_size: ROOTFS * 1024, // MB
         disk_size: addFormStorage.value * 1024, // Convert GB to MB
         env_vars: sshKeyObj ? { SSH_KEY: sshKeyObj.public_key } : {},
       }
