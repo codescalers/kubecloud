@@ -116,7 +116,7 @@
 </template>
 <script setup lang="ts">
 import type { NormalizedNode } from '@/types/normalizedNode';
-import { ROOTFS, type VM } from '../../composables/useDeployCluster';
+import { type VM } from '../../composables/useDeployCluster';
 import { defineProps, withDefaults, defineEmits, onMounted, computed } from 'vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];

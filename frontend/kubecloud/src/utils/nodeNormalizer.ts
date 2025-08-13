@@ -22,7 +22,6 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     dedicated: node.dedicated,
     extraFee: node.extraFee,
     certificationType: node.certificationType,
-		extraFee: node.extraFee,
   };
 }
 
