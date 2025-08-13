@@ -1,297 +1,502 @@
 <template>
   <div class="deploy-container">
     <v-container fluid class="pa-0">
-      <div class="deploy-header mb-6">
-        <h1 class="hero-title">Deploy New Cluster</h1>
-        <p class="section-subtitle">Create and configure your Kubernetes cluster in just a few steps</p>
+      <!-- Header -->
+      <div class="deploy-header">
+        <h1 class="hero-title">Deploy Your Kubernetes Cluster</h1>
+        <p class="hero-subtitle">Get your cluster running in minutes with smart defaults</p>
       </div>
 
-      <div class="deploy-content-wrapper">
-        <div class="deploy-card">
-          <!-- Progress Indicator -->
-          <div class="progress-section">
-            <div class="stepper">
-              <div class="step" :class="{ active: step >= 1, completed: step > 1 }">
-                <div class="step-circle">1</div>
-                <div class="step-label">Define VMs</div>
-              </div>
-              <div class="step" :class="{ active: step >= 2, completed: step > 2 }">
-                <div class="step-circle">2</div>
-                <div class="step-label">Place VMs</div>
-              </div>
-              <div class="step" :class="{ active: step >= 3 }">
-                <div class="step-circle">3</div>
-                <div class="step-label">Review</div>
-              </div>
+      <div class="deploy-content">
+        <!-- Quick Deploy Card -->
+        <div class="quick-deploy-card">
+          <div class="card-header">
+            <v-icon icon="mdi-rocket-launch" size="32" color="primary" class="header-icon" />
+            <div>
+              <h2 class="card-title">Quick Deploy</h2>
             </div>
           </div>
 
-          <!-- Step Content -->
-          <div class="step-content">
-            <Step1DefineVMs
-              v-if="step === 1"
-              :masters="masters"
-              :workers="workers"
-              :availableSshKeys="availableSshKeys"
-              :addMaster="addMaster"
-              :addWorker="addWorker"
-              :removeMaster="removeMaster"
-              :removeWorker="removeWorker"
-              :openEditNodeModal="openEditNodeModal"
-              :selectedSshKeys="selectedSshKeys"
-              :setSelectedSshKeys="setSelectedSshKeys"
-              :isStep1Valid="isStep1Valid"
-              :sshKeysLoading="sshKeysLoading"
-              @nextStep="nextStep"
-              @navigateToSshKeys="navigateToSshKeys"
-            />
-            <Step2AssignNodes
-              v-else-if="step === 2"
-              :allVMs="allVMs"
-              :availableNodes="availableNodes"
-              :getNodeInfo="(id) => getNodeInfo(id, availableNodes)"
-              :onAssignNode="onAssignNode"
-              :isStep2Valid="isStep2Valid"
-              :nodeResourceErrors="nodeResourceErrors"
-              @nextStep="nextStep"
-              @prevStep="prevStep"
-            />
-            <Step3Review
-              v-else-if="step === 3"
-              :allVMs="allVMs"
-              :getNodeInfo="(id) => getNodeInfo(id, availableNodes)"
-              :deploying="deploying"
-              :nodeResourceErrors="nodeResourceErrors"
-              :getSshKeyName="(id) => getSshKeyName(id, availableSshKeys)"
-              @onDeployCluster="onDeployCluster"
-              @prevStep="prevStep"
-            />
+          <div class="deploy-form">
+            <!-- Cluster Name -->
+            <div class="form-group">
+              <label class="form-label">Cluster Name</label>
+              <v-text-field
+                v-model="clusterName"
+                placeholder="app1"
+                variant="outlined"
+                density="comfortable"
+                class="cluster-name-input"
+                :rules="[rules.required, rules.alphanumeric, rules.maxLength]"
+                color="primary"
+                hint="Only letters and numbers allowed (max 30 chars)"
+                persistent-hint
+              >
+                <template v-slot:append-inner>
+                  <v-btn
+                    icon="mdi-dice-5"
+                    variant="text"
+                    size="small"
+                    @click="generateRandomName"
+                    class="generate-btn"
+                  />
+                </template>
+              </v-text-field>
+            </div>
+
+            <!-- Cluster Size -->
+            <div class="form-group">
+              <label class="form-label">Cluster Size</label>
+              <div class="size-options">
+                <div
+                  v-for="size in clusterSizes"
+                  :key="size.id"
+                  class="size-option"
+                  :class="{ active: selectedSize === size.id }"
+                  @click="selectedSize = size.id"
+                >
+                  <div class="size-header">
+                    <v-icon :icon="size.icon" size="24" />
+                    <span class="size-name">{{ size.name }}</span>
+                    <v-chip v-if="size.recommended" color="success" size="x-small" class="recommended-chip">
+                      Recommended
+                    </v-chip>
+                  </div>
+                  <div class="size-specs">{{ size.specs }}</div>
+                  <div class="size-description">{{ size.description }}</div>
+                </div>
+
+                <!-- Custom Size Option -->
+                <div
+                  class="size-option custom-option"
+                  :class="{ active: selectedSize === 'custom' }"
+                  @click="selectedSize = 'custom'"
+                >
+                  <div class="size-header">
+                    <v-icon icon="mdi-tune" size="24" />
+                    <span class="size-name">Custom</span>
+                  </div>
+                  <div class="size-specs">Configure your own</div>
+                  <div class="size-description">Choose exact number of nodes</div>
+                </div>
+              </div>
+
+              <!-- Custom Configuration -->
+              <div v-if="selectedSize === 'custom'" class="custom-config">
+                <div class="custom-inputs">
+                  <div class="custom-input-group">
+                    <label class="custom-label">Master Nodes</label>
+                    <v-text-field
+                      v-model.number="customConfig.masters"
+                      type="number"
+                      min="1"
+                      max="5"
+                      variant="outlined"
+                      density="compact"
+                      color="primary"
+                      :rules="[rules.required, rules.minMasters]"
+                    />
+                  </div>
+                  <div class="custom-input-group">
+                    <label class="custom-label">Worker Nodes</label>
+                    <v-text-field
+                      v-model.number="customConfig.workers"
+                      type="number"
+                      min="0"
+                      max="10"
+                      variant="outlined"
+                      density="compact"
+                      color="primary"
+                      :rules="[rules.minWorkers]"
+                    />
+                  </div>
+                </div>
+                <div class="custom-summary">
+                  <v-icon icon="mdi-information" size="16" color="info" />
+                  <span>Total nodes needed: {{ customConfig.masters + customConfig.workers }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SSH Key Selection -->
+            <div class="form-group">
+              <label class="form-label">
+                SSH Access
+                <v-tooltip text="Required to access your cluster nodes">
+                  <template v-slot:activator="{ props }">
+                    <v-icon v-bind="props" icon="mdi-help-circle" size="16" class="help-icon" />
+                  </template>
+                </v-tooltip>
+              </label>
+
+              <div v-if="sshKeysLoading" class="loading-state">
+                <v-progress-circular indeterminate size="20" color="primary" />
+                <span>Loading SSH keys...</span>
+              </div>
+
+              <div v-else-if="availableSshKeys.length === 0" class="no-ssh-keys">
+                <v-icon icon="mdi-key-plus" size="24" color="warning" />
+                <div>
+                  <p class="no-keys-title">No SSH keys found</p>
+                  <p class="no-keys-subtitle">You need at least one SSH key to deploy a cluster</p>
+                  <v-btn
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    @click="navigateToSshKeys"
+                    prepend-icon="mdi-plus"
+                  >
+                    Add SSH Key
+                  </v-btn>
+                </div>
+              </div>
+
+              <v-select
+                v-else
+                v-model="selectedSshKey"
+                :items="sshKeyOptions"
+                item-title="name"
+                item-value="id"
+                variant="outlined"
+                density="comfortable"
+                placeholder="Select an SSH key"
+                :rules="[rules.required]"
+                color="primary"
+              >
+                <template v-slot:append-inner>
+                  <v-btn
+                    icon="mdi-plus"
+                    variant="text"
+                    size="small"
+                    @click="navigateToSshKeys"
+                    class="add-key-btn"
+                  />
+                </template>
+              </v-select>
+            </div>
+
+            <!-- Available Nodes -->
+            <div class="form-group">
+              <label class="form-label">Available Resources</label>
+              <div v-if="availableNodes.length === 0" class="no-nodes">
+                <v-icon icon="mdi-server-off" size="24" color="warning" />
+                <div>
+                  <p class="no-nodes-title">No nodes available</p>
+                  <p class="no-nodes-subtitle">You need to rent some nodes first</p>
+                  <v-btn
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    @click="navigateToNodes"
+                    prepend-icon="mdi-plus"
+                  >
+                    Rent Nodes
+                  </v-btn>
+                </div>
+              </div>
+              <div v-else class="nodes-summary">
+                <div class="nodes-count">
+                  <v-icon icon="mdi-server" color="success" />
+                  <span>{{ availableNodes.length }} nodes available</span>
+                </div>
+                <div class="resources-summary">
+                  <div class="resource-item">
+                    <v-icon icon="mdi-memory" size="16" />
+                    <span>{{ totalCpu }} CPU cores</span>
+                  </div>
+                  <div class="resource-item">
+                    <v-icon icon="mdi-chip" size="16" />
+                    <span>{{ totalRam }} GB RAM</span>
+                  </div>
+                  <div class="resource-item">
+                    <v-icon icon="mdi-harddisk" size="16" />
+                    <span>{{ totalStorage }} GB Storage</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deploy Button -->
+            <div class="deploy-actions">
+              <v-btn
+                color="primary"
+                size="large"
+                :loading="deploying"
+                :disabled="!canDeploy"
+                @click="deployCluster"
+                class="deploy-btn"
+              >
+                <v-icon icon="mdi-rocket-launch" class="mr-2" />
+                Deploy Cluster
+              </v-btn>
+
+              <div v-if="!canDeploy" class="deploy-requirements">
+                <v-icon icon="mdi-information" size="16" color="warning" />
+                <span>{{ deploymentRequirements }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </v-container>
-    <EditNodeModal v-if="editNodeModal.open && editNodeModal.node" :node="editNodeModal.node" :visible="editNodeModal.open" :availableSshKeys="availableSshKeys" @save="saveEditNode" @cancel="closeEditNodeModal" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import EditNodeModal from '../components/EditNodeModal.vue';
-import { useDeployCluster } from '../composables/useDeployCluster';
-import type { VM } from '../composables/useDeployCluster';
-import Step1DefineVMs from '../components/deploy/Step1DefineVMs.vue';
-import Step2AssignNodes from '../components/deploy/Step2AssignNodes.vue';
-import Step3Review from '../components/deploy/Step3Review.vue';
-import { api } from '../utils/api';
-import type { ApiResponse } from '../utils/api';
+import { useRouter } from 'vue-router';
 import { useNotificationStore } from '../stores/notifications';
 import { UserService } from '../utils/userService';
 import { useNodeManagement } from '../composables/useNodeManagement';
-import type { NormalizedNode } from '../types/normalizedNode';
-import { generateClusterName, getNodeInfo, getSshKeyName } from '../utils/clusterUtils';
-import { useNodes } from '../composables/useNodes';
-import { useNormalizedNodes } from '../composables/useNormalizedNodes';
-import { useRouter } from 'vue-router';
 import { normalizeNode } from '../utils/nodeNormalizer';
-import type { Cluster, ClusterNode } from '../types/cluster';
+import { generateClusterName } from '../utils/clusterUtils';
+import { api } from '../utils/api';
+import type { ApiResponse } from '../utils/api';
+import type { NormalizedNode } from '../types/normalizedNode';
 
+const router = useRouter();
 const notificationStore = useNotificationStore();
 const userService = new UserService();
-const router = useRouter();
 
-const step = ref(1);
-const { masters, workers, availableSshKeys, addMaster, addWorker, removeMaster, removeWorker } = useDeployCluster();
+// Form data
+const clusterName = ref('');
+const selectedSize = ref('single');
+const selectedSshKey = ref<number | null>(null);
 const deploying = ref(false);
+const customConfig = ref({
+  masters: 1,
+  workers: 0
+});
 
-const allVMs = computed(() => [...masters.value, ...workers.value]);
-
-const { nodes, fetchNodes, loading: nodesLoading } = useNodes();
-const normalizedNodes = useNormalizedNodes(() => nodes.value);
+// Data loading
+const sshKeysLoading = ref(true);
+const availableSshKeys = ref<any[]>([]);
 const { rentedNodes, fetchRentedNodes } = useNodeManagement();
 const availableNodes = ref<NormalizedNode[]>([]);
 
-async function fetchAvailableNodes() {
-  await fetchRentedNodes();
-  availableNodes.value = rentedNodes.value.map(normalizeNode);
-}
-
-// Computed properties for totals
-const totalVcpu = computed(() => {
-  return allVMs.value.reduce((total, vm) => total + vm.vcpu, 0);
-});
-
-const totalRam = computed(() => {
-  return allVMs.value.reduce((total, vm) => total + vm.ram, 0);
-});
-
-const clusterName = ref('');
-const selectedSshKeys = ref<number[]>([]);
-const qsfsConfig = ref('');
-
-// Cluster name generator words
-const adjectives = [
-  'swift', 'bright', 'cosmic', 'quantum', 'stellar', 'azure', 'crimson', 'golden',
-  'silver', 'emerald', 'sapphire', 'crystal', 'thunder', 'lightning', 'storm',
-  'ocean', 'mountain', 'forest', 'desert', 'arctic', 'tropical', 'mystic'
+// Cluster size options
+const clusterSizes = [
+{
+    id: 'small',
+    name: 'Small',
+    icon: 'mdi-desktop-tower',
+    specs: '1 master, 1 worker',
+    description: 'Great for small production workloads',
+    recommended: true,
+    masters: 1,
+    workers: 1
+  },
+  {
+    id: 'medium',
+    name: 'Medium',
+    icon: 'mdi-server',
+    specs: '1 master, 2 workers',
+    description: 'Balanced performance and resources',
+    recommended: false,
+    masters: 1,
+    workers: 2
+  },
+  {
+    id: 'large',
+    name: 'Large',
+    icon: 'mdi-server-network',
+    specs: '3 masters, 3 workers',
+    description: 'High availability for critical applications',
+    recommended: false,
+    masters: 3,
+    workers: 3
+  }
 ];
 
-const nouns = [
-  'cluster', 'cloud', 'node', 'server', 'engine', 'core', 'hub', 'nexus',
-  'forge', 'vault', 'tower', 'citadel', 'fortress', 'sanctuary', 'haven',
-  'realm', 'domain', 'sphere', 'matrix', 'grid', 'network', 'system'
-];
+// Validation rules
+const rules = {
+  required: (value: any) => !!value || 'This field is required',
+  alphanumeric: (value: string) => {
+    if (!value) return true; // Let required rule handle empty values
+    const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+    return alphanumericRegex.test(value) || 'Only letters and numbers are allowed';
+  },
+  minMasters: (value: number) => value >= 1 || 'At least 1 master node is required',
+  minWorkers: (value: number) => value >= 0 || 'Worker nodes cannot be negative',
+  maxLength: (value: string) => {
+    if (!value) return true;
+    // Ensure cluster name + node suffix doesn't exceed 36 chars
+    // Format will be: {clusterName}m1, {clusterName}w1, etc (max 3 chars suffix)
+    return value.length <= 30 || 'Cluster name too long (max 30 characters)';
+  }
+};
 
-// --- Step 1 Validation ---
-const isStep1Valid = computed(() => {
-  if (masters.value.length === 0) return false;
-  // Every node (master/worker) must have at least one SSH key
-  return allVMs.value.every(vm => Array.isArray(vm.sshKeyIds) && vm.sshKeyIds.length > 0);
+// Computed properties
+const sshKeyOptions = computed(() =>
+  availableSshKeys.value.map(key => ({
+    id: key.ID,
+    name: key.name || `Key ${key.ID}`
+  }))
+);
+
+const totalCpu = computed(() =>
+  availableNodes.value.reduce((sum, node) => sum + (node.cpu || 0), 0)
+);
+
+const totalRam = computed(() =>
+  availableNodes.value.reduce((sum, node) => sum + (node.ram || 0), 0)
+);
+
+const totalStorage = computed(() =>
+  availableNodes.value.reduce((sum, node) => sum + (node.storage || 0), 0)
+);
+
+const currentClusterConfig = computed(() => {
+  if (selectedSize.value === 'custom') {
+    return {
+      masters: customConfig.value.masters,
+      workers: customConfig.value.workers
+    };
+  }
+  const sizeConfig = clusterSizes.find(s => s.id === selectedSize.value);
+  return sizeConfig ? { masters: sizeConfig.masters, workers: sizeConfig.workers } : { masters: 1, workers: 0 };
 });
 
-// --- Step 2 Validation ---
-const assignedNodeIds = computed(() => allVMs.value.map((vm: any) => vm.node));
-const allVMsAssigned = computed(() => allVMs.value.length > 0 && allVMs.value.every((vm: any) => vm.node !== null && vm.node !== undefined));
+const totalNodesNeeded = computed(() =>
+  currentClusterConfig.value.masters + currentClusterConfig.value.workers
+);
 
-// Resource validation for each node
-const nodeResourceErrors = computed(() => {
-  const errors: Record<number, string[]> = {};
-  const nodeUsage: Record<number, {cpu: number, ram: number, disk: number}> = {};
-  allVMs.value.forEach(vm => {
-    if (vm.node != null) {
-      if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0};
-      nodeUsage[vm.node].cpu += vm.vcpu;
-      nodeUsage[vm.node].ram += vm.ram;
-      nodeUsage[vm.node].disk += vm.disk;
-    }
-  });
-  availableNodes.value.forEach(node => {
-    const usage = nodeUsage[node.nodeId] || {cpu: 0, ram: 0, disk: 0};
-    const cpuOk = usage.cpu <= (node.cpu || 0);
-    const ramOk = usage.ram <= (node.ram || 0);
-    const diskOk = usage.disk <= (node.storage || 0);
-    const errs: string[] = [];
-    if (!cpuOk) errs.push(`CPU over-allocated (${usage.cpu}/${node.cpu})`);
-    if (!ramOk) errs.push(`RAM over-allocated (${usage.ram}/${node.ram})`);
-    if (!diskOk) errs.push(`Disk over-allocated (${usage.disk}/${node.storage})`);
-    if (errs.length) errors[node.nodeId] = errs;
-  });
-  return errors;
+const canDeploy = computed(() => {
+  return clusterName.value.trim() &&
+         selectedSshKey.value &&
+         availableNodes.value.length >= totalNodesNeeded.value &&
+         totalNodesNeeded.value >= 1;
 });
-const isStep2Valid = computed(() => allVMsAssigned.value && Object.keys(nodeResourceErrors.value).length === 0);
 
-// --- Step 3 Validation ---
-const isStep3Valid = computed(() => isStep2Valid.value && isStep1Valid.value && !!clusterName.value.trim());
+const deploymentRequirements = computed(() => {
+  const requirements = [];
+  if (!clusterName.value.trim()) requirements.push('cluster name');
+  if (!selectedSshKey.value) requirements.push('SSH key');
+  if (availableNodes.value.length < totalNodesNeeded.value) {
+    requirements.push(`at least ${totalNodesNeeded.value} node${totalNodesNeeded.value > 1 ? 's' : ''}`);
+  }
 
+  return `Please provide: ${requirements.join(', ')}`;
+});
 
-
-// --- Deploy Logic ---
-const clusterToken = ref('securetoken');
-const clusterNetworkName = ref('');
-const defaultFlist = ref('https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist');
-const defaultEntrypoint = ref('/sbin/zinit init');
-
-function generateClusterNameLocal() {
+// Methods
+function generateRandomName() {
   clusterName.value = generateClusterName();
 }
 
-// Navigate to SSH keys management
 function navigateToSshKeys() {
-  localStorage.setItem('dashboard-section', 'ssh')
+  localStorage.setItem('dashboard-section', 'ssh');
   router.push('/dashboard');
 }
 
-
-
-// Get validation message for form errors
-function getValidationMessage() {
-  const errors = [];
-  if (!clusterName.value) {
-    errors.push('Cluster name is required');
-  }
-  if (selectedSshKeys.value.length === 0) {
-    errors.push('At least one SSH key must be selected');
-  }
-  if (!allVMsAssigned.value) {
-    errors.push('All VMs must be assigned to nodes');
-  }
-  // Add node resource errors
-  Object.entries(nodeResourceErrors.value).forEach(([nodeId, errs]) => {
-    errors.push(`Node ${nodeId}: ${errs.join(', ')}`);
-  });
-  return errors.join('. ');
+function navigateToNodes() {
+  router.push('/nodes');
 }
 
-// --- Navigation ---
-function nextStep() {
-  if ((step.value === 1 && isStep1Valid.value) || (step.value === 2 && isStep2Valid.value)) {
-    step.value++;
-  }
-}
-function prevStep() {
-  if (step.value > 1) step.value--;
-}
+async function deployCluster() {
+  if (!canDeploy.value) return;
 
-const clusterPayload = computed<Cluster>(() => {
-  const token = clusterToken.value;
-
-  function buildNode(vm: VM, type: 'master' | 'worker'): ClusterNode {
-    const vmSshKeyObj = availableSshKeys.value.find(k => k.ID === vm.sshKeyIds[0]);
-    return {
-      name: vm.name,
-      type: type === 'master' ? 'master' : 'worker',
-      node_id: vm.node as number, // node is number | null, but must be number here
-      cpu: vm.vcpu,
-      memory: vm.ram * 1024, // GB to MB
-      root_size: vm.rootfs * 1024, // GB to MB
-      disk_size: vm.disk * 1024, // GB to MB
-      env_vars: {
-        SSH_KEY: vmSshKeyObj ? vmSshKeyObj.public_key : '',
-        K3S_TOKEN: token,
-      },
-    };
-  }
-
-  const nodes: ClusterNode[] = [
-    ...masters.value.map(vm => buildNode(vm, 'master')),
-    ...workers.value.map(vm => buildNode(vm, 'worker')),
-  ];
-
-  return {
-    name: clusterName.value,
-    token: token,
-    nodes: nodes,
-  };
-});
-
-function navigateToDasgboard() {
-  localStorage.setItem('dashboard-section', 'clusters')
-  router.push('/dashboard');
-}
-
-async function onDeployCluster() {
   deploying.value = true;
+
   try {
-    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', clusterPayload.value, {
+    const config = currentClusterConfig.value;
+    const sshKey = availableSshKeys.value.find(k => k.ID === selectedSshKey.value);
+
+    // Auto-assign nodes based on available resources
+    const sortedNodes = [...availableNodes.value].sort((a, b) =>
+      (b.cpu || 0) + (b.ram || 0) - (a.cpu || 0) - (a.ram || 0)
+    );
+
+    const assignedNodes = sortedNodes.slice(0, totalNodesNeeded.value);
+
+    if (assignedNodes.length < totalNodesNeeded.value) {
+      throw new Error(`Not enough nodes available. Need ${totalNodesNeeded.value}, have ${assignedNodes.length}`);
+    }
+
+    // Build cluster payload with smart defaults
+    const clusterPayload = {
+      name: clusterName.value,
+      token: 'auto-generated-token-' + Date.now(),
+      nodes: [
+        // Masters
+        ...Array.from({ length: config.masters }, (_, i) => ({
+          name: `${clusterName.value}m${i + 1}`,
+          type: 'master',
+          node_id: assignedNodes[i].nodeId,
+          cpu: Math.min(2, assignedNodes[i].cpu || 2), // Smart CPU allocation
+          memory: Math.min(4096, (assignedNodes[i].ram || 4) * 1024), // Smart RAM allocation
+          root_size: 20 * 1024, // 20GB root
+          disk_size: Math.min(50 * 1024, (assignedNodes[i].storage || 50) * 1024), // Smart disk allocation
+          env_vars: {
+            SSH_KEY: sshKey?.public_key || '',
+            K3S_TOKEN: 'auto-generated-token-' + Date.now(),
+          }
+        })),
+        // Workers
+        ...Array.from({ length: config.workers }, (_, i) => ({
+          name: `${clusterName.value}w${i + 1}`,
+          type: 'worker',
+          node_id: assignedNodes[config.masters + i].nodeId,
+          cpu: Math.min(2, assignedNodes[config.masters + i].cpu || 2),
+          memory: Math.min(4096, (assignedNodes[config.masters + i].ram || 4) * 1024),
+          root_size: 20 * 1024,
+          disk_size: Math.min(50 * 1024, (assignedNodes[config.masters + i].storage || 50) * 1024),
+          env_vars: {
+            SSH_KEY: sshKey?.public_key || '',
+            K3S_TOKEN: 'auto-generated-token-' + Date.now(),
+          }
+        }))
+      ]
+    };
+
+    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', clusterPayload, {
       showNotifications: false,
       loadingMessage: 'Deploying cluster...',
       errorMessage: 'Failed to deploy cluster',
       requiresAuth: true
     });
-    notificationStore.info('Deployment started', 'Your cluster is being deployed in the background. You will be notified when it is ready.');
-  } catch (err) {
-    // Optionally handle error
+
+    notificationStore.success(
+      'Deployment Started!',
+      `Your cluster "${clusterName.value}" is being deployed. You'll be notified when it's ready.`
+    );
+
+    // Navigate to dashboard
+    localStorage.setItem('dashboard-section', 'clusters');
+    router.push('/dashboard');
+
+  } catch (error: any) {
+    notificationStore.error(
+      'Deployment Failed',
+      error.message || 'Failed to deploy cluster. Please try again.'
+    );
   } finally {
     deploying.value = false;
-    navigateToDasgboard();
   }
 }
 
-const sshKeysLoading = ref(true);
+// Initialize
+onMounted(async () => {
+  // Generate initial cluster name
+  generateRandomName();
+
+  // Load data
+  await Promise.all([
+    fetchSshKeys(),
+    fetchAvailableNodes()
+  ]);
+});
+
 async function fetchSshKeys() {
   sshKeysLoading.value = true;
   try {
     const keys = await userService.listSshKeys();
     availableSshKeys.value = keys;
+
+    // Auto-select first key if only one available
+    if (keys.length === 1) {
+      selectedSshKey.value = keys[0].ID;
+    }
   } catch (err) {
     availableSshKeys.value = [];
     notificationStore.error('Error', 'Failed to load SSH keys');
@@ -300,198 +505,348 @@ async function fetchSshKeys() {
   }
 }
 
-// Initialize component
-onMounted(() => {
-  // Auto-generate cluster name on component mount
-  generateClusterNameLocal();
-  fetchAvailableNodes();
-  fetchSshKeys();
-});
-
-const editNodeModal = ref({ open: false, type: '', idx: -1, node: null as null | VM });
-function openEditNodeModal(type: 'master' | 'worker', idx: number) {
-  const node = type === 'master' ? { ...masters.value[idx] } : { ...workers.value[idx] };
-  editNodeModal.value = { open: true, type, idx, node };
-}
-function closeEditNodeModal() {
-  editNodeModal.value = { open: false, type: '', idx: -1, node: null };
-}
-function saveEditNode(updatedNode: VM) {
-  if (!editNodeModal.value.node) return;
-  if (editNodeModal.value.type === 'master') {
-    masters.value.splice(editNodeModal.value.idx, 1, { ...updatedNode });
-  } else if (editNodeModal.value.type === 'worker') {
-    workers.value.splice(editNodeModal.value.idx, 1, { ...updatedNode });
+async function fetchAvailableNodes() {
+  try {
+    await fetchRentedNodes();
+    availableNodes.value = rentedNodes.value.map(normalizeNode);
+  } catch (err) {
+    notificationStore.error('Error', 'Failed to load available nodes');
   }
-  closeEditNodeModal();
-}
-
-const editNodeValidation = computed(() => {
-  const node = editNodeModal.value.node;
-  if (!node) return { valid: false };
-  const errors: Record<string, string> = {};
-  if (!node.name || !node.name.trim()) errors.name = 'Name is required.';
-  if (!node.vcpu || node.vcpu <= 0) errors.vcpu = 'vCPU must be a positive number.';
-  if (!node.ram || node.ram <= 0) errors.ram = 'RAM must be a positive number.';
-  if (!node.rootfs || node.rootfs <= 0) errors.rootfs = 'Rootfs size must be positive.';
-  if (!node.disk || node.disk <= 0) errors.disk = 'Disk size must be positive.';
-  if (!node.sshKeyIds || node.sshKeyIds.length === 0) errors.ssh = 'At least one SSH key must be selected.';
-  return { valid: Object.keys(errors).length === 0, errors };
-});
-
-function setSelectedSshKeys(keys: number[]) {
-  selectedSshKeys.value = keys;
-}
-function onAssignNode(vmIdx: number, nodeId: number) {
-  if (vmIdx < masters.value.length) {
-    masters.value[vmIdx].node = nodeId != null ? nodeId : null;
-  } else {
-    const workerIdx = vmIdx - masters.value.length;
-    workers.value[workerIdx].node = nodeId != null ? nodeId : null;
-  }
-}
-function getNodeInfoString(id: string) {
-  return getNodeInfo(Number(id), availableNodes.value);
 }
 </script>
-
-<style>
-.deploy-container {
-  /* Enhanced palette for Deploy Cluster only */
-  --color-bg-elevated: #20243a;
-  --color-bg-hover: #23263b;
-  --color-chip-bg: #23263b;
-  --color-chip-border: #334155;
-  --shadow-card: 0 6px 24px rgba(16, 24, 40, 0.12);
-}
-</style>
 
 <style scoped>
 .deploy-container {
   min-height: 100vh;
-  background: var(--color-bg, #15162b);
-  padding-top: 3.5rem;
-  margin-top: 7rem;
-}
-.deploy-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
-}
-.hero-title {
-  font-size: 2.2rem;
-  font-weight: 700;
-  color: var(--color-text, #fff);
-  margin-bottom: 0.5rem;
-}
-.section-subtitle {
-  color: var(--color-text-muted, #7c7fa5);
-  font-size: 1.1rem;
-}
-.deploy-content-wrapper {
-  display: flex;
-  justify-content: center;
-}
-.deploy-card {
-  background: var(--color-surface-1, #18192b);
-  border-radius: 22px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  padding: 3.5rem 3rem 2.5rem 3rem;
-  width: 100%;
-  max-width: 900px;
-  margin-top: 2.5rem;
-}
-.progress-section {
-  margin-bottom: 3rem;
-}
-.stepper {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2.2rem;
-  position: relative;
-}
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  position: relative;
-  z-index: 1;
-}
-.step-circle {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--color-surface-2, #23243a);
-  color: var(--color-primary, #6366f1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-bottom: 0.3rem;
-  border: 2px solid var(--color-surface-2, #23243a);
-  transition: background 0.2s, color 0.2s, border 0.2s;
-  position: relative;
-  z-index: 2;
-}
-.step.active .step-circle {
-  background: var(--color-primary, #6366f1);
-  color: #fff;
-  border: 2px solid var(--color-primary, #6366f1);
-}
-.step.completed .step-circle {
-  background: var(--color-success, #22d3ee);
-  color: #fff;
-  border: 2px solid var(--color-success, #22d3ee);
+  background: var(--color-bg);
+  padding: var(--space-8) 0;
+  padding-top: var(--space-20);
 }
 
-.step-label {
-  color: var(--color-text-muted, #7c7fa5);
-  font-size: 1rem;
-  margin-top: 0.2rem;
+.deploy-header {
   text-align: center;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  margin-bottom: var(--space-12);
+  padding-top: var(--space-8);
 }
-.step.active .step-label {
-  color: var(--color-primary, #6366f1);
-  font-weight: 600;
+
+.hero-title {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  margin-bottom: var(--space-4);
 }
-.step.completed .step-label {
-  color: var(--color-success, #22d3ee);
-  font-weight: 600;
+
+.hero-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
 }
-.step:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 18px;
-  right: -50%;
-  width: 100%;
-  height: 4px;
-  background: var(--color-surface-2, #23243a);
-  z-index: 0;
+
+.deploy-content {
+  max-width: 60%;
+  margin: 0 auto;
+  padding: 0 var(--space-8);
 }
-.step.completed:not(:last-child)::after {
-  background: var(--color-success, #22d3ee);
+
+.quick-deploy-card {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-10);
+  border: 1px solid var(--color-border);
 }
-@media (max-width: 900px) {
-  .deploy-card {
-    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.header-icon {
+  background: var(--color-primary-subtle);
+  padding: var(--space-2);
+  border-radius: var(--radius-xl);
+}
+
+.card-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.card-subtitle {
+  color: var(--color-text-muted);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.form-group {
+  margin-bottom: var(--space-3);
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.help-icon {
+  opacity: 0.6;
+  cursor: help;
+}
+
+.cluster-name-input :deep(.v-field) {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+}
+
+.generate-btn {
+  opacity: 0.7;
+  color: var(--color-text-muted);
+}
+
+.generate-btn:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.size-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.size-option {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  background: var(--color-bg);
+}
+
+.size-option:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-hover);
+}
+
+.size-option.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-subtle);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.size-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.size-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.recommended-chip {
+  margin-left: auto;
+}
+
+.size-specs {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-1);
+}
+
+.size-description {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.custom-config {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+}
+
+.custom-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.custom-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.custom-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.custom-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.no-ssh-keys, .no-nodes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--color-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-lg);
+}
+
+.no-keys-title, .no-nodes-title {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-1) 0;
+}
+
+.no-keys-subtitle, .no-nodes-subtitle {
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-sm);
+}
+
+.nodes-summary {
+  background: var(--color-bg);
+  border: 1px solid var(--color-success);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.nodes-count {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.resources-summary {
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.resource-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.deploy-actions {
+  text-align: center;
+  padding-top: var(--space-4);
+}
+
+.deploy-btn {
+  min-width: 200px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.deploy-requirements {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  color: var(--color-warning);
+  font-size: var(--font-size-sm);
+}
+
+.add-key-btn {
+  opacity: 0.7;
+  color: var(--color-text-muted);
+}
+
+.add-key-btn:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+/* Form field styling */
+:deep(.v-field) {
+  background: var(--color-bg) !important;
+  border-color: var(--color-border) !important;
+}
+
+:deep(.v-field--focused) {
+  border-color: var(--color-primary) !important;
+}
+
+:deep(.v-field__input) {
+  color: var(--color-text) !important;
+}
+
+:deep(.v-field__input::placeholder) {
+  color: var(--color-text-muted) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .deploy-content {
+    padding: 0 var(--space-4);
   }
-  .stepper {
+
+  .quick-deploy-card {
+    padding: var(--space-6);
+  }
+
+  .hero-title {
+    font-size: var(--font-size-2xl);
+  }
+
+  .size-options {
+    grid-template-columns: 1fr;
+  }
+
+  .resources-summary {
     flex-direction: column;
-    gap: 1.2rem;
+    gap: var(--space-2);
   }
-  .step {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.7rem;
-  }
-  .step-label {
-    margin-top: 0;
-    margin-left: 0.7rem;
-    text-align: left;
+
+  .custom-inputs {
+    grid-template-columns: 1fr;
   }
 }
 </style>

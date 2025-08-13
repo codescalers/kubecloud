@@ -1,18 +1,16 @@
 /**
- * Generate a random cluster name using adjectives and nouns
- * @returns Random cluster name
+ * Generate a random cluster name using short words and numbers
+ * @returns Random cluster name (max 8 characters to allow for node suffixes)
  */
 export function generateClusterName(): string {
-
   const nouns = [
-    'cluster', 'cloud', 'node', 'server', 'engine', 'core', 'hub', 'nexus',
-    'forge', 'vault', 'tower', 'citadel', 'fortress', 'sanctuary', 'haven',
-    'realm', 'domain', 'sphere', 'matrix', 'grid', 'system'
+    'app', 'web', 'api', 'db', 'dev', 'prod', 'test', 'demo',
+    'core', 'hub', 'net', 'sys', 'ops', 'run', 'box', 'lab'
   ]
 
   const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
-  const randomNumber = Math.floor(Math.random() * 999) + 1
-  
+  const randomNumber = Math.floor(Math.random() * 99) + 1
+
   return `${randomNoun}${randomNumber}`
 }
 
@@ -38,4 +36,4 @@ export function getNodeInfo(nodeId: number | null, availableNodes: any[]): strin
 export function getSshKeyName(keyId: number, availableSshKeys: any[]): string {
   const key = availableSshKeys.find(k => k.ID === keyId)
   return key ? key.name : 'Unknown'
-} 
+}

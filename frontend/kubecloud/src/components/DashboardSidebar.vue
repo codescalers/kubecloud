@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
 
-const props = defineProps<{ selected: string }>()
+defineProps<{ selected: string }>()
 defineEmits(['update:selected'])
 
 // Navigation items data
