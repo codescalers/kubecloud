@@ -318,6 +318,8 @@ func CreatePaymentIntentStep(currency string) ewf.StepFn {
 		switch v := amountVal.(type) {
 		case int:
 			amount = uint64(v)
+		case uint64:
+			amount = v
 		case float64:
 			amount = uint64(v)
 		default:
@@ -395,6 +397,8 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 		switch v := amountVal.(type) {
 		case float64:
 			amount = uint64(v)
+		case uint64:
+			amount = v
 		case int:
 			amount = uint64(v)
 		default:
@@ -436,6 +440,8 @@ func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 		switch v := amountVal.(type) {
 		case float64:
 			amount = uint64(v)
+		case uint64:
+			amount = v
 		case int:
 			amount = uint64(v)
 		default:

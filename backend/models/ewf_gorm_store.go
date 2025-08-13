@@ -20,6 +20,11 @@ type gormWorkflowRecord struct {
 	Data   []byte `gorm:"column:data;not null"`
 }
 
+type gormTemplateRecord struct {
+	Name string `gorm:"primaryKey;column:name"`
+	Data []byte `gorm:"column:data;not null"`
+}
+
 type serializableTemplate struct {
 	Steps []ewf.Step `json:"steps"`
 }
@@ -29,7 +34,7 @@ func NewGormStore(db *gorm.DB) *EWFGormStore {
 }
 
 func (s *EWFGormStore) Setup() error {
-	return s.db.AutoMigrate(&gormWorkflowRecord{})
+	return s.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{})
 }
 
 func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
@@ -85,27 +90,27 @@ func (s *EWFGormStore) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf
 }
 
 func (s *EWFGormStore) LoadWorkflowTemplate(ctx context.Context, name string) (*ewf.WorkflowTemplate, error) {
-	var gormWorkflow gormWorkflowRecord
-	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&gormWorkflow).Error; err != nil {
+	var gormTemplate gormTemplateRecord
+	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&gormTemplate).Error; err != nil {
 		return nil, err
 	}
 
 	var st serializableTemplate
-	if err := json.Unmarshal(gormWorkflow.Data, &st); err != nil {
+	if err := json.Unmarshal(gormTemplate.Data, &st); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal workflow template: %w", err)
 	}
 	return &ewf.WorkflowTemplate{Steps: st.Steps}, nil
 }
 
 func (s *EWFGormStore) LoadAllWorkflowTemplates(ctx context.Context) (map[string]*ewf.WorkflowTemplate, error) {
-	var gormWorkflows []gormWorkflowRecord
-	err := s.db.WithContext(ctx).Find(&gormWorkflows).Error
+	var gormTemplates []gormTemplateRecord
+	err := s.db.WithContext(ctx).Find(&gormTemplates).Error
 	if err != nil {
 		return nil, err
 	}
 
 	templates := make(map[string]*ewf.WorkflowTemplate)
-	for _, record := range gormWorkflows {
+	for _, record := range gormTemplates {
 		var st serializableTemplate
 		if err := json.Unmarshal(record.Data, &st); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal workflow template: %w", err)
@@ -122,12 +127,12 @@ func (s *EWFGormStore) SaveWorkflowTemplate(ctx context.Context, name string, te
 		return fmt.Errorf("failed to marshal workflow template: %w", err)
 	}
 
-	gormWorkflow := gormWorkflowRecord{
+	gormTemplate := gormTemplateRecord{
 		Name: name,
 		Data: data,
 	}
 
-	return s.db.WithContext(ctx).Save(&gormWorkflow).Error
+	return s.db.WithContext(ctx).Save(&gormTemplate).Error
 }
 
 func (s *EWFGormStore) Close() error {
