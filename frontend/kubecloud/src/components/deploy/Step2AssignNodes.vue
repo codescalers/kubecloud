@@ -134,84 +134,35 @@ function nodeLabel(node: any) {
   return `Node ${node.nodeId}`;
 }
 
-const currentAllocations = computed(() => {
-  const allocations: Record<number, { ram: number; storage: number }> = {};
-
-  props.allVMs.forEach((vm) => {
+const currentAllocations = computed(() =>
+  props.allVMs.reduce((acc, vm) => {
     if (vm.node != null) {
-      if (!allocations[vm.node]) {
-        allocations[vm.node] = { ram: 0, storage: 0 };
-      }
-      allocations[vm.node].ram += vm.ram;
-      allocations[vm.node].storage += vm.disk || 0;
-      allocations[vm.node].storage += vm.rootfs;
+      acc[vm.node] = {
+        ram: (acc[vm.node]?.ram || 0) + vm.ram,
+        storage: (acc[vm.node]?.storage || 0) + (vm.disk || 0) + vm.rootfs
+      };
     }
+    return acc;
+  }, {} as Record<number, { ram: number; storage: number }>)
+);
+
+const getAvailableNodesForVM = (vmIndex: number) => {
+  const vm = props.allVMs[vmIndex];
+  if (!vm) return [];
+  return props.availableNodes.filter(node => {
+    const used = currentAllocations.value[node.nodeId] || { ram: 0, storage: 0 };
+    const availableRam = (node.available_ram || 0) - used.ram + (vm.node === node.nodeId ? vm.ram : 0);
+    const availableStorage = (node.available_storage || 0) - used.storage + (vm.node === node.nodeId ? (vm.disk || 0) + vm.rootfs : 0);
+    return (node.cpu || 0) >= vm.vcpu && availableRam >= vm.ram && availableStorage >= (vm.disk || 0) + vm.rootfs;
   });
-  
-  return allocations;
+};
+
+
+const getNodeAvailableResources = (node: NormalizedNode) => ({
+  cpu: node.cpu || 0,
+  ram: Math.max(0, (node.available_ram || 0) - (currentAllocations.value[node.nodeId]?.ram || 0)),
+  storage: Math.max(0, (node.available_storage || 0) - (currentAllocations.value[node.nodeId]?.storage || 0))
 });
-
-const availableNodesPerVM = computed(() => {
-  return props.allVMs.map((vm) => {
-    if (!vm) return [];
-    
-    return props.availableNodes.filter(node => {
-      // Calculate what would be allocated if we exclude this VM's current assignment
-      const allocationsExcludingThisVM = { ...currentAllocations.value };
-      if (vm.node != null && allocationsExcludingThisVM[vm.node]) {
-        allocationsExcludingThisVM[vm.node] = {
-          ram: allocationsExcludingThisVM[vm.node].ram - vm.ram,
-          storage: allocationsExcludingThisVM[vm.node].storage - (vm.disk || 0) - vm.rootfs   
-        };
-        if (allocationsExcludingThisVM[vm.node].ram <= 0 && allocationsExcludingThisVM[vm.node].storage <= 0) {
-          delete allocationsExcludingThisVM[vm.node];
-        }
-      }
-      
-      const allocated = allocationsExcludingThisVM[node.nodeId] || { ram: 0, storage: 0 };
-      const availableRam = Math.max(0, (node.available_ram || 0) - allocated.ram);
-      const availableStorage = Math.max(0, (node.available_storage || 0) - allocated.storage);
-      
-      // CPU check: ensure node has minimum required CPU (but allow oversubscription)
-      const hasSufficientCpu = (node.cpu || 0) >= vm.vcpu;
-      
-      return hasSufficientCpu && 
-             availableRam >= vm.ram && 
-             availableStorage >= (vm.disk || 0)+(vm.rootfs);
-    });
-  });
-});
-
-function getAvailableNodesForVM(vmIndex: number) {
-  return availableNodesPerVM.value[vmIndex] || [];
-}
-
-function getNodeAvailableResources(node: NormalizedNode, excludeVmIndex?: number) {
-  let allocations = currentAllocations.value;
-  
-  if (excludeVmIndex !== undefined) {
-    const vm = props.allVMs[excludeVmIndex];
-    if (vm && vm.node != null) {
-      if (allocations[vm.node]) {
-        allocations[vm.node] = {
-          ram: allocations[vm.node].ram - vm.ram,
-          storage: allocations[vm.node].storage - (vm.disk || 0)-(vm.rootfs)
-        };
-        if (allocations[vm.node].ram <= 0 && allocations[vm.node].storage <= 0) {
-          delete allocations[vm.node];
-        }
-      }
-    }
-  }
-  
-  const allocated = allocations[node.nodeId] || { ram: 0, storage: 0 };
-  return {
-    cpu: node.cpu || 0, // CPU is always available (can be oversubscribed)
-    ram: Math.max(0, (node.available_ram || 0) - allocated.ram),
-    storage: Math.max(0, (node.available_storage || 0) - allocated.storage)
-  };
-}
-
 // Validate existing VM assignments on mount and clear invalid ones
 onMounted(() => {
   props.allVMs.forEach((vm, vmIndex) => {
