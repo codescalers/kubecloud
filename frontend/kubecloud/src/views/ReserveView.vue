@@ -213,9 +213,7 @@ const reserveNode = async (nodeId: number) => {
   try {
     await userService.reserveNode(nodeId)
     reservedNodeIds.value.add(nodeId) // Optimistically remove from UI
-    setTimeout(() => {
-      fetchNodes()
-    }, 4000)
+    fetchNodes()
   } catch (err) {
     console.error(err)
     reservedNodeIds.value.delete(nodeId)
