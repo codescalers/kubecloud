@@ -217,6 +217,84 @@ func DeployNodeStep() ewf.StepFn {
 	}
 }
 
+func DeployVMStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			return err
+		}
+
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			return err
+		}
+
+		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
+			if isWorkloadAlreadyDeployedError(err) {
+				return fmt.Errorf("VM already deployed: %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+			}
+			if isWorkloadInvalid(err) {
+				return fmt.Errorf("VM invalid: %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+			}
+			return fmt.Errorf("failed to deploy VM %s: %w", vm.Node.Name, err)
+		}
+
+		statemanager.SaveGridClientState(state, kubeClient)
+		statemanager.StoreVM(state, vm)
+		return nil
+	}
+}
+
+func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			return err
+		}
+
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		dbCluster := &models.Cluster{
+			ProjectName: vm.ProjectName,
+		}
+
+		cluster := kubedeployer.Cluster{
+			Name:        vm.Node.Name,
+			ProjectName: vm.ProjectName,
+			Nodes:       []kubedeployer.Node{vm.Node},
+			Network:     vm.Network,
+		}
+
+		if err := dbCluster.SetClusterResult(cluster); err != nil {
+			return fmt.Errorf("failed to set VM result: %w", err)
+		}
+
+		existingCluster, err := db.GetClusterByName(config.UserID, vm.ProjectName)
+		if err != nil {
+			if err := db.CreateCluster(config.UserID, dbCluster); err != nil {
+				return fmt.Errorf("failed to create VM in database: %w", err)
+			}
+		} else {
+			existingCluster.Result = dbCluster.Result
+			if err := db.UpdateCluster(&existingCluster); err != nil {
+				return fmt.Errorf("failed to update VM in database: %w", err)
+			}
+		}
+
+		return nil
+	}
+}
+
 func StoreDeploymentStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
@@ -496,6 +574,8 @@ func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *interna
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
 	engine.Register(StepStoreDeployment, StoreDeploymentStep(db))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
+	engine.Register(StepDeployVM, DeployVMStep())
+	engine.Register(StepStoreVMDeployment, StoreVMDeploymentStep(db))
 
 	createDeployWorkflowTemplates(engine)
 
@@ -522,6 +602,13 @@ func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *interna
 		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(WorkflowRemoveNode, &removeNodeWFTemplate)
+
+	deployVMWFTemplate := BaseWFTemplate
+	deployVMWFTemplate.Steps = []ewf.Step{
+		{Name: StepDeployVM, RetryPolicy: criticalRetryPolicy},
+		{Name: StepStoreVMDeployment, RetryPolicy: standardRetryPolicy},
+	}
+	engine.RegisterTemplate(WorkflowDeployVM, &deployVMWFTemplate)
 }
 
 func getFromState[T any](state ewf.State, key string) (T, error) {

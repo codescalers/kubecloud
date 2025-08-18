@@ -309,3 +309,42 @@ func (c *Cluster) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
+type VM struct {
+	Node Node `json:"node" validate:"required"`
+	// Computed
+	Network     workloads.ZNet `json:"network,omitempty"`
+	ProjectName string         `json:"project_name,omitempty"`
+}
+
+// PrepareVM prepares the VM for deployment by setting project name and network name
+func (v *VM) PrepareVM() error {
+	if v.ProjectName == "" {
+		return fmt.Errorf("VM project name is not set")
+	}
+
+	if v.Network.Name == "" {
+		v.Network.Name = v.ProjectName + "net"
+	}
+
+	if v.Node.OriginalName == "" {
+		v.Node.OriginalName = v.Node.Name
+		v.Node.Name = v.ProjectName + v.Node.OriginalName
+	}
+
+	return nil
+}
+
+func (v *VM) LoadFromDeployment(deployment workloads.Deployment) error {
+	if len(deployment.Vms) == 0 {
+		return fmt.Errorf("deployment has no VMs")
+	}
+
+	vm := deployment.Vms[0]
+	v.Node.IP = vm.IP
+	v.Node.MyceliumIP = vm.MyceliumIP
+	v.Node.PlanetaryIP = vm.PlanetaryIP
+	v.Node.ContractID = deployment.ContractID
+
+	return nil
+}

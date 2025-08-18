@@ -44,7 +44,6 @@ func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnem
 	if err != nil {
 		return "", 0, fmt.Errorf("create twin failed: %w", err)
 	}
-
 	log.Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
 	return mnemonic, twinID, nil
 }

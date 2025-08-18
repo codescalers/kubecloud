@@ -13,6 +13,7 @@ const (
 	K3S_ENTRYPOINT = "/sbin/zinit init"
 	K3S_DATA_DIR   = "/mnt/data"
 	K3S_IFACE      = "flannel-br"
+	UBUNTU_FLIST   = "https://hub.grid.tf/tf-official-vms/ubuntu-24.04-full.flist"
 )
 
 func generateRandomString(length int) string {
@@ -162,4 +163,61 @@ func (c *Cluster) PrepareCluster(userID string) error {
 
 	log.Debug().Msgf("prepared cluster %+v", c)
 	return nil
+}
+
+func GetVMProjectName(userID, nodeName string) string {
+	return "vm" + userID
+}
+
+func deploymentFromVM(node *Node,
+	projectName string,
+	networkName string,
+	masterSSH string,
+) (workloads.Deployment, error) {
+	ipSeed, err := workloads.RandomMyceliumIPSeed()
+	if err != nil {
+		return workloads.Deployment{}, err
+	}
+
+	disk := workloads.Disk{
+		Name:   fmt.Sprintf("%s_data", node.Name),
+		SizeGB: node.DiskSize / 1024,
+	}
+
+	flist := UBUNTU_FLIST
+	if node.Flist != "" {
+		flist = node.Flist
+	}
+
+	vm := workloads.VM{
+		Name:           node.Name,
+		NodeID:         node.NodeID,
+		CPU:            node.CPU,
+		MemoryMB:       node.Memory,
+		RootfsSizeMB:   node.RootSize,
+		EnvVars:        node.EnvVars,
+		Flist:          flist,
+		Entrypoint:     node.Entrypoint,
+		NetworkName:    networkName,
+		IP:             node.IP,
+		MyceliumIPSeed: ipSeed,
+		Mounts: []workloads.Mount{
+			{
+				Name: disk.Name,
+			},
+		},
+	}
+
+	vm.EnvVars["SSH_KEY"] = node.EnvVars["SSH_KEY"] + "\n" + masterSSH
+
+	depl := workloads.NewDeployment(
+		node.Name,
+		node.NodeID,
+		projectName, nil,
+		networkName,
+		[]workloads.Disk{disk}, nil,
+		[]workloads.VM{vm}, nil, nil, nil,
+	)
+
+	return depl, nil
 }

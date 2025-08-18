@@ -263,6 +263,7 @@ func (app *App) registerHandlers() {
 			deploymentGroup := deployerGroup.Group("/deployments")
 			{
 				deploymentGroup.POST("", app.handlers.HandleDeployCluster)
+				deploymentGroup.POST("/vm", app.handlers.HandleDeployVM)
 				deploymentGroup.GET("", app.handlers.HandleListDeployments)
 				deploymentGroup.GET("/:name", app.handlers.HandleGetDeployment)
 				deploymentGroup.GET("/:name/kubeconfig", app.handlers.HandleGetKubeconfig)

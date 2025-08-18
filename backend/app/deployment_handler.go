@@ -528,3 +528,56 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		Message:    "Node removal workflow started successfully",
 	})
 }
+
+func (h *Handler) HandleDeployVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var vm kubedeployer.VM
+	if err := c.ShouldBindJSON(&vm); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		return
+	}
+
+	if vm.Node.Name == "" {
+		vm.Node.Name = fmt.Sprintf("vm%s%d", config.UserID, vm.Node.NodeID)
+	}
+	if vm.Node.Type == "" {
+		vm.Node.Type = kubedeployer.NodeTypeMaster
+	}
+	if vm.Node.EnvVars == nil {
+		vm.Node.EnvVars = map[string]string{}
+	}
+
+	if err := internal.ValidateStruct(vm.Node); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		return
+	}
+
+	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
+	if vm.Network.Name == "" {
+		vm.Network.Name = vm.ProjectName + "net"
+	}
+
+	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeployVM)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		return
+	}
+
+	wf.State = ewf.State{
+		"config": config,
+		"vm":     vm,
+	}
+
+	h.ewfEngine.RunAsync(c, wf)
+
+	c.JSON(http.StatusAccepted, Response{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
+		Message:    "VM deployment workflow started successfully",
+	})
+}
