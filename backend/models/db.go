@@ -1,9 +1,14 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"context"
+
+	"gorm.io/gorm"
+)
 
 // DB interface for databases
 type DB interface {
+	Ping(ctx context.Context) error
 	Close() error
 	GetDB() *gorm.DB
 	RegisterUser(user *User) error

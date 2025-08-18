@@ -1,0 +1,28 @@
+name: Frontend Build
+on:
+  push:
+    paths:
+      - frontend/**
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/kubecloud/package-lock.json
+          
+      - name: Install dependencies
+        run: cd frontend/kubecloud && npm ci
+        
+      - name: Lint
+        run: cd frontend/kubecloud && npm run lint
+        
+      - name: Build
+        run: cd frontend/kubecloud && npm run build

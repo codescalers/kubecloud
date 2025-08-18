@@ -10,23 +10,34 @@ import (
 )
 
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
-	ticker := time.NewTicker(time.Duration(h.config.MonitorBalanceIntervalInHours) * time.Hour)
-	defer ticker.Stop()
+	balanceTicker := time.NewTicker(time.Duration(h.config.MonitorBalanceIntervalInMinutes) * time.Minute)
+	adminNotifyTicker := time.NewTicker(time.Duration(h.config.NotifyAdminsForPendingRecordsInHours) * time.Hour)
+	defer balanceTicker.Stop()
+	defer adminNotifyTicker.Stop()
 
-	for range ticker.C {
-		records, err := h.db.ListOnlyPendingRecords()
-		if err != nil {
-			continue
-		}
+	for {
+		select {
+		case <-balanceTicker.C:
+			records, err := h.db.ListOnlyPendingRecords()
+			if err != nil {
+				continue
+			}
 
-		if len(records) > 0 {
-			if err := h.notifyAdminWithPendingRecords(records); err != nil {
+			if err := h.settlePendingPayments(records); err != nil {
 				log.Error().Err(err).Send()
 			}
-		}
 
-		if err := h.settlePendingPayments(records); err != nil {
-			log.Error().Err(err).Send()
+		case <-adminNotifyTicker.C:
+			records, err := h.db.ListOnlyPendingRecords()
+			if err != nil {
+				continue
+			}
+
+			if len(records) > 0 {
+				if err := h.notifyAdminWithPendingRecords(records); err != nil {
+					log.Error().Err(err).Send()
+				}
+			}
 		}
 	}
 }

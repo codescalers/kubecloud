@@ -173,55 +173,34 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 }
 
 func (h *Handler) getKubeconfigViaSSH(privateKey string, node *kubedeployer.Node) (string, error) {
-	ips := []string{}
-	if node.MyceliumIP != "" {
-		ips = append(ips, node.MyceliumIP)
-	}
-	if node.PlanetaryIP != "" {
-		ips = append(ips, node.PlanetaryIP)
+	ip := node.MyceliumIP
+	if ip == "" {
+		return "", fmt.Errorf("no valid IP address found for node %s", node.Name)
 	}
 
-	if len(ips) == 0 {
-		return "", fmt.Errorf("no valid IP addresses found for node %s", node.Name)
+	log.Debug().Str("ip", ip).Str("node", node.Name).Msg("Attempting SSH connection")
+	commands := []string{
+		"kubectl config view --minify --raw",
+		"cat /etc/rancher/k3s/k3s.yaml",
+		"cat ~/.kube/config",
 	}
 
-	var lastErr error
-	for _, ip := range ips {
-		log.Debug().Str("ip", ip).Str("node", node.Name).Msg("Attempting SSH connection")
-
-		commands := []string{
-			"kubectl config view --minify --raw",
-			"cat /etc/rancher/k3s/k3s.yaml",
-			"cat ~/.kube/config",
-		}
-
-		var kubeconfig string
-		var cmdErr error
-
-		for _, cmd := range commands {
-			kubeconfig, cmdErr = h.executeSSHCommand(privateKey, ip, cmd)
-			if cmdErr == nil && strings.Contains(kubeconfig, "apiVersion") && strings.Contains(kubeconfig, "clusters") {
-				processedKubeconfig, processErr := h.processKubeconfig(kubeconfig, ip)
-				if processErr != nil {
-					log.Warn().Err(processErr).Str("ip", ip).Msg("Failed to process kubeconfig, returning original")
-					return kubeconfig, nil
-				}
-				return processedKubeconfig, nil
+	for _, cmd := range commands {
+		kubeconfig, err := h.executeSSHCommand(privateKey, ip, cmd)
+		if err == nil && strings.Contains(kubeconfig, "apiVersion") && strings.Contains(kubeconfig, "clusters") {
+			processedKubeconfig, processErr := h.processKubeconfig(kubeconfig, ip)
+			if processErr != nil {
+				log.Warn().Err(processErr).Str("ip", ip).Msg("Failed to process kubeconfig, returning original")
+				return kubeconfig, nil
 			}
-			if cmdErr != nil {
-				log.Debug().Err(cmdErr).Str("ip", ip).Str("command", cmd).Msg("Command failed, trying next")
-			}
+			return processedKubeconfig, nil
 		}
-
-		if cmdErr != nil {
-			log.Warn().Err(cmdErr).Str("ip", ip).Str("node", node.Name).Msg("All commands failed on this IP, trying next IP")
-			lastErr = cmdErr
-		} else {
-			lastErr = fmt.Errorf("no valid kubeconfig found on node %s at IP %s", node.Name, ip)
+		if err != nil {
+			log.Debug().Err(err).Str("ip", ip).Str("command", cmd).Msg("Command failed, trying next")
 		}
 	}
 
-	return "", fmt.Errorf("failed to retrieve kubeconfig from any IP address: %v", lastErr)
+	return "", fmt.Errorf("failed to retrieve kubeconfig from node %s at IP %s", node.Name, ip)
 }
 
 func (h *Handler) executeSSHCommand(privateKey, address, command string) (string, error) {
@@ -273,37 +252,19 @@ func (h *Handler) executeSSHCommand(privateKey, address, command string) (string
 
 func (h *Handler) processKubeconfig(kubeconfigYAML, externalIP string) (string, error) {
 	updatedConfig := kubeconfigYAML
-
-	var targetIP string
-	if strings.Contains(externalIP, ":") {
-		parts := strings.Split(externalIP, ":")
-		if len(parts) >= 4 {
-			targetIP = strings.Join(parts[:4], ":") + "::1"
-		} else {
-			targetIP = externalIP
-		}
-
-		log.Debug().
-			Str("original_ipv6", externalIP).
-			Str("modified_ipv6", targetIP).
-			Msg("Modified IPv6 address for kubeconfig")
-	} else {
-		targetIP = externalIP
-	}
-
 	oldPattern := "server: https://127.0.0.1:"
 	var newPattern string
 
-	if strings.Contains(targetIP, ":") {
-		newPattern = fmt.Sprintf("server: https://[%s]:", targetIP)
+	if strings.Contains(externalIP, ":") {
+		newPattern = fmt.Sprintf("server: https://[%s]:", externalIP)
 	} else {
-		newPattern = fmt.Sprintf("server: https://%s:", targetIP)
+		newPattern = fmt.Sprintf("server: https://%s:", externalIP)
 	}
 
 	updatedConfig = strings.ReplaceAll(updatedConfig, oldPattern, newPattern)
 
 	log.Debug().
-		Str("target_ip", targetIP).
+		Str("target_ip", externalIP).
 		Bool("config_changed", updatedConfig != kubeconfigYAML).
 		Msg("Processed kubeconfig for external IP")
 

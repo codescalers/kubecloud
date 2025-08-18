@@ -53,7 +53,6 @@
               item-title="name"
               item-value="nodeId"
               label="Select Node"
-              :error-messages="addFormError"
             >
               <template #item="{ item, props }">
                 <div class="d-flex pa-3" v-bind="props">
@@ -142,7 +141,7 @@
       </template>
       <template #actions>
         <div v-if="editTab === 'add'" class="add-form-actions">
-          <v-btn variant="outlined" color="primary" :loading="addNodeLoading" :disabled="!canAssignToNode || addNodeLoading || !formValid" @click="confirmAddForm" class="add-node-btn">Add Node</v-btn>
+          <v-btn variant="outlined" color="primary" :loading="addNodeLoading" :disabled="!canAssignToNode || addNodeLoading || !formValid" @click="confirmAddForm" class="mr-3">Add Node</v-btn>
           <v-btn variant="outlined" @click="editTab = 'list'">Cancel</v-btn>
         </div>
       </template>
@@ -152,12 +151,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
+import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RentedNode } from '../../composables/useNodeManagement';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { useNotificationStore } from '../../stores/notifications';
 import {isAlphanumeric, required, min, max} from "../../utils/validation"
+import { ROOTFS } from '../../composables/useDeployCluster';
 const notificationStore = useNotificationStore();
 const props = defineProps<{
   modelValue: boolean,
@@ -165,7 +165,6 @@ const props = defineProps<{
   nodes: any[],
   loading: boolean,
   availableNodes: RentedNode[],
-  addFormError: string,
   addFormNode: RentedNode | undefined,
   canAssignToNode: boolean,
   addNodeLoading: boolean,
@@ -194,7 +193,6 @@ const addFormRole = ref('master');
 const addFormCpu = ref(2);
 const addFormRam = ref(4);
 const addFormStorage = ref(25);
-const addFormError = ref('');
 const addFormName = ref('');
 const addFormSshKey = ref<number|null>(null);
 const sshKeys = ref<any[]>([]);
@@ -245,7 +243,6 @@ const canAssignToNode = computed(() => {
 });
 watch([addFormNodeId, addFormRam, addFormStorage], () => {
   const node = addFormNode.value;
-  addFormError.value = '';
   if (!node) {
     return;
   }
@@ -253,9 +250,7 @@ watch([addFormNodeId, addFormRam, addFormStorage], () => {
     addFormRam.value > getAvailableRAM(node) ||
     addFormStorage.value > getAvailableStorage(node)
   ) {
-    addFormError.value = 'Requested resources exceed available for the selected node.';
-  } else {
-    addFormError.value = '';
+    addFormNodeId.value=null;
   }
 });
 function confirmAddForm() {
@@ -271,7 +266,7 @@ function confirmAddForm() {
         node_id: addFormNodeId.value, // backend expects node_id
         cpu: addFormCpu.value,
         memory: addFormRam.value * 1024, // Convert GB to MB
-        root_size: 25 * 1024, // MB
+        root_size: ROOTFS * 1024, // MB
         disk_size: addFormStorage.value * 1024, // Convert GB to MB
         env_vars: sshKeyObj ? { SSH_KEY: sshKeyObj.public_key } : {},
       }
@@ -280,12 +275,24 @@ function confirmAddForm() {
   notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.');
   editTab.value = 'list';
 }
-// Ensure every node has a 'name' property for v-select display
+// Filter available nodes based on form requirements and add 'name' property for v-select display
 const availableNodesWithName = computed(() =>
-  (props.availableNodes || []).map(n => ({
-    ...n,
-    name: `Node ${n.nodeId}`
-  }) as RentedNode & { name: string })
+  (props.availableNodes || [])
+    .filter(node => {
+      // Only show nodes that have sufficient available resources
+      const availableRAM = getAvailableRAM(node);
+      const availableStorage = getAvailableStorage(node);
+      const availableCPU = getAvailableCPU(node);
+      return (
+        addFormCpu.value <= availableCPU &&
+        addFormRam.value <= availableRAM &&
+        addFormStorage.value <= availableStorage
+      );
+    })
+    .map(n => ({
+      ...n,
+      name: `Node ${n.nodeId}`
+    }) as RentedNode & { name: string })
 );
 </script>
 <style scoped>

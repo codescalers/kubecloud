@@ -1,6 +1,7 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type NavigationGuardNext, type RouteLocationNormalized, type RouteLocationNormalizedGeneric } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useUserStore } from '../stores/user'
+import { useMaintenanceStore } from '../stores/maintenance'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -89,6 +90,11 @@ const router = createRouter({
       name: 'pending-requests',
       component: () => import('../views/PendingRecordsView.vue')
     },
+    {
+      path: '/maintenance',
+      name: 'maintenance',
+      component: () => import('../components/MaintenanceView.vue')
+    },
   ],
   scrollBehavior() {
     // Always scroll to top on route change
@@ -96,9 +102,57 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to, _from, next) => {
-  const userStore = useUserStore()
+/**
+ * Handles maintenance mode checks and routing logic
+ * @param to - Target route
+ * @param next - Navigation function
+ * @returns true if navigation was handled, false if should continue
+ */
+async function handleMaintenanceCheck(to: RouteLocationNormalizedGeneric, next: NavigationGuardNext): Promise<boolean> {
+  const maintenanceStore = useMaintenanceStore()
+  const lastChecked = maintenanceStore.lastChecked
+  // Check maintenance status if not checked recently (within last hour)
+  if (!lastChecked || lastChecked.getTime() < Date.now() - 60 * 60 * 1000) {
+    try {
+      await maintenanceStore.checkMaintenanceStatus()
+    } catch (error) {
+      console.error('Failed to check maintenance status in router guard:', error)
+      return false // Continue with normal routing on error
+    }
+  }
+  
+  if (to.path === '/maintenance' && !maintenanceStore.isMaintenanceMode) {
+    next('/')
+    return true   
+  }
+  
+  if (maintenanceStore.isMaintenanceMode) {
+    // Allow access to maintenance page itself
+    if (to.path === '/maintenance') {
+      next()
+      return true 
+    }
+    if (maintenanceStore.isRouteAllowed(to.path)) {
+      next()
+      return true 
+    }
+    next('/maintenance')
+    return true 
+  }
+  
+  return false 
+}
 
+router.beforeEach(async (to, _from, next) => {
+  const userStore = useUserStore()
+  const maintenanceStore = useMaintenanceStore()
+  
+  // Handle maintenance mode checks
+  const maintenanceHandled = await handleMaintenanceCheck(to, next)
+  if (maintenanceHandled) {
+    return
+  }
+  
   // Check if user is authenticated
   const isAuthenticated = userStore.isLoggedIn
 

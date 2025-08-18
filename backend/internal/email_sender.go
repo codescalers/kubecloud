@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"mime"
+	"path/filepath"
 	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -23,6 +25,9 @@ var signUpTemplate []byte
 
 //go:embed templates/pending_record_notification.html
 var notifyPaymentRecordsMail []byte
+
+//go:embed templates/system_announcement.html
+var systemAnnouncementMail []byte
 
 // MailService struct hods all functionalities of mail service
 type MailService struct {
@@ -56,11 +61,11 @@ func (service *MailService) SendMail(sender, receiver, subject, body string, att
 		mail.NewContent("text/html", body),
 	}
 
-	if len(attachments) > 0 {
+	for _, att := range attachments {
 		attachment := mail.NewAttachment()
-		attachment = attachment.SetContent(base64.StdEncoding.EncodeToString(attachments[0].Data))
-		attachment = attachment.SetType("application/pdf")
-		attachment = attachment.SetFilename(attachments[0].FileName)
+		attachment = attachment.SetContent(base64.StdEncoding.EncodeToString(att.Data))
+		attachment = attachment.SetType(mime.TypeByExtension(filepath.Ext(att.FileName)))
+		attachment = attachment.SetFilename(att.FileName)
 		attachment = attachment.SetDisposition("attachment")
 		message = message.AddAttachment(attachment)
 	}
@@ -129,4 +134,12 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 	subject := "Invoice Notification"
 	return subject, mailBody
 
+}
+
+func (service *MailService) SystemAnnouncementMailBody(body string) string {
+	template := string(systemAnnouncementMail)
+	body = strings.ReplaceAll(body, "\n", "<br>")
+	template = strings.ReplaceAll(template, "-body-", body)
+
+	return template
 }

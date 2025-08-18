@@ -8,7 +8,7 @@
       <div class="dashboard-content-wrapper">
         <div class="dashboard-layout">
           <div class="dashboard-sidebar">
-            <DashboardSidebar :selected="'pending-records'" @update:selected="handleSidebarSelect" />
+            <DashboardSidebar :selected="'payments'" @update:selected="handleSidebarSelect" />
           </div>
           <div class="dashboard-main">
             <div class="dashboard-cards">
@@ -87,7 +87,7 @@ function handleSidebarSelect(val: string) {
   .dashboard-layout {
     flex-direction: column;
   }
-  
+
   .dashboard-sidebar {
     flex: none;
   }

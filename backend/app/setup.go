@@ -63,7 +63,9 @@ func SetUp(t testing.TB) (*App, error) {
   "mailSender": {
     "email": "email@domain.com",
     "sendgrid_key": "sendgrid_key",
-    "timeout": 60
+    "timeout": 60,
+    "max_concurrent_sends": 20,
+    "max_attachment_size_mb": 10
   },
   "currency": "usd",
   "stripe_secret": "sk_test",
@@ -98,7 +100,8 @@ func SetUp(t testing.TB) (*App, error) {
     "private_key_path": "%s",
     "public_key_path": "%s"
   },
-  "monitor_balance_interval_in_hours": 1,
+  "monitor_balance_interval_in_minutes": 2,
+	"notify_admins_for_pending_records_in_hours": 1,
   "kyc_verifier_api_url": "https://kyc.dev.grid.tf",
   "kyc_challenge_domain": "kyc.dev.grid.tf"
 }

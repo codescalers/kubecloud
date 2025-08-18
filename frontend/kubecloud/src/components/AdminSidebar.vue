@@ -36,6 +36,7 @@ const adminNavItems = [
   { key: 'system', title: 'System', icon: 'mdi-cog' },
   { key: 'invoices', title: 'Invoices', icon: 'mdi-file-document-outline' },
   { key: 'pending-records', title: 'Pending Records', icon: 'mdi-clock-outline' },
+  { key: 'emails', title: 'Emails', icon: 'mdi-email-outline' },
 ]
 
 </script>

@@ -18,7 +18,9 @@
   "mailSender": {
     "email": "noreply@example.com",
     "sendgrid_key": "your-sendgrid-api-key-here",
-    "timeout": 30
+    "timeout": 30,
+    "max_concurrent_sends": 20,
+    "max_attachment_size_mb": 10
   },
   "currency": "USD",
   "stripe_secret": "sk_test_your_stripe_secret_key_here",

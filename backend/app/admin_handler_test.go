@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -452,4 +453,235 @@ func TestListPendingRecordsHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
+}
+
+func extractMaintenanceModeStatus(t *testing.T, responseBody *bytes.Buffer) MaintenanceModeStatus {
+	t.Helper()
+	var apiResponse APIResponse
+	err := json.Unmarshal(responseBody.Bytes(), &apiResponse)
+	require.NoError(t, err)
+	resultBytes, err := json.Marshal(apiResponse.Data)
+	require.NoError(t, err)
+
+	var result MaintenanceModeStatus
+	err = json.Unmarshal(resultBytes, &result)
+	require.NoError(t, err)
+
+	return result
+}
+
+func TestMaintenanceModeIntegration(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+
+	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+
+	t.Run("Test Full maintenance mode workflow", func(t *testing.T) {
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		req, _ := http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		result := extractMaintenanceModeStatus(t, resp.Body)
+		require.False(t, result.Enabled)
+
+		payload := MaintenanceModeStatus{Enabled: true}
+		body, _ := json.Marshal(payload)
+		req, _ = http.NewRequest("PUT", "/api/v1/system/maintenance/status", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp = httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		// 3. Verify it's enabled
+		req, _ = http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp = httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		result = extractMaintenanceModeStatus(t, resp.Body)
+		require.True(t, result.Enabled)
+
+		payload = MaintenanceModeStatus{Enabled: false}
+		body, _ = json.Marshal(payload)
+		req, _ = http.NewRequest("PUT", "/api/v1/system/maintenance/status", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp = httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		req, _ = http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp = httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		require.Equal(t, http.StatusOK, resp.Code)
+
+		result = extractMaintenanceModeStatus(t, resp.Body)
+		require.False(t, result.Enabled)
+	})
+}
+
+func TestSetMaintenanceModeHandler(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+
+	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+
+	t.Run("Test Set maintenance mode with invalid JSON", func(t *testing.T) {
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		req, _ := http.NewRequest("PUT", "/api/v1/system/maintenance/status", bytes.NewReader([]byte("{invalid json")))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusBadRequest, resp.Code)
+
+		var result APIResponse
+		err := json.Unmarshal(resp.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, "Invalid request format", result.Message)
+	})
+
+	t.Run("Test Set maintenance mode with non-admin user", func(t *testing.T) {
+		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+		payload := MaintenanceModeStatus{
+			Enabled: true,
+		}
+		body, _ := json.Marshal(payload)
+		req, _ := http.NewRequest("PUT", "/api/v1/system/maintenance/status", bytes.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+	})
+}
+
+func TestGetMaintenanceModeHandler(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+
+	t.Run("Test Get maintenance mode successfully (default disabled)", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+
+		var result APIResponse
+		err := json.Unmarshal(resp.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, "Maintenance mode is retrieved successfully", result.Message)
+		assert.Equal(t, http.StatusOK, result.Status)
+
+		data := extractMaintenanceModeStatus(t, resp.Body)
+		assert.False(t, data.Enabled)
+	})
+
+}
+
+func TestSendMailToAllUsersHandler(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+
+	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+
+	t.Run("Test Send email with non-admin user", func(t *testing.T) {
+		body, writer := createMultipartEmailForm(t, "Test Subject", "Test email body")
+		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+
+		assert.Equal(t, http.StatusForbidden, resp.Code)
+	})
+
+	t.Run("Test Send email validates concurrency handling", func(t *testing.T) {
+		for i := 0; i < 25; i++ {
+			CreateTestUser(t, app, fmt.Sprintf("testuser%d@example.com", i), fmt.Sprintf("Test User %d", i), []byte("securepassword"), true, false, false, 0, time.Now())
+		}
+
+		body, writer := createMultipartEmailForm(t, "Concurrency Test", "Testing concurrent email delivery")
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		result := extractSendMailResponse(t, resp.Body)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, 27, result.TotalUsers)
+		assert.Equal(t, 27, result.SuccessfulEmails)
+		assert.Equal(t, 0, result.FailedEmailsCount)
+	})
+
+	t.Run("Test Send email with partial success - some emails fail", func(t *testing.T) {
+		app, err := SetUp(t)
+		require.NoError(t, err)
+		router := app.router
+
+		adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+		body, writer := createMultipartEmailForm(t, "Partial Success Test", "Testing partial email delivery success")
+		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+
+		CreateTestUser(t, app, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
+
+		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+
+		result := extractSendMailResponse(t, resp.Body)
+		assert.Equal(t, 2, result.TotalUsers)
+		assert.Equal(t, 1, result.SuccessfulEmails)
+		assert.Equal(t, 1, result.FailedEmailsCount)
+	})
+
+}
+
+func createMultipartEmailForm(t *testing.T, subject, body string) (*bytes.Buffer, *multipart.Writer) {
+	t.Helper()
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+
+	err := writer.WriteField("subject", subject)
+	require.NoError(t, err)
+
+	err = writer.WriteField("body", body)
+	require.NoError(t, err)
+
+	writer.Close()
+	return &buffer, writer
+}
+
+func extractSendMailResponse(t *testing.T, responseBody *bytes.Buffer) SendMailResponse {
+	t.Helper()
+	var apiResponse APIResponse
+	err := json.Unmarshal(responseBody.Bytes(), &apiResponse)
+	require.NoError(t, err)
+	resultBytes, err := json.Marshal(apiResponse.Data)
+	require.NoError(t, err)
+
+	var result SendMailResponse
+	err = json.Unmarshal(resultBytes, &result)
+	require.NoError(t, err)
+
+	return result
 }

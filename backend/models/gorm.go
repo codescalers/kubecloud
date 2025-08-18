@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -52,6 +53,15 @@ func (s *GormDB) Close() error {
 		return err
 	}
 	return sqlDB.Close()
+}
+
+// Ping implements the DB interface health check
+func (s *GormDB) Ping(ctx context.Context) error {
+	sqlDB, err := s.db.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.PingContext(ctx)
 }
 
 // RegisterUser registers a new user to the system

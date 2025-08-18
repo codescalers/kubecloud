@@ -1,3 +1,4 @@
+import router from "@/router"
 import { api } from "./api"
 import type { ApiResponse } from "./authService"
 import type { PendingRecord } from "./userService"
@@ -50,6 +51,20 @@ export interface CreditUserResponse {
 export interface DeleteUserResponse {
   message: string
 }
+
+export interface SystemEmail {
+  title: string
+  message: string
+  priority: string
+}
+
+export interface SystemEmailResponse {
+  failed_emails: string[],
+  failed_emails_count: number,
+  successful_emails: number,
+  total_users: number
+}
+
 
 export interface Invoice {
   id: number
@@ -148,7 +163,39 @@ export class AdminService {
     })
     return response.data.data.pending_records
   }
+
+  // Send a system email to all users (requires admin auth)
+  async sendSystemEmail(formData: FormData): Promise<SystemEmailResponse> {
+    const response = await api.post<SystemEmailResponse>('/v1/users/mail', formData, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Sending email to all users',
+      successMessage: 'Email sent to all users',
+      errorMessage: 'Failed to send email',
+      contentType: '',
+      timeout: 60000,
+    })
+    return response.data
+  }
+
+
+  async SetMaintenanceModeStatus(status: boolean): Promise<void> {
+    try {
+      const response = await api.put('/v1/system/maintenance/status', { enabled: status }, {
+        requiresAuth: true,
+        showNotifications: true,
+        loadingMessage: 'Setting maintenance mode...',
+        successMessage: 'Maintenance mode set successfully, redirecting to maintenance page in 3 seconds',
+        errorMessage: 'Failed to set maintenance mode'
+      })
+      setTimeout(() => {
+        router.push('/maintenance')
+      }, 3000)
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
+  }
 }
 
-// Export singleton instance
 export const adminService = AdminService.getInstance()

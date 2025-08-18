@@ -3,13 +3,19 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io"
 	"kubecloud/internal"
 	"kubecloud/models"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/go-multierror"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -38,6 +44,24 @@ type PendingRecordsResponse struct {
 	models.PendingRecord
 	USDAmount            float64 `json:"usd_amount"`
 	TransferredUSDAmount float64 `json:"transferred_usd_amount"`
+}
+
+// AdminMailInput represents the form data for sending emails to all users
+type AdminMailInput struct {
+	Subject     string                  `form:"subject" binding:"required"`
+	Body        string                  `form:"body" binding:"required"`
+	Attachments []*multipart.FileHeader `form:"attachments"`
+}
+
+type SendMailResponse struct {
+	TotalUsers        int      `json:"total_users"`
+	SuccessfulEmails  int      `json:"successful_emails"`
+	FailedEmailsCount int      `json:"failed_emails_count"`
+	FailedEmails      []string `json:"failed_emails,omitempty"`
+}
+
+type MaintenanceModeStatus struct {
+	Enabled bool `json:"enabled"`
 }
 
 // @Summary Get all users
@@ -340,5 +364,228 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
+	})
+}
+
+// Only accessible by admins
+// @Summary Send mail to all users
+// @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
+// @Tags admin
+// @ID admin-mail-all-users
+// @Accept multipart/form-data
+// @Produce json
+// @Param subject formData string true "Email subject"
+// @Param body formData string true "Email body content"
+// @Param attachments formData file false "Email attachments (multiple files allowed)"
+// @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
+// @Failure 400 {object} APIResponse "Invalid request format"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Security AdminMiddleware
+// @Router /users/mail [post]
+func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
+	var input AdminMailInput
+	if err := c.ShouldBind(&input); err != nil {
+		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+
+	var attachments []internal.Attachment
+	if form, err := c.MultipartForm(); err == nil {
+		if uploaded, ok := form.File["attachments"]; ok {
+			log.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
+
+			attachments, err = h.parseAttachments(uploaded)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to parse attachments")
+				InternalServerError(c)
+				return
+			}
+		}
+	}
+
+	users, err := h.db.ListAllUsers()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to list all users")
+		InternalServerError(c)
+		return
+	}
+
+	body := h.mailService.SystemAnnouncementMailBody(input.Body)
+
+	emailConcurrencyLimiter := make(chan struct{}, h.config.MailSender.MaxConcurrentSends)
+
+	var (
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+		failedEmails []string
+	)
+
+	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
+	for _, user := range users {
+		wg.Add(1)
+		emailConcurrencyLimiter <- struct{}{}
+		go func(user models.User) {
+			defer wg.Done()
+			defer func() { <-emailConcurrencyLimiter }()
+			err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, input.Subject, body, attachments...)
+			if err != nil {
+				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+				mu.Lock()
+				failedEmails = append(failedEmails, user.Email)
+				mu.Unlock()
+			}
+		}(user)
+	}
+
+	wg.Wait()
+
+	totalUsers := len(users)
+	responseData := SendMailResponse{
+		TotalUsers:        totalUsers,
+		SuccessfulEmails:  totalUsers - len(failedEmails),
+		FailedEmailsCount: len(failedEmails),
+	}
+
+	if responseData.SuccessfulEmails == 0 {
+		Error(c, http.StatusInternalServerError, "failed to send mail to all users", "")
+		return
+	}
+	if responseData.FailedEmailsCount > 0 {
+		Success(c, http.StatusOK, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
+		return
+	}
+	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
+}
+
+func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
+	if len(fileHeaders) == 0 {
+		return nil, nil
+	}
+
+	allowedTypes := map[string]bool{
+		".pdf": true, ".doc": true, ".docx": true, ".txt": true,
+		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".zip": true,
+	}
+
+	var (
+		mu       sync.Mutex
+		multiErr *multierror.Error
+		results  []internal.Attachment
+		wg       sync.WaitGroup
+	)
+
+	wg.Add(len(fileHeaders))
+	for _, fileHeader := range fileHeaders {
+		go func(fh *multipart.FileHeader) {
+			defer wg.Done()
+
+			ext := strings.ToLower(filepath.Ext(fh.Filename))
+			if !allowedTypes[ext] {
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("file type %s not allowed for %s", ext, fh.Filename))
+				mu.Unlock()
+				return
+			}
+
+			maxFileSizeBytes := h.config.MailSender.MaxAttachmentSizeMB * 1024 * 1024
+
+			if fh.Size > maxFileSizeBytes {
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes))
+				mu.Unlock()
+				return
+			}
+
+			file, err := fh.Open()
+			if err != nil {
+				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to open attachment file")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, err)
+				mu.Unlock()
+				return
+			}
+			defer file.Close()
+
+			fileData, err := io.ReadAll(file)
+			if err != nil {
+				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to read attachment file")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, err)
+				mu.Unlock()
+				return
+			}
+
+			attachment := internal.Attachment{
+				FileName: fh.Filename,
+				Data:     fileData,
+			}
+
+			mu.Lock()
+			results = append(results, attachment)
+			mu.Unlock()
+		}(fileHeader)
+	}
+
+	wg.Wait()
+	return results, multiErr.ErrorOrNil()
+}
+
+// @Summary Set maintenance mode
+// @Description Sets maintenance mode for the system
+// @Tags admin
+// @ID set-maintenance-mode
+// @Accept json
+// @Produce json
+// @Param body body MaintenanceModeStatus true "Maintenance Mode Status"
+// @Success 200 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /system/maintenance/status [put]
+// SetMaintenanceModeHandler sets maintenance mode for the system
+func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
+	var request MaintenanceModeStatus
+
+	// check on request format
+	if err := c.ShouldBindJSON(&request); err != nil {
+		log.Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		return
+	}
+
+	if err := internal.ValidateStruct(request); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		return
+	}
+
+	if err := h.redis.SetMaintenanceMode(c.Request.Context(), request.Enabled); err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Maintenance mode is set successfully", nil)
+}
+
+// @Summary Get maintenance mode
+// @Description Gets maintenance mode for the system
+// @Tags admin
+// @ID get-maintenance-mode
+// @Accept json
+// @Produce json
+// @Success 200 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /system/maintenance/status [get]
+// GetMaintenanceModeHandler gets maintenance mode for the system
+func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
+	enabled, err := h.redis.GetMaintenanceMode(c.Request.Context())
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Maintenance mode is retrieved successfully", MaintenanceModeStatus{
+		Enabled: enabled,
 	})
 }

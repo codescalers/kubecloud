@@ -11,6 +11,12 @@
         </div>
         <div v-else-if="cluster" class="manage-header mb-6">
           <div class="manage-header-content">
+            <div class="header-top mb-3">
+              <v-btn variant="text" color="primary" @click="goBack" class="back-button">
+                <v-icon icon="mdi-arrow-left" class="mr-2"></v-icon>
+                Back to Dashboard
+              </v-btn>
+            </div>
             <h1 class="manage-title">{{ cluster?.cluster?.name || '-' }}</h1>
             <p class="manage-subtitle">Manage your Kubernetes cluster configuration and resources</p>
           </div>
@@ -147,9 +153,10 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
-import { api } from '../../utils/api'
 import { useNodeManagement, type RentedNode } from '../../composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
+import { useKubeconfig } from '../../composables/useKubeconfig'
+import { api } from '../../utils/api'
 
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage } from '../../utils/nodeNormalizer'
 
@@ -200,13 +207,19 @@ const kubeconfigContent = ref('')
 const kubeconfigLoading = ref(false)
 const kubeconfigError = ref('')
 
+const { downloadFile } = useKubeconfig()
+
 async function showKubeconfig() {
   kubeconfigLoading.value = true
   kubeconfigError.value = ''
   kubeconfigContent.value = ''
   try {
-    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, { requiresAuth: true, showNotifications: false })
-    const data = response.data as { kubeconfig?: string }
+    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, { 
+      requiresAuth: true, 
+      showNotifications: false,
+      timeout: 120000
+    })
+    const data = response.data as any
     kubeconfigContent.value = data.kubeconfig || ''
   } catch (err: any) {
     kubeconfigError.value = err?.message || 'Failed to fetch kubeconfig'
@@ -230,17 +243,7 @@ function copyKubeconfig() {
 
 function downloadKubeconfigFile() {
   if (!kubeconfigContent.value) return
-  const blob = new Blob([kubeconfigContent.value], { type: 'application/x-yaml' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${projectName.value}-kubeconfig.yaml`
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => {
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, 100)
+  downloadFile(kubeconfigContent.value, `${projectName.value}-kubeconfig.yaml`)
 }
 
 const showDeleteModal = ref(false)
@@ -253,11 +256,10 @@ async function confirmDelete() {
   if (cluster.value) {
     try {
       await clusterStore.deleteCluster(cluster.value.cluster.name)
-      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.');
+      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.')
       goBack()
     } catch (e: any) {
-      const errorMessage = e?.message || 'Failed to delete cluster';
-      notificationStore.error('Delete Cluster Failed', errorMessage);
+      notificationStore.error('Delete Cluster Failed', e?.message || 'Failed to delete cluster')
     }
   }
   deletingCluster.value = false
@@ -505,6 +507,16 @@ async function handleRemoveNode(nodeName: string) {
   color: var(--color-text-muted);
   text-align: center;
   margin: 2rem 0;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+}
+.back-button {
+  padding: 0;
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: normal;
 }
 @media (max-width: 900px) {
   .cluster-info-grid {

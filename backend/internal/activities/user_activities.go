@@ -345,6 +345,8 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		switch v := amountVal.(type) {
 		case int:
 			amount = uint64(v)
+		case uint64:
+			amount = v
 		case float64:
 			amount = uint64(v)
 		default:
