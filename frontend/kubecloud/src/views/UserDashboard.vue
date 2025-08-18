@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/user'
 import ClustersCard from '../components/dashboard/ClustersCard.vue'
 import BillingCard from '../components/dashboard/BillingCard.vue'
@@ -10,9 +10,9 @@ import ProfileCard from '../components/dashboard/ProfileCard.vue'
 import OverviewCard from '../components/dashboard/OverviewCard.vue'
 import NodesCard from '../components/dashboard/NodesCard.vue'
 import DashboardSidebar from '../components/DashboardSidebar.vue'
+
 import { userService } from '../utils/userService'
 import { useClusterStore } from '../stores/clusters'
-import { useNotificationStore } from '../stores/notifications'
 import UserPendingRecordsCard from '../components/dashboard/UserPendingRecordsCard.vue'
 
 const userStore = useUserStore()
@@ -22,7 +22,6 @@ const userName = computed(() => userStore.user?.username || 'User')
 const selected = ref('overview')
 
 const clusterStore = useClusterStore()
-const notificationStore = useNotificationStore()
 
 const clusters = computed(() => clusterStore.clusters)
 const clustersArray = computed(() =>
