@@ -12,9 +12,7 @@
         <div class="quick-deploy-card">
           <div class="card-header">
             <v-icon icon="mdi-rocket-launch" size="32" color="primary" class="header-icon" />
-            <div>
-              <h2 class="card-title">Quick Deploy</h2>
-            </div>
+            <h2 class="card-title">Quick Deploy</h2>
           </div>
 
           <div class="deploy-form">
@@ -26,8 +24,7 @@
                 placeholder="app1"
                 variant="outlined"
                 density="comfortable"
-                class="cluster-name-input"
-                :rules="[rules.required, rules.alphanumeric, rules.maxLength]"
+                :rules="[rules.required, rules.alphaNum, rules.maxName]"
                 color="primary"
                 hint="Only letters and numbers allowed (max 30 chars)"
                 persistent-hint
@@ -49,7 +46,7 @@
               <label class="form-label">Cluster Size</label>
               <div class="size-options">
                 <div
-                  v-for="size in clusterSizes"
+                  v-for="size in CLUSTER_SIZES"
                   :key="size.id"
                   class="size-option"
                   :class="{ active: selectedSize === size.id }"
@@ -113,7 +110,7 @@
                 </div>
                 <div class="custom-summary">
                   <v-icon icon="mdi-information" size="16" color="info" />
-                  <span>Total nodes needed: {{ customConfig.masters + customConfig.workers }}</span>
+                  <span>Total nodes needed: {{ totalNodesNeeded }}</span>
                 </div>
               </div>
             </div>
@@ -253,30 +250,11 @@ import { generateClusterName } from '../utils/clusterUtils';
 import { api } from '../utils/api';
 import type { ApiResponse } from '../utils/api';
 import type { NormalizedNode } from '../types/normalizedNode';
+import { required as requiredRule, isAlphanumeric as isAlphanumericRule, min as minRule } from '../utils/validation';
 
-const router = useRouter();
-const notificationStore = useNotificationStore();
-const userService = new UserService();
-
-// Form data
-const clusterName = ref('');
-const selectedSize = ref('single');
-const selectedSshKey = ref<number | null>(null);
-const deploying = ref(false);
-const customConfig = ref({
-  masters: 1,
-  workers: 0
-});
-
-// Data loading
-const sshKeysLoading = ref(true);
-const availableSshKeys = ref<any[]>([]);
-const { rentedNodes, fetchRentedNodes } = useNodeManagement();
-const availableNodes = ref<NormalizedNode[]>([]);
-
-// Cluster size options
-const clusterSizes = [
-{
+// Constants
+const CLUSTER_SIZES = [
+  {
     id: 'small',
     name: 'Small',
     icon: 'mdi-desktop-tower',
@@ -308,22 +286,37 @@ const clusterSizes = [
   }
 ];
 
+const DEFAULT_CONFIG = {
+  ROOT_SIZE_GB: 20,
+  MAX_CPU_PER_NODE: 2,
+  MAX_RAM_GB_PER_NODE: 4,
+  MAX_DISK_GB_PER_NODE: 50
+};
+
+const router = useRouter();
+const notificationStore = useNotificationStore();
+const userService = new UserService();
+
+// Form data
+const clusterName = ref('');
+const selectedSize = ref('small');
+const selectedSshKey = ref<number | null>(null);
+const deploying = ref(false);
+const customConfig = ref({ masters: 1, workers: 0 });
+
+// Data loading
+const sshKeysLoading = ref(true);
+const availableSshKeys = ref<any[]>([]);
+const { rentedNodes, fetchRentedNodes } = useNodeManagement();
+const availableNodes = ref<NormalizedNode[]>([]);
+
 // Validation rules
 const rules = {
-  required: (value: any) => !!value || 'This field is required',
-  alphanumeric: (value: string) => {
-    if (!value) return true; // Let required rule handle empty values
-    const alphanumericRegex = /^[a-zA-Z0-9]+$/;
-    return alphanumericRegex.test(value) || 'Only letters and numbers are allowed';
-  },
-  minMasters: (value: number) => value >= 1 || 'At least 1 master node is required',
-  minWorkers: (value: number) => value >= 0 || 'Worker nodes cannot be negative',
-  maxLength: (value: string) => {
-    if (!value) return true;
-    // Ensure cluster name + node suffix doesn't exceed 36 chars
-    // Format will be: {clusterName}m1, {clusterName}w1, etc (max 3 chars suffix)
-    return value.length <= 30 || 'Cluster name too long (max 30 characters)';
-  }
+  required: (value: any) => requiredRule('This field is required')(value) ?? true,
+  alphaNum: (value: string) => isAlphanumericRule('Only letters and numbers are allowed')(value) ?? true,
+  minMasters: (value: number) => minRule('At least 1 master node is required', 1)(value) ?? true,
+  minWorkers: (value: number) => minRule('Worker nodes cannot be negative', 0)(value) ?? true,
+  maxName: (value: string) => !value || value.length <= 30 || 'Cluster name too long (max 30 characters)'
 };
 
 // Computed properties
@@ -334,39 +327,28 @@ const sshKeyOptions = computed(() =>
   }))
 );
 
-const totalCpu = computed(() =>
-  availableNodes.value.reduce((sum, node) => sum + (node.cpu || 0), 0)
-);
-
-const totalRam = computed(() =>
-  availableNodes.value.reduce((sum, node) => sum + (node.ram || 0), 0)
-);
-
-const totalStorage = computed(() =>
-  availableNodes.value.reduce((sum, node) => sum + (node.storage || 0), 0)
-);
+const totalCpu = computed(() => availableNodes.value.reduce((sum, node) => sum + (node.cpu || 0), 0));
+const totalRam = computed(() => availableNodes.value.reduce((sum, node) => sum + (node.ram || 0), 0));
+const totalStorage = computed(() => availableNodes.value.reduce((sum, node) => sum + (node.storage || 0), 0));
 
 const currentClusterConfig = computed(() => {
   if (selectedSize.value === 'custom') {
-    return {
-      masters: customConfig.value.masters,
-      workers: customConfig.value.workers
-    };
+    return customConfig.value;
   }
-  const sizeConfig = clusterSizes.find(s => s.id === selectedSize.value);
-  return sizeConfig ? { masters: sizeConfig.masters, workers: sizeConfig.workers } : { masters: 1, workers: 0 };
+  const sizeConfig = CLUSTER_SIZES.find(s => s.id === selectedSize.value);
+  return sizeConfig || { masters: 1, workers: 0 };
 });
 
 const totalNodesNeeded = computed(() =>
   currentClusterConfig.value.masters + currentClusterConfig.value.workers
 );
 
-const canDeploy = computed(() => {
-  return clusterName.value.trim() &&
-         selectedSshKey.value &&
-         availableNodes.value.length >= totalNodesNeeded.value &&
-         totalNodesNeeded.value >= 1;
-});
+const canDeploy = computed(() =>
+  clusterName.value.trim() &&
+  selectedSshKey.value &&
+  availableNodes.value.length >= totalNodesNeeded.value &&
+  totalNodesNeeded.value >= 1
+);
 
 const deploymentRequirements = computed(() => {
   const requirements = [];
@@ -375,9 +357,22 @@ const deploymentRequirements = computed(() => {
   if (availableNodes.value.length < totalNodesNeeded.value) {
     requirements.push(`at least ${totalNodesNeeded.value} node${totalNodesNeeded.value > 1 ? 's' : ''}`);
   }
-
   return `Please provide: ${requirements.join(', ')}`;
 });
+
+// Helper functions
+function createNodePayload(name: string, type: string, node: NormalizedNode, sshKey: string, token: string) {
+  return {
+    name,
+    type,
+    node_id: node.nodeId,
+    cpu: Math.min(DEFAULT_CONFIG.MAX_CPU_PER_NODE, node.cpu || DEFAULT_CONFIG.MAX_CPU_PER_NODE),
+    memory: Math.min(DEFAULT_CONFIG.MAX_RAM_GB_PER_NODE * 1024, (node.ram || DEFAULT_CONFIG.MAX_RAM_GB_PER_NODE) * 1024),
+    root_size: DEFAULT_CONFIG.ROOT_SIZE_GB * 1024,
+    disk_size: Math.min(DEFAULT_CONFIG.MAX_DISK_GB_PER_NODE * 1024, (node.storage || DEFAULT_CONFIG.MAX_DISK_GB_PER_NODE) * 1024),
+    env_vars: { SSH_KEY: sshKey, K3S_TOKEN: token }
+  };
+}
 
 // Methods
 function generateRandomName() {
@@ -413,39 +408,19 @@ async function deployCluster() {
       throw new Error(`Not enough nodes available. Need ${totalNodesNeeded.value}, have ${assignedNodes.length}`);
     }
 
-    // Build cluster payload with smart defaults
+    // Build cluster payload
     const clusterPayload = {
       name: clusterName.value,
-      token: 'auto-generated-token-' + Date.now(),
+      token: '',
       nodes: [
         // Masters
-        ...Array.from({ length: config.masters }, (_, i) => ({
-          name: `${clusterName.value}m${i + 1}`,
-          type: 'master',
-          node_id: assignedNodes[i].nodeId,
-          cpu: Math.min(2, assignedNodes[i].cpu || 2), // Smart CPU allocation
-          memory: Math.min(4096, (assignedNodes[i].ram || 4) * 1024), // Smart RAM allocation
-          root_size: 20 * 1024, // 20GB root
-          disk_size: Math.min(50 * 1024, (assignedNodes[i].storage || 50) * 1024), // Smart disk allocation
-          env_vars: {
-            SSH_KEY: sshKey?.public_key || '',
-            K3S_TOKEN: 'auto-generated-token-' + Date.now(),
-          }
-        })),
+        ...Array.from({ length: config.masters }, (_, i) =>
+          createNodePayload(`${clusterName.value}m${i + 1}`, 'master', assignedNodes[i], sshKey?.public_key || '', token)
+        ),
         // Workers
-        ...Array.from({ length: config.workers }, (_, i) => ({
-          name: `${clusterName.value}w${i + 1}`,
-          type: 'worker',
-          node_id: assignedNodes[config.masters + i].nodeId,
-          cpu: Math.min(2, assignedNodes[config.masters + i].cpu || 2),
-          memory: Math.min(4096, (assignedNodes[config.masters + i].ram || 4) * 1024),
-          root_size: 20 * 1024,
-          disk_size: Math.min(50 * 1024, (assignedNodes[config.masters + i].storage || 50) * 1024),
-          env_vars: {
-            SSH_KEY: sshKey?.public_key || '',
-            K3S_TOKEN: 'auto-generated-token-' + Date.now(),
-          }
-        }))
+        ...Array.from({ length: config.workers }, (_, i) =>
+          createNodePayload(`${clusterName.value}w${i + 1}`, 'worker', assignedNodes[config.masters + i], sshKey?.public_key || '', token)
+        )
       ]
     };
 
@@ -461,7 +436,6 @@ async function deployCluster() {
       `Your cluster "${clusterName.value}" is being deployed. You'll be notified when it's ready.`
     );
 
-    // Navigate to dashboard
     localStorage.setItem('dashboard-section', 'clusters');
     router.push('/dashboard');
 
@@ -475,25 +449,11 @@ async function deployCluster() {
   }
 }
 
-// Initialize
-onMounted(async () => {
-  // Generate initial cluster name
-  generateRandomName();
-
-  // Load data
-  await Promise.all([
-    fetchSshKeys(),
-    fetchAvailableNodes()
-  ]);
-});
-
 async function fetchSshKeys() {
   sshKeysLoading.value = true;
   try {
     const keys = await userService.listSshKeys();
     availableSshKeys.value = keys;
-
-    // Auto-select first key if only one available
     if (keys.length === 1) {
       selectedSshKey.value = keys[0].ID;
     }
@@ -513,6 +473,12 @@ async function fetchAvailableNodes() {
     notificationStore.error('Error', 'Failed to load available nodes');
   }
 }
+
+// Initialize
+onMounted(async () => {
+  generateRandomName();
+  await Promise.all([fetchSshKeys(), fetchAvailableNodes()]);
+});
 </script>
 
 <style scoped>
@@ -578,12 +544,6 @@ async function fetchAvailableNodes() {
   margin: 0;
 }
 
-.card-subtitle {
-  color: var(--color-text-muted);
-  margin: 0;
-  font-size: var(--font-size-sm);
-}
-
 .form-group {
   margin-bottom: var(--space-3);
 }
@@ -601,11 +561,6 @@ async function fetchAvailableNodes() {
 .help-icon {
   opacity: 0.6;
   cursor: help;
-}
-
-.cluster-name-input :deep(.v-field) {
-  background: var(--color-bg);
-  border-color: var(--color-border);
 }
 
 .generate-btn {
