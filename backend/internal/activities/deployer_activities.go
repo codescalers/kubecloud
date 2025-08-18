@@ -238,10 +238,10 @@ func DeployVMStep() ewf.StepFn {
 
 		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
-				return fmt.Errorf("VM already deployed: %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("VM already deployed: %s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
-				return fmt.Errorf("VM invalid: %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("VM invalid:%s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
 			}
 			return fmt.Errorf("failed to deploy VM %s: %w", vm.Node.Name, err)
 		}
