@@ -396,6 +396,7 @@ async function deployCluster() {
   try {
     const config = currentClusterConfig.value;
     const sshKey = availableSshKeys.value.find(k => k.ID === selectedSshKey.value);
+    const token = '';
 
     // Auto-assign nodes based on available resources
     const sortedNodes = [...availableNodes.value].sort((a, b) =>
