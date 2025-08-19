@@ -31,57 +31,133 @@
       <v-divider class="mb-4" />
       <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
       <v-progress-linear v-if="isLoading" indeterminate color="primary" class="mb-4" />
+      
       <div v-if="filteredClusters.length === 0 && !isLoading" class="empty-message">
         <v-icon icon="mdi-cloud-off-outline" size="48" class="mb-2" color="grey" />
         <div>No clusters found.</div>
       </div>
-      <v-table v-else class="clusters-table">
-        <thead>
-          <tr>
-            <th @click="setSort('name')" :class="sortBy === 'name' ? 'active-sort' : ''">Name <v-icon v-if="sortBy === 'name'" size="14">mdi-arrow-up-down</v-icon></th>
-            <th @click="setSort('nodes')" :class="sortBy === 'nodes' ? 'active-sort' : ''">Nodes <v-icon v-if="sortBy === 'nodes'" size="14">mdi-arrow-up-down</v-icon></th>
-            <th @click="setSort('createdAt')" :class="sortBy === 'createdAt' ? 'active-sort' : ''">Created <v-icon v-if="sortBy === 'createdAt'" size="14">mdi-arrow-up-down</v-icon></th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="cluster in paginatedClusters" :key="cluster.id">
-            <td class="cluster-name-cell">
-              <span class="cluster-name">{{ cluster.cluster.name }}</span>
-            </td>
-            <td>{{ Array.isArray(cluster.cluster.nodes) ? cluster.cluster.nodes.length : (typeof cluster.cluster.nodes === 'number' ? cluster.cluster.nodes : 0) }}</td>
-            <td>{{ formatDate(cluster.created_at) }}</td>
-            <td>
+      
+      <!-- Enhanced Clusters Grid -->
+      <div v-else class="clusters-grid">
+        <div 
+          v-for="cluster in paginatedClusters" 
+          :key="cluster.id" 
+          class="cluster-card"
+        >
+          <div class="cluster-header">
+            <div class="cluster-title-section">
+              <h4 class="cluster-name">{{ cluster.cluster.name }}</h4>
+              <div class="cluster-meta">
+                <span class="cluster-type">
+                  <v-icon icon="mdi-kubernetes" size="16" class="mr-1"></v-icon>
+                  Kubernetes Cluster
+                </span>
+                <span class="cluster-date">{{ formatDate(cluster.created_at) }}</span>
+              </div>
+            </div>
+            <div class="cluster-actions">
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)">
+                  <v-btn 
+                    icon size="small" 
+                    variant="text"
+                    v-bind="props" 
+                    @click="viewCluster(cluster.cluster.name)"
+                  >
                     <v-icon icon="mdi-cog" />
                   </v-btn>
                 </template>
-                <span>Edit cluster</span>
+                <span>Manage cluster</span>
               </v-tooltip>
               
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name">
+                  <v-btn 
+                    icon size="small" 
+                    variant="text"
+                    v-bind="props" 
+                    @click="download(cluster.cluster.name)" 
+                    :loading="downloading === cluster.cluster.name" 
+                    :disabled="downloading === cluster.cluster.name"
+                  >
                     <v-icon icon="mdi-download" />
                   </v-btn>
                 </template>
-                <span>Download kubeconfig file</span>
+                <span>Download kubeconfig</span>
               </v-tooltip>
               
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="ml-1" color="error" v-bind="props" @click="deleteCluster(cluster.cluster.name)">
+                  <v-btn 
+                    icon size="small" 
+                    variant="text"
+                    color="error" 
+                    v-bind="props" 
+                    @click="deleteCluster(cluster.cluster.name)"
+                  >
                     <v-icon icon="mdi-delete-outline" />
                   </v-btn>
                 </template>
                 <span>Delete cluster</span>
               </v-tooltip>
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
+            </div>
+          </div>
+          
+          <div class="cluster-specs">
+            <!-- Node Count -->
+            <v-chip color="primary" text-color="white" size="small" class="mr-2 mb-2" variant="outlined">
+              <v-icon size="16" class="mr-1">mdi-lan</v-icon>
+              {{ getNodeCount(cluster) }} Node{{ getNodeCount(cluster) !== 1 ? 's' : '' }}
+            </v-chip>
+            
+            <!-- CPU Resources -->
+            <v-chip color="success" text-color="white" size="small" class="mr-2 mb-2" variant="outlined">
+              <v-icon size="16" class="mr-1">mdi-cpu-64-bit</v-icon>
+              {{ getTotalCPU(cluster) }} vCPU
+            </v-chip>
+            
+            <!-- RAM Resources -->
+            <v-chip color="info" text-color="white" size="small" class="mr-2 mb-2" variant="outlined">
+              <v-icon size="16" class="mr-1">mdi-memory</v-icon>
+              {{ getTotalRAM(cluster) }} GB RAM
+            </v-chip>
+            
+            <!-- Storage Resources -->
+            <v-chip color="warning" text-color="white" size="small" class="mr-2 mb-2" variant="outlined">
+              <v-icon size="16" class="mr-1">mdi-harddisk</v-icon>
+              {{ getTotalStorage(cluster) }} GB Storage
+            </v-chip>
+            
+            <!-- Status Badge -->
+            <v-chip 
+              :color="getStatusColor(cluster)" 
+              text-color="white" 
+              size="small" 
+              class="mr-2 mb-2" 
+              variant="outlined"
+            >
+              <v-icon size="16" class="mr-1">{{ getStatusIcon(cluster) }}</v-icon>
+              {{ getStatusText(cluster) }}
+            </v-chip>
+          </div>
+          
+          <!-- Node Details -->
+          <div v-if="getNodeCount(cluster) > 0" class="cluster-nodes">
+            <div class="nodes-summary">
+              <span class="nodes-label">Node Types:</span>
+              <div class="node-type-chips">
+                <span v-if="getMasterCount(cluster) > 0" class="node-type-chip master">
+                  {{ getMasterCount(cluster) }} Master{{ getMasterCount(cluster) !== 1 ? 's' : '' }}
+                </span>
+                <span v-if="getWorkerCount(cluster) > 0" class="node-type-chip worker">
+                  {{ getWorkerCount(cluster) }} Worker{{ getWorkerCount(cluster) !== 1 ? 's' : '' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <v-pagination
         v-model="page"
         :length="pageCount"
@@ -90,6 +166,7 @@
         class="mt-4"
       />
     </div>
+    
     <v-dialog v-model="showDeleteModal" max-width="400">
       <v-card>
         <v-card-title>Confirm Delete</v-card-title>
@@ -124,7 +201,7 @@ const { download, downloading } = useKubeconfig()
 const search = ref('')
 const sortBy = ref('createdAt')
 const page = ref(1)
-const pageSize = 5
+const pageSize = 6 // Increased for grid layout
 
 const sortOptions = [
   { value: 'name', title: 'Name' },
@@ -153,8 +230,8 @@ const filteredClusters = computed(() => {
     if (sortBy.value === 'name') return a.project_name.localeCompare(b.project_name)
     if (sortBy.value === 'createdAt') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     if (sortBy.value === 'nodes') {
-      const aNodes = Array.isArray(a.cluster.nodes) ? a.cluster.nodes.length : (typeof a.cluster.nodes === 'number' ? a.cluster.nodes : 0)
-      const bNodes = Array.isArray(b.cluster.nodes) ? b.cluster.nodes.length : (typeof b.cluster.nodes === 'number' ? b.cluster.nodes : 0)
+      const aNodes = getNodeCount(a)
+      const bNodes = getNodeCount(b)
       return bNodes - aNodes
     }
     return 0
@@ -168,6 +245,77 @@ const paginatedClusters = computed(() => {
   const start = (page.value - 1) * pageSize
   return filteredClusters.value.slice(start, start + pageSize)
 })
+
+// Helper functions for cluster data
+function getNodeCount(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    return cluster.cluster.nodes.length
+  }
+  return typeof cluster.cluster.nodes === 'number' ? cluster.cluster.nodes : 0
+}
+
+function getMasterCount(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    return cluster.cluster.nodes.filter((node: any) => 
+      node.type === 'master' || node.type === 'leader'
+    ).length
+  }
+  return 0
+}
+
+function getWorkerCount(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    return cluster.cluster.nodes.filter((node: any) => 
+      node.type === 'worker'
+    ).length
+  }
+  return 0
+}
+
+function getTotalCPU(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    return cluster.cluster.nodes.reduce((sum: number, node: any) => 
+      sum + (typeof node.cpu === 'number' ? node.cpu : 0), 0
+    )
+  }
+  return 0
+}
+
+function getTotalRAM(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    const totalMB = cluster.cluster.nodes.reduce((sum: number, node: any) => 
+      sum + (typeof node.memory === 'number' ? node.memory : 0), 0
+    )
+    return Math.round(totalMB / 1024) // Convert MB to GB
+  }
+  return 0
+}
+
+function getTotalStorage(cluster: any): number {
+  if (Array.isArray(cluster.cluster.nodes)) {
+    const totalMB = cluster.cluster.nodes.reduce((sum: number, node: any) => 
+      sum + ((typeof node.root_size === 'number' ? node.root_size : 0) + 
+             (typeof node.disk_size === 'number' ? node.disk_size : 0)), 0
+    )
+    return Math.round(totalMB / 1024) // Convert MB to GB
+  }
+  return 0
+}
+
+function getStatusText(cluster: any): string {
+  // You can enhance this based on actual cluster status data
+  return 'Active'
+}
+
+function getStatusColor(cluster: any): string {
+  // You can enhance this based on actual cluster status data
+  return 'success'
+}
+
+function getStatusIcon(cluster: any): string {
+  // You can enhance this based on actual cluster status data
+  return 'mdi-check-circle'
+}
 
 const viewCluster = (projectName: string) => {
   router.push(`/clusters/${projectName}`)
@@ -217,39 +365,144 @@ function formatDate(dateStr: string) {
 .filter-select {
   min-width: 160px;
 }
-.clusters-table {
-  width: 100%;
+
+/* Enhanced Grid Layout */
+.clusters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.cluster-card {
+  background: var(--color-bg-elevated, #1E293B);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border: 1px solid var(--color-border, #334155);
+  transition: all 0.2s ease;
+}
+
+.cluster-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.cluster-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.cluster-title-section {
+  flex: 1;
+}
+
+.cluster-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--color-primary, #3B82F6);
+  margin: 0 0 0.5rem 0;
+}
+
+.cluster-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cluster-type {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #7c7fa5);
+  display: flex;
+  align-items: center;
+}
+
+.cluster-date {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #7c7fa5);
+}
+
+.cluster-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.cluster-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cluster-nodes {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-surface-2, #23243a);
+}
+
+.nodes-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nodes-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #7c7fa5);
+  font-weight: 500;
+}
+
+.node-type-chips {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.node-type-chip {
+  padding: 0.25rem 0.75rem;
   border-radius: 12px;
-  overflow: hidden;
-  background: var(--color-surface-1, #18192b);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
-th, td {
-  padding: 0.75rem 1rem;
-  text-align: left;
+
+.node-type-chip.master {
+  background: var(--color-primary, #3B82F6);
+  color: white;
 }
-th {
-  background: var(--color-surface-2, #23243a);
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
+
+.node-type-chip.worker {
+  background: var(--color-success, #10b981);
+  color: white;
 }
-th.active-sort {
-  color: var(--color-primary, #6366f1);
-}
-tr {
-  border-bottom: 1px solid var(--color-surface-2, #23243a);
-}
-tr:last-child {
-  border-bottom: none;
-}
-.cluster-name-cell {
-  font-weight: 600;
-  color: var(--color-primary, #6366f1);
-}
+
 .empty-message {
   text-align: center;
   color: var(--color-text-muted, #7c7fa5);
   margin-top: 3rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .clusters-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .cluster-card {
+    padding: 1rem;
+  }
+  
+  .cluster-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .cluster-actions {
+    align-self: flex-end;
+  }
 }
 </style>
