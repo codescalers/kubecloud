@@ -172,7 +172,7 @@ func GetVMProjectName(userID, nodeName string) string {
 func deploymentFromVM(node *Node,
 	projectName string,
 	networkName string,
-	masterSSH string,
+	userSSH string,
 ) (workloads.Deployment, error) {
 	ipSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
@@ -208,7 +208,7 @@ func deploymentFromVM(node *Node,
 		},
 	}
 
-	vm.EnvVars["SSH_KEY"] = node.EnvVars["SSH_KEY"] + "\n" + masterSSH
+	vm.EnvVars["SSH_KEY"] = userSSH
 
 	depl := workloads.NewDeployment(
 		node.Name,

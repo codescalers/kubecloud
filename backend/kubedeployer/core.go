@@ -284,7 +284,7 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 	return nil
 }
 
-func (c *Client) DeployVM(ctx context.Context, vm *VM, masterPubKey string) error {
+func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error {
 	log.Debug().Msgf("Deploying VM %s", vm.Node.Name)
 
 	if err := vm.PrepareVM(); err != nil {
@@ -299,7 +299,7 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, masterPubKey string) erro
 		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Node.Name, err)
 	}
 
-	depl, err := deploymentFromVM(&vm.Node, vm.ProjectName, vm.Network.Name, masterPubKey)
+	depl, err := deploymentFromVM(&vm.Node, vm.ProjectName, vm.Network.Name, userSSHKey)
 	if err != nil {
 		return fmt.Errorf("failed to create VM for node: %v", err)
 	}
