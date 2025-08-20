@@ -269,7 +269,7 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 	if err != nil {
 		return fmt.Errorf("failed to create network workload: %v", err)
 	}
-    net.AddWGAccess = vm.Network.AddWGAccess
+	net.AddWGAccess = vm.Network.AddWGAccess
 
 	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
 		return fmt.Errorf("failed to deploy network: %v", err)
