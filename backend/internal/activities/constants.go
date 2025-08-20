@@ -2,18 +2,18 @@ package activities
 
 const (
 	// Workflow names
-	WorkflowChargeBalance    = "charge-balance"
-  WorkflowAdminCreditBalance = "admin-credit-balance"
-	WorkflowUserRegistration = "user-registration"
-	WorkflowUserVerification = "user-verification"
-	WorkflowRedeemVoucher    = "redeem-voucher"
-	WorkflowReserveNode      = "reserve-node"
-	WorkflowUnreserveNode    = "unreserve-node"
-	WorkflowDeleteCluster    = "delete-cluster"
-	WorkflowAddNode          = "add-node"
-	WorkflowRemoveNode       = "remove-node"
-	WorkflowDeployVM         = "deploy-vm"
-	WorkflowDeleteVM         = "delete-vm"
+	WorkflowChargeBalance      = "charge-balance"
+	WorkflowAdminCreditBalance = "admin-credit-balance"
+	WorkflowUserRegistration   = "user-registration"
+	WorkflowUserVerification   = "user-verification"
+	WorkflowRedeemVoucher      = "redeem-voucher"
+	WorkflowReserveNode        = "reserve-node"
+	WorkflowUnreserveNode      = "unreserve-node"
+	WorkflowDeleteCluster      = "delete-cluster"
+	WorkflowAddNode            = "add-node"
+	WorkflowRemoveNode         = "remove-node"
+	WorkflowDeployVM           = "deploy-vm"
+	WorkflowDeleteVM           = "delete-vm"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"
