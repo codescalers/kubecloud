@@ -12,6 +12,7 @@ const (
 	WorkflowAddNode          = "add-node"
 	WorkflowRemoveNode       = "remove-node"
 	WorkflowDeployVM         = "deploy-vm"
+	WorkflowDeleteVM         = "delete-vm"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"
@@ -38,4 +39,6 @@ const (
 	StepDeployNetwork           = "deploy-network"
 	StepDeployVM                = "deploy-vm"
 	StepStoreVMDeployment       = "store-vm-deployment"
+	StepDeleteVM                = "delete-vm"
+	StepDeleteDB                = "delete-vm-db"
 )

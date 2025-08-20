@@ -259,6 +259,31 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 	return nil
 }
 
+func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
+	log.Debug().
+		Str("vm_name", vm.Node.Name).
+		Str("network_name", vm.Network.Name).
+		Msg("Deploying network for VM")
+
+	net, err := createNetworkWorkload(vm.Network.Name, vm.ProjectName, []uint32{vm.Node.NodeID})
+	if err != nil {
+		return fmt.Errorf("failed to create network workload: %v", err)
+	}
+
+	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
+		return fmt.Errorf("failed to deploy network: %v", err)
+	}
+
+	vm.Network = net
+
+	log.Debug().
+		Str("vm_name", vm.Node.Name).
+		Str("network_name", vm.Network.Name).
+		Msg("Successfully deployed network for VM")
+
+	return nil
+}
+
 func (c *Client) DeployVM(ctx context.Context, vm *VM, masterPubKey string) error {
 	log.Debug().Msgf("Deploying VM %s", vm.Node.Name)
 
@@ -266,12 +291,7 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, masterPubKey string) erro
 		return fmt.Errorf("failed to prepare VM: %v", err)
 	}
 
-	if err := c.DeployNetwork(ctx, &Cluster{
-		Name:        vm.Node.Name,
-		ProjectName: vm.ProjectName,
-		Nodes:       []Node{vm.Node},
-		Network:     vm.Network,
-	}); err != nil {
+	if err := c.DeployVMNetwork(ctx, vm); err != nil {
 		return fmt.Errorf("failed to deploy network for VM: %v", err)
 	}
 
@@ -301,4 +321,89 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, masterPubKey string) erro
 
 	log.Debug().Str("vm_name", vm.Node.Name).Msg("VM deployment successful")
 	return nil
+}
+
+func (c *Client) RemoveVM(ctx context.Context, vm *VM) error {
+	log.Debug().
+		Str("vm_name", vm.Node.Name).
+		Uint32("node_id", vm.Node.NodeID).
+		Msg("Starting VM removal")
+
+	var contractsToCancel []uint64
+
+	if vm.Node.ContractID != 0 {
+		contractsToCancel = append(contractsToCancel, vm.Node.ContractID)
+	}
+
+	networkWorkload := vm.Network
+	if networkContractID, exists := networkWorkload.NodeDeploymentID[vm.Node.NodeID]; exists && networkContractID != 0 {
+		contractsToCancel = append(contractsToCancel, networkContractID)
+		log.Debug().
+			Uint64("network_contract", networkContractID).
+			Msg("Adding network contract for cancellation")
+	}
+
+	if len(contractsToCancel) > 0 {
+		log.Debug().
+			Str("vm_name", vm.Node.Name).
+			Interface("contracts", contractsToCancel).
+			Msg("Canceling VM and network contracts")
+
+		if err := c.GridClient.BatchCancelContract(contractsToCancel); err != nil {
+			return fmt.Errorf("failed to cancel VM contracts: %v", err)
+		}
+	} else {
+		log.Warn().
+			Str("vm_name", vm.Node.Name).
+			Msg("No contracts found to cancel")
+	}
+
+	// Cleanup network configurations
+	if networkContractID, exists := vm.Network.NodeDeploymentID[vm.Node.NodeID]; exists {
+		networkWasCanceled := false
+		for _, contractID := range contractsToCancel {
+			if contractID == networkContractID {
+				networkWasCanceled = true
+				break
+			}
+		}
+
+		delete(vm.Network.NodeDeploymentID, vm.Node.NodeID)
+
+		var updatedNetworkNodes []uint32
+		for _, nodeID := range vm.Network.Nodes {
+			if nodeID != vm.Node.NodeID {
+				updatedNetworkNodes = append(updatedNetworkNodes, nodeID)
+			}
+		}
+		vm.Network.Nodes = updatedNetworkNodes
+
+		if vm.Network.NodesIPRange != nil {
+			delete(vm.Network.NodesIPRange, vm.Node.NodeID)
+		}
+		if vm.Network.MyceliumKeys != nil {
+			delete(vm.Network.MyceliumKeys, vm.Node.NodeID)
+		}
+		if vm.Network.Keys != nil {
+			delete(vm.Network.Keys, vm.Node.NodeID)
+		}
+		if vm.Network.WGPort != nil {
+			delete(vm.Network.WGPort, vm.Node.NodeID)
+		}
+
+		if networkWasCanceled {
+			log.Debug().
+				Str("vm_name", vm.Node.Name).
+				Uint32("node_id", vm.Node.NodeID).
+				Uint64("network_contract", networkContractID).
+				Msg("Cleaned up network configuration for canceled network contract")
+		}
+	}
+
+	log.Info().
+		Str("vm_name", vm.Node.Name).
+		Msg("Successfully removed VM and its network resources")
+
+	return nil
+
 }

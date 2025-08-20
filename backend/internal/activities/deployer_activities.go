@@ -264,29 +264,28 @@ func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
 			return err
 		}
 
-		dbCluster := &models.Cluster{
+		dbVM := &models.VM{
 			ProjectName: vm.ProjectName,
 		}
 
-		cluster := kubedeployer.Cluster{
-			Name:        vm.Node.Name,
+		machine := kubedeployer.VM{
+			Node:        vm.Node,
 			ProjectName: vm.ProjectName,
-			Nodes:       []kubedeployer.Node{vm.Node},
 			Network:     vm.Network,
 		}
 
-		if err := dbCluster.SetClusterResult(cluster); err != nil {
+		if err := dbVM.SetVMResult(machine); err != nil {
 			return fmt.Errorf("failed to set VM result: %w", err)
 		}
 
-		existingCluster, err := db.GetClusterByName(config.UserID, vm.ProjectName)
+		existingVM, err := db.GetVMByName(config.UserID, vm.ProjectName)
 		if err != nil {
-			if err := db.CreateCluster(config.UserID, dbCluster); err != nil {
+			if err := db.CreateVM(config.UserID, dbVM); err != nil {
 				return fmt.Errorf("failed to create VM in database: %w", err)
 			}
 		} else {
-			existingCluster.Result = dbCluster.Result
-			if err := db.UpdateCluster(&existingCluster); err != nil {
+			existingVM.Result = dbVM.Result
+			if err := db.UpdateVM(&existingVM); err != nil {
 				return fmt.Errorf("failed to update VM in database: %w", err)
 			}
 		}
@@ -411,6 +410,54 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 		// Save GridClient state after node removal
 		statemanager.SaveGridClientState(state, kubeClient)
 		statemanager.StoreCluster(state, existingCluster)
+		return nil
+	}
+}
+
+func DeleteVMStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			return err
+		}
+
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			return err
+		}
+
+		if err := kubeClient.RemoveVM(ctx, &vm); err != nil {
+			return fmt.Errorf("failed to remove VM %s: %w", vm.Node.Name, err)
+		}
+
+		statemanager.SaveGridClientState(state, kubeClient)
+		return nil
+	}
+}
+
+func DeleteVMFromDBStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		projectName, ok := state["project_name"].(string)
+		if !ok {
+			return fmt.Errorf("missing or invalid 'project_name' in state")
+		}
+
+		if err := db.DeleteVM(config.UserID, projectName); err != nil {
+			return fmt.Errorf("failed to delete VM from database: %w", err)
+		}
+
 		return nil
 	}
 }
@@ -576,6 +623,8 @@ func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *interna
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(StepDeployVM, DeployVMStep())
 	engine.Register(StepStoreVMDeployment, StoreVMDeploymentStep(db))
+	engine.Register(StepDeleteVM, DeleteVMStep())
+	engine.Register(StepDeleteDB, DeleteVMFromDBStep(db))
 
 	createDeployWorkflowTemplates(engine)
 
@@ -609,6 +658,13 @@ func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *interna
 		{Name: StepStoreVMDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(WorkflowDeployVM, &deployVMWFTemplate)
+
+	deleteVMTemple := BaseWFTemplate
+	deleteVMTemple.Steps = []ewf.Step{
+		{Name: StepDeleteVM, RetryPolicy: standardRetryPolicy},
+		{Name: StepDeleteDB, RetryPolicy: standardRetryPolicy},
+	}
+	engine.RegisterTemplate(WorkflowDeleteVM, &deleteVMTemple)
 }
 
 func getFromState[T any](state ewf.State, key string) (T, error) {

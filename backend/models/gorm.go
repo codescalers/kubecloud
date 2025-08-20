@@ -32,6 +32,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&Notification{},
 		&SSHKey{},
 		&Cluster{},
+		&VM{},
 		&PendingRecord{},
 	)
 	if err != nil {
@@ -433,4 +434,38 @@ func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) err
 		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
 		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
 		Error
+}
+
+// CreateVM creates a new vm in the database
+func (s *GormDB) CreateVM(userID string, vm *VM) error {
+	vm.CreatedAt = time.Now()
+	vm.UpdatedAt = time.Now()
+	vm.UserID = userID
+	return s.db.Create(vm).Error
+}
+
+// GetVMByName returns a vm by name for a specific user
+func (s *GormDB) GetVMByName(userID string, projectName string) (VM, error) {
+	var vm VM
+	query := s.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&vm)
+	return vm, query.Error
+}
+
+// UpdateVM updates an existing vm
+func (s *GormDB) UpdateVM(vm *VM) error {
+	vm.UpdatedAt = time.Now()
+	return s.db.Model(&VM{}).
+		Where("user_id = ? AND project_name = ?", vm.UserID, vm.ProjectName).
+		Updates(vm).Error
+}
+
+func (s *GormDB) ListUserVMS(userID string) ([]VM, error) {
+	var vms []VM
+	query := s.db.Where("user_id = ?", userID).Find(&vms)
+	return vms, query.Error
+
+}
+
+func (s *GormDB) DeleteVM(userID string, projectName string) error {
+	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
 }

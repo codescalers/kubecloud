@@ -46,6 +46,12 @@ type DB interface {
 	GetClusterByName(userID string, projectName string) (Cluster, error)
 	UpdateCluster(cluster *Cluster) error
 	DeleteCluster(userID string, projectName string) error
+	// VM Methods
+	CreateVM(userID string, vm *VM) error
+	GetVMByName(userID string, projectName string) (VM, error)
+	UpdateVM(vm *VM) error
+	ListUserVMS(userID string) ([]VM, error)
+	DeleteVM(userID string, projectName string) error
 	// pending records methods
 	CreatePendingRecord(record *PendingRecord) error
 	ListAllPendingRecords() ([]PendingRecord, error)

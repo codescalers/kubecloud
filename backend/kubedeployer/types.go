@@ -317,6 +317,254 @@ type VM struct {
 	ProjectName string         `json:"project_name,omitempty"`
 }
 
+// MarshalJSON implements custom JSON marshaling for VM
+func (vm VM) MarshalJSON() ([]byte, error) {
+	// Create a serializable version of the VM
+	serializable := struct {
+		Node        Node   `json:"node"`
+		ProjectName string `json:"project_name,omitempty"`
+		Network     struct {
+			Name             string            `json:"name"`
+			Description      string            `json:"description"`
+			Nodes            []uint32          `json:"nodes"`
+			IPRange          string            `json:"ip_range"`
+			AddWGAccess      bool              `json:"add_wg_access"`
+			MyceliumKeys     map[string]string `json:"mycelium_keys,omitempty"` // base64 encoded
+			SolutionType     string            `json:"solution_type"`
+			AccessWGConfig   string            `json:"access_wg_config"`
+			ExternalIP       *string           `json:"external_ip,omitempty"`
+			ExternalSK       string            `json:"external_sk,omitempty"` // base64 encoded
+			PublicNodeID     uint32            `json:"public_node_id"`
+			NodesIPRange     map[string]string `json:"nodes_ip_range,omitempty"`
+			NodeDeploymentID map[string]uint64 `json:"node_deployment_id,omitempty"`
+			WGPort           map[string]int    `json:"wg_port,omitempty"`
+			Keys             map[string]string `json:"keys,omitempty"` // base64 encoded
+		} `json:"network,omitempty"`
+	}{
+		Node:        vm.Node,
+		ProjectName: vm.ProjectName,
+	}
+
+	// Handle network serialization
+	serializable.Network.Name = vm.Network.Name
+	serializable.Network.Description = vm.Network.Description
+	serializable.Network.Nodes = vm.Network.Nodes
+	// Convert IPRange - only if not zero value
+	if !vm.Network.IPRange.Nil() {
+		serializable.Network.IPRange = vm.Network.IPRange.String()
+	}
+	serializable.Network.AddWGAccess = vm.Network.AddWGAccess
+	serializable.Network.SolutionType = vm.Network.SolutionType
+	serializable.Network.AccessWGConfig = vm.Network.AccessWGConfig
+	serializable.Network.PublicNodeID = vm.Network.PublicNodeID
+
+	// Convert ExternalIP
+	if vm.Network.ExternalIP != nil {
+		extIPStr := vm.Network.ExternalIP.String()
+		serializable.Network.ExternalIP = &extIPStr
+	}
+
+	// Convert ExternalSK - only if not zero
+	if vm.Network.ExternalSK != (wgtypes.Key{}) {
+		serializable.Network.ExternalSK = base64.StdEncoding.EncodeToString(vm.Network.ExternalSK[:])
+	}
+
+	// Convert maps with uint32 keys to string keys (only if not empty)
+	if len(vm.Network.MyceliumKeys) > 0 {
+		serializable.Network.MyceliumKeys = make(map[string]string, len(vm.Network.MyceliumKeys))
+		for nodeID, myceliumKey := range vm.Network.MyceliumKeys {
+			serializable.Network.MyceliumKeys[fmt.Sprintf("%d", nodeID)] = base64.StdEncoding.EncodeToString(myceliumKey)
+		}
+	}
+
+	if len(vm.Network.NodesIPRange) > 0 {
+		serializable.Network.NodesIPRange = make(map[string]string, len(vm.Network.NodesIPRange))
+		for nodeID, ipRange := range vm.Network.NodesIPRange {
+			if !ipRange.Nil() {
+				serializable.Network.NodesIPRange[fmt.Sprintf("%d", nodeID)] = ipRange.String()
+			}
+		}
+	}
+
+	if len(vm.Network.NodeDeploymentID) > 0 {
+		serializable.Network.NodeDeploymentID = make(map[string]uint64, len(vm.Network.NodeDeploymentID))
+		for nodeID, deploymentID := range vm.Network.NodeDeploymentID {
+			serializable.Network.NodeDeploymentID[fmt.Sprintf("%d", nodeID)] = deploymentID
+		}
+	}
+
+	if len(vm.Network.WGPort) > 0 {
+		serializable.Network.WGPort = make(map[string]int, len(vm.Network.WGPort))
+		for nodeID, port := range vm.Network.WGPort {
+			serializable.Network.WGPort[fmt.Sprintf("%d", nodeID)] = port
+		}
+	}
+
+	if len(vm.Network.Keys) > 0 {
+		serializable.Network.Keys = make(map[string]string, len(vm.Network.Keys))
+		for nodeID, key := range vm.Network.Keys {
+			serializable.Network.Keys[fmt.Sprintf("%d", nodeID)] = base64.StdEncoding.EncodeToString(key[:])
+		}
+	}
+
+	return json.Marshal(serializable)
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for VM
+func (vm *VM) UnmarshalJSON(data []byte) error {
+	// First unmarshal into a temporary structure
+	var temp struct {
+		Node        Node   `json:"node"`
+		ProjectName string `json:"project_name,omitempty"`
+		Network     struct {
+			Name             string            `json:"name"`
+			Description      string            `json:"description"`
+			Nodes            []uint32          `json:"nodes"`
+			IPRange          string            `json:"ip_range"`
+			AddWGAccess      bool              `json:"add_wg_access"`
+			MyceliumKeys     map[string]string `json:"mycelium_keys"`
+			SolutionType     string            `json:"solution_type"`
+			AccessWGConfig   string            `json:"access_wg_config"`
+			ExternalIP       *string           `json:"external_ip"`
+			ExternalSK       string            `json:"external_sk"`
+			PublicNodeID     uint32            `json:"public_node_id"`
+			NodesIPRange     map[string]string `json:"nodes_ip_range"`
+			NodeDeploymentID map[string]uint64 `json:"node_deployment_id"`
+			WGPort           map[string]int    `json:"wg_port"`
+			Keys             map[string]string `json:"keys"`
+		} `json:"network"`
+	}
+
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return fmt.Errorf("failed to unmarshal cluster: %w", err)
+	}
+
+	vm.Node = temp.Node
+	vm.ProjectName = temp.ProjectName
+
+	// Initialize network with basic fields
+	vm.Network = workloads.ZNet{
+		Name:             temp.Network.Name,
+		Description:      temp.Network.Description,
+		Nodes:            temp.Network.Nodes,
+		AddWGAccess:      temp.Network.AddWGAccess,
+		SolutionType:     temp.Network.SolutionType,
+		AccessWGConfig:   temp.Network.AccessWGConfig,
+		PublicNodeID:     temp.Network.PublicNodeID,
+		MyceliumKeys:     make(map[uint32][]byte),
+		NodesIPRange:     make(map[uint32]zos.IPNet),
+		NodeDeploymentID: make(map[uint32]uint64),
+		WGPort:           make(map[uint32]int),
+		Keys:             make(map[uint32]wgtypes.Key),
+	}
+
+	// Parse IPRange
+	if temp.Network.IPRange != "" {
+		if ipNet, err := zos.ParseIPNet(temp.Network.IPRange); err != nil {
+			return fmt.Errorf("failed to parse IP range '%s': %w", temp.Network.IPRange, err)
+		} else {
+			vm.Network.IPRange = ipNet
+		}
+	}
+
+	// Parse ExternalIP
+	if temp.Network.ExternalIP != nil {
+		if ipNet, err := zos.ParseIPNet(*temp.Network.ExternalIP); err != nil {
+			return fmt.Errorf("failed to parse external IP '%s': %w", *temp.Network.ExternalIP, err)
+		} else {
+			vm.Network.ExternalIP = &ipNet
+		}
+	}
+
+	// Parse ExternalSK
+	if temp.Network.ExternalSK != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(temp.Network.ExternalSK); err != nil {
+			return fmt.Errorf("failed to decode external SK: %w", err)
+		} else if len(decoded) != 32 {
+			return fmt.Errorf("invalid external SK length: expected 32 bytes, got %d", len(decoded))
+		} else {
+			var key [32]byte
+			copy(key[:], decoded)
+			vm.Network.ExternalSK = wgtypes.Key(key)
+		}
+	}
+
+	// Helper function to convert string node ID to uint32
+	parseNodeID := func(nodeIDStr string) (uint32, error) {
+		nodeID, err := strconv.ParseUint(nodeIDStr, 10, 32)
+		if err != nil {
+			return 0, fmt.Errorf("invalid node ID '%s': %w", nodeIDStr, err)
+		}
+		return uint32(nodeID), nil
+	}
+
+	// Convert MyceliumKeys
+	for nodeIDStr, myceliumKeyStr := range temp.Network.MyceliumKeys {
+		nodeID, err := parseNodeID(nodeIDStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse node ID for mycelium key: %w", err)
+		}
+
+		if decoded, err := base64.StdEncoding.DecodeString(myceliumKeyStr); err != nil {
+			return fmt.Errorf("failed to decode mycelium key for node %d: %w", nodeID, err)
+		} else {
+			vm.Network.MyceliumKeys[nodeID] = decoded
+		}
+	}
+
+	// Convert NodesIPRange
+	for nodeIDStr, ipRangeStr := range temp.Network.NodesIPRange {
+		nodeID, err := parseNodeID(nodeIDStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse node ID for IP range: %w", err)
+		}
+
+		if ipNet, err := zos.ParseIPNet(ipRangeStr); err != nil {
+			return fmt.Errorf("failed to parse IP range '%s' for node %d: %w", ipRangeStr, nodeID, err)
+		} else {
+			vm.Network.NodesIPRange[nodeID] = ipNet
+		}
+	}
+
+	// Convert NodeDeploymentID
+	for nodeIDStr, deploymentID := range temp.Network.NodeDeploymentID {
+		nodeID, err := parseNodeID(nodeIDStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse node ID for deployment ID: %w", err)
+		}
+		vm.Network.NodeDeploymentID[nodeID] = deploymentID
+	}
+
+	// Convert WGPort
+	for nodeIDStr, port := range temp.Network.WGPort {
+		nodeID, err := parseNodeID(nodeIDStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse node ID for WG port: %w", err)
+		}
+		vm.Network.WGPort[nodeID] = port
+	}
+
+	// Convert Keys
+	for nodeIDStr, keyStr := range temp.Network.Keys {
+		nodeID, err := parseNodeID(nodeIDStr)
+		if err != nil {
+			return fmt.Errorf("failed to parse node ID for key: %w", err)
+		}
+
+		if decoded, err := base64.StdEncoding.DecodeString(keyStr); err != nil {
+			return fmt.Errorf("failed to decode key for node %d: %w", nodeID, err)
+		} else if len(decoded) != 32 {
+			return fmt.Errorf("invalid key length for node %d: expected 32 bytes, got %d", nodeID, len(decoded))
+		} else {
+			var key [32]byte
+			copy(key[:], decoded)
+			vm.Network.Keys[nodeID] = wgtypes.Key(key)
+		}
+	}
+
+	return nil
+}
+
 // PrepareVM prepares the VM for deployment by setting project name and network name
 func (v *VM) PrepareVM() error {
 	if v.ProjectName == "" {

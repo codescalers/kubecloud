@@ -581,3 +581,122 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 		Message:    "VM deployment workflow started successfully",
 	})
 }
+
+func (h *Handler) HandleListVMs(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	id := fmt.Sprintf("%v", userID)
+	vms, err := h.db.ListUserVMS(id)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", id).Msg("Failed to list user VMs")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VMs"})
+		return
+	}
+
+	vmList := make([]gin.H, 0, len(vms))
+	for _, vm := range vms {
+		vmResult, err := vm.GetVMResult()
+		if err != nil {
+			log.Error().Err(err).Int("vm_id", vm.ID).Msg("Failed to deserialize VM result")
+			continue
+		}
+
+		vmList = append(vmList, gin.H{
+			"id":           vm.ID,
+			"project_name": vm.ProjectName,
+			"vm":           vmResult,
+			"created_at":   vm.CreatedAt,
+			"updated_at":   vm.UpdatedAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"vms":   vmList,
+		"count": len(vmList),
+	})
+}
+
+func (h *Handler) HandleListVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	vmName := c.Param("name")
+	if vmName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "vm name is required"})
+		return
+	}
+
+	projectName := kubedeployer.GetVMProjectName(config.UserID, vmName)
+	vm, err := h.db.GetVMByName(config.UserID, projectName)
+	if err != nil {
+		log.Error().Err(err).
+			Str("user_id", config.UserID).
+			Str("vm_name", vmName).
+			Msg("Failed to find VM")
+		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
+		return
+	}
+
+	vmResult, err := vm.GetVMResult()
+	if err != nil {
+		log.Error().Err(err).
+			Int("vm_id", vm.ID).
+			Msg("Failed to deserialize VM result")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VM details"})
+		return
+	}
+
+	c.JSON(http.StatusOK, vmResult)
+}
+
+func (h *Handler) HandleDeleteVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	vmName := c.Param("name")
+	if vmName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "vm name is required"})
+		return
+	}
+	projectName := kubedeployer.GetVMProjectName(config.UserID, vmName)
+	vm, err := h.db.GetVMByName(config.UserID, projectName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
+		return
+	}
+	vmResult, err := vm.GetVMResult()
+	if err != nil {
+		log.Error().Err(err).Int("vm_id", vm.ID).Msg("Failed to deserialize VM result")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VM details"})
+		return
+	}
+	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteVM)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		return
+	}
+
+	wf.State = ewf.State{
+		"config":       config,
+		"project_name": projectName,
+		"vm":           vmResult,
+	}
+
+	h.ewfEngine.RunAsync(c, wf)
+
+	c.JSON(http.StatusOK, Response{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
+		Message:    "VM deletion workflow started successfully",
+	})
+}
