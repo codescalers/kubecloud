@@ -8,6 +8,15 @@
       <p class="section-subtitle">Review your cluster configuration before deployment</p>
     </div>
     <div class="review-grid">
+      <div class="review-card cluster-info-card">
+        <h4 class="review-title">Cluster Information</h4>
+        <div class="cluster-info">
+          <div class="cluster-name-display">
+            <div class="cluster-name-label">Cluster Name</div>
+            <div class="cluster-name-value">{{ clusterName }}</div>
+          </div>
+        </div>
+      </div>
       <div class="review-card">
         <h4 class="review-title">Node Assignment</h4>
         <div class="node-assignments">
@@ -60,29 +69,35 @@
 <script setup lang="ts">
 import type { VM } from '../../composables/useDeployCluster';
 import { defineProps, defineEmits } from 'vue';
-const props = defineProps<{
+defineProps<{
   allVMs: VM[];
   getNodeInfo: (id: number) => string;
   deploying: boolean;
   nodeResourceErrors: Record<number, string[]>;
   getSshKeyName: (id: number) => string;
+  clusterName: string;
 }>();
 const emit = defineEmits(['onDeployCluster', 'prevStep']);
 </script>
 <style scoped>
 .section-header {
   margin-bottom: 2rem;
+  text-align: center;
 }
+
 .section-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 600;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
+
 .section-subtitle {
   color: var(--color-text-muted, #7c7fa5);
-  font-size: 1rem;
+  font-size: 1.1rem;
   margin-top: 0.25rem;
 }
 .review-grid {
@@ -90,19 +105,62 @@ const emit = defineEmits(['onDeployCluster', 'prevStep']);
   gap: 2rem;
   flex-wrap: wrap;
 }
-.review-card {
+
+.review-card,
+.cluster-info-card {
   background: var(--color-surface-1, #18192b);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.cluster-info-card {
+  flex: 1 1 100%;
+  min-width: 100%;
+}
+
+.review-card {
   flex: 1 1 320px;
   min-width: 320px;
 }
 .review-title {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: var(--color-text, #cfd2fa);
+  text-align: center;
+}
+.cluster-info {
+  padding: 1.5rem;
+}
+
+.cluster-name-display {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.cluster-name-label {
   font-weight: 500;
-  margin-bottom: 1rem;
+  color: var(--color-text-muted, #7c7fa5);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cluster-name-value {
+  background: var(--color-surface-2, #23243a);
+  border: 1px solid var(--color-surface-3, #334155);
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 1rem;
+  color: var(--color-text, #cfd2fa);
+  width: 100%;
+  text-align: left;
+  font-weight: 400;
 }
 .node-assignments {
   display: flex;
@@ -117,16 +175,22 @@ const emit = defineEmits(['onDeployCluster', 'prevStep']);
   border-bottom: 1px solid var(--color-surface-2, #23243a);
 }
 .assignment-icon {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-primary, #6366f1);
+  flex-shrink: 0;
 }
+
 .assignment-icon.worker {
   background: var(--color-success, #22d3ee);
+}
+
+.assignment-icon .v-icon {
+  font-size: 20px !important;
 }
 .assignment-details {
   display: flex;
@@ -154,8 +218,8 @@ const emit = defineEmits(['onDeployCluster', 'prevStep']);
 }
 .step-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 3rem;
 }
 </style>

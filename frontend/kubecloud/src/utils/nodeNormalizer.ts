@@ -7,6 +7,8 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     nodeId: node.nodeId,
     cpu: node.total_resources?.cru ?? 0,
     ram: node.total_resources?.mru ? Math.round(node.total_resources.mru / (1024 * 1024 * 1024)) : 0,
+    available_ram: getAvailableRAM(node),
+    available_storage: getAvailableStorage(node),
     storage: node.total_resources?.sru ? Math.round(node.total_resources.sru / (1024 * 1024 * 1024)) : 0,
     price_usd: typeof node.price_usd === 'number' ? node.price_usd : null,
     gpu: (node.num_gpu && node.num_gpu > 0) || (node.gpus && node.gpus.length > 0),
@@ -18,8 +20,8 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     rentable: node.rentable,
     rented: node.rented,
     dedicated: node.dedicated,
+    extraFee: node.extraFee,
     certificationType: node.certificationType,
-		extraFee: node.extraFee,
   };
 }
 
@@ -57,7 +59,7 @@ export function getUsedCPU(node: RentedNode): number {
 }
 export function getAvailableCPU(node: RentedNode): number {
   if (!node) return 0;
-  return Math.max(getTotalCPU(node) - getUsedCPU(node), 0);
+  return getTotalCPU(node);
 }
 export function getTotalRAM(node: RentedNode): number {
   return getResourceValue(node, 'mru', false);

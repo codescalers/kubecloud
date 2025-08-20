@@ -4,6 +4,7 @@
     <v-main class="app-main">
       <RouterView />
     </v-main>
+    
     <AppFooter v-if="!isAuthPage" />
     <NotificationToast />
   </v-app>
@@ -14,6 +15,7 @@ import { RouterView, useRoute } from 'vue-router'
 import { computed, onMounted, onErrorCaptured } from 'vue'
 import { useUserStore } from './stores/user'
 import { useNotificationStore } from './stores/notifications'
+import { useMaintenanceStore } from './stores/maintenance'
 import NavBar from './components/NavBar.vue'
 import AppFooter from './components/AppFooter.vue'
 import NotificationToast from './components/NotificationToast.vue'
@@ -21,6 +23,7 @@ import { useDeploymentEvents } from "./composables/useDeploymentEvents"
 const route = useRoute()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
+const maintenanceStore = useMaintenanceStore()
 
 // Global error handling
 onErrorCaptured((error: Error) => {
@@ -45,10 +48,15 @@ const isAuthPage = computed(() => {
 
 onMounted(async () => {
   try {
+    // Check maintenance status first
+    await maintenanceStore.checkMaintenanceStatus()
+    if (maintenanceStore.isMaintenanceMode) {
+      return
+    }
     await userStore.initializeAuth()
     useDeploymentEvents()
   } catch (error) {
-    console.error('Failed to initialize authentication:', error)
+    console.error('Failed to initialize application:', error)
   }
 
   // Global error handlers for unhandled errors

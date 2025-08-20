@@ -90,11 +90,6 @@ const statsData = computed(() => [
     value: `$${props.totalSpent}`,
     label: 'Total Spent'
   },
-  {
-    icon: 'mdi-key',
-    value: props.sshKeys.length,
-    label: 'SSH Keys'
-  }
 ])
 
 // Quick actions data
@@ -121,11 +116,11 @@ const quickActions = [
     handler: () => emit('navigate', 'ssh')
   },
   {
-    label: 'Add Payment',
+    label: 'Add Funds',
     icon: 'mdi-credit-card-plus',
     color: 'secondary',
     variant: 'outlined' as const,
-    handler: () => emit('navigate', 'payment')
+    handler: () => emit('navigate', 'add-funds')
   },
 ]
 const emit = defineEmits(['navigate'])

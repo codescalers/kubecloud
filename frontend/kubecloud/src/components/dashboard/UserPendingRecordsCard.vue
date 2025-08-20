@@ -3,8 +3,8 @@
     <div class="dashboard-card-header">
       <div class="dashboard-card-title-section">
         <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Pending Records</h3>
-          <p class="dashboard-card-subtitle">View your pending transfer records</p>
+          <h3 class="dashboard-card-title">Payments</h3>
+          <p class="dashboard-card-subtitle">View your payment records</p>
         </div>
       </div>
     </div>
@@ -26,12 +26,8 @@ onMounted(async () => {
     pendingRecords.value = response || []
     loading.value = false
   } catch (error) {
-    console.error('Failed to load user pending records:', error)
+    console.error('Failed to load user payments:', error)
     loading.value = false
   }
 })
 </script>
-
-<style scoped>
-/* Card styling is inherited from global styles */
-</style>

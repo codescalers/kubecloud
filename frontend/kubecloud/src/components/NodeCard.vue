@@ -65,7 +65,8 @@ function handleAction() {
 
 const baseNodePrice = computed(() => {
   const base = Number(props.node.price_usd ?? 0);
-  const extra = Number(props.node.extraFee ?? 0);
+  // Divide extra fee by 1000 as it's in musd
+  const extra = Number(props.node.extraFee ?? 0) / 1000;
   const price = base + extra;
   return isNaN(price) ? null : price;
 });

@@ -146,6 +146,85 @@
                 }
             }
         },
+        "/system/maintenance/status": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Gets maintenance mode for the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get maintenance mode",
+                "operationId": "get-maintenance-mode",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Sets maintenance mode for the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Set maintenance mode",
+                "operationId": "set-maintenance-mode",
+                "parameters": [
+                    {
+                        "description": "Maintenance Mode Status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.MaintenanceModeStatus"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user": {
             "get": {
                 "description": "Retrieves all data of the user",
@@ -1148,6 +1227,81 @@
                 }
             }
         },
+        "/users/mail": {
+            "post": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Send mail to all users",
+                "operationId": "admin-mail-all-users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email subject",
+                        "name": "subject",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Email body content",
+                        "name": "body",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Email attachments (multiple files allowed)",
+                        "name": "attachments",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email sending results with delivery statistics",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.SendMailResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/{user_id}": {
             "delete": {
                 "security": [
@@ -1617,6 +1771,14 @@
                 }
             }
         },
+        "app.MaintenanceModeStatus": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "app.PendingRecordsResponse": {
             "type": "object",
             "properties": {
@@ -1758,6 +1920,26 @@
                 },
                 "public_key": {
                     "type": "string"
+                }
+            }
+        },
+        "app.SendMailResponse": {
+            "type": "object",
+            "properties": {
+                "failed_emails": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "failed_emails_count": {
+                    "type": "integer"
+                },
+                "successful_emails": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
                 }
             }
         },

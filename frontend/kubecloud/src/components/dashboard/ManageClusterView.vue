@@ -11,6 +11,12 @@
         </div>
         <div v-else-if="cluster" class="manage-header mb-6">
           <div class="manage-header-content">
+            <div class="header-top mb-3">
+              <v-btn variant="text" color="primary" @click="goBack" class="back-button">
+                <v-icon icon="mdi-arrow-left" class="mr-2"></v-icon>
+                Back to Dashboard
+              </v-btn>
+            </div>
             <h1 class="manage-title">{{ cluster?.cluster?.name || '-' }}</h1>
             <p class="manage-subtitle">Manage your Kubernetes cluster configuration and resources</p>
           </div>
@@ -127,17 +133,13 @@
 
     <!-- Edit Cluster Nodes Modal -->
     <component :is="EditClusterNodesDialog"
+      :key="editClusterNodesDialog ? 'open' : 'closed'"
       v-model="editClusterNodesDialog"
       :cluster="cluster"
       :nodes="filteredNodes"
       :loading="nodesLoading"
       :available-nodes="availableNodes"
-      :add-form-error="addFormError"
-      :add-form-node="addFormNode"
-      :can-assign-to-node="canAssignToNode"
-      :add-node-loading="addNodeLoading"
-      :available-ssh-keys="sshKeys"
-      @add-node="addNode"
+      :on-add-node="addNode"
       @remove-node="handleRemoveNode"
     />
   </div>
@@ -147,11 +149,12 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
-import { api } from '../../utils/api'
 import { useNodeManagement, type RentedNode } from '../../composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
+import { useKubeconfig } from '../../composables/useKubeconfig'
+import { api } from '../../utils/api'
 
-import { getAvailableCPU, getAvailableRAM, getAvailableStorage } from '../../utils/nodeNormalizer'
+import { getAvailableRAM, getAvailableStorage } from '../../utils/nodeNormalizer'
 
 import { formatDate } from '../../utils/dateUtils'
 
@@ -200,13 +203,19 @@ const kubeconfigContent = ref('')
 const kubeconfigLoading = ref(false)
 const kubeconfigError = ref('')
 
+const { downloadFile } = useKubeconfig()
+
 async function showKubeconfig() {
   kubeconfigLoading.value = true
   kubeconfigError.value = ''
   kubeconfigContent.value = ''
   try {
-    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, { requiresAuth: true, showNotifications: false })
-    const data = response.data as { kubeconfig?: string }
+    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, { 
+      requiresAuth: true, 
+      showNotifications: false,
+      timeout: 120000
+    })
+    const data = response.data as any
     kubeconfigContent.value = data.kubeconfig || ''
   } catch (err: any) {
     kubeconfigError.value = err?.message || 'Failed to fetch kubeconfig'
@@ -230,17 +239,7 @@ function copyKubeconfig() {
 
 function downloadKubeconfigFile() {
   if (!kubeconfigContent.value) return
-  const blob = new Blob([kubeconfigContent.value], { type: 'application/x-yaml' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${projectName.value}-kubeconfig.yaml`
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => {
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }, 100)
+  downloadFile(kubeconfigContent.value, `${projectName.value}-kubeconfig.yaml`)
 }
 
 const showDeleteModal = ref(false)
@@ -253,11 +252,10 @@ async function confirmDelete() {
   if (cluster.value) {
     try {
       await clusterStore.deleteCluster(cluster.value.cluster.name)
-      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.');
+      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.')
       goBack()
     } catch (e: any) {
-      const errorMessage = e?.message || 'Failed to delete cluster';
-      notificationStore.error('Delete Cluster Failed', errorMessage);
+      notificationStore.error('Delete Cluster Failed', e?.message || 'Failed to delete cluster')
     }
   }
   deletingCluster.value = false
@@ -287,35 +285,17 @@ const loadCluster = async () => {
 onMounted(loadCluster)
 watch(() => projectName.value, loadCluster)
 
-// Watch for cluster updates and refresh data when needed
-watch(() => clusterStore.clusters, (newClusters) => {
-  // Update editNodes if dialog is open
-  if (editClusterNodesDialog.value && cluster.value) {
-    const updatedCluster = newClusters.find(c => c.project_name === cluster.value?.project_name)
-    if (updatedCluster?.cluster?.nodes && Array.isArray(updatedCluster.cluster.nodes)) {
-      editNodes.value = updatedCluster.cluster.nodes.map((n: any) => ({ ...n }))
-    }
-  }
-}, { deep: true })
-
 const goBack = () => {
   router.push('/dashboard')
 }
 
 const editClusterNodesDialog = ref(false)
 
-// Dummy state for masters/workers (replace with real cluster data)
-const editNodes = ref<any[]>([])
-
 async function openEditClusterNodesDialog() {
-  const nodesRaw = cluster.value?.cluster?.nodes;
-  const nodes = Array.isArray(nodesRaw) ? nodesRaw : [];
-  editNodes.value = nodes.map(n => ({ ...n }));
   editClusterNodesDialog.value = true;
   await fetchRentedNodes();
 }
 
-const addNodeLoading = ref(false)
 const availableNodes = computed<RentedNode[]>(() => {
   return rentedNodes.value.filter((node: RentedNode) => {
     const availRAM = getAvailableRAM(node);
@@ -329,71 +309,15 @@ const { rentedNodes, loading: nodesLoading, fetchRentedNodes, addNodeToDeploymen
 // Notification store
 const notificationStore = useNotificationStore()
 
-// SSH keys state
-const sshKeys = ref<any[]>([])
-const addFormNodeId = ref(null);
-const addFormRole = ref('master');
-const addFormCpu = ref(1);
-const addFormRam = ref(1);
-const addFormStorage = ref(1);
-const addFormError = ref('');
-
-const addFormNode = computed<RentedNode | undefined>(() => availableNodes.value.find((n: RentedNode) => n.nodeId === addFormNodeId.value));
-
-const canAssignToNode = computed(() => {
-  const node = addFormNode.value;
-  if (!node) return false;
-  return (
-    addFormCpu.value > 0 &&
-    addFormRam.value > 0 &&
-    addFormStorage.value > 0 &&
-    addFormCpu.value <= getAvailableCPU(node) &&
-    addFormRam.value <= getAvailableRAM(node) &&
-    addFormStorage.value <= getAvailableStorage(node)
-  );
-});
-
-watch([addFormNodeId, addFormCpu, addFormRam, addFormStorage], () => {
-  const node = addFormNode.value;
-  if (!node) {
-    addFormError.value = '';
-    return;
-  }
-  if (
-    addFormCpu.value > getAvailableCPU(node) ||
-    addFormRam.value > getAvailableRAM(node) ||
-    addFormStorage.value > getAvailableStorage(node)
-  ) {
-    addFormError.value = 'Requested resources exceed available for the selected node.';
-  } else {
-    addFormError.value = '';
-  }
-});
-
 async function addNode(payload: any) {
-  // Accepts a cluster payload with a nodes array
   if (!payload || !payload.name || !Array.isArray(payload.nodes) || payload.nodes.length === 0) {
-    addFormError.value = 'Invalid node payload.';
     notificationStore.error('Add Node Error', 'Invalid node payload.');
-    return;
   }
-  addNodeLoading.value = true;
-  addFormError.value = '';
   try {
     await addNodeToDeployment(payload.name, payload);
-
-    // Reset add form state
-    addFormNodeId.value = null;
-    addFormRole.value = 'master';
-    addFormCpu.value = 1;
-    addFormRam.value = 1;
-    addFormStorage.value = 1;
+    notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.');
   } catch (e: any) {
-    const errorMessage = e?.message || 'Failed to add node';
-    addFormError.value = errorMessage;
-    notificationStore.error('Add Node Failed', errorMessage);
-  } finally {
-    addNodeLoading.value = false;
+    console.error(e);
   }
 }
 
@@ -505,6 +429,16 @@ async function handleRemoveNode(nodeName: string) {
   color: var(--color-text-muted);
   text-align: center;
   margin: 2rem 0;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+}
+.back-button {
+  padding: 0;
+  font-size: 0.9rem;
+  text-transform: none;
+  letter-spacing: normal;
 }
 @media (max-width: 900px) {
   .cluster-info-grid {

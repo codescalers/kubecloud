@@ -35,70 +35,16 @@
               </div>
             </div>
           </div>
-          <v-select
+          <NodeSelect
             v-model="vm.node"
-            :items="availableNodes"
-            :item-title="nodeLabel"
-            item-value="nodeId"
+            :items="getAvailableNodesForVM(index)"
             label="Select Reserved Node"
             clearable
             class="node-select"
+            :get-node-resources="getNodeAvailableResources"
+            :cpu-label="'vCPU'"
             @update:modelValue="val => props.onAssignNode(index, val)"
-          >
-            <template #item="{ item, index, props: itemProps }">
-              <div>
-                <div v-bind="itemProps" class="node-option-row">
-                  <div class="node-id">Node {{ item.raw.nodeId }}</div>
-                  <div class="chip-row">
-                    <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
-                      {{ item.raw.cpu }} vCPU
-                    </v-chip>
-                    <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      <v-icon size="14" class="mr-1">mdi-memory</v-icon>
-                      {{ item.raw.ram }} GB RAM
-                    </v-chip>
-                    <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                      {{ item.raw.storage }} GB Disk
-                    </v-chip>
-                    <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
-                      GPU
-                    </v-chip>
-                    <v-chip color="secondary" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                      {{ item.raw.country }}
-                    </v-chip>
-                  </div>
-                </div>
-                <v-divider v-if="index < availableNodes.length - 1" />
-              </div>
-            </template>
-            <template #selection="{ item }">
-              <div class="node-id">Node {{ item.raw.nodeId }}</div>
-              <div class="chip-row">
-                <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
-                  {{ item.raw.cpu }} vCPU
-                </v-chip>
-                <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-memory</v-icon>
-                  {{ item.raw.ram }} GB RAM
-                </v-chip>
-                <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                  {{ item.raw.storage }} GB Disk
-                </v-chip>
-                <v-chip v-if="item.raw.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
-                  GPU
-                </v-chip>
-                <v-chip color="secondary" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  {{ item.raw.country }}
-                </v-chip>
-              </div>
-            </template>
-          </v-select>
+          />
         </div>
       </v-col>
     </v-row>
@@ -115,40 +61,62 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits } from 'vue';
+import type { NormalizedNode } from '@/types/normalizedNode';
+import { type VM } from '../../composables/useDeployCluster';
+import { defineProps, withDefaults, defineEmits, onMounted, computed } from 'vue';
+import NodeSelect from '@/components/ui/NodeSelect.vue';
 const props = withDefaults(defineProps<{
   allVMs: VM[];
-  availableNodes: {
-    nodeId: number;
-    cpu: number;
-    ram: number;
-    storage: number;
-    price_usd: number | null;
-    gpu: boolean;
-    locationString: string;
-    country: string;
-    city: string;
-    status: string;
-    healthy: boolean;
-    rentable: boolean;
-    rented: boolean;
-    dedicated: boolean;
-    certificationType: string;
-    [key: string]: any;
-  }[];
+  availableNodes: NormalizedNode[];
   getNodeInfo: (id: number) => string;
-  onAssignNode: (vmIdx: number, nodeId: number) => void;
+  onAssignNode: (vmIdx: number, nodeId: number | null) => void;
   isStep2Valid?: boolean;
 }>(), {
   isStep2Valid: false
 });
 const emit = defineEmits(['nextStep', 'prevStep']);
 
-function nodeLabel(node: any) {
-  if (!node) return '';
-  return `Node ${node.nodeId}`;
-}
+const currentAllocations = computed(() =>
+  props.allVMs.reduce((acc, vm) => {
+    if (vm.node != null) {
+      acc[vm.node] = {
+        ram: (acc[vm.node]?.ram || 0) + vm.ram,
+        storage: (acc[vm.node]?.storage || 0) + (vm.disk || 0) + vm.rootfs
+      };
+    }
+    return acc;
+  }, {} as Record<number, { ram: number; storage: number }>)
+);
+
+const getAvailableNodesForVM = (vmIndex: number) => {
+  const vm = props.allVMs[vmIndex];
+  if (!vm) return [];
+  return props.availableNodes.filter(node => {
+    const used = currentAllocations.value[node.nodeId] || { ram: 0, storage: 0 };
+    const availableRam = (node.available_ram || 0) - used.ram + (vm.node === node.nodeId ? vm.ram : 0);
+    const availableStorage = (node.available_storage || 0) - used.storage + (vm.node === node.nodeId ? (vm.disk || 0) + vm.rootfs : 0);
+    return (node.cpu || 0) >= vm.vcpu && availableRam >= vm.ram && availableStorage >= (vm.disk || 0) + vm.rootfs;
+  });
+};
+
+
+const getNodeAvailableResources = (node: NormalizedNode) => ({
+  cpu: node.cpu || 0,
+  ram: Math.max(0, (node.available_ram || 0) - (currentAllocations.value[node.nodeId]?.ram || 0)),
+  storage: Math.max(0, (node.available_storage || 0) - (currentAllocations.value[node.nodeId]?.storage || 0))
+});
+// Validate existing VM assignments on mount and clear invalid ones
+onMounted(() => {
+  props.allVMs.forEach((vm, vmIndex) => {
+    if (vm.node != null) {
+      const availableNodes = getAvailableNodesForVM(vmIndex);
+      const assignedNode = availableNodes.find(node => node.nodeId === vm.node);
+      if (!assignedNode) {
+        props.onAssignNode(vmIndex, null);
+      }
+    }
+  });
+});
 </script>
 <style scoped>
 .section-header {
@@ -219,20 +187,6 @@ function nodeLabel(node: any) {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
-}
-.node-option-row {
-  margin: .5rem;
-  cursor: pointer;
-}
-.node-id {
-  font-weight: 600;
-  margin-bottom: 2px;
-  margin-right: 1rem;
-}
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 .nodes-empty {
   display: flex;

@@ -47,17 +47,30 @@
             </v-list>
           </v-menu>
         </div>
-        <!-- Show sign in button when not logged in -->
-        <router-link v-else :to="'/sign-in'" custom v-slot="{ navigate, isActive }">
-          <v-btn
-            variant="outlined"
-            color="white"
-            @click="navigate"
-            :class="{ 'active-link': isActive }"
-          >
-            Sign In
-          </v-btn>
-        </router-link>
+        <!-- Show sign in and sign up buttons when not logged in -->
+        <div v-else>
+          <router-link :to="'/sign-in'" custom v-slot="{ navigate, isActive }">
+            <v-btn
+              variant="outlined"
+              color="white"
+              @click="navigate"
+              :class="{ 'active-link': isActive }"
+            >
+              Sign In
+            </v-btn>
+          </router-link>
+          <router-link :to="'/sign-up'" custom v-slot="{ navigate, isActive }">
+            <v-btn
+              variant="outlined"
+              color="white"
+              class="ml-2"
+              @click="navigate"
+              :class="{ 'active-link': isActive }"
+            >
+              Sign Up
+            </v-btn>
+          </router-link>
+        </div>
       </div>
     </div>
   </nav>

@@ -54,8 +54,8 @@ const navigationItems = [
     icon: 'mdi-key'
   },
   {
-    key: 'payment',
-    title: 'Payment',
+    key: 'add-funds',
+    title: 'Add Funds',
     icon: 'mdi-credit-card'
   },
   {
@@ -64,8 +64,8 @@ const navigationItems = [
     icon: 'mdi-receipt'
   },
   {
-    key: 'pending-records',
-    title: 'Pending Records',
+    key: 'payments',
+    title: 'Payments',
     icon: 'mdi-clock-outline'
   },
   {

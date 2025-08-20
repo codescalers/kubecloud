@@ -11,27 +11,28 @@ import (
 
 // Configuration struct holds all configs for the app
 type Configuration struct {
-	Server                        Server             `json:"server" validate:"required,dive"`
-	Database                      DB                 `json:"database" validate:"required"`
-	JwtToken                      JwtToken           `json:"jwt_token" validate:"required"`
-	Admins                        []string           `json:"admins" validate:"required"`
-	MailSender                    MailSender         `json:"mailSender"`
-	Currency                      string             `json:"currency" validate:"required"`
-	StripeSecret                  string             `json:"stripe_secret" validate:"required"`
-	VoucherNameLength             int                `json:"voucher_name_length"  validate:"required,gt=0"`
-	GridProxyURL                  string             `json:"gridproxy_url" validate:"required"`
-	TFChainURL                    string             `json:"tfchain_url" validate:"required"`
-	TermsANDConditions            TermsANDConditions `json:"terms_and_conditions"`
-	ActivationServiceURL          string             `json:"activation_service_url" validate:"required"`
-	GraphqlURL                    string             `json:"graphql_url" validate:"required"`
-	FiresquidURL                  string             `json:"firesquid_url" validate:"required"`
-	SystemAccount                 GridAccount        `json:"system_account"`
-	Redis                         Redis              `json:"redis" validate:"required,dive"`
-	DeployerWorkersNum            int                `json:"deployer_workers_num" default:"1"`
-	Invoice                       InvoiceCompanyData `json:"invoice"`
-	SSH                           SSHConfig          `json:"ssh" validate:"required,dive"`
-	Debug                         bool               `json:"debug"`
-	MonitorBalanceIntervalInHours int                `json:"monitor_balance_interval_in_hours" validate:"required,gt=0"`
+	Server                               Server             `json:"server" validate:"required,dive"`
+	Database                             DB                 `json:"database" validate:"required"`
+	JwtToken                             JwtToken           `json:"jwt_token" validate:"required"`
+	Admins                               []string           `json:"admins" validate:"required"`
+	MailSender                           MailSender         `json:"mailSender"`
+	Currency                             string             `json:"currency" validate:"required"`
+	StripeSecret                         string             `json:"stripe_secret" validate:"required"`
+	VoucherNameLength                    int                `json:"voucher_name_length"  validate:"required,gt=0"`
+	GridProxyURL                         string             `json:"gridproxy_url" validate:"required"`
+	TFChainURL                           string             `json:"tfchain_url" validate:"required"`
+	TermsANDConditions                   TermsANDConditions `json:"terms_and_conditions"`
+	ActivationServiceURL                 string             `json:"activation_service_url" validate:"required"`
+	GraphqlURL                           string             `json:"graphql_url" validate:"required"`
+	FiresquidURL                         string             `json:"firesquid_url" validate:"required"`
+	SystemAccount                        GridAccount        `json:"system_account"`
+	Redis                                Redis              `json:"redis" validate:"required,dive"`
+	DeployerWorkersNum                   int                `json:"deployer_workers_num" default:"1"`
+	Invoice                              InvoiceCompanyData `json:"invoice"`
+	SSH                                  SSHConfig          `json:"ssh" validate:"required,dive"`
+	Debug                                bool               `json:"debug"`
+	MonitorBalanceIntervalInMinutes      int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
+	NotifyAdminsForPendingRecordsInHours int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
 
 	// KYC Verifier config
 	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`
@@ -45,7 +46,7 @@ type SSHConfig struct {
 
 // Server struct holds server's information
 type Server struct {
-	Host string `json:"host" validate:"required,hostname|ip"`
+	Host string `json:"host" validate:"required,hostname|ip|url"`
 	Port string `json:"port" validate:"required,numeric"`
 }
 
@@ -63,9 +64,11 @@ type JwtToken struct {
 
 // MailSender struct to hold sender's email, password
 type MailSender struct {
-	Email       string `json:"email" validate:"required,email"`
-	SendGridKey string `json:"sendgrid_key" validate:"required"`
-	Timeout     int    `json:"timeout" validate:"min=30"`
+	Email               string `json:"email" validate:"required,email"`
+	SendGridKey         string `json:"sendgrid_key" validate:"required"`
+	Timeout             int    `json:"timeout" validate:"min=30"`
+	MaxConcurrentSends  int    `json:"max_concurrent_sends" validate:"min=1"`
+	MaxAttachmentSizeMB int64  `json:"max_attachment_size_mb" validate:"min=1"`
 }
 
 // TermsANDConditions holds required data for accepting terms and conditions

@@ -3,8 +3,8 @@
     <div class="dashboard-card-header">
       <div class="dashboard-card-title-section">
         <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Pending Records</h3>
-          <p class="dashboard-card-subtitle">View users pending transfer records</p>
+          <h3 class="dashboard-card-title">Payments</h3>
+          <p class="dashboard-card-subtitle">View user payment records</p>
         </div>
       </div>
     </div>
@@ -20,8 +20,8 @@
 import { ref, onMounted } from 'vue'
 import { type PendingRecord } from '../../utils/userService'
 import PendingRecordsTable from './PendingRecordsTable.vue'
-import { useNotificationStore } from '@/stores/notifications'
-import { adminService } from '@/utils/adminService'
+import { useNotificationStore } from '../../stores/notifications'
+import { adminService } from '../../utils/adminService'
 
 const pendingRecords = ref<PendingRecord[]>([])
 const notificationStore = useNotificationStore()
@@ -38,8 +38,8 @@ async function loadPendingRecords() {
     const response = await adminService.listPendingRecords()
     pendingRecords.value = response || []
   } catch (error) {
-    console.error('Failed to load pending records:', error)
-    notificationStore.error('Error', 'Failed to load pending records')
+    console.error('Failed to load payments:', error)
+    notificationStore.error('Error', 'Failed to load payments')
   } finally {
     loading.value = false
   }

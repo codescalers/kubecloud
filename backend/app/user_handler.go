@@ -651,6 +651,8 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"payment_method_id":  paymentMethod.ID,
 		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
 		"mnemonic":           user.Mnemonic,
+		"username":           user.Username,
+		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
@@ -823,9 +825,11 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 	wf.State = map[string]interface{}{
-		"user_id":  user.ID,
-		"amount":   internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic": user.Mnemonic,
+		"user_id":       user.ID,
+		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
+		"mnemonic":      user.Mnemonic,
+		"username":      user.Username,
+		"transfer_mode": models.RedeemVoucherMode,
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 

@@ -3,6 +3,7 @@ package activities
 const (
 	// Workflow names
 	WorkflowChargeBalance    = "charge-balance"
+  WorkflowAdminCreditBalance = "admin-credit-balance"
 	WorkflowUserRegistration = "user-registration"
 	WorkflowUserVerification = "user-verification"
 	WorkflowRedeemVoucher    = "redeem-voucher"

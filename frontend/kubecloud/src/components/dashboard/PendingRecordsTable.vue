@@ -1,7 +1,7 @@
 <template>
   <div class="records-table-container">
     <v-data-table :loading="loading" :headers="headers" :items="pendingRecords" class="records-table"
-      :items-per-page="5" :no-data-text="'No pending records found'" density="comfortable">
+      :items-per-page="5" :no-data-text="'No payments found'" density="comfortable">
       <template v-if="showUserID" v-slot:[`item.user_id`]="{ item }">
         <span>{{ item.user_id }}</span>
       </template>
@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import { type PendingRecord } from '../../utils/userService'
-import { formatDate } from '../../utils/uiUtils.ts'
+import { formatDate } from '../../utils/uiUtils'
 
 const props = defineProps({
   pendingRecords: {

@@ -43,12 +43,6 @@ const docs = [
     link: '#'
   },
   {
-    icon: 'mdi-console',
-    title: 'CLI Guide',
-    description: 'Command-line interface documentation for advanced users and automation.',
-    link: '#'
-  },
-  {
     icon: 'mdi-help-circle',
     title: 'Platform FAQ',
     description: 'Frequently asked questions and troubleshooting guides.',

@@ -52,8 +52,32 @@
             <td>{{ Array.isArray(cluster.cluster.nodes) ? cluster.cluster.nodes.length : (typeof cluster.cluster.nodes === 'number' ? cluster.cluster.nodes : 0) }}</td>
             <td>{{ formatDate(cluster.created_at) }}</td>
             <td>
-              <v-btn icon size="small" class="mr-1" @click="viewCluster(cluster.cluster.name)"><v-icon icon="mdi-eye-outline" /></v-btn>
-              <v-btn icon size="small" class="ml-1" color="error" @click="deleteCluster(cluster.cluster.name)"><v-icon icon="mdi-delete-outline" /></v-btn>
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)">
+                    <v-icon icon="mdi-cog" />
+                  </v-btn>
+                </template>
+                <span>Edit cluster</span>
+              </v-tooltip>
+              
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name">
+                    <v-icon icon="mdi-download" />
+                  </v-btn>
+                </template>
+                <span>Download kubeconfig file</span>
+              </v-tooltip>
+              
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <v-btn icon size="small" class="ml-1" color="error" v-bind="props" @click="deleteCluster(cluster.cluster.name)">
+                    <v-icon icon="mdi-delete-outline" />
+                  </v-btn>
+                </template>
+                <span>Delete cluster</span>
+              </v-tooltip>
             </td>
           </tr>
         </tbody>
@@ -85,6 +109,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
+import { useKubeconfig } from '../../composables/useKubeconfig'
 
 const router = useRouter()
 const clusterStore = useClusterStore()
@@ -93,6 +118,8 @@ const notificationStore = useNotificationStore()
 const showDeleteModal = ref(false)
 const deleting = ref(false)
 const clusterToDelete = ref<string | null>(null)
+
+const { download, downloading } = useKubeconfig()
 
 const search = ref('')
 const sortBy = ref('createdAt')
@@ -157,12 +184,17 @@ const goToDeployCluster = () => {
 
 async function confirmDelete() {
   if (!clusterToDelete.value) return
+  
   deleting.value = true
-  await clusterStore.deleteCluster(clusterToDelete.value)
-  notificationStore.info('Cluster Removal Started', `Cluster is being removed from the cluster in the background. You will be notified when the operation completes.`);
-  showDeleteModal.value = false
-  deleting.value = false
-  clusterToDelete.value = null
+  try {
+    await clusterStore.deleteCluster(clusterToDelete.value)
+    notificationStore.info('Cluster Removal Started', `Cluster is being removed in the background. You will be notified when the operation completes.`)
+  } catch (error: any) {
+  } finally {
+    showDeleteModal.value = false
+    deleting.value = false
+    clusterToDelete.value = null
+  }
 }
 
 function formatDate(dateStr: string) {

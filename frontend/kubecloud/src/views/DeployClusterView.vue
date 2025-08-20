@@ -42,6 +42,8 @@
               :setSelectedSshKeys="setSelectedSshKeys"
               :isStep1Valid="isStep1Valid"
               :sshKeysLoading="sshKeysLoading"
+              :clusterName="clusterName"
+              :onClusterNameChange="onClusterNameChange"
               @nextStep="nextStep"
               @navigateToSshKeys="navigateToSshKeys"
             />
@@ -63,6 +65,7 @@
               :deploying="deploying"
               :nodeResourceErrors="nodeResourceErrors"
               :getSshKeyName="(id) => getSshKeyName(id, availableSshKeys)"
+              :clusterName="clusterName"
               @onDeployCluster="onDeployCluster"
               @prevStep="prevStep"
             />
@@ -88,9 +91,7 @@ import { useNotificationStore } from '../stores/notifications';
 import { UserService } from '../utils/userService';
 import { useNodeManagement } from '../composables/useNodeManagement';
 import type { NormalizedNode } from '../types/normalizedNode';
-import { generateClusterName, getNodeInfo, getSshKeyName } from '../utils/clusterUtils';
-import { useNodes } from '../composables/useNodes';
-import { useNormalizedNodes } from '../composables/useNormalizedNodes';
+import { validateClusterName, generateClusterName, getNodeInfo, getSshKeyName } from '../utils/clusterUtils';
 import { useRouter } from 'vue-router';
 import { normalizeNode } from '../utils/nodeNormalizer';
 import type { Cluster, ClusterNode } from '../types/cluster';
@@ -105,8 +106,6 @@ const deploying = ref(false);
 
 const allVMs = computed(() => [...masters.value, ...workers.value]);
 
-const { nodes, fetchNodes, loading: nodesLoading } = useNodes();
-const normalizedNodes = useNormalizedNodes(() => nodes.value);
 const { rentedNodes, fetchRentedNodes } = useNodeManagement();
 const availableNodes = ref<NormalizedNode[]>([]);
 
@@ -115,57 +114,39 @@ async function fetchAvailableNodes() {
   availableNodes.value = rentedNodes.value.map(normalizeNode);
 }
 
-// Computed properties for totals
-const totalVcpu = computed(() => {
-  return allVMs.value.reduce((total, vm) => total + vm.vcpu, 0);
-});
-
-const totalRam = computed(() => {
-  return allVMs.value.reduce((total, vm) => total + vm.ram, 0);
-});
-
 const clusterName = ref('');
 const selectedSshKeys = ref<number[]>([]);
-const qsfsConfig = ref('');
 
-// Cluster name generator words
-const adjectives = [
-  'swift', 'bright', 'cosmic', 'quantum', 'stellar', 'azure', 'crimson', 'golden',
-  'silver', 'emerald', 'sapphire', 'crystal', 'thunder', 'lightning', 'storm',
-  'ocean', 'mountain', 'forest', 'desert', 'arctic', 'tropical', 'mystic'
-];
-
-const nouns = [
-  'cluster', 'cloud', 'node', 'server', 'engine', 'core', 'hub', 'nexus',
-  'forge', 'vault', 'tower', 'citadel', 'fortress', 'sanctuary', 'haven',
-  'realm', 'domain', 'sphere', 'matrix', 'grid', 'network', 'system'
-];
+function onClusterNameChange(name: string) {
+  clusterName.value = name;
+}
 
 // --- Step 1 Validation ---
 const isStep1Valid = computed(() => {
   if (masters.value.length === 0) return false;
+  if (!validateClusterName(clusterName.value).isValid) return false;
   // Every node (master/worker) must have at least one SSH key
   return allVMs.value.every(vm => Array.isArray(vm.sshKeyIds) && vm.sshKeyIds.length > 0);
 });
 
 // --- Step 2 Validation ---
-const assignedNodeIds = computed(() => allVMs.value.map((vm: any) => vm.node));
 const allVMsAssigned = computed(() => allVMs.value.length > 0 && allVMs.value.every((vm: any) => vm.node !== null && vm.node !== undefined));
 
 // Resource validation for each node
 const nodeResourceErrors = computed(() => {
   const errors: Record<number, string[]> = {};
-  const nodeUsage: Record<number, {cpu: number, ram: number, disk: number}> = {};
+  const nodeUsage: Record<number, {cpu: number, ram: number, disk: number, rootfs: number}> = {};
   allVMs.value.forEach(vm => {
     if (vm.node != null) {
-      if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0};
-      nodeUsage[vm.node].cpu += vm.vcpu;
+      if (!nodeUsage[vm.node]) nodeUsage[vm.node] = {cpu: 0, ram: 0, disk: 0, rootfs: 0};
+      nodeUsage[vm.node].cpu = Math.max(nodeUsage[vm.node].cpu, vm.vcpu);
       nodeUsage[vm.node].ram += vm.ram;
       nodeUsage[vm.node].disk += vm.disk;
+      nodeUsage[vm.node].disk += vm.rootfs;
     }
   });
   availableNodes.value.forEach(node => {
-    const usage = nodeUsage[node.nodeId] || {cpu: 0, ram: 0, disk: 0};
+    const usage = nodeUsage[node.nodeId] || {cpu: 0, ram: 0, disk: 0, rootfs: 0};
     const cpuOk = usage.cpu <= (node.cpu || 0);
     const ramOk = usage.ram <= (node.ram || 0);
     const diskOk = usage.disk <= (node.storage || 0);
@@ -179,16 +160,8 @@ const nodeResourceErrors = computed(() => {
 });
 const isStep2Valid = computed(() => allVMsAssigned.value && Object.keys(nodeResourceErrors.value).length === 0);
 
-// --- Step 3 Validation ---
-const isStep3Valid = computed(() => isStep2Valid.value && isStep1Valid.value && !!clusterName.value.trim());
-
-
-
 // --- Deploy Logic ---
 const clusterToken = ref('securetoken');
-const clusterNetworkName = ref('');
-const defaultFlist = ref('https://hub.grid.tf/tf-official-apps/threefolddev-k3s-v1.31.0.flist');
-const defaultEntrypoint = ref('/sbin/zinit init');
 
 function generateClusterNameLocal() {
   clusterName.value = generateClusterName();
@@ -198,27 +171,6 @@ function generateClusterNameLocal() {
 function navigateToSshKeys() {
   localStorage.setItem('dashboard-section', 'ssh')
   router.push('/dashboard');
-}
-
-
-
-// Get validation message for form errors
-function getValidationMessage() {
-  const errors = [];
-  if (!clusterName.value) {
-    errors.push('Cluster name is required');
-  }
-  if (selectedSshKeys.value.length === 0) {
-    errors.push('At least one SSH key must be selected');
-  }
-  if (!allVMsAssigned.value) {
-    errors.push('All VMs must be assigned to nodes');
-  }
-  // Add node resource errors
-  Object.entries(nodeResourceErrors.value).forEach(([nodeId, errs]) => {
-    errors.push(`Node ${nodeId}: ${errs.join(', ')}`);
-  });
-  return errors.join('. ');
 }
 
 // --- Navigation ---
@@ -326,32 +278,16 @@ function saveEditNode(updatedNode: VM) {
   closeEditNodeModal();
 }
 
-const editNodeValidation = computed(() => {
-  const node = editNodeModal.value.node;
-  if (!node) return { valid: false };
-  const errors: Record<string, string> = {};
-  if (!node.name || !node.name.trim()) errors.name = 'Name is required.';
-  if (!node.vcpu || node.vcpu <= 0) errors.vcpu = 'vCPU must be a positive number.';
-  if (!node.ram || node.ram <= 0) errors.ram = 'RAM must be a positive number.';
-  if (!node.rootfs || node.rootfs <= 0) errors.rootfs = 'Rootfs size must be positive.';
-  if (!node.disk || node.disk <= 0) errors.disk = 'Disk size must be positive.';
-  if (!node.sshKeyIds || node.sshKeyIds.length === 0) errors.ssh = 'At least one SSH key must be selected.';
-  return { valid: Object.keys(errors).length === 0, errors };
-});
-
 function setSelectedSshKeys(keys: number[]) {
   selectedSshKeys.value = keys;
 }
-function onAssignNode(vmIdx: number, nodeId: number) {
+function onAssignNode(vmIdx: number, nodeId: number | null) {
   if (vmIdx < masters.value.length) {
     masters.value[vmIdx].node = nodeId != null ? nodeId : null;
   } else {
     const workerIdx = vmIdx - masters.value.length;
     workers.value[workerIdx].node = nodeId != null ? nodeId : null;
   }
-}
-function getNodeInfoString(id: string) {
-  return getNodeInfo(Number(id), availableNodes.value);
 }
 </script>
 

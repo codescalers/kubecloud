@@ -142,6 +142,11 @@ definitions:
     - email
     - password
     type: object
+  app.MaintenanceModeStatus:
+    properties:
+      enabled:
+        type: boolean
+    type: object
   app.PendingRecordsResponse:
     properties:
       created_at:
@@ -237,6 +242,19 @@ definitions:
     required:
     - name
     - public_key
+    type: object
+  app.SendMailResponse:
+    properties:
+      failed_emails:
+        items:
+          type: string
+        type: array
+      failed_emails_count:
+        type: integer
+      successful_emails:
+        type: integer
+      total_users:
+        type: integer
     type: object
   app.UnreserveNodeResponse:
     properties:
@@ -489,6 +507,56 @@ paths:
       security:
       - AdminMiddleware: []
       summary: List pending records
+      tags:
+      - admin
+  /system/maintenance/status:
+    get:
+      consumes:
+      - application/json
+      description: Gets maintenance mode for the system
+      operationId: get-maintenance-mode
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Get maintenance mode
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Sets maintenance mode for the system
+      operationId: set-maintenance-mode
+      parameters:
+      - description: Maintenance Mode Status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/app.MaintenanceModeStatus'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Set maintenance mode
       tags:
       - admin
   /user:
@@ -1218,6 +1286,54 @@ paths:
       security:
       - AdminMiddleware: []
       summary: Credit user balance
+      tags:
+      - admin
+  /users/mail:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Allows admin to send a custom email to all users with optional
+        file attachments. Returns detailed statistics about successful and failed
+        email deliveries.
+      operationId: admin-mail-all-users
+      parameters:
+      - description: Email subject
+        in: formData
+        name: subject
+        required: true
+        type: string
+      - description: Email body content
+        in: formData
+        name: body
+        required: true
+        type: string
+      - description: Email attachments (multiple files allowed)
+        in: formData
+        name: attachments
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email sending results with delivery statistics
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.SendMailResponse'
+              type: object
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Send mail to all users
       tags:
       - admin
   /vouchers:

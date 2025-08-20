@@ -314,16 +314,9 @@ func CreatePaymentIntentStep(currency string) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount uint64
-		switch v := amountVal.(type) {
-		case int:
-			amount = uint64(v)
-		case uint64:
-			amount = v
-		case float64:
-			amount = uint64(v)
-		default:
-			return fmt.Errorf("'amount' in state is not a number")
+		amount, ok := amountVal.(uint64)
+		if !ok {
+			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
 		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
@@ -341,14 +334,10 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount uint64
-		switch v := amountVal.(type) {
-		case int:
-			amount = uint64(v)
-		case float64:
-			amount = uint64(v)
-		default:
-			return fmt.Errorf("'amount' in state is not a number")
+
+		amount, ok := amountVal.(uint64)
+		if !ok {
+			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
 		userIDVal, ok := state["user_id"]
@@ -360,6 +349,24 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return fmt.Errorf("'userID' in state is not a int")
 		}
 
+		usernameVal, ok := state["username"]
+		if !ok {
+			return fmt.Errorf("missing 'username' in state")
+		}
+		username, ok := usernameVal.(string)
+		if !ok {
+			return fmt.Errorf("'username' in state is not a string")
+		}
+
+		transferModeVal, ok := state["transfer_mode"]
+		if !ok {
+			return fmt.Errorf("missing 'transfer_mode' in state")
+		}
+		transferMode, ok := transferModeVal.(string)
+		if !ok {
+			return fmt.Errorf("'transfer_mode' in state is not a string")
+		}
+
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
 			log.Error().Err(err).Msg("error converting usd")
@@ -367,8 +374,10 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		}
 
 		if err = db.CreatePendingRecord(&models.PendingRecord{
-			UserID:    userID,
-			TFTAmount: requestedTFTs,
+			UserID:       userID,
+			Username:     username,
+			TFTAmount:    requestedTFTs,
+			TransferMode: transferMode,
 		}); err != nil {
 			log.Error().Err(err).Send()
 			return err
@@ -393,16 +402,9 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount uint64
-		switch v := amountVal.(type) {
-		case float64:
-			amount = uint64(v)
-		case uint64:
-			amount = v
-		case int:
-			amount = uint64(v)
-		default:
-			return fmt.Errorf("'amount' in state is not a float64 or int")
+		amount, ok := amountVal.(uint64)
+		if !ok {
+			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
 		user, err := db.GetUserByID(userID)
@@ -436,16 +438,9 @@ func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
 		}
-		var amount uint64
-		switch v := amountVal.(type) {
-		case float64:
-			amount = uint64(v)
-		case uint64:
-			amount = v
-		case int:
-			amount = uint64(v)
-		default:
-			return fmt.Errorf("'amount' in state is not a float64 or int")
+		amount, ok := amountVal.(uint64)
+		if !ok {
+			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
 		user, err := db.GetUserByID(userID)

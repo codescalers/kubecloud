@@ -200,8 +200,10 @@ func (app *App) registerHandlers() {
 	app.router.Use(middlewares.CorsMiddleware())
 	v1 := app.router.Group("/api/v1")
 	{
+		v1.GET("/health", app.handlers.HealthHandler)
 		v1.GET("/nodes", app.handlers.ListNodesHandler)
 		v1.GET("/workflow/:workflow_id", app.handlers.GetWorkflowStatus)
+		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
@@ -212,6 +214,7 @@ func (app *App) registerHandlers() {
 				usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
 				usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 			}
+			usersGroup.POST("/mail", app.handlers.SendMailToAllUsersHandler)
 
 			adminGroup.GET("/invoices", app.handlers.ListAllInvoicesHandler)
 			adminGroup.GET("/pending-records", app.handlers.ListPendingRecordsHandler)
@@ -223,6 +226,11 @@ func (app *App) registerHandlers() {
 
 			}
 
+		}
+
+		systemGroup := adminGroup.Group("/system")
+		{
+			systemGroup.PUT("/maintenance/status", app.handlers.SetMaintenanceModeHandler)
 		}
 
 		userGroup := v1.Group("/user")

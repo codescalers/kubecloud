@@ -123,12 +123,12 @@ function handleNavigate(section: string) {
               />
               <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" />
               <BillingCard v-if="selected === 'billing'" :billingHistory="billingHistory" />
-              <PaymentCard v-if="selected === 'payment'" />
+              <PaymentCard v-if="selected === 'add-funds'" />
               <SshKeysCard v-if="selected === 'ssh'" :sshKeys="sshKeys" />
               <VouchersCard v-if="selected === 'vouchers'" :vouchers="vouchers" />
               <NodesCard v-if="selected === 'nodes'" />
               <ProfileCard v-if="selected === 'profile'" />
-              <UserPendingRecordsCard v-if="selected === 'pending-records'"/>
+              <UserPendingRecordsCard v-if="selected === 'payments'"/>
             </div>
           </div>
         </div>

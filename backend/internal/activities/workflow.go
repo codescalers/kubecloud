@@ -109,6 +109,13 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowChargeBalance, &chargeBalanceTemplate)
 
+	adminCreditBalanceTemplate := userWorkfowTemplate
+	adminCreditBalanceTemplate.Steps = []ewf.Step{
+		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+	}
+	engine.RegisterTemplate(WorkflowAdminCreditBalance, &adminCreditBalanceTemplate)
+
 	redeemVoucherTemplate := userWorkfowTemplate
 	redeemVoucherTemplate.Steps = []ewf.Step{
 		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},

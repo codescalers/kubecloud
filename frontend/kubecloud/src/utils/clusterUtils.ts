@@ -1,3 +1,5 @@
+import { VALIDATION_RULES, validateField } from './validation';
+
 /**
  * Generate a random cluster name using adjectives and nouns
  * @returns Random cluster name
@@ -14,6 +16,24 @@ export function generateClusterName(): string {
   const randomNumber = Math.floor(Math.random() * 999) + 1
   
   return `${randomNoun}${randomNumber}`
+}
+
+/**
+ * Validate cluster name according to backend requirements
+ * @param name - Cluster name to validate
+ * @returns Object with isValid boolean and error message
+ */
+export function validateClusterName(name: string): { isValid: boolean; error: string } {
+  const result = validateField({
+    value: name,
+    rules: VALIDATION_RULES.CLUSTER_NAME,
+    fieldName: 'Cluster name'
+  });
+  
+  return {
+    isValid: result.isValid,
+    error: result.errors.length > 0 ? result.errors[0] : ''
+  };
 }
 
 /**
