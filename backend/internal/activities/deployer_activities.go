@@ -433,7 +433,9 @@ func DeleteVMStep() ewf.StepFn {
 			return err
 		}
 
-		if err := kubeClient.RemoveVM(ctx, &vm); err != nil {
+		projectName := kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
+
+		if err := kubeClient.RemoveVM(ctx, projectName); err != nil {
 			return fmt.Errorf("failed to remove VM %s: %w", vm.Node.Name, err)
 		}
 
