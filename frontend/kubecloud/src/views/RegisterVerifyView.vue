@@ -49,15 +49,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authService } from '../utils/authService'
+import { useNotificationStore } from '@/stores/notifications'
 
 const route = useRoute()
 const router = useRouter()
 
+// Check if we have valid registration data and pre-fill email
+onMounted(() => {
+  // Try to get email from stored registration data
+  if (authService.hasTempRegistrationData()) {
+    const storedData = (authService as any).getTempRegistrationData()
+    if (storedData) {
+      form.email = storedData.email
+    }
+  }
+  else if (route.query.email) {
+    form.email = String(route.query.email)
+  }
+})
+
 const form = reactive({
-  email: route.query.email ? String(route.query.email) : '',
+  email: '',
   code: ''
 })
 
@@ -98,17 +113,22 @@ const resendCode = async () => {
   resending.value = true
   if (!form.email) {
     errors.email = 'Email is required to resend code'
+    resending.value = false
     return
   }
   try {
-    await authService.register({
-      name: 'User',
-      email: form.email,
-      password: 'temporary',
-      confirm_password: 'temporary'
-    })
+    await authService.resendVerificationCode(form.email)
   } catch (error) {
     console.error(error)
+    // If no registration data found, show specific error
+    if (error instanceof Error && error.message.includes('No valid registration data')) {
+      useNotificationStore().error(
+        'Expired',
+        'No pending registration found for this email. Please register again.',
+      )
+    }
+
+    router.push("/sign-up")
   } finally {
     resending.value = false
   }
