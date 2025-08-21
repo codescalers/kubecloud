@@ -33,7 +33,7 @@
                 <td>{{ node.ip || '-' }}</td>
                 <td>{{ node.contract_id || '-' }}</td>
                 <td>
-                  <v-btn @click="removeNode(node.original_name)" :disabled='node.type == "leader"'><v-icon>mdi-delete</v-icon></v-btn>
+                  <v-btn @click="showDeleteConfirmation(node.original_name)" :disabled='node.type == "leader"'><v-icon>mdi-delete</v-icon></v-btn>
                 </td>
               </tr>
             </tbody>
@@ -95,6 +95,27 @@
       </template>
     </BaseDialogCard>
   </v-dialog>
+
+  <!-- Delete Confirmation Dialog -->
+  <v-dialog v-model="deleteConfirmDialog" max-width="400">
+    <v-card>
+      <v-card-title class="text-h6">
+        Confirm Node Deletion
+      </v-card-title>
+      <v-card-text>
+        Are you sure you want to delete the node <strong>{{ nodeToDelete }}</strong>? This action cannot be undone.
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="grey" variant="text" @click="deleteConfirmDialog = false">
+          Cancel
+        </v-btn>
+        <v-btn color="error" variant="text" @click="confirmDeleteNode">
+          Delete
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -131,6 +152,19 @@ const editNodesWithStorage = computed(() =>
 function removeNode(nodeName: string) {
   emit('remove-node', nodeName);
 }
+
+function showDeleteConfirmation(nodeName: string) {
+  nodeToDelete.value = nodeName;
+  deleteConfirmDialog.value = true;
+}
+
+function confirmDeleteNode() {
+  if (nodeToDelete.value) {
+    removeNode(nodeToDelete.value);
+    deleteConfirmDialog.value = false;
+    nodeToDelete.value = '';
+  }
+}
 // Add node form state
 const addFormNodeId = ref<number|null>(null);
 const addFormRole = ref('master');
@@ -144,6 +178,10 @@ const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
+
+// Delete confirmation dialog state
+const deleteConfirmDialog = ref(false);
+const nodeToDelete = ref<string>('');
 
 const validateNodeName = (value: string) :string|boolean =>  {
   const msg = required('Name is required')(value) || isAlphanumeric('Node name can only contain letters, and numbers.')(value);
