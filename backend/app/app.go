@@ -45,7 +45,7 @@ type App struct {
 }
 
 // NewApp create new instance of the app with all configs
-func NewApp(config internal.Configuration) (*App, error) {
+func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	router := gin.Default()
 
 	stripe.Key = config.StripeSecret
@@ -130,7 +130,7 @@ func NewApp(config internal.Configuration) (*App, error) {
 	}
 	sshPublicKey := strings.TrimSpace(string(sshPublicKeyBytes))
 
-	_, appCancel := context.WithCancel(context.Background())
+	_, appCancel := context.WithCancel(ctx)
 
 	// Derive sponsor (system) account SS58 address once
 	sponsorKeyPair, err := internal.KeyPairFromMnemonic(config.SystemAccount.Mnemonic)
@@ -214,7 +214,6 @@ func (app *App) registerHandlers() {
 	v1 := app.router.Group("/api/v1")
 	{
 		v1.GET("/health", app.handlers.HealthHandler)
-		v1.GET("/nodes", app.handlers.ListNodesHandler)
 		v1.GET("/workflow/:workflow_id", app.handlers.GetWorkflowStatus)
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
 
@@ -260,7 +259,8 @@ func (app *App) registerHandlers() {
 			{
 				authGroup.GET("/", app.handlers.GetUserHandler)
 				authGroup.PUT("/change_password", app.handlers.ChangePasswordHandler)
-				authGroup.GET("/nodes", app.handlers.ListReservedNodeHandler)
+				authGroup.GET("/nodes", app.handlers.ListNodesHandler)
+				authGroup.GET("/nodes/rented", app.handlers.ListReservedNodeHandler)
 				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
 				authGroup.DELETE("/nodes/unreserve/:contract_id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/balance/charge", app.handlers.ChargeBalance)

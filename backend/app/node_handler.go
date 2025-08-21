@@ -49,40 +49,82 @@ type UnreserveNodeResponse struct {
 // @Success 200 {object} APIResponse "Nodes are retrieved successfully"
 // @Failure 400 {object} APIResponse "Invalid filter parameters"
 // @Failure 500 {object} APIResponse "Internal server error"
-// @Router /nodes [get]
+// @Security UserMiddleware
+// @Router /user/nodes [get]
 // ListNodesHandler requests all nodes from gridproxy
 func (h *Handler) ListNodesHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+
+	user, err := h.db.GetUserByID(userID)
+	if err != nil {
+		log.Error().Err(err).Send()
+		Error(c, http.StatusNotFound, "User is not found", "")
+		return
+	}
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	twinID, err := h.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	query := c.Request.URL.Query()
 
 	filter := proxyTypes.NodeFilter{}
-	err := queryParamsToStruct(query, &filter)
+	err = queryParamsToStruct(query, &filter)
 	if err != nil {
 		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
 		return
 	}
 
 	limit := proxyTypes.DefaultLimit()
+	// Force return counts of both requests
+	retCount := true
+	limit.RetCount = retCount
 	err = queryParamsToStruct(query, &limit)
 	if err != nil {
 		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
 		return
 	}
 
-	// Force Healthy and Rentable to true
+	// Fetch rented nodes of user
+	twinID64 := uint64(twinID)
+	rentedFilter := filter
+	rentedFilter.RentableOrRentedBy = &twinID64
+
+	rentedNodes, count1, err := h.proxyClient.Nodes(c.Request.Context(), rentedFilter, limit)
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// Force Healthy and randomize to true
 	healthy := true
-	rentable := true
+	randomize := true
+	rentable := false
 	filter.Healthy = &healthy
 	filter.Rentable = &rentable
-
-	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	limit.Randomize = randomize
+	nodes, count2, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		InternalServerError(c)
 		return
 	}
 
+	allNodes := append(rentedNodes, nodes...)
+
 	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesResponse{
-		Total: count,
-		Nodes: nodes,
+		Total: count1 + count2,
+		Nodes: allNodes,
 	})
 }
 
@@ -183,10 +225,10 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 // @ID list-reserved-nodes
 // @Accept json
 // @Produce json
-// @Success 201 {array} APIResponse
+// @Success 200 {array} APIResponse
 // @Failure 500 {object} APIResponse
 // @Security UserMiddleware
-// @Router /user/nodes [get]
+// @Router /user/nodes/rented [get]
 // ListReservedNodeHandler list reserved nodes for user on tfchain
 func (h *Handler) ListReservedNodeHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
@@ -226,7 +268,7 @@ func (h *Handler) ListReservedNodeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusCreated, "Nodes are retrieved successfully", ListNodesResponse{
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesResponse{
 		Total: count,
 		Nodes: nodes,
 	})

@@ -16,7 +16,6 @@ type DB interface {
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
 	UpdatePassword(email string, hashedPassword []byte) error
-	UpdateUserVerification(userID int, verified bool) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error

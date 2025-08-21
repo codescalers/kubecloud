@@ -135,23 +135,6 @@ func (s *GormDB) UpdatePassword(email string, hashedPassword []byte) error {
 	return nil
 }
 
-// UpdateUserVerification updates verified status of user by its ID
-func (s *GormDB) UpdateUserVerification(userID int, verified bool) error {
-	result := s.db.Model(&User{}).
-		Where("id = ?", userID).
-		Update("verified", verified)
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("no user found with ID %d", userID)
-	}
-
-	return nil
-}
-
 // ListAllUsers lists all users in system
 func (s *GormDB) ListAllUsers() ([]User, error) {
 	var users []User

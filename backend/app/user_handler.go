@@ -204,6 +204,11 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check if user previously exists
 	existingUser, getErr := h.db.GetUserByEmail(request.Email)
+	if getErr != nil && getErr != gorm.ErrRecordNotFound {
+		InternalServerError(c)
+		return
+	}
+
 	if getErr != gorm.ErrRecordNotFound {
 		if existingUser.Verified {
 			Error(c, http.StatusConflict, "Conflict", "user already registered")
@@ -261,24 +266,26 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get user by email")
-		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
+		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
 		return
 	}
 
 	if user.Verified {
-		Error(c, http.StatusBadRequest, "verification failed", "user already registered")
+		Error(c, http.StatusBadRequest, "verification failed", "User is already registered")
 		return
 	}
 
 	if user.Code != request.Code {
-		Error(c, http.StatusBadRequest, "verification failed", "wrong code")
+		Error(c, http.StatusBadRequest, "verification failed", "Invalid verification code")
 		return
 	}
 
-	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.Timeout) * time.Second).Before(time.Now()) {
+	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
 		Error(c, http.StatusBadRequest, "verification failed", "code has expired")
 		return
 	}
+
+	h.sseManager.Notify(fmt.Sprintf("%d", user.ID), "user_registration", "User email is verified")
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUserVerification)
 	if err != nil {
@@ -287,15 +294,22 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 
+	if err = h.ewfEngine.Store().SaveWorkflow(c.Request.Context(), wf); err != nil {
+		log.Error().Err(err).Msg("failed to save user verification workflow")
+		InternalServerError(c)
+		return
+	}
+
 	// Start the user-verification workflow
 	wf.State = ewf.State{
-		"email": user.Email,
-		"name":  user.Username,
+		"email":   user.Email,
+		"name":    user.Username,
+		"user_id": user.ID,
 	}
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "verification in progress", RegisterUserResponse{
+	Success(c, http.StatusCreated, "Verification is in progress", RegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 	})
@@ -444,7 +458,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	code := internal.GenerateRandomCode()
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.Timeout, user.Username, h.config.Server.Host)
+	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.TimeoutMin, user.Username, h.config.Server.Host)
 	err = h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
 
 	if err != nil {
@@ -469,7 +483,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Verification code sent", RegisterResponse{
 		Email:   request.Email,
-		Timeout: fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
+		Timeout: fmt.Sprintf("%d minutes", h.config.MailSender.TimeoutMin),
 	})
 
 }
@@ -519,7 +533,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 	}
 
-	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.Timeout) * time.Second).Before(time.Now()) {
+	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
 		Error(c, http.StatusBadRequest, "code expired", "verification code has expired")
 
 		return

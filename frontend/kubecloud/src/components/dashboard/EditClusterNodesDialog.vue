@@ -33,7 +33,7 @@
                 <td>{{ node.ip || '-' }}</td>
                 <td>{{ node.contract_id || '-' }}</td>
                 <td>
-                  <v-btn @click="removeNode(node.original_name)" :disabled='node.type == "leader"'><v-icon>mdi-delete</v-icon></v-btn>
+                  <v-btn @click="showDeleteConfirmation(node.original_name)" :disabled='node.type == "leader"'><v-icon>mdi-delete</v-icon></v-btn>
                 </td>
               </tr>
             </tbody>
@@ -57,12 +57,12 @@
             />
             <v-select v-model="addFormRole" :items="['master', 'worker']" label="Role" />
             <div class="ssh-key-section" style="margin-top: 1.5rem; width: 100%;">
-              <label class="ssh-key-label">SSH Key</label>
+              <label class="ssh-key-label">SSH Keys</label>
               <div v-if="sshKeysLoading" class="mb-2"><v-progress-circular indeterminate size="24" color="primary" /></div>
               <v-chip-group
                 v-else
-                v-model="addFormSshKey"
-                :multiple="false"
+                v-model="addFormSshKeys"
+                :multiple="true"
                 column
                 class="mb-2"
               >
@@ -94,6 +94,27 @@
         </div>
       </template>
     </BaseDialogCard>
+  </v-dialog>
+
+  <!-- Delete Confirmation Dialog -->
+  <v-dialog v-model="deleteConfirmDialog" max-width="400">
+    <v-card>
+      <v-card-title class="text-h6">
+        Confirm Node Deletion
+      </v-card-title>
+      <v-card-text>
+        Are you sure you want to delete the node <strong>{{ nodeToDelete }}</strong>? This action cannot be undone.
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="grey" variant="text" @click="deleteConfirmDialog = false">
+          Cancel
+        </v-btn>
+        <v-btn color="error" variant="text" @click="confirmDeleteNode">
+          Delete
+        </v-btn>
+      </v-card-actions>
+    </v-card>
   </v-dialog>
 </template>
 
@@ -131,6 +152,19 @@ const editNodesWithStorage = computed(() =>
 function removeNode(nodeName: string) {
   emit('remove-node', nodeName);
 }
+
+function showDeleteConfirmation(nodeName: string) {
+  nodeToDelete.value = nodeName;
+  deleteConfirmDialog.value = true;
+}
+
+function confirmDeleteNode() {
+  if (nodeToDelete.value) {
+    removeNode(nodeToDelete.value);
+    deleteConfirmDialog.value = false;
+    nodeToDelete.value = '';
+  }
+}
 // Add node form state
 const addFormNodeId = ref<number|null>(null);
 const addFormRole = ref('master');
@@ -138,12 +172,16 @@ const addFormCpu = ref(2);
 const addFormRam = ref(4);
 const addFormStorage = ref(25);
 const addFormName = ref('');
-const addFormSshKey = ref<number|null>(null);
+const addFormSshKeys = ref<number[]>([]);
 const sshKeys = ref<any[]>([]);
 const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
+
+// Delete confirmation dialog state
+const deleteConfirmDialog = ref(false);
+const nodeToDelete = ref<string>('');
 
 const validateNodeName = (value: string) :string|boolean =>  {
   const msg = required('Name is required')(value) || isAlphanumeric('Node name can only contain letters, and numbers.')(value);
@@ -166,7 +204,7 @@ onMounted(async () => {
   try {
     sshKeys.value = await userService.listSshKeys();
     if (sshKeys.value.length > 0) {
-      addFormSshKey.value = sshKeys.value[0].ID;
+      addFormSshKeys.value = [sshKeys.value[0].ID];
     }
   } catch (e: any) {
     sshKeysError.value = e?.message || 'Failed to load SSH keys';
@@ -199,8 +237,11 @@ watch([addFormNodeId, addFormRam, addFormStorage], () => {
   }
 });
 async function confirmAddForm() {
-  // Find selected SSH key object
-  const sshKeyObj = (sshKeys.value || []).find((k: any) => k.ID === addFormSshKey.value);
+  // Get all selected SSH keys and concatenate their public keys
+  const sshKeyPublicKeys = addFormSshKeys.value
+    .map(id => sshKeys.value.find((k: any) => k.ID === id)?.public_key)
+    .filter(key => key) // Remove undefined values
+    .join('\n'); // Join multiple keys with newlines
   const payload = {
     name: props.cluster.cluster.name,
     token: '',
@@ -213,7 +254,7 @@ async function confirmAddForm() {
         memory: addFormRam.value * 1024,
         root_size: ROOTFS * 1024,
         disk_size: addFormStorage.value * 1024,
-        env_vars: sshKeyObj ? { SSH_KEY: sshKeyObj.public_key } : {},
+        env_vars: sshKeyPublicKeys ? { SSH_KEY: sshKeyPublicKeys } : {},
       }
     ]
   };

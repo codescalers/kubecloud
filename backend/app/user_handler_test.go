@@ -146,7 +146,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "user already registered")
+		assert.Contains(t, result["error"], "User is already registered")
 	})
 
 	t.Run("Test Verify Register Code with wrong code", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "wrong code")
+		assert.Contains(t, result["error"], "Invalid verification code")
 
 	})
 

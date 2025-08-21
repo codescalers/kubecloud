@@ -53,68 +53,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/nodes": {
-            "get": {
-                "description": "Retrieves a list of nodes from the grid proxy based on the provided filters.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nodes"
-                ],
-                "summary": "List nodes",
-                "operationId": "list-nodes",
-                "parameters": [
-                    {
-                        "type": "boolean",
-                        "description": "Filter by healthy nodes (default: true)",
-                        "name": "healthy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Filter by rentable nodes (default: true)",
-                        "name": "rentable",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit the number of nodes returned (default: 50)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (default: 0)",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Nodes are retrieved successfully",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid filter parameters",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/pending-records": {
             "get": {
                 "security": [
@@ -652,6 +590,73 @@ const docTemplate = `{
                         "UserMiddleware": []
                     }
                 ],
+                "description": "Retrieves a list of nodes from the grid proxy based on the provided filters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List nodes",
+                "operationId": "list-nodes",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by healthy nodes (default: true)",
+                        "name": "healthy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by rentable nodes (default: true)",
+                        "name": "rentable",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of nodes returned (default: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Nodes are retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter parameters",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/nodes/rented": {
+            "get": {
+                "security": [
+                    {
+                        "UserMiddleware": []
+                    }
+                ],
                 "description": "Returns a list of reserved nodes for a user",
                 "consumes": [
                     "application/json"
@@ -665,8 +670,8 @@ const docTemplate = `{
                 "summary": "List reserved nodes",
                 "operationId": "list-reserved-nodes",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
@@ -1799,6 +1804,9 @@ const docTemplate = `{
                     "description": "TFTs are multiplied by 1e7",
                     "type": "integer"
                 },
+                "transfer_mode": {
+                    "type": "string"
+                },
                 "transferred_tft_amount": {
                     "type": "integer"
                 },
@@ -1813,6 +1821,9 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },

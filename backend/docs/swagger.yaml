@@ -156,6 +156,8 @@ definitions:
       tft_amount:
         description: TFTs are multiplied by 1e7
         type: integer
+      transfer_mode:
+        type: string
       transferred_tft_amount:
         type: integer
       transferred_usd_amount:
@@ -166,6 +168,8 @@ definitions:
         type: number
       user_id:
         type: integer
+      username:
+        type: string
     type: object
   app.RedeemVoucherResponse:
     properties:
@@ -443,48 +447,6 @@ paths:
       summary: Get all invoices
       tags:
       - admin
-  /nodes:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves a list of nodes from the grid proxy based on the provided
-        filters.
-      operationId: list-nodes
-      parameters:
-      - description: 'Filter by healthy nodes (default: true)'
-        in: query
-        name: healthy
-        type: boolean
-      - description: 'Filter by rentable nodes (default: true)'
-        in: query
-        name: rentable
-        type: boolean
-      - description: 'Limit the number of nodes returned (default: 50)'
-        in: query
-        name: limit
-        type: integer
-      - description: 'Offset for pagination (default: 0)'
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Nodes are retrieved successfully
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-        "400":
-          description: Invalid filter parameters
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-      summary: List nodes
-      tags:
-      - nodes
   /pending-records:
     get:
       consumes:
@@ -835,24 +797,44 @@ paths:
     get:
       consumes:
       - application/json
-      description: Returns a list of reserved nodes for a user
-      operationId: list-reserved-nodes
+      description: Retrieves a list of nodes from the grid proxy based on the provided
+        filters.
+      operationId: list-nodes
+      parameters:
+      - description: 'Filter by healthy nodes (default: true)'
+        in: query
+        name: healthy
+        type: boolean
+      - description: 'Filter by rentable nodes (default: true)'
+        in: query
+        name: rentable
+        type: boolean
+      - description: 'Limit the number of nodes returned (default: 50)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: Nodes are retrieved successfully
           schema:
-            items:
-              $ref: '#/definitions/app.APIResponse'
-            type: array
+            $ref: '#/definitions/app.APIResponse'
+        "400":
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/app.APIResponse'
       security:
       - UserMiddleware: []
-      summary: List reserved nodes
+      summary: List nodes
       tags:
       - nodes
   /user/nodes/{node_id}:
@@ -889,6 +871,30 @@ paths:
       security:
       - UserMiddleware: []
       summary: Reserve node
+      tags:
+      - nodes
+  /user/nodes/rented:
+    get:
+      consumes:
+      - application/json
+      description: Returns a list of reserved nodes for a user
+      operationId: list-reserved-nodes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/app.APIResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - UserMiddleware: []
+      summary: List reserved nodes
       tags:
       - nodes
   /user/nodes/unreserve/{contract_id}:
