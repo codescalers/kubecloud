@@ -38,6 +38,7 @@ const (
 	StepRemoveClusterFromDB     = "remove-cluster-from-db"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
+	StepDeployVMNetwork         = "deploy-vm-network"
 	StepDeployVM                = "deploy-vm"
 	StepStoreVMDeployment       = "store-vm-deployment"
 	StepDeleteVM                = "delete-vm"

@@ -233,41 +233,6 @@ func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func DeployVMStep() ewf.StepFn {
-	return func(ctx context.Context, state ewf.State) error {
-		ensureClient(state)
-
-		config, err := getConfig(state)
-		if err != nil {
-			return fmt.Errorf("failed to get config from state: %w", err)
-		}
-
-		kubeClient, err := statemanager.GetKubeClient(state, config)
-		if err != nil {
-			return err
-		}
-
-		vm, err := statemanager.GetVM(state)
-		if err != nil {
-			return err
-		}
-
-		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
-			if isWorkloadAlreadyDeployedError(err) {
-				return fmt.Errorf("VM already deployed: %s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
-			}
-			if isWorkloadInvalid(err) {
-				return fmt.Errorf("VM invalid:%s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
-			}
-			return fmt.Errorf("failed to deploy VM %s: %w", vm.Node.Name, err)
-		}
-
-		statemanager.SaveGridClientState(state, kubeClient)
-		statemanager.StoreVM(state, vm)
-		return nil
-	}
-}
-
 func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		vm, err := statemanager.GetVM(state)
@@ -433,7 +398,78 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
-func DeleteVMStep() ewf.StepFn {
+func DeployVMNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		config, err := getConfig(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		if err := kubeClient.DeployVMNetwork(ctx, &vm); err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to deploy VM network: %w", err)
+		}
+		state["vm"] = vm
+		return nil
+	}
+}
+
+func DeployVMStep(metrics *metrics.Metrics) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
+			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementVMDeploymentFailure()
+				return fmt.Errorf("VM already deployed: %s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+			}
+			if isWorkloadInvalid(err) {
+				metrics.IncrementVMDeploymentFailure()
+				return fmt.Errorf("VM invalid:%s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+			}
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to deploy VM %s: %w", vm.Node.Name, err)
+		}
+
+		metrics.IncrementVMDeploymentSuccess()
+		statemanager.SaveGridClientState(state, kubeClient)
+		statemanager.StoreVM(state, vm)
+		return nil
+	}
+}
+
+func DeleteVMStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -459,6 +495,7 @@ func DeleteVMStep() ewf.StepFn {
 		}
 
 		statemanager.SaveGridClientState(state, kubeClient)
+		metrics.DecActiveVMCount()
 		return nil
 	}
 }
@@ -642,9 +679,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
 	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
-	engine.Register(StepDeployVM, DeployVMStep())
+	engine.Register(StepDeployVMNetwork, DeployVMNetworkStep(metrics))
+	engine.Register(StepDeployVM, DeployVMStep(metrics))
 	engine.Register(StepStoreVMDeployment, StoreVMDeploymentStep(db))
-	engine.Register(StepDeleteVM, DeleteVMStep())
+	engine.Register(StepDeleteVM, DeleteVMStep(metrics))
 	engine.Register(StepDeleteDB, DeleteVMFromDBStep(db))
 
 	createDeployWorkflowTemplates(engine, metrics)
@@ -675,6 +713,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 
 	deployVMWFTemplate := BaseWFTemplate
 	deployVMWFTemplate.Steps = []ewf.Step{
+		{Name: StepDeployVMNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: StepDeployVM, RetryPolicy: criticalRetryPolicy},
 		{Name: StepStoreVMDeployment, RetryPolicy: standardRetryPolicy},
 	}

@@ -84,22 +84,28 @@ func main() {
 		graphPanel("Cluster Deployment Failures", "cluster_deployment_failures", "stat", id+7, y+18, 8, 8, 6, true),
 		graphPanel("Active Clusters", "active_clusters", "stat", id+8, y+18, 16, 8, 6, false),
 
+		// VM Metrics
+		rowPanel("VM Metrics", id+9, y+25),
+		graphPanel("VM Deployment Successes", "vm_deployment_successes", "stat", id+20, y+26, 0, 8, 6, false),
+		graphPanel("VM Deployment Failures", "vm_deployment_failures", "stat", id+21, y+26, 8, 8, 6, true),
+		graphPanel("Active VMs", "active_vms", "stat", id+22, y+26, 16, 8, 6, false),
+
 		// Users & Payments
-		rowPanel("Users & Payments", id+9, y+25),
-		graphPanel("User Registrations", "user_registrations", "stat", id+10, y+26, 0, 8, 6, false),
-		graphPanel("Stripe Payment Successes", "stripe_payment_successes", "stat", id+11, y+26, 8, 8, 6, false),
-		graphPanel("Stripe Payment Failures", "stripe_payment_failures", "stat", id+12, y+26, 16, 8, 6, true),
+		rowPanel("Users & Payments", id+23, y+33),
+		graphPanel("User Registrations", "user_registrations", "stat", id+24, y+34, 0, 8, 6, false),
+		graphPanel("Stripe Payment Successes", "stripe_payment_successes", "stat", id+25, y+34, 8, 8, 6, false),
+		graphPanel("Stripe Payment Failures", "stripe_payment_failures", "stat", id+26, y+34, 16, 8, 6, true),
 
 		// GORM
-		rowPanel("Database (GORM)", id+13, y+33),
-		graphPanel("GORM Open Connections", "gorm_open_connections", "stat", id+14, y+34, 0, 12, 6, false),
-		graphPanel("GORM Idle Connections", "gorm_idle_connections", "stat", id+15, y+34, 12, 12, 6, false),
+		rowPanel("Database (GORM)", id+27, y+41),
+		graphPanel("GORM Open Connections", "gorm_open_connections", "stat", id+28, y+42, 0, 12, 6, false),
+		graphPanel("GORM Idle Connections", "gorm_idle_connections", "stat", id+29, y+42, 12, 12, 6, false),
 
 		// Go Runtime
-		rowPanel("Go Runtime", id+16, y+41),
-		graphPanel("Go Goroutines", "go_goroutines", "graph", id+17, y+42, 0, 12, 8, false),
-		graphPanel("Go Memory Usage", "go_memstats_alloc_bytes", "graph", id+18, y+42, 12, 12, 8, false),
-		graphPanel("Go GC Cycles", "go_gc_duration_seconds_count", "graph", id+19, y+50, 0, 12, 8, false),
+		rowPanel("Go Runtime", id+30, y+49),
+		graphPanel("Go Goroutines", "go_goroutines", "graph", id+31, y+50, 0, 12, 8, false),
+		graphPanel("Go Memory Usage", "go_memstats_alloc_bytes", "graph", id+32, y+50, 12, 12, 8, false),
+		graphPanel("Go GC Cycles", "go_gc_duration_seconds_count", "graph", id+33, y+58, 0, 12, 8, false),
 	}
 
 	dashboard := map[string]interface{}{

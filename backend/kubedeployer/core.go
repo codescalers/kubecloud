@@ -292,10 +292,6 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error 
 		return fmt.Errorf("failed to prepare VM: %v", err)
 	}
 
-	if err := c.DeployVMNetwork(ctx, vm); err != nil {
-		return fmt.Errorf("failed to deploy network for VM: %v", err)
-	}
-
 	if err := vm.Node.AssignNodeIP(ctx, c.GridClient, vm.Network.Name); err != nil {
 		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Node.Name, err)
 	}
