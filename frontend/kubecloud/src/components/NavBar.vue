@@ -37,6 +37,12 @@
                   Admin Panel
                 </v-list-item-title>
               </v-list-item>
+              <v-list-item @click="goToDashboard">
+                <v-list-item-title>
+                  <v-icon icon="mdi-view-dashboard" class="mr-2"></v-icon>
+                  Dashboard
+                </v-list-item-title>
+              </v-list-item>
               <v-divider></v-divider>
               <v-list-item @click="handleLogout">
                 <v-list-item-title>
@@ -117,6 +123,10 @@ const isAdmin = computed(() => userStore.isAdmin)
 
 const goToAdmin = () => {
   router.push('/admin')
+}
+
+const goToDashboard = () => {
+  router.push('/dashboard')
 }
 
 const handleLogout = async () => {

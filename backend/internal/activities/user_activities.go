@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/metrics"
 	"kubecloud/models"
 
 	"github.com/rs/zerolog/log"
@@ -125,7 +126,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sponsorAddress string, 
 	}
 }
 
-func SaveUserStep(db models.DB, config internal.Configuration) ewf.StepFn {
+func SaveUserStep(db models.DB, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		nameVal, ok := state["name"]
 		if !ok {
@@ -236,6 +237,9 @@ func SaveUserStep(db models.DB, config internal.Configuration) ewf.StepFn {
 		if err != nil {
 			return fmt.Errorf("user registration failed: %w", err)
 		}
+
+		metrics.IncrementUserRegistration()
+
 		return nil
 	}
 }
@@ -292,7 +296,7 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 	}
 }
 
-func CreatePaymentIntentStep(currency string) ewf.StepFn {
+func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		customerIDVal, ok := state["stripe_customer_id"]
 		if !ok {
@@ -321,8 +325,11 @@ func CreatePaymentIntentStep(currency string) ewf.StepFn {
 
 		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
 		if err != nil {
+			metrics.IncrementStripePaymentFailure()
 			return fmt.Errorf("error creating payment intent: %w", err)
 		}
+
+		metrics.IncrementStripePaymentSuccess()
 		state["payment_intent_id"] = intent.ID
 		return nil
 	}

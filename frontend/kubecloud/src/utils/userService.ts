@@ -127,6 +127,8 @@ export interface PendingRecord {
   updated_at: string;
   usd_amount: number;
   user_id: number;
+  username: string;
+  transfer_mode: string;
 }
 
 export class UserService {
@@ -167,7 +169,7 @@ export class UserService {
         )
         throw new Error('Failed to reserve node')
       }
-     
+
     }
     if (status === WorkflowStatus.StatusFailed) {
       useNotificationStore().error(
@@ -176,7 +178,7 @@ export class UserService {
       )
       throw new Error('Failed to reserve node')
     }
-    
+
   }
 
   // List reserved nodes
@@ -362,7 +364,7 @@ export class UserService {
       let attempts = 0
       const intervalId = setInterval(async () => {
         const nodes = await this.listReservedNodes()
-        
+
         const node =(nodes?.data as {data: {nodes: {nodeId: number}[]}}).data.nodes.find((n) => n.nodeId === nodeId)
         if((targetStatus === "rented" && node) || (targetStatus === "rentable" && !node)){
           clearInterval(intervalId)
@@ -376,7 +378,7 @@ export class UserService {
         }
       }, interval)
     })
-  }  
+  }
 }
 
 export const userService = new UserService()

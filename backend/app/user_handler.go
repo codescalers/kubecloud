@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	"kubecloud/internal/metrics"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
@@ -45,6 +46,7 @@ type Handler struct {
 	kycClient       *internal.KYCClient
 	sponsorKeyPair  subkey.KeyPair
 	sponsorAddress  string
+	metrics         *metrics.Metrics
 }
 
 // NewHandler create new handler
@@ -54,7 +56,8 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
-	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string) *Handler {
+	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
+	metrics *metrics.Metrics) *Handler {
 
 	return &Handler{
 		tokenManager:    tokenManager,
@@ -74,6 +77,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		kycClient:       kycClient,
 		sponsorKeyPair:  sponsorKeyPair,
 		sponsorAddress:  sponsorAddress,
+		metrics:         metrics,
 	}
 }
 

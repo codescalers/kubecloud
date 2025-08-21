@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/metrics"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
@@ -48,7 +49,7 @@ func ensureClient(state ewf.State) {
 	log.Debug().Msg("Kubeclient ensured and ready for use")
 }
 
-func DeployNetworkStep() ewf.StepFn {
+func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -70,17 +71,21 @@ func DeployNetworkStep() ewf.StepFn {
 		if cluster.ProjectName == "" {
 			// this is a first not a retry
 			if err := cluster.PrepareCluster(config.UserID); err != nil {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("failed to prepare cluster: %w", err)
 			}
 		}
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("network already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("network invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy network: %w", err)
 		}
 
@@ -91,7 +96,7 @@ func DeployNetworkStep() ewf.StepFn {
 	}
 }
 
-func UpdateNetworkStep() ewf.StepFn {
+func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -119,6 +124,7 @@ func UpdateNetworkStep() ewf.StepFn {
 		cluster.Nodes = append(cluster.Nodes, node)
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to update network: %w", err)
 		}
 
@@ -130,7 +136,7 @@ func UpdateNetworkStep() ewf.StepFn {
 	}
 }
 
-func AddNodeStep() ewf.StepFn {
+func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -155,12 +161,16 @@ func AddNodeStep() ewf.StepFn {
 		}
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to assign IP for node %s: %w", node.Name, err)
 		}
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy node %s to existing cluster: %w", node.Name, err)
 		}
+
+		metrics.IncrementClusterDeploymentSuccess()
 
 		// Save GridClient state after node deployment
 		statemanager.SaveGridClientState(state, kubeClient)
@@ -169,7 +179,7 @@ func AddNodeStep() ewf.StepFn {
 	}
 }
 
-func DeployNodeStep() ewf.StepFn {
+func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -195,19 +205,25 @@ func DeployNodeStep() ewf.StepFn {
 		node := cluster.Nodes[nodeIdx]
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to assign node IPs: %w", err)
 		}
 		cluster.Nodes[nodeIdx].IP = node.IP
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("node already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("node invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy node %s: %w", node.Name, err)
 		}
+
+		metrics.IncrementClusterDeploymentSuccess()
 
 		// Save GridClient state after node deployment
 		statemanager.SaveGridClientState(state, kubeClient)
@@ -294,7 +310,7 @@ func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(db models.DB) ewf.StepFn {
+func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
@@ -326,11 +342,13 @@ func StoreDeploymentStep(db models.DB) ewf.StepFn {
 			}
 		}
 
+		metrics.IncActiveClusterCount()
+
 		return nil
 	}
 }
 
-func CancelDeploymentStep() ewf.StepFn {
+func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -353,6 +371,7 @@ func CancelDeploymentStep() ewf.StepFn {
 			return fmt.Errorf("failed to cancel deployment: %w", err)
 		}
 
+		metrics.DecActiveClusterCount()
 		return nil
 	}
 }
@@ -464,14 +483,15 @@ func DeleteVMFromDBStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, wfName string, nodesNum int) {
+
+func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int) {
 	steps := []ewf.Step{
 		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
 		stepName := fmt.Sprintf("deploy_node_%d", i) // TODO: should be cleaned
-		engine.Register(stepName, DeployNodeStep())
+		engine.Register(stepName, DeployNodeStep(metrics))
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
@@ -590,7 +610,7 @@ var BaseWFTemplate = ewf.WorkflowTemplate{
 	},
 }
 
-func createDeployWorkflowTemplates(engine *ewf.Engine) {
+func createDeployWorkflowTemplates(engine *ewf.Engine, metrics *metrics.Metrics) {
 	for i := 1; i <= 10; i++ {
 		workflowName := fmt.Sprintf("deploy-%d-nodes", i)
 
@@ -600,7 +620,7 @@ func createDeployWorkflowTemplates(engine *ewf.Engine) {
 
 		for j := 0; j < i; j++ {
 			stepName := fmt.Sprintf("deploy_node_%d", j)
-			engine.Register(stepName, DeployNodeStep())
+			engine.Register(stepName, DeployNodeStep(metrics))
 			steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 		}
 
@@ -613,22 +633,22 @@ func createDeployWorkflowTemplates(engine *ewf.Engine) {
 	}
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *internal.SSEManager) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
 
-	engine.Register(StepDeployNetwork, DeployNetworkStep())
-	engine.Register(StepDeployNode, DeployNodeStep())
-	engine.Register(StepRemoveCluster, CancelDeploymentStep())
-	engine.Register(StepAddNode, AddNodeStep())
-	engine.Register(StepUpdateNetwork, UpdateNetworkStep())
+	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
+	engine.Register(StepDeployNode, DeployNodeStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(metrics))
+	engine.Register(StepAddNode, AddNodeStep(metrics))
+	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(StepStoreDeployment, StoreDeploymentStep(db))
+	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(StepDeployVM, DeployVMStep())
 	engine.Register(StepStoreVMDeployment, StoreVMDeploymentStep(db))
 	engine.Register(StepDeleteVM, DeleteVMStep())
 	engine.Register(StepDeleteDB, DeleteVMFromDBStep(db))
 
-	createDeployWorkflowTemplates(engine)
+	createDeployWorkflowTemplates(engine, metrics)
 
 	BaseWFTemplate.AfterWorkflowHooks = append(BaseWFTemplate.AfterWorkflowHooks, NotifyUser(sse))
 

@@ -118,6 +118,7 @@ func nodeFromDeployment(
 	node.EnvVars = vm.EnvVars
 	node.Flist = vm.Flist
 	node.Entrypoint = vm.Entrypoint
+	node.DiskSize = depl.Disks[0].SizeGB * 1024
 
 	// computed fields
 	node.IP = vm.IP
