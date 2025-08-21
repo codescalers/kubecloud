@@ -18,10 +18,10 @@
         <div v-if="errors.disk" class="field-error">{{ errors.disk }}</div>
         <!-- <v-switch v-model="localNode.gpu" label="GPU" inset class="mt-2" color="primary" /> -->
         <div class="ssh-key-section" style="margin-top: 1.5rem;">
-          <label class="ssh-key-label">SSH Key</label>
+          <label class="ssh-key-label">SSH Keys</label>
           <v-chip-group
-            v-model="selectedSshKeyId"
-            :multiple="false"
+            v-model="selectedSshKeyIds"
+            :multiple="true"
             column
           >
             <v-chip
@@ -35,9 +35,9 @@
               {{ key.name }}
             </v-chip>
           </v-chip-group>
-          <div v-if="!selectedSshKeyId" class="ssh-alert">
+          <div v-if="selectedSshKeyIds.length === 0" class="ssh-alert">
             <v-icon color="error" class="mr-1">mdi-alert-circle</v-icon>
-            <span>Please select an SSH key to proceed.</span>
+            <span>Please select at least one SSH key to proceed.</span>
           </div>
         </div>
         <div v-if="errors.ssh" class="field-error">{{ errors.ssh }}</div>
@@ -61,7 +61,7 @@ const props = defineProps({
 });
 const emit = defineEmits<{ (e: 'save', node: VM): void; (e: 'cancel'): void }>();
 const localNode = ref<VM>({ ...props.node });
-const selectedSshKeyId = ref<number | null>(null);
+const selectedSshKeyIds = ref<number[]>([]);
 
 // When the modal opens or node changes, set the selected SSH key appropriately
 watch(
@@ -69,11 +69,9 @@ watch(
   ([node, keys]) => {
     localNode.value = { ...node };
     if (node.sshKeyIds && node.sshKeyIds.length > 0) {
-      selectedSshKeyId.value = node.sshKeyIds[0];
-    } else if (keys.length > 0) {
-      selectedSshKeyId.value = keys[0].ID;
+      selectedSshKeyIds.value = [...node.sshKeyIds];
     } else {
-      selectedSshKeyId.value = null;
+      selectedSshKeyIds.value = [];
     }
   },
   { immediate: true }
@@ -87,7 +85,7 @@ const errors = computed(() => {
   errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 256GB', 256)(node.ram) || "";
   errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 10000GB', 10000)(node.disk) || "";
   // Only require SSH key if there are any available
-  if (props.availableSshKeys.length > 0 && !selectedSshKeyId.value) errs.ssh = 'At least one SSH key must be selected.';
+  if (props.availableSshKeys.length > 0 && selectedSshKeyIds.value.length === 0) errs.ssh = 'At least one SSH key must be selected.';
   return errs;
 });
 
@@ -96,7 +94,7 @@ const valid = computed(() => {
 });
 function onSave() {
   if (valid.value) {
-    emit('save', { ...localNode.value, sshKeyIds: selectedSshKeyId.value !== null ? [selectedSshKeyId.value] : [] });
+    emit('save', { ...localNode.value, sshKeyIds: [...selectedSshKeyIds.value] });
   }
 }
 

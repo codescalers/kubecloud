@@ -44,7 +44,20 @@
                   <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
                   GPU
                 </v-chip>
-                <span class="ssh-key-label">SSH Key: <b>{{ getSshKeyName(vm.sshKeyIds[0]) }}</b></span>
+                <div class="ssh-keys-section">
+                  <v-chip 
+                    v-for="sshKeyId in vm.sshKeyIds" 
+                    :key="sshKeyId"
+                    color="orange" 
+                    text-color="white" 
+                    size="x-small" 
+                    class="mr-1" 
+                    variant="outlined"
+                  >
+                    <v-icon size="14" class="mr-1">mdi-key</v-icon>
+                    {{ getSshKeyName(sshKeyId) }}
+                  </v-chip>
+                </div>
               </div>
               <div v-if="vm.node !== null && nodeResourceErrors[vm.node]" class="node-resource-warning">
                 <v-alert type="error" dense>{{ nodeResourceErrors[vm.node].join(', ') }}</v-alert>
@@ -209,9 +222,11 @@ const emit = defineEmits(['onDeployCluster', 'prevStep']);
   flex-wrap: wrap;
   gap: 0.5rem;
 }
-.ssh-key-label {
-  color: var(--color-text-muted, #7c7fa5);
-  font-size: 0.98rem;
+.ssh-keys-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
 }
 .node-resource-warning {
   margin-top: 0.5rem;

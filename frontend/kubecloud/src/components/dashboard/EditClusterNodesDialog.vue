@@ -57,12 +57,12 @@
             />
             <v-select v-model="addFormRole" :items="['master', 'worker']" label="Role" />
             <div class="ssh-key-section" style="margin-top: 1.5rem; width: 100%;">
-              <label class="ssh-key-label">SSH Key</label>
+              <label class="ssh-key-label">SSH Keys</label>
               <div v-if="sshKeysLoading" class="mb-2"><v-progress-circular indeterminate size="24" color="primary" /></div>
               <v-chip-group
                 v-else
-                v-model="addFormSshKey"
-                :multiple="false"
+                v-model="addFormSshKeys"
+                :multiple="true"
                 column
                 class="mb-2"
               >
@@ -138,7 +138,7 @@ const addFormCpu = ref(2);
 const addFormRam = ref(4);
 const addFormStorage = ref(25);
 const addFormName = ref('');
-const addFormSshKey = ref<number|null>(null);
+const addFormSshKeys = ref<number[]>([]);
 const sshKeys = ref<any[]>([]);
 const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
@@ -166,7 +166,7 @@ onMounted(async () => {
   try {
     sshKeys.value = await userService.listSshKeys();
     if (sshKeys.value.length > 0) {
-      addFormSshKey.value = sshKeys.value[0].ID;
+      addFormSshKeys.value = [sshKeys.value[0].ID];
     }
   } catch (e: any) {
     sshKeysError.value = e?.message || 'Failed to load SSH keys';
@@ -199,8 +199,11 @@ watch([addFormNodeId, addFormRam, addFormStorage], () => {
   }
 });
 async function confirmAddForm() {
-  // Find selected SSH key object
-  const sshKeyObj = (sshKeys.value || []).find((k: any) => k.ID === addFormSshKey.value);
+  // Get all selected SSH keys and concatenate their public keys
+  const sshKeyPublicKeys = addFormSshKeys.value
+    .map(id => sshKeys.value.find((k: any) => k.ID === id)?.public_key)
+    .filter(key => key) // Remove undefined values
+    .join('\n'); // Join multiple keys with newlines
   const payload = {
     name: props.cluster.cluster.name,
     token: '',
@@ -213,7 +216,7 @@ async function confirmAddForm() {
         memory: addFormRam.value * 1024,
         root_size: ROOTFS * 1024,
         disk_size: addFormStorage.value * 1024,
-        env_vars: sshKeyObj ? { SSH_KEY: sshKeyObj.public_key } : {},
+        env_vars: sshKeyPublicKeys ? { SSH_KEY: sshKeyPublicKeys } : {},
       }
     ]
   };
