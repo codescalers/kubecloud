@@ -157,8 +157,9 @@ type SSHKeyInput struct {
 
 // RegisterUserResponse holds the response for user registration
 type RegisterUserResponse struct {
-	WorkflowID string `json:"workflow_id"`
-	Email      string `json:"email"`
+	WorkflowID           string `json:"workflow_id"`
+	Email                string `json:"email"`
+	ShortLiveAccessToken string `json:"short_live_access_token"`
 }
 
 // RedeemVoucherResponse holds the response for redeeming a voucher
@@ -309,9 +310,17 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
+	accessToken, err := h.tokenManager.CreateShortLivingTokenPair(user.ID, user.Username, user.Admin)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate short living access token")
+		InternalServerError(c)
+		return
+	}
+
 	Success(c, http.StatusCreated, "Verification is in progress", RegisterUserResponse{
-		WorkflowID: wf.UUID,
-		Email:      user.Email,
+		WorkflowID:           wf.UUID,
+		Email:                user.Email,
+		ShortLiveAccessToken: accessToken,
 	})
 }
 

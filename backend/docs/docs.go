@@ -1907,6 +1907,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "short_live_access_token": {
+                    "type": "string"
+                },
                 "workflow_id": {
                     "type": "string"
                 }
