@@ -1,6 +1,7 @@
 import { WorkflowStatus } from '@/types/ewf'
 import { api, createWorkflowStatusChecker } from './api'
 import { useNotificationStore } from '@/stores/notifications'
+import { useGenericEventListener } from '@/composables/useEvents'
 
 // Types for auth requests and responses
 export interface RegisterRequest {
@@ -23,6 +24,7 @@ export interface VerifyCodeRequest {
 export interface VerifyCodeResponse {
   email: string
   workflow_id: string
+  short_live_access_token: string
 }
 
 export interface LoginRequest {
@@ -129,10 +131,23 @@ export class AuthService {
   async verifyCode(data: VerifyCodeRequest): Promise<void> {
     const response = await api.post<ApiResponse<VerifyCodeResponse>>('/v1/user/register/verify', data, {
       showNotifications: true,
-      errorMessage: 'Verification failed',
-      timeout: 60000
+      errorMessage: 'Verification failed'
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 5000, interval: 3000 })
+    const genericListener = useGenericEventListener({
+      token: response.data.data.short_live_access_token,
+      onMessage: (event) => {
+        console.log('Received event:', event)
+      },
+      onConnect: () => {
+        console.log('Connected to SSE')
+      },
+      onError: (err) => {
+        console.error('SSE error:', err)
+      }
+    })
+
+    genericListener.connect()
+    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 2000 })
     const status = await workflowChecker.status
     if (status === WorkflowStatus.StatusCompleted) {
       useNotificationStore().success(
