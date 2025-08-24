@@ -4,7 +4,7 @@
       <div class="feature-content feature-content-overlay">
         <h2 class="feature-title">Effortless Load Balancing & Scaling</h2>
         <p class="feature-description">
-          MyceliumCloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
+          Mycelium Cloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
         </p>
         <div class="feature-benefits">
           <v-chip class="ma-1" color="white" variant="outlined" size="small">Auto-scaling</v-chip>
