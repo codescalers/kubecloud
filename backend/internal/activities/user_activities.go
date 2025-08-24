@@ -364,7 +364,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.Step
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, sse *internal.SSEManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -375,6 +375,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
+		amountUSD := amount / 1000
 
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -417,6 +418,13 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		}); err != nil {
 			log.Error().Err(err).Send()
 			return err
+		}
+
+		if transferMode == models.RedeemVoucherMode && sse != nil {
+			notificationData := map[string]interface{}{
+				"message": fmt.Sprintf("Voucher redeemed successfully for %d$", amountUSD),
+			}
+			sse.Notify(fmt.Sprintf("%d", userID), "Success", notificationData)
 		}
 
 		return nil

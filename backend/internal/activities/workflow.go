@@ -64,7 +64,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sse, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic))
+	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, sse))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db))
 	engine.Register(StepCreateIdentity, CreateIdentityStep())
 	engine.Register(StepReserveNode, ReserveNodeStep(db, substrate))
