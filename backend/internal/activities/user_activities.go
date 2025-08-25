@@ -375,7 +375,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
-		amountUSD := amount / 1000
+		amountUSD := internal.FromUSDMilliCentToUSD(amount)
 
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -424,7 +424,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			notificationData := map[string]interface{}{
 				"message": fmt.Sprintf("Voucher redeemed successfully for %d$", amountUSD),
 			}
-			sse.Notify(fmt.Sprintf("%d", userID), "Success", notificationData)
+			sse.Notify(fmt.Sprintf("%d", userID), internal.Success, notificationData)
 		}
 
 		return nil

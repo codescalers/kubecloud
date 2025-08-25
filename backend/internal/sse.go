@@ -14,6 +14,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Notification types
+const (
+	Success = "success"
+	Info    = "info"
+	Error   = "error"
+)
+
 // SSEManager handles Server-Sent Events for real-time notifications
 type SSEManager struct {
 	clients map[string][]chan SSEMessage // userID -> client channels
