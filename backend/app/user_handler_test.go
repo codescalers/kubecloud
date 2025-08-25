@@ -131,6 +131,12 @@ func TestVerifyRegisterCode(t *testing.T) {
 	})
 	t.Run("Test Verify Register Code with registered user", func(t *testing.T) {
 		registeredUser := CreateTestUser(t, app, "registered@example.com", "Registered User", []byte("securepassword"), true, false, false, 123, time.Now())
+		registeredUser.Mnemonic = "mnemonic"
+		registeredUser.AccountAddress = "sponseeAddress"
+		registeredUser.Sponsored = true
+		registeredUser.StripeCustomerID = "stripeCustomerID"
+		require.NoError(t, app.db.UpdateUserByID(registeredUser))
+
 		payload := VerifyCodeInput{
 			Email: registeredUser.Email,
 			Code:  123,
@@ -141,7 +147,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.Equal(t, http.StatusConflict, resp.Code)
 
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)

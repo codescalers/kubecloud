@@ -310,3 +310,15 @@ func (c *Cluster) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
+func (c *Cluster) Validate() error {
+	nodeNames := make(map[string]struct{})
+	for _, node := range c.Nodes {
+		if _, exists := nodeNames[node.Name]; exists {
+			return fmt.Errorf("duplicate node name found: %s", node.Name)
+		}
+		nodeNames[node.Name] = struct{}{}
+	}
+
+	return nil
+}

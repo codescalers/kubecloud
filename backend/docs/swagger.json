@@ -98,6 +98,41 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes all deployments and their resources for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployments"
+                ],
+                "summary": "Delete all deployments",
+                "responses": {
+                    "200": {
+                        "description": "Delete all deployments workflow started successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
             }
         },
         "/deployments/{name}": {
@@ -1393,8 +1428,8 @@
                 "operationId": "verify-register-code",
                 "parameters": [
                     {
-                        "description": "Verify Code Input",
-                        "name": "body",
+                        "description": "Verification details",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -1403,20 +1438,26 @@
                     }
                 ],
                 "responses": {
-                    "202": {
-                        "description": "workflow_id: string, email: string",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/app.RegisterUserResponse"
+                            "$ref": "#/definitions/app.VerifyRegisterUserResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request format or verification failed",
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "User is already registered",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1611,7 +1652,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.User"
+                                "$ref": "#/definitions/app.UserResponse"
                             }
                         }
                     },
@@ -2514,6 +2555,71 @@
                 }
             }
         },
+        "app.UserResponse": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "admin": {
+                    "type": "boolean"
+                },
+                "balance": {
+                    "description": "USD balance",
+                    "type": "number"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "credit_card_balance": {
+                    "description": "millicent, money from credit card",
+                    "type": "integer"
+                },
+                "credited_balance": {
+                    "description": "millicent, manually added by admin or from vouchers",
+                    "type": "integer"
+                },
+                "debt": {
+                    "description": "millicent",
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sponsored": {
+                    "type": "boolean"
+                },
+                "ssh_key": {
+                    "type": "string"
+                },
+                "stripe_customer_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
         "app.VerifyCodeInput": {
             "type": "object",
             "required": [
@@ -2525,6 +2631,23 @@
                     "type": "integer"
                 },
                 "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.VerifyRegisterUserResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "workflow_id": {
                     "type": "string"
                 }
             }
@@ -2625,67 +2748,6 @@
                 "userID": {
                     "description": "User owner",
                     "type": "integer"
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "account_address": {
-                    "type": "string"
-                },
-                "admin": {
-                    "type": "boolean"
-                },
-                "code": {
-                    "type": "integer"
-                },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
-                    "type": "integer"
-                },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
                 }
             }
         },

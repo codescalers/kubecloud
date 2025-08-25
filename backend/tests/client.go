@@ -267,6 +267,26 @@ func (c *Client) DeleteCluster(name string) error {
 	return nil
 }
 
+func (c *Client) DeleteAllDeployments() (string, error) {
+	resp, err := c.makeRequest("DELETE", "/deployments", nil, true)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("delete all deployments failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var deleteResp app.Response
+	if err := json.NewDecoder(resp.Body).Decode(&deleteResp); err != nil {
+		return "", fmt.Errorf("failed to decode delete all response: %w", err)
+	}
+
+	return deleteResp.WorkflowID, nil
+}
+
 func (c *Client) AddNode(deploymentName string, node kubedeployer.Node) (string, error) {
 	cluster := kubedeployer.Cluster{
 		Name:  deploymentName,
@@ -304,6 +324,148 @@ func (c *Client) RemoveNode(deploymentName, nodeName string) error {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("remove node request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// NotificationsResponse represents the response structure for notification lists
+type NotificationsResponse struct {
+	Notifications []app.NotificationResponse `json:"notifications"`
+	Limit         int                        `json:"limit"`
+	Offset        int                        `json:"offset"`
+	Count         int                        `json:"count"`
+}
+
+// GetAllNotifications retrieves all notifications with optional pagination
+func (c *Client) GetAllNotifications(limit, offset int) (*NotificationsResponse, error) {
+	endpoint := "/notifications"
+	if limit > 0 || offset > 0 {
+		endpoint += fmt.Sprintf("?limit=%d&offset=%d", limit, offset)
+	}
+
+	resp, err := c.makeRequest("GET", endpoint, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get all notifications failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var notificationResp NotificationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&notificationResp); err != nil {
+		return nil, fmt.Errorf("failed to decode notifications response: %w", err)
+	}
+
+	return &notificationResp, nil
+}
+
+// GetUnreadNotifications retrieves only unread notifications with optional pagination
+func (c *Client) GetUnreadNotifications(limit, offset int) (*NotificationsResponse, error) {
+	endpoint := fmt.Sprintf("/notifications/unread?limit=%d&offset=%d", limit, offset)
+	resp, err := c.makeRequest("GET", endpoint, nil, true)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get unread notifications failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var notificationResp NotificationsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&notificationResp); err != nil {
+		return nil, fmt.Errorf("failed to decode unread notifications response: %w", err)
+	}
+
+	return &notificationResp, nil
+}
+
+// MarkNotificationRead marks a specific notification as read
+func (c *Client) MarkNotificationRead(notificationID uint) error {
+	endpoint := fmt.Sprintf("/notifications/%d/read", notificationID)
+
+	resp, err := c.makeRequest("PUT", endpoint, nil, true)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("mark notification read failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// MarkNotificationUnread marks a specific notification as unread
+func (c *Client) MarkNotificationUnread(notificationID uint) error {
+	endpoint := fmt.Sprintf("/notifications/%d/unread", notificationID)
+
+	resp, err := c.makeRequest("PUT", endpoint, nil, true)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("mark notification unread failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// MarkAllNotificationsRead marks all notifications as read for the authenticated user
+func (c *Client) MarkAllNotificationsRead() error {
+	resp, err := c.makeRequest("PUT", "/notifications/read-all", nil, true)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("mark all notifications read failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeleteNotification deletes a specific notification
+func (c *Client) DeleteNotification(notificationID uint) error {
+	endpoint := fmt.Sprintf("/notifications/%d", notificationID)
+
+	resp, err := c.makeRequest("DELETE", endpoint, nil, true)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete notification failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeleteAllNotifications deletes all notifications for the authenticated user
+func (c *Client) DeleteAllNotifications() error {
+	resp, err := c.makeRequest("PUT", "/notifications", nil, true)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete all notifications failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil

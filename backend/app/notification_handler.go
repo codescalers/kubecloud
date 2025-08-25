@@ -1,11 +1,21 @@
 package app
 
 import (
+	"errors"
+	"fmt"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+const (
+	// Default pagination values
+	DefaultNotificationLimit = 20
+	MaxNotificationLimit     = 100
+	DefaultOffset            = 0
 )
 
 // NotificationResponse represents a notification response
@@ -21,57 +31,85 @@ type NotificationResponse struct {
 	ReadAt    *string                   `json:"read_at,omitempty"`
 }
 
-// GetNotificationsHandler retrieves user notifications with pagination
-func (h *Handler) GetNotificationsHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
+// convertToNotificationResponse converts a models.Notification to NotificationResponse
+func convertToNotificationResponse(notification models.Notification) NotificationResponse {
+	resp := NotificationResponse{
+		ID:        notification.ID,
+		Type:      notification.Type,
+		Title:     notification.Title,
+		Message:   notification.Message,
+		Data:      notification.Data,
+		TaskID:    notification.TaskID,
+		Status:    notification.Status,
+		CreatedAt: notification.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	// Parse pagination parameters
-	limitStr := c.DefaultQuery("limit", "20")
-	offsetStr := c.DefaultQuery("offset", "0")
+	if notification.ReadAt != nil {
+		readAtStr := notification.ReadAt.Format("2006-01-02T15:04:05Z07:00")
+		resp.ReadAt = &readAtStr
+	}
 
+	return resp
+}
+
+// getUserIDFromContext extracts and validates user ID from context
+func getUserIDFromContext(c *gin.Context) (string, error) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		return "", fmt.Errorf("unauthorized")
+	}
+	return fmt.Sprint(userID), nil
+}
+
+// validatePaginationParams validates and normalizes pagination parameters
+func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
 	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 || limit > 100 {
-		limit = 20
+	if err != nil || limit <= 0 {
+		limit = DefaultNotificationLimit
+	}
+	if limit > MaxNotificationLimit {
+		limit = MaxNotificationLimit
 	}
 
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil || offset < 0 {
-		offset = 0
+		offset = DefaultOffset
 	}
 
-	notifications, err := h.db.GetUserNotifications(userID.(string), limit, offset)
+	return limit, offset, nil
+}
+
+// GetAllNotificationsHandler retrieves all user notifications with pagination
+func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve notifications"})
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		return
+	}
+
+	// Parse and validate pagination parameters
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
+	offsetStr := c.DefaultQuery("offset", strconv.Itoa(DefaultOffset))
+
+	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+		return
+	}
+
+	notifications, err := h.db.GetUserNotifications(userID, limit, offset)
+	if err != nil {
+		Error(c, http.StatusInternalServerError, "Failed to retrieve notifications", err.Error())
 		return
 	}
 
 	// Convert to response format
-	var response []NotificationResponse
+	response := make([]NotificationResponse, 0, len(notifications))
 	for _, notification := range notifications {
-		notificationResp := NotificationResponse{
-			ID:        notification.ID,
-			Type:      notification.Type,
-			Title:     notification.Title,
-			Message:   notification.Message,
-			Data:      notification.Data,
-			TaskID:    notification.TaskID,
-			Status:    notification.Status,
-			CreatedAt: notification.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		}
-
-		if notification.ReadAt != nil {
-			readAtStr := notification.ReadAt.Format("2006-01-02T15:04:05Z07:00")
-			notificationResp.ReadAt = &readAtStr
-		}
-
-		response = append(response, notificationResp)
+		response = append(response, convertToNotificationResponse(notification))
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	Success(c, http.StatusOK, "Notifications retrieved successfully", gin.H{
 		"notifications": response,
 		"limit":         limit,
 		"offset":        offset,
@@ -81,82 +119,156 @@ func (h *Handler) GetNotificationsHandler(c *gin.Context) {
 
 // MarkNotificationReadHandler marks a specific notification as read
 func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
 
 	notificationIDStr := c.Param("notification_id")
 	notificationID, err := strconv.ParseUint(notificationIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
+	if err != nil || notificationID == 0 {
+		Error(c, http.StatusBadRequest, "Invalid notification ID", "Notification ID must be a positive integer")
 		return
 	}
 
-	err = h.db.MarkNotificationAsRead(uint(notificationID), userID.(string))
+	err = h.db.MarkNotificationAsRead(uint(notificationID), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Notification not found or access denied"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			return
+		}
+		Error(c, http.StatusInternalServerError, "Database error", "Failed to mark notification as read")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Notification marked as read"})
+	Success(c, http.StatusOK, "Notification marked as read", nil)
 }
 
 // MarkAllNotificationsReadHandler marks all notifications as read for a user
 func (h *Handler) MarkAllNotificationsReadHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	err := h.db.MarkAllNotificationsAsRead(userID.(string))
+	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to mark notifications as read"})
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "All notifications marked as read"})
-}
-
-// GetUnreadNotificationCountHandler returns the count of unread notifications
-func (h *Handler) GetUnreadNotificationCountHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	count, err := h.db.GetUnreadNotificationCount(userID.(string))
+	err = h.db.MarkAllNotificationsAsRead(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get notification count"})
+		Error(c, http.StatusInternalServerError, "Failed to mark notifications as read", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"unread_count": count})
+	Success(c, http.StatusOK, "All notifications marked as read", nil)
 }
 
 // DeleteNotificationHandler deletes a specific notification
 func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
 
 	notificationIDStr := c.Param("notification_id")
 	notificationID, err := strconv.ParseUint(notificationIDStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid notification ID"})
+	if err != nil || notificationID == 0 {
+		Error(c, http.StatusBadRequest, "Invalid notification ID", "Notification ID must be a positive integer")
 		return
 	}
 
-	err = h.db.DeleteNotification(uint(notificationID), userID.(string))
+	err = h.db.DeleteNotification(uint(notificationID), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Notification not found or access denied"})
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			return
+		}
+		Error(c, http.StatusInternalServerError, "Database error", "Failed to delete notification")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Notification deleted successfully"})
+	Success(c, http.StatusOK, "Notification deleted successfully", nil)
+}
+
+// GetUnreadNotificationsHandler retrieves only unread notifications for a user
+func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		return
+	}
+
+	// Parse and validate pagination parameters
+	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
+	offsetStr := c.DefaultQuery("offset", strconv.Itoa(DefaultOffset))
+
+	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+		return
+	}
+
+	notifications, err := h.db.GetUnreadNotifications(userID, limit, offset)
+	if err != nil {
+		Error(c, http.StatusInternalServerError, "Failed to retrieve unread notifications", err.Error())
+		return
+	}
+
+	// Convert to response format
+	response := make([]NotificationResponse, 0, len(notifications))
+	for _, notification := range notifications {
+		response = append(response, convertToNotificationResponse(notification))
+	}
+
+	Success(c, http.StatusOK, "Unread notifications retrieved successfully", gin.H{
+		"notifications": response,
+		"limit":         limit,
+		"offset":        offset,
+		"count":         len(response),
+	})
+}
+
+// DeleteAllNotificationsHandler deletes all notifications for a user
+func (h *Handler) DeleteAllNotificationsHandler(c *gin.Context) {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		return
+	}
+
+	err = h.db.DeleteAllNotifications(userID)
+	if err != nil {
+		Error(c, http.StatusInternalServerError, "Failed to delete notifications", err.Error())
+		return
+	}
+
+	Success(c, http.StatusOK, "All notifications deleted successfully", nil)
+}
+
+// MarkNotificationUnreadHandler marks a specific notification as unread
+func (h *Handler) MarkNotificationUnreadHandler(c *gin.Context) {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		return
+	}
+
+	notificationIDStr := c.Param("notification_id")
+	notificationID, err := strconv.ParseUint(notificationIDStr, 10, 32)
+	if err != nil || notificationID == 0 {
+		Error(c, http.StatusBadRequest, "Invalid notification ID", "Notification ID must be a positive integer")
+		return
+	}
+
+	err = h.db.MarkNotificationAsUnread(uint(notificationID), userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			return
+		}
+		Error(c, http.StatusInternalServerError, "Database error", "Failed to mark notification as unread")
+		return
+	}
+
+	Success(c, http.StatusOK, "Notification marked as unread", nil)
 }

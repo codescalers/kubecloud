@@ -186,6 +186,7 @@ definitions:
     properties:
       enabled:
         type: boolean
+    type: object
   app.NodeInput:
     properties:
       cpu:
@@ -373,6 +374,51 @@ definitions:
       pending_balance_usd:
         type: number
     type: object
+  app.UserResponse:
+    properties:
+      account_address:
+        type: string
+      admin:
+        type: boolean
+      balance:
+        description: USD balance
+        type: number
+      code:
+        type: integer
+      credit_card_balance:
+        description: millicent, money from credit card
+        type: integer
+      credited_balance:
+        description: millicent, manually added by admin or from vouchers
+        type: integer
+      debt:
+        description: millicent
+        type: integer
+      email:
+        type: string
+      id:
+        type: integer
+      password:
+        items:
+          type: integer
+        type: array
+      sponsored:
+        type: boolean
+      ssh_key:
+        type: string
+      stripe_customer_id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+      verified:
+        type: boolean
+    required:
+    - email
+    - password
+    - username
+    type: object
   app.VerifyCodeInput:
     properties:
       code:
@@ -382,6 +428,17 @@ definitions:
     required:
     - code
     - email
+    type: object
+  app.VerifyRegisterUserResponse:
+    properties:
+      access_token:
+        type: string
+      email:
+        type: string
+      refresh_token:
+        type: string
+      workflow_id:
+        type: string
     type: object
   internal.TokenPair:
     properties:
@@ -450,48 +507,6 @@ definitions:
     - public_key
     - userID
     type: object
-  models.User:
-    properties:
-      account_address:
-        type: string
-      admin:
-        type: boolean
-      code:
-        type: integer
-      credit_card_balance:
-        description: millicent, money from credit card
-        type: integer
-      credited_balance:
-        description: millicent, manually added by admin or from vouchers
-        type: integer
-      debt:
-        description: millicent
-        type: integer
-      email:
-        type: string
-      id:
-        type: integer
-      password:
-        items:
-          type: integer
-        type: array
-      sponsored:
-        type: boolean
-      ssh_key:
-        type: string
-      stripe_customer_id:
-        type: string
-      updated_at:
-        type: string
-      username:
-        type: string
-      verified:
-        type: boolean
-    required:
-    - email
-    - password
-    - username
-    type: object
   models.Voucher:
     properties:
       code:
@@ -519,6 +534,29 @@ info:
   version: "1.0"
 paths:
   /deployments:
+    delete:
+      description: Deletes all deployments and their resources for the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Delete all deployments workflow started successfully
+          schema:
+            $ref: '#/definitions/app.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete all deployments
+      tags:
+      - deployments
     get:
       description: Retrieves a list of all deployments (clusters) for the authenticated
         user
@@ -1414,25 +1452,29 @@ paths:
       description: Verifies the email using the registration code
       operationId: verify-register-code
       parameters:
-      - description: Verify Code Input
+      - description: Verification details
         in: body
-        name: body
+        name: request
         required: true
         schema:
           $ref: '#/definitions/app.VerifyCodeInput'
       produces:
       - application/json
       responses:
-        "202":
-          description: 'workflow_id: string, email: string'
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/app.RegisterUserResponse'
+            $ref: '#/definitions/app.VerifyRegisterUserResponse'
         "400":
-          description: Invalid request format or verification failed
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "409":
+          description: User is already registered
           schema:
             $ref: '#/definitions/app.APIResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/app.APIResponse'
       summary: Verify registration code
@@ -1555,7 +1597,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.User'
+              $ref: '#/definitions/app.UserResponse'
             type: array
         "500":
           description: Internal Server Error

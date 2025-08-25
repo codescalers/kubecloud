@@ -114,6 +114,10 @@ func GetUserBalanceUSDMillicent(substrateClient *substrate.Substrate, userMnemon
 
 // GetUserBalanceUSD gets balance of user in TFT
 func GetUserTFTBalance(substrateClient *substrate.Substrate, userMnemonic string) (uint64, error) {
+	if userMnemonic == "" {
+		return 0, nil
+	}
+
 	// Create identity from mnemonic
 	identity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {

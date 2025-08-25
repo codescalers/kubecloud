@@ -2,16 +2,17 @@ package activities
 
 const (
 	// Workflow names
-	WorkflowChargeBalance      = "charge-balance"
-	WorkflowAdminCreditBalance = "admin-credit-balance"
-	WorkflowUserRegistration   = "user-registration"
-	WorkflowUserVerification   = "user-verification"
-	WorkflowRedeemVoucher      = "redeem-voucher"
-	WorkflowReserveNode        = "reserve-node"
-	WorkflowUnreserveNode      = "unreserve-node"
-	WorkflowDeleteCluster      = "delete-cluster"
-	WorkflowAddNode            = "add-node"
-	WorkflowRemoveNode         = "remove-node"
+	WorkflowChargeBalance        = "charge-balance"
+	WorkflowAdminCreditBalance   = "admin-credit-balance"
+	WorkflowUserRegistration     = "user-registration"
+	WorkflowUserVerification     = "user-verification"
+	WorkflowRedeemVoucher        = "redeem-voucher"
+	WorkflowReserveNode          = "reserve-node"
+	WorkflowUnreserveNode        = "unreserve-node"
+	WorkflowDeleteCluster        = "delete-cluster"
+	WorkflowAddNode              = "add-node"
+	WorkflowRemoveNode           = "remove-node"
+	WorkflowDeleteAllDeployments = "delete-all-deployments"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"
@@ -34,6 +35,9 @@ const (
 	StepUpdateNetwork           = "update-network"
 	StepRemoveCluster           = "remove-cluster"
 	StepRemoveClusterFromDB     = "remove-cluster-from-db"
+	StepGatherAllContractIDs    = "gather-all-contract-ids"
+	StepBatchCancelContracts    = "batch-cancel-contracts"
+	StepDeleteAllUserClusters   = "delete-all-user-clusters"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
 )
