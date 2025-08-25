@@ -158,9 +158,8 @@ type SSHKeyInput struct {
 
 // RegisterUserResponse holds the response for user registration
 type RegisterUserResponse struct {
-	WorkflowID           string `json:"workflow_id"`
-	Email                string `json:"email"`
-	ShortLiveAccessToken string `json:"short_live_access_token"`
+	WorkflowID string `json:"workflow_id"`
+	Email      string `json:"email"`
 }
 
 type VerifyRegisterUserResponse struct {

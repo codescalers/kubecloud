@@ -7,12 +7,9 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-const shortLiveTokenExpiry = 10 * time.Minute
-
 // TokenManager defines the interface for token operations.
 type TokenManager interface {
 	CreateTokenPair(userID int, username string, isAdmin bool) (*TokenPair, error)
-	CreateShortLivingTokenPair(userID int, username string, isAdmin bool) (string, error)
 	VerifyToken(tokenString string) (*TokenClaims, error)
 	AccessTokenFromRefresh(refreshToken string) (string, error)
 }
@@ -60,11 +57,6 @@ func (h *TokenHandler) CreateTokenPair(userID int, username string, isAdmin bool
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
-}
-
-// CreateShortLivingTokenPair generates a new short-lived access and refresh token pair
-func (h *TokenHandler) CreateShortLivingTokenPair(userID int, username string, isAdmin bool) (string, error) {
-	return h.createToken(userID, username, isAdmin, shortLiveTokenExpiry)
 }
 
 // VerifyToken verifies the token and returns the claims
