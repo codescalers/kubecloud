@@ -1,7 +1,4 @@
-import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker } from './api'
-import { useNotificationStore } from '@/stores/notifications'
-import { useGenericEventListener } from '@/composables/useEvents'
+import { api } from './api'
 
 // Types for auth requests and responses
 export interface RegisterRequest {
@@ -24,7 +21,8 @@ export interface VerifyCodeRequest {
 export interface VerifyCodeResponse {
   email: string
   workflow_id: string
-  short_live_access_token: string
+  access_token: string
+  refresh_token: string
 }
 
 export interface LoginRequest {
@@ -109,59 +107,16 @@ export class AuthService {
       loadingMessage: 'Creating your account...',
       errorMessage: 'Registration failed',
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 2000, interval: 1000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Registration Success',
-        'User registered successfully',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Registration Failed',
-        'Failed to register user',
-      )
-      throw new Error('Failed to register user')
-    }
 
   }
 
   // Verify registration code
-  async verifyCode(data: VerifyCodeRequest): Promise<void> {
+  async verifyCode(data: VerifyCodeRequest): Promise<VerifyCodeResponse> {
     const response = await api.post<ApiResponse<VerifyCodeResponse>>('/v1/user/register/verify', data, {
       showNotifications: true,
       errorMessage: 'Verification failed'
     })
-    const genericListener = useGenericEventListener({
-      token: response.data.data.short_live_access_token,
-      onMessage: (event) => {
-        console.log('Received event:', event)
-      },
-      onConnect: () => {
-        console.log('Connected to SSE')
-      },
-      onError: (err) => {
-        console.error('SSE error:', err)
-      }
-    })
-
-    genericListener.connect()
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 2000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Verification Success',
-        'User verified successfully',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Verification Failed',
-        'Failed to verify user',
-      )
-      throw new Error('Failed to verify user')
-    }
+    return response.data.data
   }
 
   // Login user
