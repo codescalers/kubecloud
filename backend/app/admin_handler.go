@@ -99,7 +99,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		multiErr *multierror.Error
 	)
 
-	for i := range users {
+	for _, user := range users {
 		wg.Add(1)
 		balanceConcurrencyLimiter <- struct{}{}
 
@@ -123,7 +123,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 				Balance: balanceUSD,
 			})
 			mu.Unlock()
-		}(users[i])
+		}(user)
 	}
 
 	wg.Wait()
