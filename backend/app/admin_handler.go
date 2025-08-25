@@ -89,7 +89,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	resultChan := make(chan UserResponse, len(users))
+	var usersWithBalance []UserResponse
 	const maxConcurrentBalanceFetches = 20
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
 
@@ -117,26 +117,22 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 			}
 
 			balanceUSD := internal.FromUSDMilliCentToUSD(balance)
-			resultChan <- UserResponse{
+			mu.Lock()
+			usersWithBalance = append(usersWithBalance, UserResponse{
 				User:    user,
 				Balance: balanceUSD,
-			}
+			})
+			mu.Unlock()
 		}(users[i])
 	}
 
 	wg.Wait()
-	close(resultChan)
 
 	// Check if there were any errors during balance fetching
 	if multiErr != nil {
 		log.Error().Err(multiErr).Msg("errors occurred while fetching user balances")
 		InternalServerError(c)
 		return
-	}
-
-	var usersWithBalance []UserResponse
-	for result := range resultChan {
-		usersWithBalance = append(usersWithBalance, result)
 	}
 
 	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
