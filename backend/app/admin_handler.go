@@ -109,7 +109,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 
 			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 			if err != nil {
-				log.Error().Err(err).Int("user_id", int(user.ID)).Msg("failed to get user balance")
+				log.Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
 				mu.Unlock()
