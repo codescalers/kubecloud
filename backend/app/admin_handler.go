@@ -89,8 +89,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	usersWithBalance := make([]UserResponse, len(users))
-
+	resultChan := make(chan UserResponse, len(users))
 	const maxConcurrentBalanceFetches = 20
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
 
@@ -104,13 +103,13 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		wg.Add(1)
 		balanceConcurrencyLimiter <- struct{}{}
 
-		go func(index int, user models.User) {
+		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
 			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 			if err != nil {
-				log.Error().Err(err).Str("user_id", fmt.Sprintf("%d", user.ID)).Msg("failed to get user balance")
+				log.Error().Err(err).Int("user_id", int(user.ID)).Msg("failed to get user balance")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
 				mu.Unlock()
@@ -118,24 +117,26 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 			}
 
 			balanceUSD := internal.FromUSDMilliCentToUSD(balance)
-			fmt.Println("balanceUSD", balanceUSD)
-			fmt.Println("user", user.Mnemonic)
-			mu.Lock()
-			usersWithBalance[index] = UserResponse{
+			resultChan <- UserResponse{
 				User:    user,
 				Balance: balanceUSD,
 			}
-			mu.Unlock()
-		}(i, users[i])
+		}(users[i])
 	}
 
 	wg.Wait()
+	close(resultChan)
 
 	// Check if there were any errors during balance fetching
 	if multiErr != nil {
 		log.Error().Err(multiErr).Msg("errors occurred while fetching user balances")
 		InternalServerError(c)
 		return
+	}
+
+	var usersWithBalance []UserResponse
+	for result := range resultChan {
+		usersWithBalance = append(usersWithBalance, result)
 	}
 
 	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
