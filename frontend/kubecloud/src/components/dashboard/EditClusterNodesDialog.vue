@@ -43,10 +43,15 @@
         <div v-else-if="editTab === 'add'">
           <v-form  v-model="formValid">
             <div class="add-form-wrapper">
-              <v-text-field validate-on="eager" :rules="[validateNodeName]" v-model="addFormName" label="Name" />
-              <v-text-field validate-on="eager" :rules="[validateCPU]" v-model.number="addFormCpu" label="CPU" type="number" min="1" />
-              <v-text-field validate-on="eager" :rules="[validateRAM]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
-              <v-text-field validate-on="eager" :rules="[validateStorage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
+              <v-text-field 
+                validate-on="eager" 
+                :rules="[VUETIFY_RULES.nodeName]" 
+                v-model="addFormName" 
+                label="Name" 
+              />
+              <v-text-field validate-on="eager" :rules="[VUETIFY_RULES.cpu]" v-model.number="addFormCpu" label="CPU" type="number" min="1" />
+              <v-text-field validate-on="eager" :rules="[VUETIFY_RULES.ram]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
+              <v-text-field validate-on="eager" :rules="[VUETIFY_RULES.storage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
             <NodeSelect
               v-model="addFormNodeId"
               :items="availableNodesWithName"
@@ -82,7 +87,6 @@
                 <span>No SSH keys found. Please add one in your dashboard.</span>
               </div>
             </div>
-
           </div>
         </v-form>
         </div>
@@ -124,9 +128,10 @@ import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } fr
 import type { RentedNode } from '../../composables/useNodeManagement';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
-import { isAlphanumeric, required, min, max } from "../../utils/validation"
 import { ROOTFS } from '../../composables/useDeployCluster';
-import NodeSelect from '@/components/ui/NodeSelect.vue';
+import NodeSelect from '../ui/NodeSelect.vue';
+import { VUETIFY_RULES } from "../../utils/validation";
+
 const props = defineProps<{
   modelValue: boolean,
   cluster: any,
@@ -183,22 +188,6 @@ const submitting = ref(false);
 const deleteConfirmDialog = ref(false);
 const nodeToDelete = ref<string>('');
 
-const validateNodeName = (value: string) :string|boolean =>  {
-  const msg = required('Name is required')(value) || isAlphanumeric('Node name can only contain letters, and numbers.')(value);
-  return msg ? msg : true;
-};
-const validateCPU = (value: string) :string|boolean =>  {
-  const msg = required('CPU is required')(value) || min('CPU must be at least 1',1)(+value)|| max('CPU must be at most 32',32)(+value);
-  return msg ? msg : true;
-};
-const validateRAM = (value: string) :string|boolean =>  {
-  const msg = required('RAM is required')(value) || min('RAM must be at least 0.5GB',0.5)(+value)|| max('RAM must be at most 256GB',256)(+value);
-  return msg ? msg : true;
-};
-const validateStorage = (value: string) :string|boolean =>  {
-  const msg = required('Storage is required')(value) || min('Storage must be at least 15GB',15)(+value)|| max('Storage must be at most 10000GB',10000)(+value);
-  return msg ? msg : true;
-};
 onMounted(async () => {
   sshKeysLoading.value = true;
   try {

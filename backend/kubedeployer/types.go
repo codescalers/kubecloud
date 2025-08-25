@@ -38,6 +38,7 @@ type Node struct {
 	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // Memory in MB
 	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // Storage in MB
 	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // Storage in MB
+	GPUIDs   []string          `json:"gpu_ids,omitempty"`                       // List of GPU IDs
 	EnvVars  map[string]string `json:"env_vars"`
 
 	// Optional fields

@@ -26,6 +26,57 @@ type Response struct {
 	Message    string `json:"message"`
 }
 
+// DeploymentResponse represents the response for deployment operations
+type DeploymentResponse struct {
+	ID          int         `json:"id"`
+	ProjectName string      `json:"project_name"`
+	Cluster     interface{} `json:"cluster"`
+	CreatedAt   string      `json:"created_at"`
+	UpdatedAt   string      `json:"updated_at"`
+}
+
+// DeploymentListResponse represents the response for listing deployments
+type DeploymentListResponse struct {
+	Deployments []DeploymentResponse `json:"deployments"`
+	Count       int                  `json:"count"`
+}
+
+// KubeconfigResponse represents the response for kubeconfig requests
+type KubeconfigResponse struct {
+	Kubeconfig string `json:"kubeconfig"`
+}
+
+// ClusterInput represents the simplified input structure for cluster creation
+type ClusterInput struct {
+	Name  string      `json:"name" binding:"required"`
+	Token string      `json:"token"`
+	Nodes []NodeInput `json:"nodes" binding:"required"`
+}
+
+// NodeInput represents the input structure for node configuration
+type NodeInput struct {
+	Name       string            `json:"name" binding:"required"`
+	Type       string            `json:"type" binding:"required" enums:"worker,master,leader"`
+	NodeID     uint32            `json:"node_id" binding:"required"`
+	CPU        uint8             `json:"cpu" binding:"required"`
+	Memory     uint64            `json:"memory" binding:"required"`    // Memory in MB
+	RootSize   uint64            `json:"root_size" binding:"required"` // Storage in MB
+	DiskSize   uint64            `json:"disk_size"`                    // Storage in MB
+	EnvVars    map[string]string `json:"env_vars"`                     // SSH_KEY, etc.
+	GPUIDs     []string          `json:"gpu_ids,omitempty"`            // List of GPU IDs
+	Flist      string            `json:"flist,omitempty"`
+	Entrypoint string            `json:"entrypoint,omitempty"`
+}
+
+// @Summary List deployments
+// @Description Retrieves a list of all deployments (clusters) for the authenticated user
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} DeploymentListResponse "Deployments retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments [get]
 func (h *Handler) HandleListDeployments(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -64,6 +115,18 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 	})
 }
 
+// @Summary Get deployment
+// @Description Retrieves details of a specific deployment by name
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Param name path string true "Deployment name"
+// @Success 200 {object} DeploymentResponse "Deployment details retrieved successfully"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "Deployment not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/{name} [get]
 func (h *Handler) HandleGetDeployment(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -104,6 +167,18 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary Get kubeconfig
+// @Description Retrieves the kubeconfig file for a specific deployment
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Param name path string true "Deployment name"
+// @Success 200 {object} KubeconfigResponse "Kubeconfig retrieved successfully"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "Deployment not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/{name}/kubeconfig [get]
 func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -296,6 +371,18 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 	}, nil
 }
 
+// @Summary Deploy cluster
+// @Description Creates and deploys a new Kubernetes cluster
+// @Tags deployments
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param cluster body ClusterInput true "Cluster configuration"
+// @Success 202 {object} Response "Deployment workflow started successfully"
+// @Failure 400 {object} APIResponse "Invalid request format"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments [post]
 func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
@@ -339,6 +426,18 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	})
 }
 
+// @Summary Delete deployment
+// @Description Deletes a specific deployment and all its resources
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Param name path string true "Deployment name"
+// @Success 200 {object} Response "Deployment deletion workflow started successfully"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "Deployment not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/{name} [delete]
 func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
@@ -378,6 +477,19 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 	})
 }
 
+// @Summary Add node to deployment
+// @Description Adds a new node to an existing deployment
+// @Tags deployments
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param cluster body ClusterInput true "Cluster configuration with new node"
+// @Success 202 {object} Response "Node addition workflow started successfully"
+// @Failure 400 {object} APIResponse "Invalid request format"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "Deployment not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/{name}/nodes [post]
 func (h *Handler) HandleAddNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
@@ -434,6 +546,19 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	})
 }
 
+// @Summary Remove node from deployment
+// @Description Removes a specific node from an existing deployment
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Param name path string true "Deployment name"
+// @Param node_name path string true "Node name to remove"
+// @Success 200 {object} Response "Node removal workflow started successfully"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "Deployment not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/{name}/nodes/{node_name} [delete]
 func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {

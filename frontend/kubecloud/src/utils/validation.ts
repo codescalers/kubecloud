@@ -1,5 +1,7 @@
 export interface ValidationRule {
   required?: boolean
+  min?: number
+  max?: number
   minLength?: number
   maxLength?: number
   pattern?: RegExp
@@ -80,11 +82,11 @@ export const validateField = (field: FieldValidation): ValidationResult => {
 
   // Number validations
   if (typeof value === 'number') {
-    if (rules.minLength && value < rules.minLength) {
-      errors.push(`${fieldName} must be at least ${rules.minLength}`)
+    if (rules.min !== undefined && value < rules.min) {
+      errors.push(`${fieldName} must be at least ${rules.min}`)
     }
-    if (rules.maxLength && value > rules.maxLength) {
-      errors.push(`${fieldName} must be no more than ${rules.maxLength}`)
+    if (rules.max !== undefined && value > rules.max) {
+      errors.push(`${fieldName} must be no more than ${rules.max}`)
     }
   }
 
@@ -139,10 +141,114 @@ export const VALIDATION_RULES = {
   CLUSTER_NAME: {
     required: true,
     minLength: 3,
+    maxLength: 20,
+    pattern: PATTERNS.ALPHANUMERIC
+  },
+  NODE_NAME: {
+    required: true,
+    minLength: 3,
+    maxLength: 20,
     pattern: PATTERNS.ALPHANUMERIC
   },
   HEX_COLOR: { pattern: PATTERNS.HEX_COLOR },
   IP_ADDRESS: { pattern: PATTERNS.IP_ADDRESS }
+}
+
+// Node validation constants
+export const NODE_VALIDATION = {
+  CPU: { min: 1, max: 255 },
+  RAM: { min: 2, max: 256 }, // in GB
+  STORAGE: { min: 10, max: 10000 }, // in GB
+  ROOTFS: { min: 5, max: 100 } // in GB
+}
+
+// Unified validation function for node fields
+export const validateNodeField = (value: any, fieldName: string, rules: ValidationRule): string | undefined => {
+  const result = validateField({ value, rules, fieldName })
+  return result.isValid ? undefined : result.errors[0]
+}
+
+// Vuetify-compatible validation rules
+export const RULES = {
+  nodeName: (value: any) => validateNodeField(value, 'Name', {
+    required: true,
+    minLength: 3,
+    maxLength: 20,
+    pattern: PATTERNS.ALPHANUMERIC
+  }),
+
+  cpu: (value: any) => validateNodeField(value, 'CPU', {
+    required: true,
+    min: 1,
+    max: 255,
+    custom: (val: any) => {
+      const num = Number(val)
+      if (isNaN(num)) return 'CPU must be a valid number'
+      if (!Number.isInteger(num)) return 'CPU must be a whole number (no decimals)'
+      return true
+    }
+  }),
+
+  ram: (value: any) => validateNodeField(value, 'RAM', {
+    required: true,
+    min: 2,
+    max: 256
+  }),
+
+  storage: (value: any) => validateNodeField(value, 'Storage', {
+    required: true,
+    min: 10,
+    max: 10000
+  }),
+
+  clusterName: (value: any) => validateNodeField(value, 'Cluster name', {
+    required: true,
+    minLength: 3,
+    maxLength: 20,
+    pattern: PATTERNS.ALPHANUMERIC
+  }),
+
+  validateNode: (node: any): Record<string, string> => {
+    const errors: Record<string, string> = {}
+
+    const nameError = RULES.nodeName(node.name)
+    if (nameError) errors.name = nameError
+
+    const cpuError = RULES.cpu(node.vcpu)
+    if (cpuError) errors.vcpu = cpuError
+
+    const ramError = RULES.ram(node.ram)
+    if (ramError) errors.ram = ramError
+
+    const storageError = RULES.storage(node.disk)
+    if (storageError) errors.disk = storageError
+
+    return errors
+  }
+}
+
+// Vuetify-compatible validation rules
+export const VUETIFY_RULES = {
+  nodeName: (value: any): string | boolean => {
+    const result = RULES.nodeName(value);
+    return result || true;
+  },
+  cpu: (value: any): string | boolean => {
+    const result = RULES.cpu(value);
+    return result || true;
+  },
+  ram: (value: any): string | boolean => {
+    const result = RULES.ram(value);
+    return result || true;
+  },
+  storage: (value: any): string | boolean => {
+    const result = RULES.storage(value);
+    return result || true;
+  },
+  clusterName: (value: any): string | boolean => {
+    const result = RULES.clusterName(value);
+    return result || true;
+  }
 }
 
 // Utility functions
@@ -152,66 +258,4 @@ export const sanitizeInput = (input: string): string => {
 
 export const formatValidationErrors = (errors: string[]): string => {
   return errors.join('. ')
-}
-
-
-// Async validation support
-export const validateAsync = async (
-  field: FieldValidation,
-  asyncValidator?: (value: any) => Promise<boolean | string>
-): Promise<ValidationResult> => {
-  const syncResult = validateField(field)
-
-  if (!syncResult.isValid || !asyncValidator) {
-    return syncResult
-  }
-
-  try {
-    const asyncResult = await asyncValidator(field.value)
-    if (asyncResult !== true) {
-      return {
-        isValid: false,
-        errors: [...syncResult.errors, typeof asyncResult === 'string' ? asyncResult : 'Validation failed']
-      }
-    }
-  } catch (error) {
-    return {
-      isValid: false,
-      errors: [...syncResult.errors, 'Validation error occurred']
-    }
-  }
-
-  return syncResult
-}
-
-
-export function required(msg: string) {
-  return (value: string) => {
-    if (!value) {
-      return msg;
-    }
-  };
-}
-export function min(msg: string, min: number) {
-  return (value: number) => {
-    if (value < min) {
-      return msg ;
-    }
-  };
-}
-
-export function max(msg: string, max: number) {
-  return (value: number) => {
-    if (+value > max) {
-      return msg;
-    }
-  };
-}
-
-export function isAlphanumeric(msg: string) {
-  return (value: string) => {
-    if (!/^[a-zA-Z0-9]*$/.test(value)) {
-      return msg;
-    }
-  };
 }

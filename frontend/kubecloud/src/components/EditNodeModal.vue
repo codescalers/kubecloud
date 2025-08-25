@@ -53,7 +53,7 @@
 import { defineProps, defineEmits, watch, ref, computed } from 'vue';
 import type { PropType } from 'vue';
 import type { VM, SshKey } from '../composables/useDeployCluster';
-import { required, min, isAlphanumeric, max } from '@/utils/validation';
+import { VUETIFY_RULES } from '../utils/validation';
 const props = defineProps({
   node: { type: Object as PropType<VM>, required: true },
   visible: { type: Boolean, required: true },
@@ -80,12 +80,19 @@ watch(
 const errors = computed(() => {
   const node = localNode.value;
   const errs: Record<string, string> = {};
-  errs.name = required('Name is required')(node.name) || isAlphanumeric('Node name can only contain letters, and numbers.')(node.name) || "";
-  errs.vcpu = min('vCPU must be at least 1', 1)(node.vcpu)|| max('vCPU must be at most 32', 32)(node.vcpu) || "";
-  errs.ram = min('RAM must be at least 0.5GB', 0.5)(node.ram)|| max('RAM must be at most 256GB', 256)(node.ram) || "";
-  errs.disk = min('Disk must be at least 15GB', 15)(node.disk)|| max('Disk must be at most 10000GB', 10000)(node.disk) || "";
-  // Only require SSH key if there are any available
-  if (props.availableSshKeys.length > 0 && selectedSshKeyIds.value.length === 0) errs.ssh = 'At least one SSH key must be selected.';
+  
+  const nameResult = VUETIFY_RULES.nodeName(node.name);
+  if (nameResult !== true) errs.name = nameResult as string;
+  
+  const cpuResult = VUETIFY_RULES.cpu(node.vcpu);
+  if (cpuResult !== true) errs.vcpu = cpuResult as string;
+  
+  const ramResult = VUETIFY_RULES.ram(node.ram);
+  if (ramResult !== true) errs.ram = ramResult as string;
+  
+  const storageResult = VUETIFY_RULES.storage(node.disk);
+  if (storageResult !== true) errs.disk = storageResult as string;
+  
   return errs;
 });
 

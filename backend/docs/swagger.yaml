@@ -45,6 +45,20 @@ definitions:
       workflow_id:
         type: string
     type: object
+  app.ClusterInput:
+    properties:
+      name:
+        type: string
+      nodes:
+        items:
+          $ref: '#/definitions/app.NodeInput'
+        type: array
+      token:
+        type: string
+    required:
+    - name
+    - nodes
+    type: object
   app.CreditRequestInput:
     properties:
       amount:
@@ -64,6 +78,27 @@ definitions:
       memo:
         type: string
       user:
+        type: string
+    type: object
+  app.DeploymentListResponse:
+    properties:
+      count:
+        type: integer
+      deployments:
+        items:
+          $ref: '#/definitions/app.DeploymentResponse'
+        type: array
+    type: object
+  app.DeploymentResponse:
+    properties:
+      cluster: {}
+      created_at:
+        type: string
+      id:
+        type: integer
+      project_name:
+        type: string
+      updated_at:
         type: string
     type: object
   app.EmailInput:
@@ -130,6 +165,11 @@ definitions:
     - password
     - username
     type: object
+  app.KubeconfigResponse:
+    properties:
+      kubeconfig:
+        type: string
+    type: object
   app.LoginInput:
     properties:
       email:
@@ -146,6 +186,50 @@ definitions:
     properties:
       enabled:
         type: boolean
+  app.NodeInput:
+    properties:
+      cpu:
+        type: integer
+      disk_size:
+        description: Storage in MB
+        type: integer
+      entrypoint:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        description: SSH_KEY, etc.
+        type: object
+      flist:
+        type: string
+      gpu_ids:
+        description: List of GPU IDs
+        items:
+          type: string
+        type: array
+      memory:
+        description: Memory in MB
+        type: integer
+      name:
+        type: string
+      node_id:
+        type: integer
+      root_size:
+        description: Storage in MB
+        type: integer
+      type:
+        enum:
+        - worker
+        - master
+        - leader
+        type: string
+    required:
+    - cpu
+    - memory
+    - name
+    - node_id
+    - root_size
+    - type
     type: object
   app.PendingRecordsResponse:
     properties:
@@ -237,6 +321,15 @@ definitions:
       node_id:
         type: integer
       workflow_id:
+        type: string
+    type: object
+  app.Response:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+      task_id:
         type: string
     type: object
   app.SSHKeyInput:
@@ -425,6 +518,257 @@ info:
   title: KubeCloud API
   version: "1.0"
 paths:
+  /deployments:
+    get:
+      description: Retrieves a list of all deployments (clusters) for the authenticated
+        user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployments retrieved successfully
+          schema:
+            $ref: '#/definitions/app.DeploymentListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List deployments
+      tags:
+      - deployments
+    post:
+      consumes:
+      - application/json
+      description: Creates and deploys a new Kubernetes cluster
+      parameters:
+      - description: Cluster configuration
+        in: body
+        name: cluster
+        required: true
+        schema:
+          $ref: '#/definitions/app.ClusterInput'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Deployment workflow started successfully
+          schema:
+            $ref: '#/definitions/app.Response'
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Deploy cluster
+      tags:
+      - deployments
+  /deployments/{name}:
+    delete:
+      description: Deletes a specific deployment and all its resources
+      parameters:
+      - description: Deployment name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployment deletion workflow started successfully
+          schema:
+            $ref: '#/definitions/app.Response'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Deployment not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete deployment
+      tags:
+      - deployments
+    get:
+      description: Retrieves details of a specific deployment by name
+      parameters:
+      - description: Deployment name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployment details retrieved successfully
+          schema:
+            $ref: '#/definitions/app.DeploymentResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Deployment not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get deployment
+      tags:
+      - deployments
+  /deployments/{name}/kubeconfig:
+    get:
+      description: Retrieves the kubeconfig file for a specific deployment
+      parameters:
+      - description: Deployment name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Kubeconfig retrieved successfully
+          schema:
+            $ref: '#/definitions/app.KubeconfigResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Deployment not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get kubeconfig
+      tags:
+      - deployments
+  /deployments/{name}/nodes:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new node to an existing deployment
+      parameters:
+      - description: Cluster configuration with new node
+        in: body
+        name: cluster
+        required: true
+        schema:
+          $ref: '#/definitions/app.ClusterInput'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Node addition workflow started successfully
+          schema:
+            $ref: '#/definitions/app.Response'
+        "400":
+          description: Invalid request format
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Deployment not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Add node to deployment
+      tags:
+      - deployments
+  /deployments/{name}/nodes/{node_name}:
+    delete:
+      description: Removes a specific node from an existing deployment
+      parameters:
+      - description: Deployment name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Node name to remove
+        in: path
+        name: node_name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Node removal workflow started successfully
+          schema:
+            $ref: '#/definitions/app.Response'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Deployment not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove node from deployment
+      tags:
+      - deployments
   /invoices:
     get:
       consumes:
