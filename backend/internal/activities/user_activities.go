@@ -422,7 +422,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 
 		if transferMode == models.RedeemVoucherMode && sse != nil {
 			notificationData := map[string]interface{}{
-				"message": fmt.Sprintf("Voucher redeemed successfully for %d$", amountUSD),
+				"message": fmt.Sprintf("Voucher redeemed successfully for %.2f$", amountUSD),
 			}
 			sse.Notify(fmt.Sprintf("%d", userID), internal.Success, notificationData)
 		}
