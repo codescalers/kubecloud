@@ -59,4 +59,7 @@ type DB interface {
 	ListOnlyPendingRecords() ([]PendingRecord, error)
 	ListUserPendingRecords(userID int) ([]PendingRecord, error)
 	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
+	// stats methods
+	CountAllUsers() (int64, error)
+	CountAllClusters() (int64, error)
 }

@@ -6,7 +6,7 @@
         <h1 class="auth-title">Forgot Password</h1>
         <p class="auth-subtitle">{{ step === 1 ? 'Enter your email to receive a reset code.' : 'Enter the verification code sent to your email.' }}</p>
       </div>
-      <v-form v-if="step === 1" @submit.prevent="handleRequestCode" class="auth-form">
+      <v-form v-if="step === 1" @submit.prevent="handleRequestCode" class="auth-form" v-model="isEmailFormValid">
         <v-text-field
           v-model="email"
           label="Email Address"
@@ -14,8 +14,8 @@
           prepend-inner-icon="mdi-email"
           variant="outlined"
           class="auth-field"
-          :error-messages="error"
           :disabled="loading"
+          :rules="[RULES.email]"
           required
         />
         <v-btn
@@ -25,13 +25,13 @@
           size="large"
           variant="outlined"
           :loading="loading"
-          :disabled="loading || !isEmailValid"
+          :disabled="loading || !isEmailFormValid"
         >
           <v-icon icon="mdi-email-send" class="mr-2"></v-icon>
           {{ loading ? 'Sending...' : 'Send Reset Code' }}
         </v-btn>
       </v-form>
-      <v-form v-else @submit.prevent="handleVerifyCode" class="auth-form">
+      <v-form v-else @submit.prevent="handleVerifyCode" class="auth-form" v-model="isCodeFormValid">
         <v-text-field
           v-model="code"
           label="Verification Code"
@@ -39,9 +39,11 @@
           prepend-inner-icon="mdi-numeric"
           variant="outlined"
           class="auth-field"
-          :error-messages="error"
           :disabled="loading"
+          :rules="[RULES.verificationCode]"
           required
+          placeholder="Enter 4-6 digit code"
+          maxlength="6"
         />
         <v-btn
           type="submit"
@@ -50,7 +52,7 @@
           size="large"
           variant="outlined"
           :loading="loading"
-          :disabled="loading || !isCodeValid"
+          :disabled="loading || !isCodeFormValid"
         >
           <v-icon icon="mdi-check" class="mr-2"></v-icon>
           {{ loading ? 'Verifying...' : 'Verify Code' }}
@@ -64,71 +66,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authService } from '@/utils/authService'
+import { authService } from '../utils/authService'
+import { RULES } from '../utils/validation'
 
 const router = useRouter()
 const step = ref(1)
 const email = ref('')
 const code = ref('')
 const loading = ref(false)
-const error = ref('')
-
-// Form validation
-const isEmailValid = computed(() => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return email.value.trim() !== '' && emailRegex.test(email.value)
-})
-
-const isCodeValid = computed(() => {
-  return code.value.trim() !== '' && code.value.length >= 4
-})
+const isCodeFormValid = ref(false)
+const isEmailFormValid = ref(false)
 
 const handleRequestCode = async () => {
-  if (!isEmailValid.value) return
-
-  error.value = ''
   loading.value = true
   try {
-    await authService.forgotPassword({ email: email.value })
+    await authService.forgotPassword({ email: email.value.trim() })
     step.value = 2
   } catch (err: any) {
-    error.value = err?.message || 'Failed to send reset code'
+    console.error('Failed to send reset code:', err)
   } finally {
     loading.value = false
   }
 }
 
 const handleVerifyCode = async () => {
-  if (!isCodeValid.value) return
-
-  error.value = ''
+  if (!code.value.trim() || RULES.verificationCode(code.value) !== true) return
   loading.value = true
   try {
-    // Verify the code and get tokens
-    const tokens = await authService.verifyForgotPasswordCode({ email: email.value, code: Number(code.value) })
+    const tokens = await authService.verifyForgotPasswordCode({
+      email: email.value.trim(),
+      code: Number(code.value.trim())
+    })
 
-    // Store tokens temporarily for password reset only (separate from main auth)
     authService.storeTempTokens(tokens.access_token, tokens.refresh_token)
-
-    // Mark this as a password reset session
     localStorage.setItem('password_reset_session', 'true')
 
-    // Redirect to reset password page with email
     router.push({
       path: '/reset-password',
-      query: {
-        email: email.value
-      }
+      query: { email: email.value.trim() }
     })
   } catch (err: any) {
-    error.value = err?.message || 'Invalid code'
+    console.error('Invalid verification code:', err)
   } finally {
     loading.value = false
   }
 }
-
 </script>
 
 <style scoped>

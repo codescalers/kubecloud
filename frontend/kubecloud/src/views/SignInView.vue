@@ -6,7 +6,7 @@
         <h1 class="auth-title">Welcome Back!</h1>
         <p class="auth-subtitle">Sign in to your KubeCloud account</p>
       </div>
-      <v-form @submit.prevent="handleSignIn" class="auth-form">
+      <v-form @submit.prevent="handleSignIn" class="auth-form" ref="formRef" v-model="isFormValid">
         <v-text-field
           v-model="form.email"
           label="Email Address"
@@ -14,8 +14,8 @@
           prepend-inner-icon="mdi-email"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.email"
           :disabled="loading"
+          :rules="[RULES.email]"
           required
         />
         <v-text-field
@@ -25,9 +25,9 @@
           prepend-inner-icon="mdi-lock"
           :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
           @click:append-inner="showPassword = !showPassword"
+          :rules="[RULES.password]"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.password"
           :disabled="loading"
           required
         />
@@ -49,7 +49,7 @@
           size="large"
           variant="outlined"
           :loading="loading"
-          :disabled="loading"
+          :disabled="loading || !isFormValid"
         >
           <v-icon icon="mdi-login" class="mr-2"></v-icon>
           {{ loading ? 'Signing In...' : 'Sign In' }}
@@ -74,7 +74,7 @@
 import { ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { validateForm, VALIDATION_RULES } from '../utils/validation'
+import { RULES } from '../utils/validation'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -84,52 +84,12 @@ const form = reactive({
   password: '',
 })
 
-const errors = reactive({
-  email: '',
-  password: ''
-})
 
 const showPassword = ref(false)
 const loading = ref(false)
-
-const clearErrors = () => {
-  errors.email = ''
-  errors.password = ''
-}
-
-const validateFormData = () => {
-  clearErrors()
-
-  const validationFields = {
-    email: {
-      value: form.email,
-      rules: VALIDATION_RULES.EMAIL
-    },
-    password: {
-      value: form.password,
-      rules: { required: true, minLength: 1 }
-    }
-  }
-
-  const result = validateForm(validationFields)
-
-  if (!result.isValid) {
-    result.errors.forEach(error => {
-      if (error.includes('email')) {
-        errors.email = error
-      } else if (error.includes('password')) {
-        errors.password = error
-      }
-    })
-    return false
-  }
-
-  return true
-}
+const isFormValid = ref(false)
 
 const handleSignIn = async () => {
-  if (!validateFormData()) return
-
   loading.value = true
   try {
     await userStore.login(form.email, form.password)

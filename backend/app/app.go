@@ -212,6 +212,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/health", app.handlers.HealthHandler)
 		v1.GET("/workflow/:workflow_id", app.handlers.GetWorkflowStatus)
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
+		v1.GET("/stats", app.handlers.GetStatsHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))

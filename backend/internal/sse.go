@@ -125,7 +125,7 @@ func (s *SSEManager) Notify(userID string, msgType string, data any, taskID ...s
 		select {
 		case ch <- message:
 			// Message sent successfully
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(2 * time.Second):
 			// Client not responding, remove it
 			go s.RemoveClient(userID, ch)
 		case <-s.ctx.Done():

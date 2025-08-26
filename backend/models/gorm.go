@@ -392,3 +392,17 @@ func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) err
 		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
 		Error
 }
+
+// CountAllUsers returns the total number of users in the system
+func (s *GormDB) CountAllUsers() (int64, error) {
+	var count int64
+	err := s.db.Model(&User{}).Count(&count).Error
+	return count, err
+}
+
+// CountAllClusters returns the total number of clusters in the system
+func (s *GormDB) CountAllClusters() (int64, error) {
+	var count int64
+	err := s.db.Model(&Cluster{}).Count(&count).Error
+	return count, err
+}

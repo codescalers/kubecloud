@@ -6,7 +6,7 @@
         <h1 class="auth-title">Reset Password</h1>
         <p class="auth-subtitle">Enter your new password below.</p>
       </div>
-      <v-form @submit.prevent="handleResetPassword" class="auth-form">
+      <v-form @submit.prevent="handleResetPassword" class="auth-form" v-model="isFormValid">
         <v-text-field
           v-model="password"
           label="New Password"
@@ -16,7 +16,7 @@
           @click:append-inner="showPassword = !showPassword"
           variant="outlined"
           class="auth-field"
-          :error-messages="passwordError"
+          :rules="[RULES.password]"
           :disabled="loading"
           required
         />
@@ -40,7 +40,7 @@
           @click:append-inner="showConfirmPassword = !showConfirmPassword"
           variant="outlined"
           class="auth-field"
-          :error-messages="confirmPasswordError"
+          :rules="[RULES.confirmPassword(password, confirmPassword)]"
           :disabled="loading"
           required
         />
@@ -65,78 +65,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { authService } from '@/utils/authService'
 
-import { validateField, VALIDATION_RULES } from '../utils/validation'
+import { RULES } from '../utils/validation'
 
 const router = useRouter()
 const route = useRoute()
 const password = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
-const error = ref('')
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const isFormValid = ref(false)
 
-// Form validation using the same rules as signup
-const passwordError = computed(() => {
-  if (password.value.length === 0) return ''
 
-  const validation = validateField({
-    value: password.value,
-    rules: VALIDATION_RULES.PASSWORD,
-    fieldName: 'Password'
-  })
 
-  if (!validation.isValid) {
-    return validation.errors[0]
-  }
-
-  return error.value
-})
-
-const confirmPasswordError = computed(() => {
-  if (confirmPassword.value.length === 0) return ''
-
-  const validation = validateField({
-    value: confirmPassword.value,
-    rules: {
-      required: true,
-      custom: (value: string) => {
-        if (value !== password.value) {
-          return 'Passwords do not match'
-        }
-        return true
-      }
-    },
-    fieldName: 'Confirm Password'
-  })
-
-  if (!validation.isValid) {
-    return validation.errors[0]
-  }
-
-  return ''
-})
-
-const isFormValid = computed(() => {
-  const passwordValidation = validateField({
-    value: password.value,
-    rules: VALIDATION_RULES.PASSWORD
-  })
-
-  const confirmPasswordValidation = validateField({
-    value: confirmPassword.value,
-    rules: {
-      required: true,
-      custom: (value: string) => value === password.value
-    }
-  })
-
-  return passwordValidation.isValid && confirmPasswordValidation.isValid
-})
 
 const getEmail = () => {
   return route.query.email as string || ''
@@ -147,14 +92,9 @@ const isPasswordResetSession = () => {
 }
 
 const handleResetPassword = async () => {
-  if (!isFormValid.value) return
-
-  error.value = ''
   loading.value = true
   try {
-    if (!isPasswordResetSession()) {
-      throw new Error('Invalid password reset session')
-    }
+    if (!isPasswordResetSession()) return
 
     await authService.changePassword({
       email: getEmail(),
@@ -168,7 +108,7 @@ const handleResetPassword = async () => {
     // Redirect to sign-in page
     router.push('/sign-in')
   } catch (err: any) {
-    error.value = err?.message || 'Failed to reset password'
+    console.error('Failed to reset password:', err)
   } finally {
     loading.value = false
   }
