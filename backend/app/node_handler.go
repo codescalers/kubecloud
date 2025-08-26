@@ -191,7 +191,9 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 
 	//TODO: check price in month constant
-	if usdMillicentBalance-user.Debt < internal.FromUSDToUSDMillicent(node.PriceUsd)/24/30 {
+	// Apply 50% discount to reserved node pricing
+	discountedPrice := node.PriceUsd * 0.5
+	if usdMillicentBalance-user.Debt < internal.FromUSDToUSDMillicent(discountedPrice)/24/30 {
 		Error(c, http.StatusBadRequest, "You should at least have enough balance for one hour", "")
 		return
 	}
@@ -266,6 +268,11 @@ func (h *Handler) ListReservedNodeHandler(c *gin.Context) {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
 		return
+	}
+
+	for i := range nodes {
+		log.Info().Interface("node", nodes[i]).Send()
+		nodes[i].PriceUsd = nodes[i].PriceUsd * 0.5
 	}
 
 	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesResponse{
