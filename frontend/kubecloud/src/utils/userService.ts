@@ -183,7 +183,7 @@ export class UserService {
 
   // List reserved nodes
   async listReservedNodes() {
-    return api.get('/v1/user/nodes', { requiresAuth: true })
+    return api.get('/v1/user/nodes/rented', { requiresAuth: true })
   }
 
   // Unreserve a node
