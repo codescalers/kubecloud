@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/models"
-	"sync"
 
-	"github.com/xmonader/ewf"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -16,227 +16,133 @@ const (
 )
 
 type Notifier interface {
-	Notify(notification models.Notification, receiver ...string) error
+	Notify(notification *models.Notification) error
 	GetType() string
-	GetStepName() string
-}
-
-type ChannelRule struct {
-	Channels []string
-	Severity models.NotificationSeverity
-}
-
-type NotificationTemplate struct {
-	Default  ChannelRule
-	ByStatus map[string]ChannelRule
-}
-
-// CommonPayload represents commonly used payload fields across channels
-type CommonPayload struct {
-	Subject string
-	Status  string
-	Message string
-	Error   string
-}
-
-// MergePayload combines CommonPayload with additional fields
-func MergePayload(cp CommonPayload, extras map[string]string) map[string]string {
-	out := make(map[string]string)
-	if cp.Subject != "" {
-		out["subject"] = cp.Subject
-	}
-	if cp.Status != "" {
-		out["status"] = cp.Status
-	}
-	if cp.Message != "" {
-		out["message"] = cp.Message
-	}
-	if cp.Error != "" {
-		out["error"] = cp.Error
-	}
-	for k, v := range extras {
-		out[k] = v
-	}
-	return out
 }
 
 type NotificationServiceInterface interface {
-	Send(ctx context.Context, notification *models.Notification) error
-	GetNotifiers() map[string]Notifier
-	RegisterNotifier(notifier Notifier)
+	Send(notificationType string, payload any, userID string) error
+	GetUserNotifications(userID string, limit, offset int) ([]models.Notification, error)
+	MarkAsRead(notificationID string) error
+	DeleteNotification(notificationID uuid.UUID, userID string) error
+	DeleteAllNotifications(userID string) error
+	MarkAllNotificationsAsRead(userID string) error
+	MarkNotificationAsUnread(notificationID uuid.UUID, userID string) error
+	GetUnreadNotifications(userID string, limit, offset int) ([]models.Notification, error)
+	RegisterTemplate(notificationType models.NotificationType, severity models.NotificationSeverity, notifiers []string)
 }
 
 type NotificationService struct {
-	db        models.DB
-	notifiers map[string]Notifier
-	engine    *ewf.Engine
-	templates map[models.NotificationType]NotificationTemplate
-	mu        sync.RWMutex
+	db                    models.DB
+	notifiers             map[string]Notifier
+	jobs                  chan *models.Notification
+	quit                  chan struct{}
+	notificationTemplates map[models.NotificationType]models.Notification
 }
 
-func NewNotificationService(db models.DB, engine *ewf.Engine, notificationConfig internal.NotificationConfig) (*NotificationService, error) {
-
-	s := &NotificationService{
-		db:        db,
-		notifiers: make(map[string]Notifier),
-		engine:    engine,
-		templates: make(map[models.NotificationType]NotificationTemplate),
+func NewNotificationService(db models.DB, notifiers ...Notifier) *NotificationService {
+	notifiersMap := make(map[string]Notifier)
+	for _, notifier := range notifiers {
+		notifiersMap[notifier.GetType()] = notifier
 	}
 
-	if err := s.LoadTemplatesFromConfigFile(notificationConfig); err != nil {
-		return nil, fmt.Errorf("failed to load notification templates: %w", err)
+	s := &NotificationService{
+		db:                    db,
+		notifiers:             notifiersMap,
+		jobs:                  make(chan *models.Notification, 25),
+		quit:                  make(chan struct{}),
+		notificationTemplates: make(map[models.NotificationType]models.Notification),
+	}
+	return s
+}
+
+func (s *NotificationService) RegisterTemplate(notificationType models.NotificationType, severity models.NotificationSeverity, notifiers []string) {
+	s.notificationTemplates[notificationType] = models.Notification{
+		Type:     notificationType,
+		Severity: severity,
+		Channels: notifiers,
 	}
 
 	return s, nil
 }
 
-// buildTemplatesFromConfig creates a templates map from notification config
-func (s *NotificationService) buildTemplatesFromConfig(notificationConfig internal.NotificationConfig) map[models.NotificationType]NotificationTemplate {
-	templates := make(map[models.NotificationType]NotificationTemplate)
-
-	for templateName, templateConfig := range notificationConfig.TemplateTypes {
-		notificationType := models.NotificationType(templateName)
-
-		defaultRule := ChannelRule{
-			Channels: templateConfig.Default.Channels,
-			Severity: models.NotificationSeverity(templateConfig.Default.Severity),
-		}
-
-		byStatusRules := make(map[string]ChannelRule)
-		for status, ruleConfig := range templateConfig.ByStatus {
-			byStatusRules[status] = ChannelRule{
-				Channels: ruleConfig.Channels,
-				Severity: models.NotificationSeverity(ruleConfig.Severity),
+func (s *NotificationService) Start() {
+	go func() {
+		for {
+			select {
+			case job := <-s.jobs:
+				if job == nil {
+					continue
+				}
+				for _, channel := range job.Channels {
+					n, ok := s.notifiers[channel]
+					if !ok {
+						continue
+					}
+					if err := n.Notify(job); err != nil {
+						log.Error().Err(err).Str("channel", channel).Msg("Failed to notify")
+					}
+				}
+			case <-s.quit:
+				return
 			}
 		}
-
-		templates[notificationType] = NotificationTemplate{
-			Default:  defaultRule,
-			ByStatus: byStatusRules,
-		}
-	}
-
-	return templates
+	}()
 }
 
-func (s *NotificationService) LoadTemplatesFromConfigFile(notificationConfig internal.NotificationConfig) error {
-	templates := s.buildTemplatesFromConfig(notificationConfig)
-
-	s.mu.Lock()
-	s.templates = templates
-	s.mu.Unlock()
-	return nil
+func (s *NotificationService) Stop() {
+	close(s.quit)
 }
 
-func (s *NotificationService) RegisterNotifier(notifier Notifier) {
-	s.notifiers[notifier.GetType()] = notifier
-}
-
-func (s *NotificationService) GetNotifiers() map[string]Notifier {
-	return s.notifiers
-}
-
-func (s *NotificationService) Send(ctx context.Context, notification *models.Notification) error {
-	s.applyTemplateFallbacks(notification)
-
-	// Persist to database if enabled
-	if notification.Persist {
-		if err := s.db.CreateNotification(notification); err != nil {
-			return fmt.Errorf("failed to persist notification: %w", err)
-		}
+func (s *NotificationService) Send(notificationType models.NotificationType, payload map[string]string, userID string) error {
+	notification := &models.Notification{
+		UserID:  userID,
+		Type:    notificationType,
+		Payload: payload,
 	}
 
-	workflow, err := s.engine.NewWorkflow("send-notification")
-	if err != nil {
-		return fmt.Errorf("failed to create workflow: %w", err)
-	}
-
-	workflow.State["notification"] = notification
-	s.engine.RunAsync(ctx, workflow)
-	return nil
-}
-
-func (s *NotificationService) ReloadNotificationConfig(cfg internal.NotificationConfig) error {
-	candidate := s.buildTemplatesFromConfig(cfg)
-
-	err := s.ValidateConfigsChannelsAgainstRegistered(candidate)
-	if err != nil {
-		return fmt.Errorf("failed to validate notification config: %w", err)
-	}
-
-	s.mu.Lock()
-	s.templates = candidate
-	s.mu.Unlock()
-	return nil
-}
-
-func (s *NotificationService) applyTemplateFallbacks(notification *models.Notification) {
-	s.mu.RLock()
-	template, hasTemplate := s.templates[notification.Type]
-	s.mu.RUnlock()
-	if !hasTemplate {
-		if len(notification.Channels) == 0 {
-			notification.Channels = []string{ChannelUI}
-		}
-		if notification.Severity == "" {
-			notification.Severity = models.NotificationSeverityInfo
-		}
-		return
-	}
-
-	rule := template.Default
-	if status, ok := notification.Payload["status"]; ok && template.ByStatus != nil {
-		if r, exists := template.ByStatus[status]; exists {
-			rule = r
-		}
-	}
-
-	if len(notification.Channels) == 0 {
-		notification.Channels = rule.Channels
-	}
-	if notification.Severity == "" {
-		notification.Severity = rule.Severity
+	if err := s.db.CreateNotification(notification); err != nil {
+		return err
 	}
 
 	if len(notification.Channels) == 0 {
 		notification.Channels = []string{ChannelUI}
 	}
-	if notification.Severity == "" {
-		notification.Severity = models.NotificationSeverityInfo
+
+	select {
+	case s.jobs <- notification:
+		log.Info().Str("notification_id", notification.ID.String()).Msg("Notification enqueued")
+	default:
+		log.Error().Msg("Notification queue is full")
 	}
+
+	return nil
 }
 
-func (s *NotificationService) ValidateConfigsChannelsAgainstRegistered(templates ...map[models.NotificationType]NotificationTemplate) error {
-	if len(s.notifiers) == 0 {
-		return fmt.Errorf("no notifiers registered")
-	}
+func (s *NotificationService) MarkNotificationAsRead(userID string, notificationID uuid.UUID) error {
+	return s.db.MarkNotificationAsRead(notificationID, userID)
+}
 
-	// Use provided templates or fall back to current templates
-	var templatesMap map[models.NotificationType]NotificationTemplate
-	if len(templates) > 0 && templates[0] != nil {
-		templatesMap = templates[0]
-	} else {
-		s.mu.RLock()
-		templatesMap = s.templates
-		s.mu.RUnlock()
-	}
+func (s *NotificationService) GetUserNotifications(userID string, limit, offset int) ([]models.Notification, error) {
+	return s.db.GetUserNotifications(userID, limit, offset)
+}
 
-	for tName, tpl := range templatesMap {
-		for _, ch := range tpl.Default.Channels {
-			if _, ok := s.notifiers[ch]; !ok {
-				return fmt.Errorf("channel %s in template %s is not registered", ch, tName)
-			}
-		}
-		// Validate by_status rule channels
-		if tpl.ByStatus != nil {
-			for status, rule := range tpl.ByStatus {
-				for _, ch := range rule.Channels {
-					if _, ok := s.notifiers[ch]; !ok {
-						return fmt.Errorf("channel %s in template %s (status %v) is not registered", ch, tName, status)
-					}
-				}
-			}
-		}
-	}
-	return nil
+func (s *NotificationService) MarkAllNotificationsAsRead(userID string) error {
+	return s.db.MarkAllNotificationsAsRead(userID)
+}
+
+func (s *NotificationService) MarkNotificationAsUnread(userID string, notificationID uuid.UUID) error {
+	return s.db.MarkNotificationAsUnread(notificationID, userID)
+}
+
+func (s *NotificationService) GetUnreadNotifications(userID string, limit, offset int) ([]models.Notification, error) {
+	return s.db.GetUnreadNotifications(userID, limit, offset)
+}
+
+func (s *NotificationService) DeleteNotification(userID string, notificationID uuid.UUID) error {
+	return s.db.DeleteNotification(notificationID, userID)
+}
+
+func (s *NotificationService) DeleteAllNotifications(userID string) error {
+	return s.db.DeleteAllNotifications(userID)
 }

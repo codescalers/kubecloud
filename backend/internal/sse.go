@@ -176,3 +176,45 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 		}
 	})
 }
+
+// persistNotification saves notification to database
+func (s *SSEManager) persistNotification(userID int, message SSEMessage) {
+	if s.db == nil {
+		return
+	}
+
+	// Extract meaningful title and message
+	title := "Notification"
+	messageText := "New notification"
+
+	if data, ok := message.Data.(map[string]interface{}); ok {
+		if msg, exists := data["message"]; exists {
+			if msgStr, ok := msg.(string); ok {
+				messageText = msgStr
+			}
+		}
+		if status, exists := data["status"]; exists {
+			if statusStr, ok := status.(string); ok {
+				title = fmt.Sprintf("Task %s", statusStr)
+			}
+		}
+	}
+
+	dataJSON, _ := json.Marshal(message.Data)
+
+	notification := &models.Notification{
+		UserID: userID,
+		Type:   models.NotificationTypeTaskUpdate,
+		Payload: map[string]string{
+			"message": messageText,
+			"status":  title,
+			"data":    string(dataJSON),
+		},
+		TaskID: message.TaskID,
+		Status: models.NotificationStatusUnread,
+	}
+
+	if err := s.db.CreateNotification(notification); err != nil {
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to persist notification")
+	}
+}
