@@ -103,7 +103,7 @@ export class AuthService {
   // Register a new user
   async register(data: RegisterRequest): Promise<void> {
     this.storeTempRegistrationData(data)
-    
+
     const response = await api.post<ApiResponse<RegisterResponse>>('/v1/user/register', data, {
       showNotifications: true,
       loadingMessage: 'Creating your account...',
@@ -166,7 +166,7 @@ export class AuthService {
       errorMessage: 'Failed to resend verification code',
       timeout: 60000
     })
-    
+
     const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 15000, interval: 3000 })
     const status = await workflowChecker.status
     if (status === WorkflowStatus.StatusCompleted) {

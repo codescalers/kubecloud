@@ -24,7 +24,7 @@ export function useDeploymentEvents() {
   const reconnectDelay = 2000 // 2 seconds
 
   function connect() {
-    if (eventSource.value) return
+    if (eventSource.value || isConnected.value) return
     const backendBaseUrl = (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
     const token = userStore.token || ''
     const url = backendBaseUrl + '/v1/events?token=' + encodeURIComponent(token)
@@ -60,6 +60,9 @@ export function useDeploymentEvents() {
 
           // Always refresh data when workflow completes (success or failure)
           refreshClusterData()
+        }
+        else {
+          notificationStore.info('', data.data)
         }
     }
 
