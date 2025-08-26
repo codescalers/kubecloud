@@ -7,7 +7,7 @@
           <p class="dashboard-card-subtitle">Manage your cloud-native infrastructure</p>
         </div>
       </div>
-      <v-btn variant="outlined" class="btn btn-outline" @click="goToDeployCluster">
+      <v-btn :disabled="!haveNodes" variant="outlined" class="btn btn-outline" @click="goToDeployCluster">
         <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
         New Cluster
       </v-btn>
@@ -31,7 +31,15 @@
       <v-divider class="mb-4" />
       <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
       <v-progress-linear v-if="isLoading" indeterminate color="primary" class="mb-4" />
-      <div v-if="filteredClusters.length === 0 && !isLoading" class="empty-message">
+      <div v-if="!haveNodes" class="empty-message">
+        <v-icon icon="mdi-cloud-off-outline" size="48" class="mb-2" color="grey" />
+        <div>You don't have any nodes reserved<br/>you have to reserve one to create a cluster</div>
+        <v-btn variant="outlined" class="btn btn-outline mt-3" @click="handleGoToReserveNode">
+          <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
+          Reserve Node
+        </v-btn>
+      </div>
+      <div v-else-if="filteredClusters.length === 0 && !isLoading" class="empty-message">
         <v-icon icon="mdi-cloud-off-outline" size="48" class="mb-2" color="grey" />
         <div>No clusters found.</div>
       </div>
@@ -110,6 +118,7 @@ import { useRouter } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
+import { useNodeManagement } from '@/composables/useNodeManagement'
 
 const router = useRouter()
 const clusterStore = useClusterStore()
@@ -131,9 +140,23 @@ const sortOptions = [
   { value: 'createdAt', title: 'Created' },
   { value: 'nodes', title: 'Nodes' },
 ]
+const {
+  rentedNodes,
+  loading,
+  fetchRentedNodes,
+} = useNodeManagement()
+
 
 const error = computed(() => clusterStore.error)
-const isLoading = computed(() => clusterStore.isLoading)
+const isLoading = computed(() => clusterStore.isLoading || loading.value)
+watch([() => clusterStore.clusters.length, () => clusterStore.isLoading], ([clustersLength, isClusterLoading]) => {
+  if (!isClusterLoading && clustersLength === 0) {
+    fetchRentedNodes()
+  }
+})
+const haveNodes = computed(() => {
+ return clusterStore.clusters.length > 0 || rentedNodes.value.length > 0
+})
 
 function setSort(field: string) {
   sortBy.value = field
@@ -180,6 +203,9 @@ function deleteCluster(projectName: string) {
 
 const goToDeployCluster = () => {
   router.push('/deploy')
+}
+function handleGoToReserveNode() {
+  router.push('/nodes')
 }
 
 async function confirmDelete() {

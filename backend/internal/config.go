@@ -66,7 +66,7 @@ type JwtToken struct {
 type MailSender struct {
 	Email               string `json:"email" validate:"required,email"`
 	SendGridKey         string `json:"sendgrid_key" validate:"required"`
-	Timeout             int    `json:"timeout" validate:"min=30"`
+	TimeoutMin          int    `json:"timeout" validate:"min=2"`
 	MaxConcurrentSends  int    `json:"max_concurrent_sends" validate:"min=1"`
 	MaxAttachmentSizeMB int64  `json:"max_attachment_size_mb" validate:"min=1"`
 }

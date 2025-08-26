@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/metrics"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
@@ -18,7 +19,28 @@ import (
 var (
 	criticalRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
 	standardRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+
+	workflowsDescriptions = map[string]string{
+		WorkflowAddNode:       "Adding Node",
+		WorkflowRemoveNode:    "Removing Node",
+		WorkflowDeleteCluster: "Deleting Cluster",
+	}
 )
+
+// getWorkflowDescription returns a user-friendly description for the workflow
+func getWorkflowDescription(workflowName string) string {
+	if desc, exists := workflowsDescriptions[workflowName]; exists {
+		return desc
+	}
+
+	// Handle deploy-X-nodes workflows
+	if strings.Contains(workflowName, "deploy") {
+		return "Deploying Cluster"
+	}
+
+	// Fallback to workflow name
+	return workflowName
+}
 
 func isWorkloadAlreadyDeployedError(err error) bool {
 	errMsg := err.Error()
@@ -48,7 +70,7 @@ func ensureClient(state ewf.State) {
 	log.Debug().Msg("Kubeclient ensured and ready for use")
 }
 
-func DeployNetworkStep() ewf.StepFn {
+func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -70,17 +92,21 @@ func DeployNetworkStep() ewf.StepFn {
 		if cluster.ProjectName == "" {
 			// this is a first not a retry
 			if err := cluster.PrepareCluster(config.UserID); err != nil {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("failed to prepare cluster: %w", err)
 			}
 		}
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("network already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("network invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy network: %w", err)
 		}
 
@@ -91,7 +117,7 @@ func DeployNetworkStep() ewf.StepFn {
 	}
 }
 
-func UpdateNetworkStep() ewf.StepFn {
+func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -119,6 +145,7 @@ func UpdateNetworkStep() ewf.StepFn {
 		cluster.Nodes = append(cluster.Nodes, node)
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to update network: %w", err)
 		}
 
@@ -130,7 +157,7 @@ func UpdateNetworkStep() ewf.StepFn {
 	}
 }
 
-func AddNodeStep() ewf.StepFn {
+func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -155,12 +182,16 @@ func AddNodeStep() ewf.StepFn {
 		}
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to assign IP for node %s: %w", node.Name, err)
 		}
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy node %s to existing cluster: %w", node.Name, err)
 		}
+
+		metrics.IncrementClusterDeploymentSuccess()
 
 		// Save GridClient state after node deployment
 		statemanager.SaveGridClientState(state, kubeClient)
@@ -169,7 +200,7 @@ func AddNodeStep() ewf.StepFn {
 	}
 }
 
-func DeployNodeStep() ewf.StepFn {
+func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -195,19 +226,25 @@ func DeployNodeStep() ewf.StepFn {
 		node := cluster.Nodes[nodeIdx]
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to assign node IPs: %w", err)
 		}
 		cluster.Nodes[nodeIdx].IP = node.IP
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("node already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
+				metrics.IncrementClusterDeploymentFailure()
 				return fmt.Errorf("node invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
 			}
+			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy node %s: %w", node.Name, err)
 		}
+
+		metrics.IncrementClusterDeploymentSuccess()
 
 		// Save GridClient state after node deployment
 		statemanager.SaveGridClientState(state, kubeClient)
@@ -217,7 +254,7 @@ func DeployNodeStep() ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(db models.DB) ewf.StepFn {
+func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
@@ -249,11 +286,13 @@ func StoreDeploymentStep(db models.DB) ewf.StepFn {
 			}
 		}
 
+		metrics.IncActiveClusterCount()
+
 		return nil
 	}
 }
 
-func CancelDeploymentStep() ewf.StepFn {
+func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -276,6 +315,7 @@ func CancelDeploymentStep() ewf.StepFn {
 			return fmt.Errorf("failed to cancel deployment: %w", err)
 		}
 
+		metrics.DecActiveClusterCount()
 		return nil
 	}
 }
@@ -294,6 +334,103 @@ func RemoveClusterFromDBStep(db models.DB) ewf.StepFn {
 
 		if err := db.DeleteCluster(config.UserID, projectName); err != nil {
 			return fmt.Errorf("failed to delete cluster from database: %w", err)
+		}
+
+		return nil
+	}
+}
+
+func GatherAllContractIDsStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		clusters, err := db.ListUserClusters(config.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to list user clusters: %w", err)
+		}
+
+		var allContractIDs []uint64
+		for _, cluster := range clusters {
+			clusterResult, err := cluster.GetClusterResult()
+			if err != nil {
+				log.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+				continue
+			}
+
+			// Gather contract IDs from all nodes
+			for _, node := range clusterResult.Nodes {
+				if node.ContractID != 0 {
+					allContractIDs = append(allContractIDs, node.ContractID)
+				}
+			}
+
+			// Gather contract IDs from network deployments
+			for _, contractID := range clusterResult.Network.NodeDeploymentID {
+				if contractID != 0 {
+					allContractIDs = append(allContractIDs, contractID)
+				}
+			}
+		}
+
+		// Remove duplicates
+		contractIDSet := make(map[uint64]bool)
+		var uniqueContractIDs []uint64
+		for _, id := range allContractIDs {
+			if !contractIDSet[id] {
+				contractIDSet[id] = true
+				uniqueContractIDs = append(uniqueContractIDs, id)
+			}
+		}
+
+		state["contract_ids"] = uniqueContractIDs
+		return nil
+	}
+}
+
+func BatchCancelContractsStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			return err
+		}
+
+		contractIDs, ok := state["contract_ids"].([]uint64)
+		if !ok {
+			return fmt.Errorf("missing or invalid 'contract_ids' in state")
+		}
+
+		if len(contractIDs) == 0 {
+			log.Info().Str("user_id", config.UserID).Msg("No contracts to cancel")
+			return nil
+		}
+
+		if err := kubeClient.CancelAllContractsForUser(ctx, contractIDs); err != nil {
+			return fmt.Errorf("failed to cancel contracts: %w", err)
+		}
+
+		return nil
+	}
+}
+
+func DeleteAllUserClustersStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		if err := db.DeleteAllUserClusters(config.UserID); err != nil {
+			return fmt.Errorf("failed to delete all user clusters from database: %w", err)
 		}
 
 		return nil
@@ -337,14 +474,14 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
-func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, wfName string, nodesNum int) {
+func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int) {
 	steps := []ewf.Step{
 		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
 		stepName := fmt.Sprintf("deploy_node_%d", i) // TODO: should be cleaned
-		engine.Register(stepName, DeployNodeStep())
+		engine.Register(stepName, DeployNodeStep(metrics))
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
@@ -408,26 +545,43 @@ func NotifyUser(sse *internal.SSEManager) ewf.AfterWorkflowHook {
 			return
 		}
 
-		notificationData := map[string]interface{}{
-			"type":    "workflow_update",
-			"message": "Workflow failed",
-		}
+		workflowDesc := getWorkflowDescription(wf.Name)
+		var notificationData map[string]interface{}
 
 		if err != nil {
-			notificationData["data"] = map[string]interface{}{"name": wf.Name, "error": err.Error()}
+			message := fmt.Sprintf("%s failed: %s", workflowDesc, err.Error())
+			if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
+				message = fmt.Sprintf("%s for cluster '%s' failed: %s", workflowDesc, cluster.Name, err.Error())
+			}
+
+			notificationData = map[string]interface{}{
+				"type":    "workflow_update",
+				"message": message,
+				"data":    map[string]interface{}{"name": wf.Name, "error": err.Error()},
+			}
 		} else {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
 			if clusterErr != nil {
 				notificationData = map[string]interface{}{
 					"type":    "workflow_update",
-					"message": "Workflow completed",
+					"message": fmt.Sprintf("%s completed successfully", workflowDesc),
 					"data":    map[string]interface{}{"name": wf.Name, "error": false},
 				}
 			} else {
+				nodeCount := len(cluster.Nodes)
+				message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
+					workflowDesc, cluster.Name, nodeCount)
+
 				notificationData = map[string]interface{}{
 					"type":    "workflow_update",
-					"message": "Workflow completed successfully",
-					"data":    map[string]interface{}{"name": wf.Name, "cluster": cluster, "error": false},
+					"message": message,
+					"data": map[string]interface{}{
+						"name":         wf.Name,
+						"cluster_name": cluster.Name,
+						"node_count":   nodeCount,
+						"cluster":      cluster,
+						"error":        false,
+					},
 				}
 			}
 		}
@@ -463,7 +617,7 @@ var BaseWFTemplate = ewf.WorkflowTemplate{
 	},
 }
 
-func createDeployWorkflowTemplates(engine *ewf.Engine) {
+func createDeployWorkflowTemplates(engine *ewf.Engine, metrics *metrics.Metrics) {
 	for i := 1; i <= 10; i++ {
 		workflowName := fmt.Sprintf("deploy-%d-nodes", i)
 
@@ -473,7 +627,7 @@ func createDeployWorkflowTemplates(engine *ewf.Engine) {
 
 		for j := 0; j < i; j++ {
 			stepName := fmt.Sprintf("deploy_node_%d", j)
-			engine.Register(stepName, DeployNodeStep())
+			engine.Register(stepName, DeployNodeStep(metrics))
 			steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 		}
 
@@ -486,18 +640,21 @@ func createDeployWorkflowTemplates(engine *ewf.Engine) {
 	}
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *internal.SSEManager) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
 
-	engine.Register(StepDeployNetwork, DeployNetworkStep())
-	engine.Register(StepDeployNode, DeployNodeStep())
-	engine.Register(StepRemoveCluster, CancelDeploymentStep())
-	engine.Register(StepAddNode, AddNodeStep())
-	engine.Register(StepUpdateNetwork, UpdateNetworkStep())
+	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
+	engine.Register(StepDeployNode, DeployNodeStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(metrics))
+	engine.Register(StepAddNode, AddNodeStep(metrics))
+	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(StepStoreDeployment, StoreDeploymentStep(db))
+	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
+	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(db))
+	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
+	engine.Register(StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
 
-	createDeployWorkflowTemplates(engine)
+	createDeployWorkflowTemplates(engine, metrics)
 
 	BaseWFTemplate.AfterWorkflowHooks = append(BaseWFTemplate.AfterWorkflowHooks, NotifyUser(sse))
 
@@ -507,6 +664,14 @@ func registerDeploymentActivities(engine *ewf.Engine, db models.DB, sse *interna
 		{Name: StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(WorkflowDeleteCluster, &deleteWFTemplate)
+
+	deleteAllDeploymentsWFTemplate := BaseWFTemplate
+	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
+		{Name: StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
+		{Name: StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
+		{Name: StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
+	}
+	engine.RegisterTemplate(WorkflowDeleteAllDeployments, &deleteAllDeploymentsWFTemplate)
 
 	addNodeWFTemplate := BaseWFTemplate
 	addNodeWFTemplate.Steps = []ewf.Step{

@@ -187,7 +187,12 @@ const clusterPayload = computed<Cluster>(() => {
   const token = clusterToken.value;
 
   function buildNode(vm: VM, type: 'master' | 'worker'): ClusterNode {
-    const vmSshKeyObj = availableSshKeys.value.find(k => k.ID === vm.sshKeyIds[0]);
+    // Get all SSH keys for this VM and concatenate their public keys
+    const sshKeyPublicKeys = vm.sshKeyIds
+      .map(id => availableSshKeys.value.find(k => k.ID === id)?.public_key)
+      .filter(key => key) // Remove undefined values
+      .join('\n'); // Join multiple keys with newlines
+    
     return {
       name: vm.name,
       type: type === 'master' ? 'master' : 'worker',
@@ -197,7 +202,7 @@ const clusterPayload = computed<Cluster>(() => {
       root_size: vm.rootfs * 1024, // GB to MB
       disk_size: vm.disk * 1024, // GB to MB
       env_vars: {
-        SSH_KEY: vmSshKeyObj ? vmSshKeyObj.public_key : '',
+        SSH_KEY: sshKeyPublicKeys,
         K3S_TOKEN: token,
       },
     };
@@ -228,13 +233,15 @@ async function onDeployCluster() {
       loadingMessage: 'Deploying cluster...',
       errorMessage: 'Failed to deploy cluster',
       requiresAuth: true
+
     });
     notificationStore.info('Deployment started', 'Your cluster is being deployed in the background. You will be notified when it is ready.');
-  } catch (err) {
-    // Optionally handle error
+    navigateToDasgboard();
+  } catch (err: any) {
+    notificationStore.error('Error', err?.message || 'Failed to deploy cluster');
+    console.error(err);
   } finally {
     deploying.value = false;
-    navigateToDasgboard();
   }
 }
 

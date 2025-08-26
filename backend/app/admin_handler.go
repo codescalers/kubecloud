@@ -22,6 +22,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserResponse struct {
+	models.User
+	Balance float64 `json:"balance"` // USD balance
+}
+
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
 	Count       int     `json:"count" validate:"required,gt=0"`
@@ -72,7 +77,7 @@ type MaintenanceModeStatus struct {
 // @ID get-all-users
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.User
+// @Success 200 {array} UserResponse
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /users [get]
@@ -84,9 +89,54 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
+	var usersWithBalance []UserResponse
+	const maxConcurrentBalanceFetches = 20
+	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
+
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		multiErr *multierror.Error
+	)
+
+	for _, user := range users {
+		wg.Add(1)
+		balanceConcurrencyLimiter <- struct{}{}
+
+		go func(user models.User) {
+			defer wg.Done()
+			defer func() { <-balanceConcurrencyLimiter }()
+
+			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+			if err != nil {
+				log.Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
+				mu.Unlock()
+				return
+			}
+
+			balanceUSD := internal.FromUSDMilliCentToUSD(balance)
+			mu.Lock()
+			usersWithBalance = append(usersWithBalance, UserResponse{
+				User:    user,
+				Balance: balanceUSD,
+			})
+			mu.Unlock()
+		}(user)
+	}
+
+	wg.Wait()
+
+	// Check if there were any errors during balance fetching
+	if multiErr != nil {
+		log.Error().Err(multiErr).Msg("errors occurred while fetching user balances")
+		InternalServerError(c)
+		return
+	}
 
 	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
-		"users": users,
+		"users": usersWithBalance,
 	})
 }
 

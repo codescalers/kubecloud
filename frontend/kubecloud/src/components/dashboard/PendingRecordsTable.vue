@@ -2,8 +2,11 @@
   <div class="records-table-container">
     <v-data-table :loading="loading" :headers="headers" :items="pendingRecords" class="records-table"
       :items-per-page="5" :no-data-text="'No payments found'" density="comfortable">
-      <template v-if="showUserID" v-slot:[`item.user_id`]="{ item }">
+      <template v-slot:[`item.user_id`]="{ item }">
         <span>{{ item.user_id }}</span>
+      </template>
+      <template  v-slot:[`item.username`]="{ item }">
+        <span>{{ item.username }}</span>
       </template>
       <template v-slot:[`item.created_at`]="{ item }">
         <span>{{ formatDate(item.created_at) }}</span>
@@ -13,6 +16,9 @@
       </template>
       <template v-slot:[`item.transferred_usd_amount`]="{ item }">
         <span>${{ item.transferred_usd_amount.toFixed(2) }}</span>
+      </template>
+            <template v-slot:[`item.transfer_mode`]="{ item }">
+        <span>{{ item.transfer_mode.replace('_', ' ') }}</span>
       </template>
       <template v-slot:[`item.status`]="{ item }">
         <v-chip :color="getStatusColor(item)" size="small" class="status-chip">
@@ -48,11 +54,13 @@ const headers = [
   { title: 'Record Date', key: 'created_at' },
   { title: 'Requested Amount', key: 'usd_amount' },
   { title: 'Transferred Amount', key: 'transferred_usd_amount' },
+  { title: 'Transfer Mode', key: 'transfer_mode' },
   { title: 'Status', key: 'status' },
 ]
 
 if (props.showUserID) {
-  headers.unshift({ title: 'User ID', key: 'user_id' })
+  headers.unshift({ title: 'User ID', key: 'user_id' },
+  { title: 'Username', key: 'username' })
 }
 
 

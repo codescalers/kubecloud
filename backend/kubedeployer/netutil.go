@@ -7,6 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
 func getIpForVm(ctx context.Context, tfPluginClient deployer.TFPluginClient, networkName string, nodeID uint32) (string, error) {
@@ -64,4 +66,26 @@ func getUsedHostIDsFromGrid(ctx context.Context, tfPluginClient deployer.TFPlugi
 	}
 
 	return usedHostIDs, nil
+}
+
+func createNetworkWorkload(networkName, projectName string, nodes []uint32) (workloads.ZNet, error) {
+	keys := make(map[uint32][]byte)
+	for _, node := range nodes {
+		key, err := workloads.RandomMyceliumKey()
+		if err != nil {
+			return workloads.ZNet{}, err
+		}
+		keys[node] = key
+	}
+
+	return workloads.ZNet{
+		Name:  networkName,
+		Nodes: nodes,
+		IPRange: zos.IPNet{IPNet: net.IPNet{
+			IP:   net.IPv4(10, 20, 0, 0),
+			Mask: net.CIDRMask(16, 32),
+		}},
+		MyceliumKeys: keys,
+		SolutionType: projectName,
+	}, nil
 }

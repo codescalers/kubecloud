@@ -14,6 +14,7 @@ export interface User {
   updated_at: string
   balance_usd?: number
   pending_balance_usd?: number
+  balance: number
 }
 
 export interface AuthState {

@@ -20,6 +20,7 @@
           { title: 'ID', key: 'id', width: '80px' },
           { title: 'Name', key: 'username' },
           { title: 'Email', key: 'email' },
+          { title: 'Balance', key: 'balance' },
           { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
         ]"
         :items="users"
@@ -30,6 +31,9 @@
         hide-default-footer
         density="comfortable"
       >
+        <template #item.balance="{ item }">
+          ${{ item.balance.toFixed(2) }}
+        </template>
         <template #item.actions="{ item }">
           <div style="display: flex; gap: var(--space-4); align-items: center;">
             <v-btn size="small" variant="outlined" class="action-btn" :disabled="!item.verified" @click="$emit('creditUser', item)">

@@ -16,7 +16,6 @@ type DB interface {
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
 	UpdatePassword(email string, hashedPassword []byte) error
-	UpdateUserVerification(userID int, verified bool) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error
@@ -41,20 +40,26 @@ type DB interface {
 	// Notification methods
 	CreateNotification(notification *Notification) error
 	GetUserNotifications(userID string, limit, offset int) ([]Notification, error)
+	GetUnreadNotifications(userID string, limit, offset int) ([]Notification, error)
 	MarkNotificationAsRead(notificationID uint, userID string) error
+	MarkNotificationAsUnread(notificationID uint, userID string) error
 	MarkAllNotificationsAsRead(userID string) error
-	GetUnreadNotificationCount(userID string) (int64, error)
 	DeleteNotification(notificationID uint, userID string) error
+	DeleteAllNotifications(userID string) error
 	// Cluster methods
 	CreateCluster(userID string, cluster *Cluster) error
 	ListUserClusters(userID string) ([]Cluster, error)
 	GetClusterByName(userID string, projectName string) (Cluster, error)
 	UpdateCluster(cluster *Cluster) error
 	DeleteCluster(userID string, projectName string) error
+	DeleteAllUserClusters(userID string) error
 	// pending records methods
 	CreatePendingRecord(record *PendingRecord) error
 	ListAllPendingRecords() ([]PendingRecord, error)
 	ListOnlyPendingRecords() ([]PendingRecord, error)
 	ListUserPendingRecords(userID int) ([]PendingRecord, error)
 	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
+	// stats methods
+	CountAllUsers() (int64, error)
+	CountAllClusters() (int64, error)
 }

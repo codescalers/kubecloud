@@ -63,7 +63,7 @@ func SetUp(t testing.TB) (*App, error) {
   "mailSender": {
     "email": "email@domain.com",
     "sendgrid_key": "sendgrid_key",
-    "timeout": 60,
+    "timeout": 5,
     "max_concurrent_sends": 20,
     "max_attachment_size_mb": 10
   },
@@ -124,7 +124,7 @@ func SetUp(t testing.TB) (*App, error) {
 		return nil, err
 	}
 
-	app, err := NewApp(configuration)
+	app, err := NewApp(context.Background(), configuration)
 	if err != nil {
 		return nil, err
 	}

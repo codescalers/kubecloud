@@ -18,7 +18,7 @@
   "mailSender": {
     "email": "noreply@example.com",
     "sendgrid_key": "your-sendgrid-api-key-here",
-    "timeout": 30,
+    "timeout": 5,
     "max_concurrent_sends": 20,
     "max_attachment_size_mb": 10
   },

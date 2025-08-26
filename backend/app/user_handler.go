@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	"kubecloud/internal/metrics"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -45,6 +47,7 @@ type Handler struct {
 	kycClient       *internal.KYCClient
 	sponsorKeyPair  subkey.KeyPair
 	sponsorAddress  string
+	metrics         *metrics.Metrics
 }
 
 // NewHandler create new handler
@@ -54,7 +57,8 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
-	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string) *Handler {
+	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
+	metrics *metrics.Metrics) *Handler {
 
 	return &Handler{
 		tokenManager:    tokenManager,
@@ -74,6 +78,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		kycClient:       kycClient,
 		sponsorKeyPair:  sponsorKeyPair,
 		sponsorAddress:  sponsorAddress,
+		metrics:         metrics,
 	}
 }
 
@@ -157,6 +162,12 @@ type RegisterUserResponse struct {
 	Email      string `json:"email"`
 }
 
+type VerifyRegisterUserResponse struct {
+	WorkflowID string `json:"workflow_id"`
+	Email      string `json:"email"`
+	*internal.TokenPair
+}
+
 // RedeemVoucherResponse holds the response for redeeming a voucher
 type RedeemVoucherResponse struct {
 	WorkflowID  string  `json:"workflow_id"`
@@ -200,6 +211,11 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check if user previously exists
 	existingUser, getErr := h.db.GetUserByEmail(request.Email)
+	if getErr != nil && getErr != gorm.ErrRecordNotFound {
+		InternalServerError(c)
+		return
+	}
+
 	if getErr != gorm.ErrRecordNotFound {
 		if existingUser.Verified {
 			Error(c, http.StatusConflict, "Conflict", "user already registered")
@@ -234,10 +250,11 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 // @ID verify-register-code
 // @Accept json
 // @Produce json
-// @Param body body VerifyCodeInput true "Verify Code Input"
-// @Success 202 {object} RegisterUserResponse "workflow_id: string, email: string"
-// @Failure 400 {object} APIResponse "Invalid request format or verification failed"
-// @Failure 500 {object} APIResponse
+// @Param request body VerifyCodeInput true "Verification details"
+// @Success 201 {object} VerifyRegisterUserResponse
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 409 {object} APIResponse "User is already registered"
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register/verify [post]
 func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	var request VerifyCodeInput
@@ -257,23 +274,41 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get user by email")
-		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
+		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
 		return
 	}
 
-	if user.Verified {
-		Error(c, http.StatusBadRequest, "verification failed", "user already registered")
+	// check if user is already registered (all required fields are set)
+	if user.Sponsored && user.Verified &&
+		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
+		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
+		len(strings.TrimSpace(user.Mnemonic)) > 0 {
+		Error(c, http.StatusConflict, "verification failed", "User is already registered")
 		return
 	}
 
-	if user.Code != request.Code {
-		Error(c, http.StatusBadRequest, "verification failed", "wrong code")
-		return
-	}
+	// check verification if user is not verified
+	if !user.Verified {
+		if user.Code != request.Code {
+			Error(c, http.StatusBadRequest, "verification failed", "Invalid verification code")
+			return
+		}
 
-	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.Timeout) * time.Second).Before(time.Now()) {
-		Error(c, http.StatusBadRequest, "verification failed", "code has expired")
-		return
+		if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
+			Error(c, http.StatusBadRequest, "verification failed", "code has expired")
+			return
+		}
+
+		if err := h.db.UpdateUserByID(&models.User{
+			ID:       user.ID,
+			Verified: true,
+		}); err != nil {
+			log.Error().Err(err).Msg("failed to update user data")
+			InternalServerError(c)
+			return
+		}
+
+		h.sseManager.Notify(fmt.Sprintf("%d", user.ID), "user_registration", "User email is verified")
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUserVerification)
@@ -283,17 +318,32 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 
+	if err = h.ewfEngine.Store().SaveWorkflow(c.Request.Context(), wf); err != nil {
+		log.Error().Err(err).Msg("failed to save user verification workflow")
+		InternalServerError(c)
+		return
+	}
+
 	// Start the user-verification workflow
 	wf.State = ewf.State{
-		"email": user.Email,
-		"name":  user.Username,
+		"email":   user.Email,
+		"name":    user.Username,
+		"user_id": user.ID,
 	}
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "verification in progress", RegisterUserResponse{
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to generate token pair")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusCreated, "Verification is in progress", VerifyRegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
+		TokenPair:  tokenPair,
 	})
 }
 
@@ -440,7 +490,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	code := internal.GenerateRandomCode()
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.Timeout, user.Username, h.config.Server.Host)
+	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.TimeoutMin, user.Username, h.config.Server.Host)
 	err = h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
 
 	if err != nil {
@@ -465,7 +515,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Verification code sent", RegisterResponse{
 		Email:   request.Email,
-		Timeout: fmt.Sprintf("%d seconds", h.config.MailSender.Timeout),
+		Timeout: fmt.Sprintf("%d minutes", h.config.MailSender.TimeoutMin),
 	})
 
 }
@@ -515,7 +565,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 	}
 
-	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.Timeout) * time.Second).Before(time.Now()) {
+	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
 		Error(c, http.StatusBadRequest, "code expired", "verification code has expired")
 
 		return

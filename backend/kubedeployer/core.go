@@ -258,3 +258,16 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 
 	return nil
 }
+
+func (c *Client) CancelAllContractsForUser(ctx context.Context, contractIDs []uint64) error {
+	if len(contractIDs) == 0 {
+		return nil
+	}
+
+	log.Debug().Msgf("Canceling %d contracts", len(contractIDs))
+	if err := c.GridClient.BatchCancelContract(contractIDs); err != nil {
+		return fmt.Errorf("failed to batch cancel contracts: %v", err)
+	}
+
+	return nil
+}
