@@ -23,6 +23,8 @@ export interface VerifyCodeRequest {
 export interface VerifyCodeResponse {
   email: string
   workflow_id: string
+  access_token: string
+  refresh_token: string
 }
 
 export interface LoginRequest {
@@ -128,28 +130,14 @@ export class AuthService {
   }
 
   // Verify registration code
-  async verifyCode(data: VerifyCodeRequest): Promise<void> {
+  async verifyCode(data: VerifyCodeRequest): Promise<VerifyCodeResponse> {
     const response = await api.post<ApiResponse<VerifyCodeResponse>>('/v1/user/register/verify', data, {
       showNotifications: true,
       errorMessage: 'Verification failed',
       timeout: 60000
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 5000, interval: 3000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      this.clearTempRegistrationData()
-      useNotificationStore().success(
-        'Verification Success',
-        'User verified successfully',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Verification Failed',
-        'Failed to verify user',
-      )
-      throw new Error('Failed to verify user')
-    }
+
+    return response.data.data
   }
 
   // Resend verification code using stored registration data
