@@ -111,21 +111,7 @@ export class AuthService {
       loadingMessage: 'Creating your account...',
       errorMessage: 'Registration failed',
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 2000, interval: 1000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Registration Success',
-        'User registered successfully',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Registration Failed',
-        'Failed to register user',
-      )
-      throw new Error('Failed to register user')
-    }
+
 
   }
 
