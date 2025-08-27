@@ -1,67 +1,66 @@
 <script setup lang="ts">
-// Add scroll animation observer
 import { onMounted, ref } from 'vue'
 import FeatureGlobe from '@/components/features/FeatureGlobe.vue'
 import { useUserStore } from '@/stores/user'
+import { statsService, type SystemStats } from '@/utils/statsService'
 
-// Get user store for authentication state
 const userStore = useUserStore()
-
-// Animated stats with proper typing
-const stats = ref([
-  { label: 'Clusters Deployed', value: 1280, animatedValue: 0 as number | string },
-  { label: 'Active Users', value: 5400, animatedValue: 0 as number | string },
-  { label: 'Global Locations', value: 32, animatedValue: 0 as number | string },
-  { label: 'Uptime', value: 99.99, animatedValue: 0 as number | string, isPercent: true },
-])
-
 const globeSize = ref(700)
+const isLoading = ref(true)
+const STAT_FIELDS: Array<{ label: string; key: keyof SystemStats }> = [
+  { label: 'Clusters Deployed', key: 'total_clusters' },
+  { label: 'Total Users', key: 'total_users' },
+  { label: 'Global Locations', key: 'countries' }
+]
+
+const displayStats = ref(STAT_FIELDS.map(f => ({ label: f.label, value: 0, animatedValue: 0 })))
+
+async function fetchStats() {
+  try {
+    const stats = await statsService.getStats()
+    STAT_FIELDS.forEach((cfg, idx) => {
+      displayStats.value[idx].value = stats[cfg.key] as number
+    })
+  } catch (error) {
+    console.error('Failed to fetch stats:', error)
+  } finally {
+    isLoading.value = false
+    animateStats()
+  }
+}
 
 function updateGlobeSize() {
-  const vw = window.innerWidth
-  globeSize.value = Math.max(320, Math.min(700, Math.floor(vw * 0.4)))
+  globeSize.value = Math.max(320, Math.min(700, Math.floor(window.innerWidth * 0.4)))
 }
 
 function animateStats() {
-  stats.value.forEach((stat, idx) => {
-    let start = 0
+  displayStats.value.forEach((stat, idx) => {
     const end = stat.value
     const duration = 1200 + idx * 200
     const step = (timestamp: number, startTime: number) => {
       const progress = Math.min((timestamp - startTime) / duration, 1)
-      stat.animatedValue = stat.isPercent
-        ? `${(progress * end).toFixed(2)}%`
-        : Math.floor(progress * end)
+      stat.animatedValue = Math.floor(progress * end)
       if (progress < 1) {
         requestAnimationFrame((t) => step(t, startTime))
       } else {
-        stat.animatedValue = stat.isPercent ? `${end}%` : end
+        stat.animatedValue = end
       }
     }
     requestAnimationFrame((t) => step(t, t))
   })
 }
-
-onMounted(() => {
+onMounted(async () => {
   updateGlobeSize()
   window.addEventListener('resize', updateGlobeSize)
-  // Animate stats on mount
-  animateStats()
-  // Section reveal animation
-  const observerOptions = {
-    threshold: 0.1,
-    rootMargin: '0px 0px -50px 0px'
-  }
+  await fetchStats()
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible')
       }
     })
-  }, observerOptions)
-  document.querySelectorAll('.fade-in').forEach(el => {
-    observer.observe(el)
-  })
+  }, { threshold: 0.1 })
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el))
 })
 
 const features = [
@@ -112,8 +111,16 @@ const features = [
         </div>
       </div>
       <div class="hero-stats">
-        <div class="stat-card fade-in" v-for="stat in stats" :key="stat.label">
-          <div class="stat-value">{{ stat.animatedValue }}</div>
+        <div class="stat-card fade-in" v-for="stat in displayStats" :key="stat.label">
+          <div v-if="isLoading" class="d-flex justify-center align-center" style="height: 2.5rem;">
+            <v-progress-circular
+              indeterminate
+              color="primary"
+              size="24"
+              width="2"
+            ></v-progress-circular>
+          </div>
+          <div v-else class="stat-value">{{ stat.animatedValue }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
       </div>
@@ -470,6 +477,7 @@ const features = [
   line-height: 1.2;
   font-weight: 400;
 }
+
 .fade-in {
   opacity: 0;
   transform: translateY(40px);

@@ -3,6 +3,7 @@ import { api, createWorkflowStatusChecker } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
+import type { NodeFilters } from '@/composables/useNodes'
 
 export interface ReserveNodeRequest {
   // Add any required fields if needed
@@ -132,8 +133,7 @@ export interface PendingRecord {
 }
 
 export class UserService {
-  // List all available nodes
-  async listNodes(filters?: any) {
+  async listNodes(filters?: NodeFilters) {
     const queryParams = new URLSearchParams()
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
@@ -143,7 +143,7 @@ export class UserService {
       })
     }
 
-    const endpoint = `/v1/nodes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const endpoint = `${filters?.rentable ? '/v1/user/nodes/rentable' : '/v1/user/nodes'}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get<NodesResponse>(endpoint, {
       requiresAuth: true,
       showNotifications: false // Don't show notifications for node listing
@@ -183,7 +183,7 @@ export class UserService {
 
   // List reserved nodes
   async listReservedNodes() {
-    return api.get('/v1/user/nodes', { requiresAuth: true })
+    return api.get('/v1/user/nodes/rented', { requiresAuth: true })
   }
 
   // Unreserve a node

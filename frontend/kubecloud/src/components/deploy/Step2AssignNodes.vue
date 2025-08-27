@@ -3,22 +3,50 @@
     <div class="section-header">
       <h3 class="section-title">
         <v-icon icon="mdi-server-network" class="mr-2"></v-icon>
-        Assign VMs to Reserved Nodes
+        Assign VMs to Nodes
       </h3>
-      <p class="section-subtitle">Select which reserved nodes will host your cluster VMs</p>
-    </div>
-    <div v-if="availableNodes.length === 0" class="nodes-empty">
-      <div class="empty-card">
-        <v-icon icon="mdi-server-network-off" size="38" color="primary" class="empty-icon mb-3"></v-icon>
-        <div class="empty-title">No Reserved Nodes</div>
-        <div class="empty-desc">You have not reserved any nodes yet.<br>To deploy a cluster, you must first reserve at least one node.</div>
-        <v-btn color="primary" class="mt-4" variant="outlined" to="/nodes">
-          <v-icon icon="mdi-plus" size="20" class="mr-2"></v-icon>
-          Reserve Node
-        </v-btn>
+      <p class="section-subtitle">Select nodes to host your cluster VMs</p>
+
+      <v-alert
+        type="info"
+        variant="tonal"
+        class="mb-7"
+        icon="mdi-tag-outline"
+      >
+        <span class="text-h6 font-weight-bold">50% Discount Available!</span>
+        <div class="d-flex align-center justify-space-between flex-wrap">
+          <p class="text-body-1 flex-grow-1 me-4 mb-0">
+            Reserve a node to get 50% discount and exclusive usage. Shared nodes are available at full price.
+          </p>
+          <v-btn
+            variant="outlined"
+            color="white"
+            class="ms-auto"
+            :to="{ name: 'reserve' }"
+            prepend-icon="mdi-arrow-right"
+          >
+            Reserve Node
+          </v-btn>
+        </div>
+      </v-alert>
+
+      <div class="region-filter mb-4">
+        <v-select
+          v-model="selectedRegion"
+          :items="availableRegions"
+          label="Filter by region"
+          prepend-inner-icon="mdi-earth"
+          variant="outlined"
+          density="compact"
+          clearable
+          :loading="loading"
+          placeholder="All regions"
+          item-title="label"
+          item-value="value"
+        />
       </div>
     </div>
-    <v-row v-else>
+    <v-row>
       <v-col cols="12" v-for="(vm, index) in allVMs" :key="index">
         <div class="vm-assignment-card">
           <div class="vm-assignment-header">
@@ -38,11 +66,11 @@
           <NodeSelect
             v-model="vm.node"
             :items="getAvailableNodesForVM(index)"
-            label="Select Reserved Node"
+            label="Select Node"
             clearable
             class="node-select"
             :get-node-resources="getNodeAvailableResources"
-            :cpu-label="'vCPU'"
+            cpu-label="vCPU"
             @update:modelValue="val => props.onAssignNode(index, val)"
           />
         </div>
@@ -61,66 +89,117 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { NormalizedNode } from '@/types/normalizedNode';
+import type { NormalizedNode } from '../../types/normalizedNode';
 import { type VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits, onMounted, computed } from 'vue';
-import NodeSelect from '@/components/ui/NodeSelect.vue';
+import { defineProps, withDefaults, defineEmits, onMounted, computed, ref, watch } from 'vue';
+import NodeSelect from '../ui/NodeSelect.vue';
+
 const props = withDefaults(defineProps<{
   allVMs: VM[];
   availableNodes: NormalizedNode[];
   getNodeInfo: (id: number) => string;
   onAssignNode: (vmIdx: number, nodeId: number | null) => void;
+  onRegionFilter: (region?: string) => Promise<void>;
+  loading?: boolean;
   isStep2Valid?: boolean;
 }>(), {
+  loading: false,
   isStep2Valid: false
 });
 const emit = defineEmits(['nextStep', 'prevStep']);
 
-const currentAllocations = computed(() =>
-  props.allVMs.reduce((acc, vm) => {
-    if (vm.node != null) {
-      acc[vm.node] = {
-        ram: (acc[vm.node]?.ram || 0) + vm.ram,
-        storage: (acc[vm.node]?.storage || 0) + (vm.disk || 0) + vm.rootfs
-      };
+const selectedRegion = ref<string>('');
+
+// All supported regions - show all regions, let backend handle filtering
+const ALL_REGIONS = ['Africa', 'Asia', 'South America', 'North America', 'Europe', 'Oceania'];
+
+const availableRegions = computed(() => [
+  { label: 'All regions', value: '' },
+  ...ALL_REGIONS.map(region => ({ label: region, value: region }))
+]);
+
+watch(selectedRegion, async (newRegion, oldRegion) => {
+  if (newRegion !== oldRegion) {
+    resetVMAssignments();
+    await props.onRegionFilter(newRegion || undefined);
+  }
+});
+
+// Validate and clear invalid VM assignments
+const validateVMAssignments = () => {
+  props.allVMs.forEach((vm, vmIndex) => {
+    if (vm.node != null && !getAvailableNodesForVM(vmIndex).find(node => node.nodeId === vm.node)) {
+      props.onAssignNode(vmIndex, null);
     }
-    return acc;
-  }, {} as Record<number, { ram: number; storage: number }>)
-);
+  });
+};
+
+const resetVMAssignments = () => {
+  props.allVMs.forEach((vm, index) => {
+    if (vm.node !== null) props.onAssignNode(index, null);
+  });
+};
+
+onMounted(() => {
+  selectedRegion.value = '';
+  validateVMAssignments();
+});
+
+
+const currentAllocations = computed(() => {
+  const allocations: Record<number, { ram: number; storage: number }> = {};
+  
+  for (const vm of props.allVMs) {
+    if (vm.node != null) {
+      if (!allocations[vm.node]) {
+        allocations[vm.node] = { ram: 0, storage: 0 };
+      }
+      allocations[vm.node].ram += vm.ram;
+      allocations[vm.node].storage += (vm.disk || 0) + vm.rootfs;
+    }
+  }
+  
+  return allocations;
+});
+
+const getNodeResources = (node: NormalizedNode, excludeVM?: { ram: number; storage: number }) => {
+  const used = currentAllocations.value[node.nodeId] || { ram: 0, storage: 0 };
+  const excludeRam = excludeVM?.ram || 0;
+  const excludeStorage = excludeVM?.storage || 0;
+  
+  return {
+    cpu: node.cpu || 0,
+    ram: (node.available_ram || 0) - used.ram + excludeRam,
+    storage: (node.available_storage || 0) - used.storage + excludeStorage
+  };
+};
 
 const getAvailableNodesForVM = (vmIndex: number) => {
   const vm = props.allVMs[vmIndex];
   if (!vm) return [];
+
+  const requiredStorage = (vm.disk || 0) + vm.rootfs;
+
   return props.availableNodes.filter(node => {
-    const used = currentAllocations.value[node.nodeId] || { ram: 0, storage: 0 };
-    const availableRam = (node.available_ram || 0) - used.ram + (vm.node === node.nodeId ? vm.ram : 0);
-    const availableStorage = (node.available_storage || 0) - used.storage + (vm.node === node.nodeId ? (vm.disk || 0) + vm.rootfs : 0);
-    return (node.cpu || 0) >= vm.vcpu && availableRam >= vm.ram && availableStorage >= (vm.disk || 0) + vm.rootfs;
+    const vmResources = vm.node === node.nodeId ? { ram: vm.ram, storage: requiredStorage } : undefined;
+    const available = getNodeResources(node, vmResources);
+    return available.cpu >= vm.vcpu && available.ram >= vm.ram && available.storage >= requiredStorage;
   });
 };
 
 
-const getNodeAvailableResources = (node: NormalizedNode) => ({
-  cpu: node.cpu || 0,
-  ram: Math.max(0, (node.available_ram || 0) - (currentAllocations.value[node.nodeId]?.ram || 0)),
-  storage: Math.max(0, (node.available_storage || 0) - (currentAllocations.value[node.nodeId]?.storage || 0))
-});
-// Validate existing VM assignments on mount and clear invalid ones
-onMounted(() => {
-  props.allVMs.forEach((vm, vmIndex) => {
-    if (vm.node != null) {
-      const availableNodes = getAvailableNodesForVM(vmIndex);
-      const assignedNode = availableNodes.find(node => node.nodeId === vm.node);
-      if (!assignedNode) {
-        props.onAssignNode(vmIndex, null);
-      }
-    }
-  });
-});
+const getNodeAvailableResources = (node: NormalizedNode) => {
+  const available = getNodeResources(node);
+  return {
+    cpu: available.cpu,
+    ram: Math.max(0, available.ram),
+    storage: Math.max(0, available.storage)
+  };
+};
 </script>
 <style scoped>
 .section-header {
-  margin-bottom: 4rem;
+  margin-bottom: 2rem;
 }
 .section-title {
   font-size: 1.2rem;
@@ -188,40 +267,5 @@ onMounted(() => {
   gap: 1rem;
   margin-top: 2rem;
 }
-.nodes-empty {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 260px;
-  width: 100%;
-}
-.empty-card {
-  background: var(--color-surface-1, #18192b);
-  border: 1.5px solid var(--color-border, #334155);
-  border-radius: 16px;
-  padding: 2.5rem 2rem 2rem 2rem;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.10);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 420px;
-  width: 100%;
-}
-.empty-icon {
-  margin-bottom: 0.5rem;
-}
-.empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text, #cfd2fa);
-  margin-bottom: 0.5rem;
-  text-align: center;
-}
-.empty-desc {
-  color: var(--color-text-muted, #7c7fa5);
-  font-size: 1.05rem;
-  text-align: center;
-  margin-bottom: 1.2rem;
-  line-height: 1.5;
-}
+
 </style>

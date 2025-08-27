@@ -18,6 +18,7 @@ export interface NodeFilters {
   dedicated?: boolean
   certification_type?: string
   grid_version?: number
+  region?: string
 }
 
 export function useNodes() {

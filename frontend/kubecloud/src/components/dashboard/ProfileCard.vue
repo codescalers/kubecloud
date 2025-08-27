@@ -55,7 +55,7 @@
                 required
                 class="password-field compact"
                 density="compact"
-                :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 @click:append-inner="() => { showPassword = !showPassword }"
                 @input="triggerFormValidation"
               />
@@ -70,7 +70,7 @@
                 required
                 class="password-field compact"
                 density="compact"
-                :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 @click:append-inner="() => { showConfirmPassword = !showConfirmPassword }"
                 @input="triggerFormValidation"
               />

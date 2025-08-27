@@ -62,7 +62,7 @@ export function useDeploymentEvents() {
           refreshClusterData()
         }
         else {
-          notificationStore.info('', data.data)
+          notificationStore.info('', data.data.message)
         }
     }
 

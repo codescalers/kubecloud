@@ -1,68 +1,74 @@
 <template>
   <div class="dashboard-card">
-    <div class="dashboard-card-header">
-      <div class="dashboard-card-title-section">
-        <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Kubernetes Clusters</h3>
-          <p class="dashboard-card-subtitle">Manage your cloud-native infrastructure</p>
-        </div>
+    <div class="d-flex justify-space-between align-center mb-6">
+      <div class="flex-grow-1">
+        <h3 class="text-h5 font-weight-bold mb-1">Kubernetes Clusters</h3>
+        <p class="text-body-2 text-medium-emphasis">Manage your cloud-native infrastructure</p>
       </div>
-      <v-btn :disabled="!haveNodes" variant="outlined" class="btn btn-outline" @click="goToDeployCluster">
+      <v-btn variant="outlined" class="mr-2" @click="goToDeployCluster">
         <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
         New Cluster
       </v-btn>
+      <v-btn 
+        v-if="filteredClusters.length > 0 && !isLoading" 
+        variant="outlined" 
+        color="error" 
+        @click="showDeleteAllModal = true"
+        :disabled="deletingAll"
+      >
+        <v-icon icon="mdi-delete-sweep" size="16" class="mr-1"></v-icon>
+        Delete All
+        <v-progress-circular v-if="deletingAll" indeterminate size="16" class="ml-2"></v-progress-circular>
+      </v-btn>
     </div>
     <div class="card-content">
-      <div class="clusters-list-toolbar">
+      <div class="d-flex gap-4 mb-6 flex-wrap">
         <v-text-field
           v-model="search"
           label="Search by name"
           prepend-inner-icon="mdi-magnify"
           clearable
-          class="search-bar"
+          class="flex-grow-1"
+          style="min-width: 220px;"
         />
         <v-select
           v-model="sortBy"
           :items="sortOptions"
           label="Sort by"
-          class="filter-select"
+          style="min-width: 160px;"
         />
       </div>
       <v-divider class="mb-4" />
       <v-alert v-if="error" type="error" class="mb-4">{{ error }}</v-alert>
       <v-progress-linear v-if="isLoading" indeterminate color="primary" class="mb-4" />
-      <div v-if="!haveNodes" class="empty-message">
-        <v-icon icon="mdi-cloud-off-outline" size="48" class="mb-2" color="grey" />
-        <div>You don't have any nodes reserved<br/>you have to reserve one to create a cluster</div>
-        <v-btn variant="outlined" class="btn btn-outline mt-3" @click="handleGoToReserveNode">
-          <v-icon icon="mdi-plus" size="16" class="mr-1"></v-icon>
-          Reserve Node
-        </v-btn>
-      </div>
-      <div v-else-if="filteredClusters.length === 0 && !isLoading" class="empty-message">
+      <div v-else-if="filteredClusters.length === 0 && !isLoading" class="text-center text-medium-emphasis mt-12">
         <v-icon icon="mdi-cloud-off-outline" size="48" class="mb-2" color="grey" />
         <div>No clusters found.</div>
       </div>
-      <v-table v-else class="clusters-table">
+      <v-table v-else class="w-100 rounded-lg overflow-hidden">
         <thead>
           <tr>
-            <th @click="setSort('name')" :class="sortBy === 'name' ? 'active-sort' : ''">Name <v-icon v-if="sortBy === 'name'" size="14">mdi-arrow-up-down</v-icon></th>
-            <th @click="setSort('nodes')" :class="sortBy === 'nodes' ? 'active-sort' : ''">Nodes <v-icon v-if="sortBy === 'nodes'" size="14">mdi-arrow-up-down</v-icon></th>
-            <th @click="setSort('createdAt')" :class="sortBy === 'createdAt' ? 'active-sort' : ''">Created <v-icon v-if="sortBy === 'createdAt'" size="14">mdi-arrow-up-down</v-icon></th>
+            <th @click="setSort('name')" class="cursor-pointer">Name <v-icon v-if="sortBy === 'name'" size="14">mdi-arrow-up-down</v-icon></th>
+            <th @click="setSort('nodes')" class="cursor-pointer">Nodes <v-icon v-if="sortBy === 'nodes'" size="14">mdi-arrow-up-down</v-icon></th>
+            <th @click="setSort('createdAt')" class="cursor-pointer">Created <v-icon v-if="sortBy === 'createdAt'" size="14">mdi-arrow-up-down</v-icon></th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="cluster in paginatedClusters" :key="cluster.id">
-            <td class="cluster-name-cell">
-              <span class="cluster-name">{{ cluster.cluster.name }}</span>
+            <td>
+              <span>{{ cluster.cluster.name }}</span>
+              <v-chip v-if="deletingAll" size="small" color="warning" class="ml-2">
+                <v-icon size="12" class="mr-1">mdi-clock</v-icon>
+                Deleting...
+              </v-chip>
             </td>
             <td>{{ Array.isArray(cluster.cluster.nodes) ? cluster.cluster.nodes.length : (typeof cluster.cluster.nodes === 'number' ? cluster.cluster.nodes : 0) }}</td>
             <td>{{ formatDate(cluster.created_at) }}</td>
             <td>
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)" :disabled="deletingAll">
                     <v-icon icon="mdi-cog" />
                   </v-btn>
                 </template>
@@ -71,7 +77,7 @@
               
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name || deletingAll">
                     <v-icon icon="mdi-download" />
                   </v-btn>
                 </template>
@@ -80,7 +86,7 @@
               
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="ml-1" color="error" v-bind="props" @click="deleteCluster(cluster.cluster.name)">
+                  <v-btn icon size="small" class="ml-1" color="error" v-bind="props" @click="deleteCluster(cluster.cluster.name)" :disabled="deletingAll">
                     <v-icon icon="mdi-delete-outline" />
                   </v-btn>
                 </template>
@@ -109,6 +115,28 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <v-dialog v-model="showDeleteAllModal" max-width="500">
+      <v-card class="pa-3">
+        <v-card-title>
+          Delete All Deployments
+        </v-card-title>
+        <v-card-text>
+          Are you sure you want to delete all your deployments? This action will permanently remove all your clusters and their resources.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="outlined" color="primary" @click="showDeleteAllModal = false">Cancel</v-btn>
+          <v-btn 
+            variant="outlined" 
+            color="error" 
+            @click="confirmDeleteAll" 
+            :loading="deletingAll"
+          >
+            Delete All
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -118,15 +146,15 @@ import { useRouter } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
-import { useNodeManagement } from '@/composables/useNodeManagement'
 
 const router = useRouter()
 const clusterStore = useClusterStore()
 const notificationStore = useNotificationStore()
-
 const showDeleteModal = ref(false)
 const deleting = ref(false)
 const clusterToDelete = ref<string | null>(null)
+const showDeleteAllModal = ref(false)
+const deletingAll = ref(false)
 
 const { download, downloading } = useKubeconfig()
 
@@ -140,23 +168,10 @@ const sortOptions = [
   { value: 'createdAt', title: 'Created' },
   { value: 'nodes', title: 'Nodes' },
 ]
-const {
-  rentedNodes,
-  loading,
-  fetchRentedNodes,
-} = useNodeManagement()
 
 
 const error = computed(() => clusterStore.error)
-const isLoading = computed(() => clusterStore.isLoading || loading.value)
-watch([() => clusterStore.clusters.length, () => clusterStore.isLoading], ([clustersLength, isClusterLoading]) => {
-  if (!isClusterLoading && clustersLength === 0) {
-    fetchRentedNodes()
-  }
-})
-const haveNodes = computed(() => {
- return clusterStore.clusters.length > 0 || rentedNodes.value.length > 0
-})
+const isLoading = computed(() => clusterStore.isLoading)
 
 function setSort(field: string) {
   sortBy.value = field
@@ -204,9 +219,6 @@ function deleteCluster(projectName: string) {
 const goToDeployCluster = () => {
   router.push('/deploy')
 }
-function handleGoToReserveNode() {
-  router.push('/nodes')
-}
 
 async function confirmDelete() {
   if (!clusterToDelete.value) return
@@ -223,59 +235,30 @@ async function confirmDelete() {
   }
 }
 
+async function confirmDeleteAll() {
+  if (filteredClusters.value.length === 0) return
+
+  deletingAll.value = true
+  try {
+    await clusterStore.deleteAllDeployments()
+    notificationStore.info('Delete All Started', `All your deployments are being deleted. The table will update automatically as deletions complete.`)
+  } catch (error: any) {
+    notificationStore.error('Delete All Failed', error?.message || 'Failed to delete all deployments')
+    deletingAll.value = false // Reset on error
+  } finally {
+    showDeleteAllModal.value = false
+  }
+}
+
 function formatDate(dateStr: string) {
   const date = new Date(dateStr)
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
-</script>
 
-<style scoped>
-.clusters-list-toolbar {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.search-bar {
-  min-width: 220px;
-  flex: 1 1 220px;
-}
-.filter-select {
-  min-width: 160px;
-}
-.clusters-table {
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--color-surface-1, #18192b);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-th, td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-}
-th {
-  background: var(--color-surface-2, #23243a);
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-}
-th.active-sort {
-  color: var(--color-primary, #6366f1);
-}
-tr {
-  border-bottom: 1px solid var(--color-surface-2, #23243a);
-}
-tr:last-child {
-  border-bottom: none;
-}
-.cluster-name-cell {
-  font-weight: 600;
-  color: var(--color-primary, #6366f1);
-}
-.empty-message {
-  text-align: center;
-  color: var(--color-text-muted, #7c7fa5);
-  margin-top: 3rem;
-}
-</style>
+// Watch for clusters to be removed and reset deletingAll state
+watch(() => clusterStore.clusters.length, (newLength) => {
+  if (newLength === 0 && deletingAll.value) {
+    deletingAll.value = false
+  }
+})
+</script>

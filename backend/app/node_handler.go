@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
@@ -22,6 +23,16 @@ type ListNodesResponse struct {
 	Nodes []proxyTypes.Node `json:"nodes"`
 }
 
+type NodesWithDiscount struct {
+	proxyTypes.Node
+	DiscountPrice float64 `json:"discount_price"`
+}
+
+type ListNodesWithDiscountResponse struct {
+	Total int                 `json:"total"`
+	Nodes []NodesWithDiscount `json:"nodes"`
+}
+
 // ReserveNodeResponse holds the response for reserve node response
 type ReserveNodeResponse struct {
 	WorkflowID string `json:"workflow_id"`
@@ -37,7 +48,7 @@ type UnreserveNodeResponse struct {
 }
 
 // @Summary List nodes
-// @Description Retrieves a list of nodes from the grid proxy based on the provided filters.
+// @Description List nodes from proxy [rented nodes first + randomized shared nodes]
 // @Tags nodes
 // @ID list-nodes
 // @Accept json
@@ -51,25 +62,9 @@ type UnreserveNodeResponse struct {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security UserMiddleware
 // @Router /user/nodes [get]
-// ListNodesHandler requests all nodes from gridproxy
 func (h *Handler) ListNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
-
-	user, err := h.db.GetUserByID(userID)
-	if err != nil {
-		log.Error().Err(err).Send()
-		Error(c, http.StatusNotFound, "User is not found", "")
-		return
-	}
-
-	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
-	if err != nil {
-		log.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	twinID, err := h.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	rentedNodes, rentedNodesCount, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
 	if err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
@@ -78,6 +73,15 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 
 	query := c.Request.URL.Query()
 
+	limit := proxyTypes.DefaultLimit()
+	limit.RetCount = true
+	limit.Randomize = true
+	err = queryParamsToStruct(query, &limit)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		return
+	}
+
 	filter := proxyTypes.NodeFilter{}
 	err = queryParamsToStruct(query, &filter)
 	if err != nil {
@@ -85,45 +89,45 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 		return
 	}
 
-	limit := proxyTypes.DefaultLimit()
-	// Force return counts of both requests
-	retCount := true
-	limit.RetCount = retCount
-	err = queryParamsToStruct(query, &limit)
-	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
-		return
-	}
-
-	// Fetch rented nodes of user
-	twinID64 := uint64(twinID)
-	rentedFilter := filter
-	rentedFilter.RentableOrRentedBy = &twinID64
-
-	rentedNodes, count1, err := h.proxyClient.Nodes(c.Request.Context(), rentedFilter, limit)
+	twinID, err := h.getTwinIDFromUserID(userID)
 	if err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	// Force Healthy and randomize to true
 	healthy := true
-	randomize := true
-	rentable := false
 	filter.Healthy = &healthy
-	filter.Rentable = &rentable
-	limit.Randomize = randomize
-	nodes, count2, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	filter.AvailableFor = &twinID
+	availableNodes, availableNodesCount, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		InternalServerError(c)
 		return
 	}
 
-	allNodes := append(rentedNodes, nodes...)
+	// Combine all nodes without duplicates
+	var allNodes []proxyTypes.Node
+	duplicatesCount := 0
+	seen := make(map[int]bool)
+
+	for _, node := range rentedNodes {
+		if !seen[node.NodeID] {
+			seen[node.NodeID] = true
+			allNodes = append(allNodes, node)
+		}
+	}
+
+	for _, node := range availableNodes {
+		if !seen[node.NodeID] {
+			seen[node.NodeID] = true
+			allNodes = append(allNodes, node)
+		} else {
+			duplicatesCount++
+		}
+	}
 
 	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesResponse{
-		Total: count1 + count2,
+		Total: rentedNodesCount + availableNodesCount - duplicatesCount,
 		Nodes: allNodes,
 	})
 }
@@ -219,47 +223,25 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 }
 
-// @Summary List reserved nodes
-// @Description Returns a list of reserved nodes for a user
+// @Summary List rentable nodes
+// @Description Retrieves a list of rentable nodes from the grid proxy. These are healthy nodes that are available for rent.
 // @Tags nodes
-// @ID list-reserved-nodes
+// @ID list-rentable-nodes
 // @Accept json
 // @Produce json
-// @Success 200 {array} APIResponse
-// @Failure 500 {object} APIResponse
-// @Security UserMiddleware
-// @Router /user/nodes/rented [get]
-// ListReservedNodeHandler list reserved nodes for user on tfchain
-func (h *Handler) ListReservedNodeHandler(c *gin.Context) {
-	userID := c.GetInt("user_id")
-
-	user, err := h.db.GetUserByID(userID)
-	if err != nil {
-		log.Error().Err(err).Send()
-		Error(c, http.StatusNotFound, "User is not found", "")
-		return
-	}
-
-	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
-	if err != nil {
-		log.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	twinID, err := h.substrateClient.GetTwinByPubKey(identity.PublicKey())
-	if err != nil {
-		log.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	twinID64 := uint64(twinID)
+// @Success 200 {object} APIResponse{data=ListNodesWithDiscountResponse} "Rentable nodes retrieved successfully"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /user/nodes/rentable [get]
+func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
+	healthy := true
+	rentable := true
 	filter := proxyTypes.NodeFilter{
-		RentedBy: &twinID64,
+		Healthy:  &healthy,
+		Rentable: &rentable,
 	}
 
 	limit := proxyTypes.DefaultLimit()
+	limit.Randomize = true
 
 	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
@@ -268,11 +250,49 @@ func (h *Handler) ListReservedNodeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesResponse{
+	var nodesWithDiscount []NodesWithDiscount
+	for _, node := range nodes {
+		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
+			Node:          node,
+			DiscountPrice: node.PriceUsd * 0.5,
+		})
+	}
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
-		Nodes: nodes,
+		Nodes: nodesWithDiscount,
 	})
+}
 
+// @Summary List reserved nodes
+// @Description Returns a list of reserved nodes for a user
+// @Tags nodes
+// @ID list-reserved-nodes
+// @Accept json
+// @Produce json
+// @Success 200 {object} APIResponse{data=ListNodesWithDiscountResponse}
+// @Failure 500 {object} APIResponse
+// @Security UserMiddleware
+// @Router /user/nodes/rented [get]
+// ListReservedNodeHandler list reserved nodes for user on tfchain
+func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	nodes, count, err := h.getRentedNodesForUser(c.Request.Context(), userID, false)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	var nodesWithDiscount []NodesWithDiscount
+	for _, node := range nodes {
+		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
+			Node:          node,
+			DiscountPrice: node.PriceUsd * 0.5,
+		})
+	}
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
+		Total: count,
+		Nodes: nodesWithDiscount,
+	})
 }
 
 // @Summary Unreserve node
@@ -335,6 +355,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	})
 }
 
+// used to extend the built-in filters with queries from the request
 func queryParamsToStruct(query url.Values, result interface{}) error {
 	v := reflect.ValueOf(result).Elem()
 	t := v.Type()
@@ -415,4 +436,47 @@ func setValueFromString(v reflect.Value, s string) error {
 		return fmt.Errorf("unsupported kind: %s", v.Kind())
 	}
 	return nil
+}
+
+func (h *Handler) getTwinIDFromUserID(userID int) (uint64, error) {
+	user, err := h.db.GetUserByID(userID)
+	if err != nil {
+		return 0, err
+	}
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	twinID, err := h.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(twinID), nil
+}
+
+func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy bool) ([]proxyTypes.Node, int, error) {
+	twinID, err := h.getTwinIDFromUserID(userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	filter := proxyTypes.NodeFilter{
+		RentedBy: &twinID,
+	}
+
+	if healthy {
+		filter.Healthy = &healthy
+	}
+
+	limit := proxyTypes.DefaultLimit()
+
+	nodes, count, err := h.proxyClient.Nodes(ctx, filter, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return nodes, count, nil
 }

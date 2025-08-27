@@ -119,6 +119,20 @@ export const useClusterStore = defineStore('clusters', () => {
     return api.delete(`/v1/deployments/${clusterName}/nodes/${nodeName}`, { requiresAuth: true })
   }
 
+  const deleteAllDeployments = async () => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await api.delete('/v1/deployments', { requiresAuth: true })
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete all deployments'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     // State
     clusters: computed(() => clusters.value),
@@ -131,6 +145,7 @@ export const useClusterStore = defineStore('clusters', () => {
     // Actions
     fetchClusters,
     deleteCluster,
+    deleteAllDeployments,
     getClusterMetrics,
     addNodesToCluster,
     removeNodeFromCluster,

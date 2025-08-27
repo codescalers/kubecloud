@@ -536,7 +536,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteAllDeployments)
+	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteAllClusters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return

@@ -21,9 +21,10 @@ var (
 	standardRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
 
 	workflowsDescriptions = map[string]string{
-		WorkflowAddNode:       "Adding Node",
-		WorkflowRemoveNode:    "Removing Node",
-		WorkflowDeleteCluster: "Deleting Cluster",
+		WorkflowAddNode:           "Adding Node",
+		WorkflowRemoveNode:        "Removing Node",
+		WorkflowDeleteCluster:     "Deleting Cluster",
+		WorkflowDeleteAllClusters: "Deleting All Clusters",
 	}
 )
 
@@ -671,7 +672,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 		{Name: StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
 		{Name: StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowDeleteAllDeployments, &deleteAllDeploymentsWFTemplate)
+	engine.RegisterTemplate(WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
 	addNodeWFTemplate := BaseWFTemplate
 	addNodeWFTemplate.Steps = []ewf.Step{

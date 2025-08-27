@@ -55,6 +55,8 @@
               :onAssignNode="onAssignNode"
               :isStep2Valid="isStep2Valid"
               :nodeResourceErrors="nodeResourceErrors"
+              :onRegionFilter="fetchAvailableNodes"
+              :loading="nodesLoading"
               @nextStep="nextStep"
               @prevStep="prevStep"
             />
@@ -89,7 +91,7 @@ import { api } from '../utils/api';
 import type { ApiResponse } from '../utils/api';
 import { useNotificationStore } from '../stores/notifications';
 import { UserService } from '../utils/userService';
-import { useNodeManagement } from '../composables/useNodeManagement';
+import { useNodes } from '../composables/useNodes';
 import type { NormalizedNode } from '../types/normalizedNode';
 import { validateClusterName, generateClusterName, getNodeInfo, getSshKeyName } from '../utils/clusterUtils';
 import { useRouter } from 'vue-router';
@@ -105,21 +107,17 @@ const { masters, workers, availableSshKeys, addMaster, addWorker, removeMaster, 
 const deploying = ref(false);
 
 const allVMs = computed(() => [...masters.value, ...workers.value]);
-
-const { rentedNodes, fetchRentedNodes } = useNodeManagement();
+const { nodes: allNodes, fetchNodes, loading: nodesLoading } = useNodes();
 const availableNodes = ref<NormalizedNode[]>([]);
 
-async function fetchAvailableNodes() {
-  await fetchRentedNodes();
-  availableNodes.value = rentedNodes.value.map(normalizeNode);
+async function fetchAvailableNodes(region?: string) {
+  await fetchNodes({ region });
+  availableNodes.value = allNodes.value.map(normalizeNode);
 }
 
 const clusterName = ref('');
 const selectedSshKeys = ref<number[]>([]);
-
-function onClusterNameChange(name: string) {
-  clusterName.value = name;
-}
+const onClusterNameChange = (name: string) => clusterName.value = name;
 
 // --- Step 1 Validation ---
 const isStep1Valid = computed(() => {
@@ -192,7 +190,7 @@ const clusterPayload = computed<Cluster>(() => {
       .map(id => availableSshKeys.value.find(k => k.ID === id)?.public_key)
       .filter(key => key) // Remove undefined values
       .join('\n'); // Join multiple keys with newlines
-    
+
     return {
       name: vm.name,
       type: type === 'master' ? 'master' : 'worker',
@@ -220,7 +218,7 @@ const clusterPayload = computed<Cluster>(() => {
   };
 });
 
-function navigateToDasgboard() {
+function navigateToDashboard() {
   localStorage.setItem('dashboard-section', 'clusters')
   router.push('/dashboard');
 }
@@ -236,7 +234,7 @@ async function onDeployCluster() {
 
     });
     notificationStore.info('Deployment started', 'Your cluster is being deployed in the background. You will be notified when it is ready.');
-    navigateToDasgboard();
+    navigateToDashboard();
   } catch (err: any) {
     notificationStore.error('Error', err?.message || 'Failed to deploy cluster');
     console.error(err);
@@ -289,25 +287,13 @@ function setSelectedSshKeys(keys: number[]) {
   selectedSshKeys.value = keys;
 }
 function onAssignNode(vmIdx: number, nodeId: number | null) {
-  if (vmIdx < masters.value.length) {
-    masters.value[vmIdx].node = nodeId != null ? nodeId : null;
-  } else {
-    const workerIdx = vmIdx - masters.value.length;
-    workers.value[workerIdx].node = nodeId != null ? nodeId : null;
-  }
+  const isMaster = vmIdx < masters.value.length;
+  const targetNodes = isMaster ? masters : workers;
+  const targetIdx = isMaster ? vmIdx : vmIdx - masters.value.length;
+  targetNodes.value[targetIdx].node = nodeId;
 }
 </script>
 
-<style>
-.deploy-container {
-  /* Enhanced palette for Deploy Cluster only */
-  --color-bg-elevated: #20243a;
-  --color-bg-hover: #23263b;
-  --color-chip-bg: #23263b;
-  --color-chip-border: #334155;
-  --shadow-card: 0 6px 24px rgba(16, 24, 40, 0.12);
-}
-</style>
 
 <style scoped>
 .deploy-container {

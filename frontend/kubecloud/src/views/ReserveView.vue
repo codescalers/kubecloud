@@ -102,7 +102,7 @@
                   color="primary"
                   variant="outlined"
                   :disabled="loading"
-                  @click="fetchNodes"
+                  @click="fetchNodes(nodeFilters)"
                   prepend-icon="mdi-refresh"
                   class="refresh-btn"
                   style="min-width: 120px;"
@@ -172,7 +172,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNodes } from '../composables/useNodes'
+import { useNodes, type NodeFilters } from '../composables/useNodes'
 import { userService } from '../utils/userService'
 import { useUserStore } from '../stores/user'
 import { useNormalizedNodes } from '../composables/useNormalizedNodes'
@@ -199,9 +199,9 @@ const {
 
 const reservingNodeId = ref<number | null>(null)
 const reservedNodeIds = ref(new Set<number>())
-
+const nodeFilters = <NodeFilters>{rentable: true}
 onMounted(() => {
-  fetchNodes()
+  fetchNodes(nodeFilters)
   // Add scroll animation observer
   const observerOptions = {
     threshold: 0.1,
@@ -228,7 +228,7 @@ const reserveNode = async (nodeId: number) => {
   try {
     await userService.reserveNode(nodeId)
     reservedNodeIds.value.add(nodeId) // Optimistically remove from UI
-    fetchNodes()
+    fetchNodes(nodeFilters)
   } catch (err) {
     console.error(err)
     reservedNodeIds.value.delete(nodeId)
