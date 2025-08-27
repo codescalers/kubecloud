@@ -14,48 +14,9 @@ if [ -z "${K3S_FLANNEL_IFACE}" ]; then
 fi
 
 if [[ "${DUAL_STACK}" = "true" && "${MASTER}" = "true" ]]; then
-    EXTRA_ARGS="$EXTRA_ARGS --cluster-cidr=10.42.0.0/16,2001:cafe:42::/56"
-    EXTRA_ARGS="$EXTRA_ARGS --service-cidr=10.43.0.0/16,2001:cafe:43::/112"
-    EXTRA_ARGS="$EXTRA_ARGS --flannel-ipv6-masq"
+    
+    EXTRA_ARGS="$EXTRA_ARGS --flannel-backend=none --disable-network-policy"
 fi
-
-if [[ "${DUAL_STACK}" = "true" ]]; then
-    # this to force the ip selection from flannel-br to use mycelium ip
-    # not any other ipv6 on flannel-br
-
-    if [ -z "$K3S_FLANNEL_IFACE" ]; then
-        echo "Usage: $0 <interface>"
-        exit 1
-    fi
-
-    # Step 1: Find the next-hop for 400::/7
-    route_line=$(ip -6 route | grep "^400::/7.*dev $K3S_FLANNEL_IFACE")
-    if [ -z "$route_line" ]; then
-        echo "No 400::/7 route found via interface $K3S_FLANNEL_IFACE"
-        exit 1
-    fi
-
-    # Extract next-hop IPv6
-    nexthop=$(echo "$route_line" | awk '{for(i=1;i<=NF;i++) if ($i=="via") print $(i+1)}')
-    prefix=$(echo "$nexthop" | cut -d':' -f1-4)
-
-    # Step 2: Get the IPv4 address
-    ipv4=$(ip -4 addr show dev "$K3S_FLANNEL_IFACE" | awk '/inet / {print $2}' | cut -d'/' -f1)
-
-    # Step 3: Get global IPv6 addresses and match subnet
-    ipv6_list=$(ip -6 addr show dev "$K3S_FLANNEL_IFACE" scope global | awk '/inet6/ {print $2}' | cut -d'/' -f1)
-    ipv6=""
-
-    for ip in $ipv6_list; do
-        ip_prefix=$(echo "$ip" | cut -d':' -f1-4)
-        if [ "$ip_prefix" = "$prefix" ]; then
-            ipv6=$ip
-            break
-        fi
-    done
-
-    EXTRA_ARGS="$EXTRA_ARGS --node-ip=$ipv4,$ipv6"
-fi 
 
 if [ -z "${K3S_URL}" ]; then
     # Add additional SANs for planetary network IP, public IPv4, and public IPv6  
