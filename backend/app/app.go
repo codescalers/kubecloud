@@ -199,6 +199,11 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		nil, // Use default http.Client
 	)
 
+	notificationService:= notification.InitNotificationService(db, ewfEngine, mailService, sseManager)
+
+
+	metrics := metrics.NewMetrics()
+
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
@@ -228,7 +233,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		sponsorAddress,
 		sponsorKeyPair,
 		app.metrics,
-		app.notificationService,
+		notificationService.GetNotifiers(),
 	)
 
 	app.registerHandlers()

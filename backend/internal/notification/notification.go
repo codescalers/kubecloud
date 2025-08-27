@@ -3,11 +3,11 @@ package notification
 import (
 	"context"
 	"fmt"
-	"kubecloud/internal"
 	"kubecloud/models"
+	"sync"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
+	"github.com/xmonader/ewf"
 )
 
 const (
@@ -22,6 +22,7 @@ type Notifier interface {
 
 type NotificationServiceInterface interface {
 	Send(notificationType string, payload any, userID string) error
+	GetNotifiers()map[string]Notifier
 	GetUserNotifications(userID string, limit, offset int) ([]models.Notification, error)
 	MarkAsRead(notificationID string) error
 	DeleteNotification(notificationID uuid.UUID, userID string) error
@@ -35,12 +36,35 @@ type NotificationServiceInterface interface {
 type NotificationService struct {
 	db                    models.DB
 	notifiers             map[string]Notifier
-	jobs                  chan *models.Notification
-	quit                  chan struct{}
+	engine                *ewf.Engine
 	notificationTemplates map[models.NotificationType]models.Notification
 }
 
-func NewNotificationService(db models.DB, notifiers ...Notifier) *NotificationService {
+var (
+	notificationServiceOnce     sync.Once
+	notificationServiceInstance *NotificationService
+)
+
+
+func InitNotificationService(db models.DB, engine *ewf.Engine, notifiers ...Notifier) *NotificationService {
+	notificationServiceOnce.Do(func() {
+		notificationServiceInstance = NewNotificationService(db, engine, notifiers...)
+	})
+	return notificationServiceInstance
+}
+
+func GetNotificationService() (*NotificationService, error) {
+	if notificationServiceInstance == nil {
+		return nil, fmt.Errorf("notification service is not initialized; call InitNotificationService first")
+	}
+	return notificationServiceInstance, nil
+}
+
+func(s *NotificationService) GetNotifiers()map[string]Notifier{
+	return s.notifiers
+}
+
+func NewNotificationService(db models.DB, engine *ewf.Engine, notifiers ...Notifier) *NotificationService {
 	notifiersMap := make(map[string]Notifier)
 	for _, notifier := range notifiers {
 		notifiersMap[notifier.GetType()] = notifier
@@ -49,8 +73,7 @@ func NewNotificationService(db models.DB, notifiers ...Notifier) *NotificationSe
 	s := &NotificationService{
 		db:                    db,
 		notifiers:             notifiersMap,
-		jobs:                  make(chan *models.Notification, 25),
-		quit:                  make(chan struct{}),
+		engine:                engine,
 		notificationTemplates: make(map[models.NotificationType]models.Notification),
 	}
 	return s
@@ -66,55 +89,31 @@ func (s *NotificationService) RegisterTemplate(notificationType models.Notificat
 	return s, nil
 }
 
-func (s *NotificationService) Start() {
-	go func() {
-		for {
-			select {
-			case job := <-s.jobs:
-				if job == nil {
-					continue
-				}
-				for _, channel := range job.Channels {
-					n, ok := s.notifiers[channel]
-					if !ok {
-						continue
-					}
-					if err := n.Notify(job); err != nil {
-						log.Error().Err(err).Str("channel", channel).Msg("Failed to notify")
-					}
-				}
-			case <-s.quit:
-				return
-			}
-		}
-	}()
-}
-
-func (s *NotificationService) Stop() {
-	close(s.quit)
-}
-
 func (s *NotificationService) Send(notificationType models.NotificationType, payload map[string]string, userID string) error {
+	notificationTemplate, ok := s.notificationTemplates[notificationType]
+	if !ok {
+		return fmt.Errorf("notification template not found for type: %s", notificationType)
+	}
+
 	notification := &models.Notification{
-		UserID:  userID,
-		Type:    notificationType,
-		Payload: payload,
+		ID:       uuid.NewString(),
+		UserID:   userID,
+		Type:     notificationType,
+		Channels: notificationTemplate.Channels,
+		Severity: notificationTemplate.Severity,
+		Payload:  payload,
 	}
 
 	if err := s.db.CreateNotification(notification); err != nil {
 		return err
 	}
 
-	if len(notification.Channels) == 0 {
-		notification.Channels = []string{ChannelUI}
+	workflow, err := s.engine.NewWorkflow("send-notification")
+	if err != nil {
+		return fmt.Errorf("failed to create workflow: %w", err)
 	}
-
-	select {
-	case s.jobs <- notification:
-		log.Info().Str("notification_id", notification.ID.String()).Msg("Notification enqueued")
-	default:
-		log.Error().Msg("Notification queue is full")
-	}
+	workflow.State["notification"] = notification
+	s.engine.RunAsync(context.Background(), workflow)
 
 	return nil
 }

@@ -22,7 +22,7 @@ func RegisterEWFWorkflows(
 	sponsorAddress string,
 	sponsorKeyPair subkey.KeyPair,
 	metrics *metrics.Metrics,
-	notificationService *notification.NotificationService,
+	notifiers map[string]notification.Notifier,
 ) {
 	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, db))
@@ -37,9 +37,8 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCreateIdentity, CreateIdentityStep())
 	engine.Register(StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db, notificationService))
-	engine.Register(StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
-	engine.Register(StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
+	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
+	engine.Register(StepSendNotification,SendNotification(notifiers) )
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate()
 	registerWorkflowTemplate.Steps = []ewf.Step{
@@ -115,12 +114,11 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUnreserveNode, &unreserveNodeTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, notificationService, config)
+	registerDeploymentActivities(engine, metrics, db, sse)
 
-	notificationTemplate := newKubecloudWorkflowTemplate()
+	notificationTemplate := userWorkflowTemplate
 	notificationTemplate.Steps = []ewf.Step{
-		{Name: StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: StepSendNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 3, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowSendNotification, &notificationTemplate)
 }
