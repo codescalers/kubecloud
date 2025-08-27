@@ -69,7 +69,9 @@ data:
           "nodename": "__KUBERNETES_NODE_NAME__",
           "mtu": __CNI_MTU__,
           "ipam": {
-              "type": "calico-ipam"
+              "type": "calico-ipam",
+              "assign_ipv4": "true",
+              "assign_ipv6": "true"
           },
           "policy": {
               "type": "k8s"
@@ -4930,11 +4932,21 @@ spec:
             # no effect. This should fall within `--cluster-cidr`.
             - name: CALICO_IPV4POOL_CIDR
               value: "10.42.0.0/16"
+            # Set IPIP mode for IPv4 pool
+            - name: CALICO_IPV4POOL_IPIP
+              value: "Always"
+            - name: CALICO_IPV4POOL_VXLAN
+              value: "Never"
             # The default IPv6 pool to create on startup if none exists. Pod IPs will be
             # chosen from this range. Changing this value after installation will have
             # no effect. This should fall within `--cluster-cidr`.
             - name: CALICO_IPV6POOL_CIDR
               value: "2001:cafe:42::/56"
+            # Set VXLAN mode for IPv6 pool and disable NAT
+            - name: CALICO_IPV6POOL_VXLAN
+              value: "Always"
+            - name: CALICO_IPV6POOL_NAT_OUTGOING
+              value: "false"
             # The service CIDR ranges for the cluster.
             - name: CALICO_IPV4_SERVICE_CIDR
               value: "10.43.0.0/16"
@@ -4958,6 +4970,27 @@ spec:
             # Enable IPv6 on Kubernetes.
             - name: FELIX_IPV6SUPPORT
               value: "true"
+            # Configure Felix for kube-proxy IPv6 support
+            - name: FELIX_LOGSEVERITYSCREEN
+              value: "info"
+            - name: FELIX_PROMETHEUSMETRICSENABLED
+              value: "true"
+            - name: FELIX_XDPENABLED
+              value: "true"
+            - name: FELIX_CHAININSERTMODE
+              value: "append"
+            # Configure port forwarding for kube-proxy with IPv6
+            - name: FELIX_IPINIPENABLED
+              value: "true"
+            # Enable Dual-Stack service routing
+            - name: FELIX_ROUTESOURCEVIAIP
+              value: "true"
+            # Enable proper service IP advertisement
+            - name: FELIX_ADVERTISESERVICEIPS
+              value: "true"
+            # Configure kube-proxy service CIDR access
+            - name: FELIX_KUBESERVICESCIDR
+              value: "10.43.0.0/16,2001:cafe:43::/112"
             - name: FELIX_HEALTHENABLED
               value: "true"
           securityContext:
