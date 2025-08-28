@@ -134,28 +134,12 @@ export class AuthService {
     }
 
     // Use the original register endpoint with the stored user data
-    const response = await api.post<ApiResponse<RegisterResponse>>('/v1/user/register', registrationData, {
+    await api.post<ApiResponse<RegisterResponse>>('/v1/user/register', registrationData, {
       showNotifications: true,
       loadingMessage: 'Resending verification code...',
       errorMessage: 'Failed to resend verification code',
       timeout: 60000
     })
-
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 15000, interval: 3000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Code Resent',
-        'Verification code sent to your email',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Resend Failed',
-        'Failed to resend verification code',
-      )
-      throw new Error('Failed to resend verification code')
-    }
   }
 
   // Login user
