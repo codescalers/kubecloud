@@ -53,6 +53,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authService } from '../utils/authService'
 import { useNotificationStore } from '@/stores/notifications'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,9 +101,8 @@ const handleVerify = async () => {
   }
   try {
     loading.value = true
-    await authService.verifyCode({ email: form.email, code: Number(form.code) })
+    await useUserStore().verifyCode({ email: form.email, code: Number(form.code) })
     loading.value = false
-    router.push('/sign-in')
   } catch (error) {
     loading.value = false
     console.error(error)
