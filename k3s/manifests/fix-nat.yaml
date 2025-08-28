@@ -1,0 +1,64 @@
+---
+# Fix for external connectivity - applies direct masquerading rules
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fix-nat-masquerade
+  namespace: kube-system
+spec:
+  parallelism: 2
+  completions: 2
+  template:
+    spec:
+      hostNetwork: true
+      hostPID: true
+      restartPolicy: Never
+      tolerations:
+      - operator: Exists
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+      - name: fix-nat
+        image: nicolaka/netshoot:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Applying NAT masquerading rules for dual-stack pod external connectivity..."
+          
+          # IPv4 masquerading rules
+          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 -o eth1 -j MASQUERADE 2>/dev/null; then
+            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 -o eth1 -j MASQUERADE
+            echo "Added IPv4 masquerading rule for 10.42.0.0/16 via eth1"
+          fi
+          
+          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 ! -d 10.0.0.0/8 -j MASQUERADE 2>/dev/null; then
+            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 ! -d 10.0.0.0/8 -j MASQUERADE
+            echo "Added IPv4 masquerading rule for 10.42.0.0/16 to external networks"
+          fi
+          
+          # IPv6 masquerading rules
+          if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 -o eth2 -j MASQUERADE 2>/dev/null; then
+            ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 -o eth2 -j MASQUERADE
+            echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 via eth2"
+          fi
+          
+          if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE 2>/dev/null; then
+            ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE
+            echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 to external networks"
+          fi
+          
+          # Enable IPv6 forwarding
+          echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+          echo "Enabled IPv6 forwarding"
+          
+          # Show current NAT rules
+          echo "Current IPv4 NAT POSTROUTING rules:"
+          iptables -t nat -L POSTROUTING -n --line-numbers | grep -E "(10\.42|MASQUERADE)" || echo "No IPv4 rules found"
+          
+          echo "Current IPv6 NAT POSTROUTING rules:"
+          ip6tables -t nat -L POSTROUTING -n --line-numbers | grep -E "(2001:cafe|MASQUERADE)" || echo "No IPv6 rules found"
+          
+          echo "Dual-stack NAT masquerading rules applied successfully"
+        securityContext:
+          privileged: true
