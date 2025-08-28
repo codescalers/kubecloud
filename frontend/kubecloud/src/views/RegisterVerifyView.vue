@@ -60,16 +60,8 @@ const router = useRouter()
 
 // Check if we have valid registration data and pre-fill email
 onMounted(() => {
-  // Try to get email from stored registration data
-  if (authService.hasTempRegistrationData()) {
-    const storedData = (authService as any).getTempRegistrationData()
-    if (storedData) {
-      form.email = storedData.email
-    }
-  }
-  else if (route.query.email) {
-    form.email = String(route.query.email)
-  }
+  form.email = authService.getTempRegistrationEmail() || route.query.email ? String(route.query.email) : ""
+
 })
 
 const form = reactive({
@@ -126,9 +118,9 @@ const resendCode = async () => {
         'Expired',
         'No pending registration found for this email. Please register again.',
       )
+      router.push("/sign-up")
     }
 
-    router.push("/sign-up")
   } finally {
     resending.value = false
   }

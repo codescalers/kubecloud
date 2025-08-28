@@ -1,6 +1,4 @@
-import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker } from './api'
-import { useNotificationStore } from '@/stores/notifications'
+import { api } from './api'
 
 // Types for auth requests and responses
 export interface RegisterRequest {
@@ -92,7 +90,7 @@ export interface ApiResponse<T> {
 // Auth service class
 export class AuthService {
   private static instance: AuthService
-
+  private tempRegistrationData: RegisterRequest | null = null
   private constructor() {}
 
   static getInstance(): AuthService {
@@ -104,14 +102,13 @@ export class AuthService {
 
   // Register a new user
   async register(data: RegisterRequest): Promise<void> {
-    this.storeTempRegistrationData(data)
-
     const response = await api.post<ApiResponse<RegisterResponse>>('/v1/user/register', data, {
       showNotifications: true,
       loadingMessage: 'Creating your account...',
       errorMessage: 'Registration failed',
     })
 
+    this.storeTempRegistrationData(data)
 
   }
 
@@ -269,51 +266,26 @@ export class AuthService {
 
   // Store temporary registration data for resend functionality
   private storeTempRegistrationData(data: RegisterRequest): void {
-    const tempData = {
+    this.tempRegistrationData = {
       name: data.name,
       email: data.email,
       password: data.password,
       confirm_password: data.confirm_password,
-      timestamp: Date.now()
     }
-    const encodedData = btoa(JSON.stringify(tempData))
-    sessionStorage.setItem('temp_registration_data', encodedData)
-    const expirationTime = Date.now() + (1 * 60 * 1000)
-    sessionStorage.setItem('temp_registration_expires', expirationTime.toString())
   }
 
   // Get temporary registration data
   private getTempRegistrationData(): RegisterRequest | null {
-    const encodedData = sessionStorage.getItem('temp_registration_data')
-    const expirationTime = sessionStorage.getItem('temp_registration_expires')
+    return this.tempRegistrationData
+  }
 
-    if (!encodedData || !expirationTime) {
-      return null
-    }
-
-    if (Date.now() > parseInt(expirationTime)) {
-      this.clearTempRegistrationData()
-      return null
-    }
-
-    try {
-      const decodedData = JSON.parse(atob(encodedData))
-      return {
-        name: decodedData.name,
-        email: decodedData.email,
-        password: decodedData.password,
-        confirm_password: decodedData.confirm_password
-      }
-    } catch (error) {
-      this.clearTempRegistrationData()
-      return null
-    }
+  getTempRegistrationEmail(): string | null {
+    return this.tempRegistrationData?.email || null
   }
 
   // Clear temporary registration data
   private clearTempRegistrationData(): void {
-    sessionStorage.removeItem('temp_registration_data')
-    sessionStorage.removeItem('temp_registration_expires')
+    this.tempRegistrationData = null
   }
 
   // Check if temporary registration data exists and is valid
