@@ -191,7 +191,7 @@ type GetUserResponse struct {
 // @Param body body RegisterInput true "Register Input"
 // @Success 201 {object} RegisterUserResponse "workflow_id: string, email: string"
 // @Failure 400 {object} APIResponse "Invalid request format"
-// @Failure 409 {object} APIResponse "User already registered"
+// @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register [post]
 func (h *Handler) RegisterHandler(c *gin.Context) {
@@ -217,8 +217,8 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	}
 
 	if getErr != gorm.ErrRecordNotFound {
-		if existingUser.Verified {
-			Error(c, http.StatusConflict, "Conflict", "user already registered")
+		if isUserRegistered(existingUser) {
+			Error(c, http.StatusConflict, "Conflict", "User is already registered")
 			return
 		}
 	}
@@ -279,10 +279,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	}
 
 	// check if user is already registered (all required fields are set)
-	if user.Sponsored && user.Verified &&
-		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
-		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
-		len(strings.TrimSpace(user.Mnemonic)) > 0 {
+	if isUserRegistered(user) {
 		Error(c, http.StatusConflict, "verification failed", "User is already registered")
 		return
 	}
@@ -1103,4 +1100,12 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
 	})
+}
+
+func isUserRegistered(user models.User) bool {
+	return user.Sponsored &&
+		user.Verified &&
+		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
+		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
+		len(strings.TrimSpace(user.Mnemonic)) > 0
 }

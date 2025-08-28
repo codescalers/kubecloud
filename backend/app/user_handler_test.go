@@ -55,6 +55,11 @@ func TestRegisterHandler(t *testing.T) {
 
 	t.Run("Register Existing Verified User", func(t *testing.T) {
 		user := CreateTestUser(t, app, "dupe@example.com", "Test User", []byte("securepassword"), true, false, false, 0, time.Now())
+		user.Mnemonic = "mnemonic"
+		user.AccountAddress = "sponseeAddress"
+		user.Sponsored = true
+		user.StripeCustomerID = "stripeCustomerID"
+		require.NoError(t, app.db.UpdateUserByID(user))
 
 		payload := RegisterInput{
 			Name:            "New Name",

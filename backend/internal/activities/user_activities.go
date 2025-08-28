@@ -61,17 +61,16 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
-		if err == nil && !existingUser.Verified {
-			user.ID = existingUser.ID
-			if updateErr := db.UpdateUserByID(&user); updateErr != nil {
-				return fmt.Errorf("failed to update user: %w", updateErr)
+		if err == gorm.ErrRecordNotFound {
+			if err = db.RegisterUser(&user); err != nil {
+				return fmt.Errorf("user registration failed: %w", err)
 			}
 			return nil
 		}
 
-		err = db.RegisterUser(&user)
-		if err != nil {
-			return fmt.Errorf("user registration failed: %w", err)
+		user.ID = existingUser.ID
+		if updateErr := db.UpdateUserByID(&user); updateErr != nil {
+			return fmt.Errorf("failed to update user: %w", updateErr)
 		}
 
 		return nil

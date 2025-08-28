@@ -1405,7 +1405,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "User already registered",
+                        "description": "User is already registered",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
