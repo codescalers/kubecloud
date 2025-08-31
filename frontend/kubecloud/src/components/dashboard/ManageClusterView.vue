@@ -458,23 +458,6 @@ const notificationStore = useNotificationStore()
   text-align: center;
   margin: 2rem 0;
 }
-
-.selectable-row {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.selectable-row:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-.selected-row {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-}
-
-.selected-row:hover {
-  background-color: rgba(var(--v-theme-primary), 0.15);
-}
 .header-top {
   display: flex;
   align-items: center;
