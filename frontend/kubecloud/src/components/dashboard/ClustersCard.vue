@@ -77,11 +77,12 @@
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)" :disabled="deletingAll">
-                    <v-icon icon="mdi-eye" />
+                    <v-icon icon="mdi-cog" />
                   </v-btn>
                 </template>
-                <span>View cluster</span>
+                <span>Edit cluster</span>
               </v-tooltip>
+
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name || deletingAll">
@@ -90,14 +91,7 @@
                 </template>
                 <span>Download kubeconfig file</span>
               </v-tooltip>
-              <v-tooltip location="top">
-                <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll">
-                    <v-icon icon="mdi-plus" />
-                  </v-btn>
-                </template>
-                <span>Add node</span>
-              </v-tooltip>
+
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn icon size="small" class="ml-1" color="error" v-bind="props" @click="deleteCluster(cluster.cluster.name)" :disabled="deletingAll">
@@ -151,26 +145,17 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <!-- Edit Cluster Nodes Modal -->
-    <component :is="EditClusterNodesDialog"
-      v-if="selectedCluster"
-      v-model="editClusterNodesDialog"
-      :cluster="selectedCluster"
-      @update:modelValue="editClusterNodesDialog = $event"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
+import { useNodeManagement } from '@/composables/useNodeManagement'
 import { useUserStore } from '@/stores/user'
-
-const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
 
 const router = useRouter()
 const clusterStore = useClusterStore()
@@ -183,14 +168,6 @@ const deletingAll = ref(false)
 
 const emit = defineEmits(['navigateToFund'])
 const { download, downloading } = useKubeconfig()
-
-const editClusterNodesDialog = ref(false)
-const selectedCluster = ref<any>(null)
-
-const openAddNodeDialog = (cluster: any) => {
-  selectedCluster.value = cluster
-  editClusterNodesDialog.value = true
-}
 
 const search = ref('')
 const sortBy = ref('createdAt')
@@ -245,11 +222,9 @@ const paginatedClusters = computed(() => {
   return filteredClusters.value.slice(start, start + pageSize)
 })
 
-
 const viewCluster = (projectName: string) => {
   router.push(`/clusters/${projectName}`)
 }
-
 
 function deleteCluster(projectName: string) {
   clusterToDelete.value = projectName

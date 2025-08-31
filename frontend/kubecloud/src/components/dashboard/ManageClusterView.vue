@@ -29,14 +29,14 @@
             </v-btn>
             <v-btn variant="outlined" class="btn btn-outline" @click="openEditClusterNodesDialog">
               <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
-              Add Node
+              Edit Cluster
             </v-btn>
             <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
               <v-icon icon="mdi-delete" class="mr-2"></v-icon>
               Delete
             </v-btn>
           </div>
-          <div class="main-content- modern-cluster-card">
+          <div class="main-content-card modern-cluster-card">
             <div class="modern-cluster-info">
               <div class="cluster-info-grid">
                 <div class="info-label">Project Name</div>
@@ -71,12 +71,10 @@
                     <th>Mycelium IP</th>
                     <th>Planetary IP</th>
                     <th>Contract ID</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="node in filteredNodes" :key="node.node_id">
-
                     <td>{{ node.original_name }}</td>
                     <td>{{ node.type }}</td>
                     <td>{{ node.cpu }}</td>
@@ -105,22 +103,6 @@
                       <span v-else>-</span>
                     </td>
                     <td>{{ node.contract_id || '-' }}</td>
-                    <td>
-                      <v-btn
-                        icon
-                        size="small"
-                        color="error"
-                        variant="text"
-                        @click="showDeleteConfirmation(node.original_name)"
-                        :disabled="node.type === 'leader'"
-                        class="delete-node-btn"
-                      >
-                        <v-icon icon="mdi-delete" size="small" />
-                        <v-tooltip activator="parent" location="top">
-                          Delete Node
-                        </v-tooltip>
-                      </v-btn>
-                    </td>
                   </tr>
                 </tbody>
               </v-table>
@@ -131,27 +113,6 @@
       </v-container>
     </div>
 
-
-    <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteConfirmDialog" max-width="400">
-      <v-card>
-        <v-card-title class="text-h6">
-          Confirm Node Deletion
-        </v-card-title>
-        <v-card-text>
-          Are you sure you want to delete the node <strong>{{ nodeToDelete }}</strong>? This action cannot be undone.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="deleteConfirmDialog = false">
-            Cancel
-          </v-btn>
-          <v-btn color="error" variant="text" @click="confirmDeleteNode">
-            Delete
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
     <!-- Kubeconfig Modal -->
     <component :is="KubeconfigDialog"
       v-model="kubeconfigDialog"
@@ -172,9 +133,14 @@
 
     <!-- Edit Cluster Nodes Modal -->
     <component :is="EditClusterNodesDialog"
+      :key="editClusterNodesDialog ? 'open' : 'closed'"
       v-model="editClusterNodesDialog"
       :cluster="cluster"
-      @update:modelValue="editClusterNodesDialog = $event"
+      :nodes="filteredNodes"
+      :loading="nodesLoading"
+      :available-nodes="availableNodes"
+      :on-add-node="addNode"
+      @remove-node="handleRemoveNode"
     />
   </div>
 </template>
@@ -183,12 +149,16 @@
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useClusterStore } from '../../stores/clusters'
+import { useNodes } from '../../composables/useNodes'
+import type { RawNode } from '../../types/rawNode'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
 import { api } from '../../utils/api'
+import { userService } from '../../utils/userService'
+
+import { getAvailableRAM, getAvailableStorage } from '../../utils/nodeNormalizer'
 
 import { formatDate } from '../../utils/dateUtils'
-import { userService } from '@/utils/userService'
 
 // Import dialogs
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
@@ -201,8 +171,6 @@ const clusterStore = useClusterStore()
 
 const loading = ref(true)
 const notFound = ref(false)
-const deleteConfirmDialog = ref(false);
-const nodeToDelete = ref<string>('');
 
 const projectName = computed(() => route.params.id?.toString() || '')
 const cluster = computed(() =>
@@ -244,8 +212,8 @@ async function showKubeconfig() {
   kubeconfigError.value = ''
   kubeconfigContent.value = ''
   try {
-    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, {
-      requiresAuth: true,
+    const response = await api.get(`/v1/deployments/${projectName.value}/kubeconfig`, { 
+      requiresAuth: true, 
       showNotifications: false,
       timeout: 120000
     })
@@ -317,11 +285,6 @@ const loadCluster = async () => {
 }
 
 onMounted(loadCluster)
-const emit = defineEmits(['update:modelValue', 'nodes-updated', 'remove-node']);
-function showDeleteConfirmation(nodeName: string) {
-  nodeToDelete.value = nodeName;
-  deleteConfirmDialog.value = true;
-}
 watch(() => projectName.value, loadCluster)
 
 const goBack = () => {
@@ -331,34 +294,54 @@ const goBack = () => {
 const editClusterNodesDialog = ref(false)
 
 async function openEditClusterNodesDialog() {
-  editClusterNodesDialog.value = true
+  editClusterNodesDialog.value = true;
+  await fetchNodes();
 }
 
-const deletingNodeId = ref<string | null>(null)
+const availableNodes = computed<RawNode[]>(() => {
+  return nodes.value.filter((node: RawNode) => {
+    const availRAM = getAvailableRAM(node);
+    const availStorage = getAvailableStorage(node);
+    return availRAM > 0 && availStorage > 0;
+  });
+});
 
+const { nodes, loading: nodesLoading, fetchNodes, getNodeType } = useNodes()
 
-function confirmDeleteNode() {
-  if (nodeToDelete.value) {
-    handleRemoveNode(nodeToDelete.value);
-    deleteConfirmDialog.value = false;
-    nodeToDelete.value = '';
-  }
-}
-async function handleRemoveNode(nodeName: string) {
-  try {
-    await removeNodeFromDeployment(cluster.value?.cluster?.name || '', nodeName)
-    notificationStore.info('Node Removal Started', 'Node is being removed from the cluster in the background. You will be notified when the operation completes.')
-  } catch (e: any) {
-    const errorMessage = e?.message || 'Failed to remove node'
-    notificationStore.error('Remove Node Failed', errorMessage)
-  }
+// Node management functions
+async function addNodeToDeployment(deploymentName: string, clusterPayload: { name: string, nodes: any[] }) {
+  return await userService.addNodeToDeployment(deploymentName, clusterPayload)
 }
 
 async function removeNodeFromDeployment(deploymentName: string, nodeName: string) {
   return await userService.removeNodeFromDeployment(deploymentName, nodeName)
 }
 
+// Notification store
 const notificationStore = useNotificationStore()
+
+async function addNode(payload: any) {
+  if (!payload || !payload.name || !Array.isArray(payload.nodes) || payload.nodes.length === 0) {
+    notificationStore.error('Add Node Error', 'Invalid node payload.');
+  }
+  try {
+    await addNodeToDeployment(payload.name, payload);
+    notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.');
+  } catch (e: any) {
+    console.error(e);
+  }
+}
+
+async function handleRemoveNode(nodeName: string) {
+  if (!cluster.value?.cluster?.name) return;
+  try {
+    await removeNodeFromDeployment(cluster.value.cluster.name, nodeName);
+    notificationStore.info('Node Removal Started', `Node is being removed from the cluster in the background. You will be notified when the operation completes.`);
+  } catch (e: any) {
+    const errorMessage = e?.message || 'Failed to remove node';
+    notificationStore.error('Remove Node Failed', errorMessage);
+  }
+}
 
 </script>
 
@@ -384,7 +367,6 @@ const notificationStore = useNotificationStore()
   margin: 0;
 }
 .status-actions {
-  padding: 2.5rem 2.5rem 2rem 2.5rem !important;
   display: flex;
   gap: var(--space-3);
 }
@@ -395,12 +377,13 @@ const notificationStore = useNotificationStore()
   margin-bottom: var(--space-4);
 }
 .main-content-card {
+  padding: unset !important;
   overflow: hidden;
 }
 .modern-cluster-card {
   background: rgba(255,255,255,0.03);
   border-radius: 0.25rem;
-  padding: 1.5rem 1.5rem 1rem 1.5rem !important;
+  padding: 2.5rem 2.5rem 2rem 2.5rem !important;
 }
 .modern-cluster-info {
   display: flex;
