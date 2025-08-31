@@ -76,21 +76,20 @@
             <td>
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll">
-                    <v-icon icon="mdi-pencil" />
-                  </v-btn>
-                </template>
-                <span>Add node</span>
-              </v-tooltip>
-              <v-tooltip location="top">
-                <template #activator="{ props }">
                   <v-btn icon size="small" class="mr-1" v-bind="props" @click="viewCluster(cluster.cluster.name)" :disabled="deletingAll">
                     <v-icon icon="mdi-eye" />
                   </v-btn>
                 </template>
                 <span>View cluster</span>
               </v-tooltip>
-
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll">
+                    <v-icon icon="mdi-pencil" />
+                  </v-btn>
+                </template>
+                <span>Add node</span>
+              </v-tooltip>
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn icon size="small" class="mr-1" v-bind="props" @click="download(cluster.cluster.name)" :loading="downloading === cluster.cluster.name" :disabled="downloading === cluster.cluster.name || deletingAll">
@@ -247,11 +246,9 @@ const paginatedClusters = computed(() => {
   return filteredClusters.value.slice(start, start + pageSize)
 })
 
-
 const viewCluster = (projectName: string) => {
   router.push(`/clusters/${projectName}`)
 }
-
 
 function deleteCluster(projectName: string) {
   clusterToDelete.value = projectName
