@@ -27,9 +27,9 @@ spec:
           echo "Applying NAT masquerading rules for dual-stack pod external connectivity..."
           
           # IPv4 masquerading rules
-          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 -o eth1 -j MASQUERADE 2>/dev/null; then
-            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 -o eth1 -j MASQUERADE
-            echo "Added IPv4 masquerading rule for 10.42.0.0/16 via eth1"
+          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 -o eth0 -j MASQUERADE 2>/dev/null; then
+            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 -o eth0 -j MASQUERADE
+            echo "Added IPv4 masquerading rule for 10.42.0.0/16 via eth0"
           fi
           
           if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 ! -d 10.0.0.0/8 -j MASQUERADE 2>/dev/null; then
