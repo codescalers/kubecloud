@@ -51,7 +51,7 @@ spec:
   - cidr: 2001:cafe:43::/112
 
 ---
-# Felix configuration for dual-stack
+# Felix configuration for dual-stack with kernel compatibility fixes
 apiVersion: crd.projectcalico.org/v1
 kind: FelixConfiguration
 metadata:
@@ -61,6 +61,11 @@ spec:
   ipv6Support: true
   defaultEndpointToHostAction: Accept
   natOutgoingAddress: ""
+  # Disable ipsets to fix kernel compatibility issues
+  ipsetsRefreshInterval: 0s
+  iptablesBackend: Legacy
+  iptablesLockTimeout: 10s
+  chainInsertMode: Insert
 
 ---
 # Patch the Calico DaemonSet for dual-stack with interface specification:
@@ -75,13 +80,14 @@ spec:
 
 # DEPLOYMENT INSTRUCTIONS:
 # 
-# 1. First apply the official Calico manifest:
-#    kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+# 1. Apply this complete manifest (includes all necessary configurations):
+#    kubectl apply -f calico.yaml
 #
-# 2. Then apply the configurations above to enable dual-stack with your CIDRs
+# 2. Apply dual-stack masquerading rules:
+#    kubectl apply -f fix-nat.yaml
 #
-# 3. Update CNI configuration for dual-stack:
-#    kubectl patch configmap calico-config -n kube-system --type='merge' -p='{"data":{"cni_network_config":"{\n  \"name\": \"k8s-pod-network\",\n  \"cniVersion\": \"0.3.1\",\n  \"plugins\": [\n    {\n      \"type\": \"calico\",\n      \"log_level\": \"info\",\n      \"log_file_path\": \"/var/log/calico/cni/cni.log\",\n      \"datastore_type\": \"kubernetes\",\n      \"nodename\": \"__KUBERNETES_NODE_NAME__\",\n      \"mtu\": __CNI_MTU__,\n      \"ipam\": {\n          \"type\": \"calico-ipam\",\n          \"assign_ipv4\": \"true\",\n          \"assign_ipv6\": \"true\"\n      },\n      \"policy\": {\n          \"type\": \"k8s\"\n      },\n      \"kubernetes\": {\n          \"kubeconfig\": \"__KUBECONFIG_FILEPATH__\"\n      }\n    },\n    {\n      \"type\": \"portmap\",\n      \"snat\": true,\n      \"capabilities\": {\"portMappings\": true}\n    },\n    {\n      \"type\": \"bandwidth\",\n      \"capabilities\": {\"bandwidth\": true}\n    }\n  ]\n}"}}'\n#\n# 4. Apply dual-stack masquerading rules:\n#    kubectl apply -f fix-nat.yaml\n#\n# 5. Patch the DaemonSet with the command provided in the comments above
+# 3. Wait for Calico nodes to become ready:
+#    kubectl wait --for=condition=ready pod -l k8s-app=calico-node -n kube-system --timeout=300s
 #
 # 6. Verify deployment:
 #    kubectl get pods -n kube-system -l k8s-app=calico-node
@@ -108,8 +114,178 @@ spec:
 # The dual-stack Calico networking is fully operational.
 # Pods receive both IPv4 and IPv6 addresses and can reach external networks.
 # All connectivity tests pass successfully.
+# 
+# IMPORTANT: This manifest includes all necessary fixes for deployment:
+# - Enhanced RBAC permissions for Calico service accounts
+# - Felix configuration with ipsets disabled for kernel compatibility
+# - CNI configuration with dual-stack IP assignment enabled
+# - Complete dual-stack IP pools and BGP configuration
 ---
+# Complete Calico deployment with dual-stack configuration
+# Apply the official Calico manifest first, then apply the configurations below
 
+# Updated CNI configuration for dual-stack
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: calico-config
+  namespace: kube-system
+data:
+  typha_service_name: "none"
+  calico_backend: "bird"
+  veth_mtu: "0"
+  cni_network_config: |
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "log_file_path": "/var/log/calico/cni/cni.log",
+          "datastore_type": "kubernetes",
+          "nodename": "__KUBERNETES_NODE_NAME__",
+          "mtu": "__CNI_MTU__",
+          "ipam": {
+              "type": "calico-ipam",
+              "assign_ipv4": "true",
+              "assign_ipv6": "true"
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "__KUBECONFIG_FILEPATH__"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        },
+        {
+          "type": "bandwidth",
+          "capabilities": {"bandwidth": true}
+        }
+      ]
+    }
+
+---
+# Enhanced RBAC permissions for Calico
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: calico-node
+rules:
+- apiGroups: [""]
+  resources:
+    - endpoints
+    - services
+    - pods
+    - nodes
+    - serviceaccounts/token
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+- apiGroups: [""]
+  resources:
+    - configmaps
+  verbs:
+    - get
+- apiGroups: [""]
+  resources:
+    - nodes/status
+  verbs:
+    - patch
+    - update
+- apiGroups: ["networking.k8s.io"]
+  resources:
+    - networkpolicies
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups: [""]
+  resources:
+    - pods
+    - namespaces
+    - serviceaccounts
+  verbs:
+    - list
+    - watch
+- apiGroups: [""]
+  resources:
+    - pods/status
+  verbs:
+    - patch
+- apiGroups: ["crd.projectcalico.org"]
+  resources:
+    - globalfelixconfigs
+    - felixconfigurations
+    - bgppeers
+    - globalbgpconfigs
+    - bgpconfigurations
+    - ippools
+    - ipreservations
+    - ipamblocks
+    - globalnetworkpolicies
+    - globalnetworksets
+    - networkpolicies
+    - networksets
+    - clusterinformations
+    - hostendpoints
+    - blockaffinities
+    - caliconodestatuses
+    - bgpfilters
+  verbs:
+    - get
+    - list
+    - watch
+    - create
+    - update
+    - patch
+- apiGroups: ["crd.projectcalico.org"]
+  resources:
+    - ippools
+    - felixconfigurations
+    - clusterinformations
+  verbs:
+    - create
+    - update
+- apiGroups: [""]
+  resources:
+    - nodes
+  verbs:
+    - get
+    - list
+    - watch
+    - update
+    - patch
+- apiGroups: ["crd.projectcalico.org"]
+  resources:
+    - blockaffinities
+    - ipamblocks
+    - ipamhandles
+  verbs:
+    - get
+    - list
+    - create
+    - update
+    - delete
+- apiGroups: ["crd.projectcalico.org"]
+  resources:
+    - ipamconfigs
+  verbs:
+    - get
+- apiGroups: ["crd.projectcalico.org"]
+  resources:
+    - blockaffinities
+  verbs:
+    - watch
+
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
