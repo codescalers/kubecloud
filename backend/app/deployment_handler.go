@@ -536,7 +536,7 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusAccepted, "VM deployment workflow started successfully", gin.H{
+	Success(c, http.StatusAccepted, "VM deployment in progress", gin.H{
 		"WorkflowID": wf.UUID,
 		"Status":     string(wf.Status),
 	})
