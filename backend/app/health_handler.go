@@ -57,7 +57,7 @@ func (h *Handler) checkDatabase(ctx context.Context) HealthStatus {
 
 func (h *Handler) checkRedis(ctx context.Context) HealthStatus {
 	if h.redis == nil || h.redis.Client() == nil {
-		return healthStatusFromError(fmt.Errorf("Redis client not initialized"))
+		return healthStatusFromError(fmt.Errorf("redis client not initialized"))
 	}
 
 	err := h.redis.Client().Ping(ctx).Err()
