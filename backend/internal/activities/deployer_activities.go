@@ -483,7 +483,7 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
-func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, notificationService *notification.NotificationService, wfName string, nodesNum int) {
+func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics,notificationService *notification.NotificationService, wfName string, nodesNum int, sseManager *internal.SSEManager) {
 	steps := []ewf.Step{
 		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
@@ -502,13 +502,12 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 	workflow := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	workflow.BeforeWorkflowHooks = append(workflow.BeforeWorkflowHooks, func(ctx context.Context, w *ewf.Workflow) {
 		userID := w.State["config"].(statemanager.ClientConfig).UserID
-		payload := notification.CommonPayload{
-			Status:  "started",
-			Message: "Your cluster has started deploying.",
+		payload := map[string]string{
+			"status":  "started",
+			"message": "Your cluster has started deploying.",
 		}
 
-		notification := models.NewNotification(userID, models.NotificationTypeDeployment, notification.MergePayload(payload, map[string]string{}))
-		err := notificationService.Send(ctx, notification)
+		err := notificationService.Send(ctx, models.NotificationTypeDeployment, payload, userID, w.UUID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
 		}
@@ -537,7 +536,7 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 
 }
 
-func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.MetricsnotificationService *notification.NotificationService) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err != nil && isDeployWorkflow(wf.Name) {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
@@ -585,7 +584,7 @@ func createDeployerWorkflowTemplate(notificationService *notification.Notificati
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager, notificationService *notification.NotificationService) {
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))

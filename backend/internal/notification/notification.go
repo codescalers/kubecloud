@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/models"
-	"sync"
 
+	"net/http"
+
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/xmonader/ewf"
 )
@@ -40,30 +42,6 @@ type NotificationService struct {
 	notificationTemplates map[models.NotificationType]models.Notification
 }
 
-var (
-	notificationServiceOnce     sync.Once
-	notificationServiceInstance *NotificationService
-)
-
-
-func InitNotificationService(db models.DB, engine *ewf.Engine, notifiers ...Notifier) *NotificationService {
-	notificationServiceOnce.Do(func() {
-		notificationServiceInstance = NewNotificationService(db, engine, notifiers...)
-	})
-	return notificationServiceInstance
-}
-
-func GetNotificationService() (*NotificationService, error) {
-	if notificationServiceInstance == nil {
-		return nil, fmt.Errorf("notification service is not initialized; call InitNotificationService first")
-	}
-	return notificationServiceInstance, nil
-}
-
-func(s *NotificationService) GetNotifiers()map[string]Notifier{
-	return s.notifiers
-}
-
 func NewNotificationService(db models.DB, engine *ewf.Engine, notifiers ...Notifier) *NotificationService {
 	notifiersMap := make(map[string]Notifier)
 	for _, notifier := range notifiers {
@@ -79,11 +57,34 @@ func NewNotificationService(db models.DB, engine *ewf.Engine, notifiers ...Notif
 	return s
 }
 
-func (s *NotificationService) RegisterTemplate(notificationType models.NotificationType, severity models.NotificationSeverity, notifiers []string) {
-	s.notificationTemplates[notificationType] = models.Notification{
-		Type:     notificationType,
-		Severity: severity,
-		Channels: notifiers,
+func (s *NotificationService) RegisterTemplate(notificationType models.NotificationType, template NotificationTemplate) {
+	s.templates[notificationType] = template
+}
+
+func (s *NotificationService) GetNotifiers() map[string]Notifier {
+	return s.notifiers
+}
+
+func (s *NotificationService) HandleNotificationSSE(c *gin.Context) {
+	uiNotifier, ok := s.notifiers[ChannelUI]
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "SSE notifier not available"})
+		return
+	}
+
+	sseNotifier, ok := uiNotifier.(*SSENotifier)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "SSE notifier not available"})
+		return
+	}
+	sseNotifier.GetSSEManager().HandleSSE(c)
+
+}
+
+func (s *NotificationService) Send(ctx context.Context, notificationType models.NotificationType, payload map[string]string, userID string, taskID ...string) error {
+	tpl, ok := s.templates[notificationType]
+	if !ok {
+		return fmt.Errorf("notification template not found for type: %s", notificationType)
 	}
 
 	return s, nil

@@ -22,7 +22,7 @@ func RegisterEWFWorkflows(
 	sponsorAddress string,
 	sponsorKeyPair subkey.KeyPair,
 	metrics *metrics.Metrics,
-	notifiers map[string]notification.Notifier,
+	notificationService *notification.NotificationService,
 ) {
 	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, db))
@@ -31,14 +31,14 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(db))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
-	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, notificationService))
-	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db, notificationService))
+	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics,notificationService ))
+	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, sse))
+	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db,notificationService))
 	engine.Register(StepCreateIdentity, CreateIdentityStep())
 	engine.Register(StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
-	engine.Register(StepSendNotification,SendNotification(notifiers) )
+	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db, notificationService))
+	engine.Register(StepSendNotification, SendNotification(db, notificationService.GetNotifiers()))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate()
 	registerWorkflowTemplate.Steps = []ewf.Step{
@@ -114,7 +114,7 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUnreserveNode, &unreserveNodeTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, sse)
+	registerDeploymentActivities(engine, metrics, db, sse, notificationService)
 
 	notificationTemplate := userWorkflowTemplate
 	notificationTemplate.Steps = []ewf.Step{
