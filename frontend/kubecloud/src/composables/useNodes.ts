@@ -30,6 +30,7 @@ export function useNodes() {
 
   // Fetch all available nodes (both reserved and shared)
   async function fetchNodes(nodeFilters?: NodeFilters) {
+    nodes.value = []
     loading.value = true
     error.value = null
     try {
@@ -98,15 +99,15 @@ export function useNodes() {
   const normalizedNodes = computed<NormalizedNode[]>(() => nodes.value.map(normalizeNode))
 
   // Computed properties to categorize nodes
-  const reservedNodes = computed<RawNode[]>(() => 
+  const reservedNodes = computed<RawNode[]>(() =>
     nodes.value.filter(node => node.rented && node.rentedByTwinId)
   )
 
-  const sharedNodes = computed<RawNode[]>(() => 
+  const sharedNodes = computed<RawNode[]>(() =>
     nodes.value.filter(node => !node.rented && node.rentable)
   )
 
-  const availableNodes = computed<RawNode[]>(() => 
+  const availableNodes = computed<RawNode[]>(() =>
     nodes.value.filter(node => node.rentable || (node.rented && node.rentedByTwinId))
   )
 
