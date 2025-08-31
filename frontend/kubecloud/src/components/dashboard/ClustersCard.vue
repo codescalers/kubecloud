@@ -93,7 +93,7 @@
               <v-tooltip location="top">
                 <template #activator="{ props }">
                   <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll">
-                    <v-icon icon="mdi-server-plus" />
+                    <v-icon icon="mdi-plus" />
                   </v-btn>
                 </template>
                 <span>Add node</span>
