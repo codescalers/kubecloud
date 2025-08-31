@@ -53,6 +53,7 @@ type DB interface {
 	// VM Methods
 	CreateVM(userID string, vm *VM) error
 	GetVMByName(userID string, projectName string) (VM, error)
+	GetVMByID(userID string, vmID string) (VM, error)
 	UpdateVM(vm *VM) error
 	ListUserVMS(userID string) ([]VM, error)
 	DeleteVM(userID string, projectName string) error

@@ -588,18 +588,17 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 		return
 	}
 
-	vmName := c.Param("name")
-	if vmName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "vm name is required"})
+	vmID := c.Param("id")
+	if vmID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "vm id is required"})
 		return
 	}
 
-	projectName := kubedeployer.GetVMProjectName(config.UserID, vmName)
-	vm, err := h.db.GetVMByName(config.UserID, projectName)
+	vm, err := h.db.GetVMByID(config.UserID, vmID)
 	if err != nil {
 		log.Error().Err(err).
 			Str("user_id", config.UserID).
-			Str("vm_name", vmName).
+			Str("vm_id", vmID).
 			Msg("Failed to find VM")
 		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
 		return
@@ -624,13 +623,12 @@ func (h *Handler) HandleDeleteVM(c *gin.Context) {
 		return
 	}
 
-	vmName := c.Param("name")
-	if vmName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "vm name is required"})
+	vmID := c.Param("id")
+	if vmID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "vm id is required"})
 		return
 	}
-	projectName := kubedeployer.GetVMProjectName(config.UserID, vmName)
-	vm, err := h.db.GetVMByName(config.UserID, projectName)
+	vm, err := h.db.GetVMByID(config.UserID, vmID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
 		return
@@ -649,7 +647,7 @@ func (h *Handler) HandleDeleteVM(c *gin.Context) {
 
 	wf.State = ewf.State{
 		"config":       config,
-		"project_name": projectName,
+		"project_name": vmResult.ProjectName,
 		"vm":           vmResult,
 	}
 
