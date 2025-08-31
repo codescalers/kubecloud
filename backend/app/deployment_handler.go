@@ -493,13 +493,13 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 func (h *Handler) HandleDeployVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalServerError(c)
 		return
 	}
 
 	var vm kubedeployer.VM
 	if err := c.ShouldBindJSON(&vm); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		Error(c, http.StatusBadRequest, "Invalid request json format", err.Error())
 		return
 	}
 
@@ -525,7 +525,7 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeployVM)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		InternalServerError(c)
 		return
 	}
 
@@ -536,17 +536,17 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "VM deployment workflow started successfully",
+	Success(c, http.StatusAccepted, "VM deployment workflow started successfully", gin.H{
+		"WorkflowID": wf.UUID,
+		"Status":     string(wf.Status),
 	})
+
 }
 
 func (h *Handler) HandleListVMs(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
 		return
 	}
 
@@ -554,7 +554,7 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 	vms, err := h.db.ListUserVMS(id)
 	if err != nil {
 		log.Error().Err(err).Str("user_id", id).Msg("Failed to list user VMs")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VMs"})
+		InternalServerError(c)
 		return
 	}
 
@@ -575,7 +575,7 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	Success(c, http.StatusOK, "Vms are listed successfully", gin.H{
 		"vms":   vmList,
 		"count": len(vmList),
 	})
@@ -584,13 +584,13 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 func (h *Handler) HandleListVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalServerError(c)
 		return
 	}
 
 	vmID := c.Param("id")
 	if vmID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "vm id is required"})
+		Error(c, http.StatusBadRequest, "Vm id is required", "")
 		return
 	}
 
@@ -600,7 +600,7 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 			Str("user_id", config.UserID).
 			Str("vm_id", vmID).
 			Msg("Failed to find VM")
-		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
+		Error(c, http.StatusNotFound, "Vm is not found", err.Error())
 		return
 	}
 
@@ -609,7 +609,7 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 		log.Error().Err(err).
 			Int("vm_id", vm.ID).
 			Msg("Failed to deserialize VM result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VM details"})
+		InternalServerError(c)
 		return
 	}
 
@@ -619,29 +619,29 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 func (h *Handler) HandleDeleteVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		InternalServerError(c)
 		return
 	}
 
 	vmID := c.Param("id")
 	if vmID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "vm id is required"})
+		Error(c, http.StatusBadRequest, "vm id is required", "")
 		return
 	}
 	vm, err := h.db.GetVMByID(config.UserID, vmID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "vm not found"})
+		Error(c, http.StatusNotFound, "vm not found", err.Error())
 		return
 	}
 	vmResult, err := vm.GetVMResult()
 	if err != nil {
 		log.Error().Err(err).Int("vm_id", vm.ID).Msg("Failed to deserialize VM result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve VM details"})
+		InternalServerError(c)
 		return
 	}
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteVM)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		InternalServerError(c)
 		return
 	}
 
@@ -653,9 +653,9 @@ func (h *Handler) HandleDeleteVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	c.JSON(http.StatusOK, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "VM deletion workflow started successfully",
+	Success(c, http.StatusOK, "VM deletion workflow started successfully", gin.H{
+		"WorkflowID": wf.UUID,
+		"Status":     string(wf.Status),
 	})
+
 }
