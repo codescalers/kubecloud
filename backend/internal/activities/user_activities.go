@@ -487,7 +487,7 @@ func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 
 		user, err := db.GetUserByID(userID)
 		if err != nil {
-			return fmt.Errorf("user is not found: %w", err)
+			return fmt.Errorf("user not found: %w", err)
 		}
 
 		user.CreditedBalance += amount

@@ -135,7 +135,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
+	Success(c, http.StatusOK, "Users retrieved successfully", map[string]interface{}{
 		"users": usersWithBalance,
 	})
 }
@@ -184,7 +184,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "User is deleted successfully", nil)
+	Success(c, http.StatusOK, "User deleted successfully", nil)
 
 }
 
@@ -238,7 +238,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		vouchers = append(vouchers, voucher)
 	}
 
-	Success(c, http.StatusCreated, "Vouchers are generated successfully", map[string]interface{}{
+	Success(c, http.StatusCreated, "Vouchers generated successfully", map[string]interface{}{
 		"vouchers": vouchers,
 	})
 }
@@ -262,7 +262,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	Success(c, http.StatusOK, "Vouchers are Retrieved successfully", map[string]interface{}{
+	Success(c, http.StatusOK, "Vouchers retrieved successfully", map[string]interface{}{
 		"vouchers": vouchers,
 	})
 }
@@ -333,7 +333,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 
 	if err := h.db.CreateTransaction(&transaction); err != nil {
-		log.Error().Err(err).Msg("Failed to create credit transaction")
+		log.Error().Err(err).Msg("failed to create credit transaction")
 		InternalServerError(c)
 		return
 	}
@@ -347,7 +347,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	Success(c, http.StatusCreated, "Transaction created successfully. Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
@@ -396,7 +396,7 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 		})
 	}
 
-	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
+	Success(c, http.StatusOK, "Pending records retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
 	})
 }
@@ -597,7 +597,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Maintenance mode is set successfully", nil)
+	Success(c, http.StatusOK, "Maintenance mode set successfully", nil)
 }
 
 // @Summary Get maintenance mode
@@ -619,7 +619,7 @@ func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Maintenance mode is retrieved successfully", MaintenanceModeStatus{
+	Success(c, http.StatusOK, "Maintenance mode retrieved successfully", MaintenanceModeStatus{
 		Enabled: enabled,
 	})
 }

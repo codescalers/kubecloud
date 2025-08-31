@@ -82,7 +82,7 @@ type NodeInput struct {
 func (h *Handler) HandleListDeployments(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -132,13 +132,13 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 func (h *Handler) HandleGetDeployment(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Project name is required"})
 		return
 	}
 
@@ -148,10 +148,10 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Deployment not found"})
 		} else {
 			log.Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Database error when looking up deployment")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup deployment"})
 		}
 		return
 	}
@@ -189,13 +189,13 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Project name is required"})
 		return
 	}
 
@@ -205,10 +205,10 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Deployment not found"})
 		} else {
 			log.Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Database error when looking up deployment for kubeconfig")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup deployment"})
 		}
 		return
 	}
@@ -404,7 +404,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request JSON format"})
 		return
 	}
 
@@ -421,11 +421,11 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
 	_, err = h.db.GetClusterByName(config.UserID, projectName)
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "deployment already exists"})
+		c.JSON(http.StatusConflict, gin.H{"error": "Deployment already exists"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when checking for existing deployment")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing deployments"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing deployments"})
 		return
 	}
 
@@ -474,17 +474,17 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 
 	deploymentName := c.Param("name")
 	if deploymentName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "deployment name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Deployment name is required"})
 		return
 	}
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
 	_, err = h.db.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Deployment not found"})
 		} else {
 			log.Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for deletion")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup deployment"})
 		}
 		return
 	}
@@ -577,7 +577,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request JSON format"})
 		return
 	}
 
@@ -590,10 +590,10 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	existingCluster, err := h.db.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Deployment not found"})
 		} else {
 			log.Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for adding node")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup deployment"})
 		}
 		return
 	}
@@ -660,12 +660,12 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	nodeName := c.Param("node_name")
 
 	if deploymentName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "deployment name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Deployment name is required"})
 		return
 	}
 
 	if nodeName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "node name is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Node name is required"})
 		return
 	}
 
@@ -674,10 +674,10 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Error().Err(err).Str("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Deployment not found"})
 		} else {
 			log.Error().Err(err).Str("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Database error when looking up deployment for node removal")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to lookup deployment"})
 		}
 		return
 	}

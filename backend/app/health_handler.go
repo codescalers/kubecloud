@@ -57,7 +57,7 @@ func (h *Handler) checkDatabase(ctx context.Context) HealthStatus {
 
 func (h *Handler) checkRedis(ctx context.Context) HealthStatus {
 	if h.redis == nil || h.redis.Client() == nil {
-		return healthStatusFromError(fmt.Errorf("redis client not initialized"))
+		return healthStatusFromError(fmt.Errorf("Redis client not initialized"))
 	}
 
 	err := h.redis.Client().Ping(ctx).Err()
@@ -84,7 +84,7 @@ func httpHealthCheck(ctx context.Context, url string) HealthStatus {
 
 func healthURL(baseURL string) (string, error) {
 	if len(strings.TrimSpace(baseURL)) == 0 {
-		return "", fmt.Errorf("url not set")
+		return "", fmt.Errorf("URL not set")
 	}
 	return url.JoinPath(baseURL, "health")
 }
@@ -92,7 +92,7 @@ func healthURL(baseURL string) (string, error) {
 func (h *Handler) checkGridProxy(ctx context.Context) HealthStatus {
 	url, err := healthURL(h.config.GridProxyURL)
 	if err != nil {
-		return healthStatusFromError(fmt.Errorf("gridproxy %s", err.Error()))
+		return healthStatusFromError(fmt.Errorf("grid proxy %s", err.Error()))
 	}
 	return httpHealthCheck(ctx, url)
 }

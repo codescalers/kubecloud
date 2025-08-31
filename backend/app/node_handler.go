@@ -85,14 +85,14 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 	limit.Randomize = true
 	err = queryParamsToStruct(query, &limit)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		Error(c, http.StatusBadRequest, "Bad request", "Invalid limit parameters")
 		return
 	}
 
 	filter := proxyTypes.NodeFilter{}
 	err = queryParamsToStruct(query, &filter)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		Error(c, http.StatusBadRequest, "Bad request", "Invalid filter parameters")
 		return
 	}
 
@@ -224,7 +224,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusAccepted, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
+	Success(c, http.StatusAccepted, "Node reservation in progress. You can check its status using the workflow ID.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
 		NodeID:     nodeID,
 		Email:      user.Email,
@@ -267,7 +267,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
+	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
 		Nodes: nodesWithDiscount,
 	})
@@ -299,7 +299,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
+	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
 		Nodes: nodesWithDiscount,
 	})
@@ -358,7 +358,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusAccepted, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
+	Success(c, http.StatusAccepted, "Node unreservation in progress. You can check its status using the workflow ID.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,
 		ContractID: contractID,
 		Email:      user.Email,

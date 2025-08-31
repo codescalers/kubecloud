@@ -100,7 +100,7 @@ func notifyStepProgress(sse *internal.SSEManager, state ewf.State, workflowName,
 	case status == "retrying":
 		notificationType = "step_retrying"
 		retryStr := fmt.Sprintf(" - retry %d/%d", retryCount, maxRetries)
-		message = fmt.Sprintf("Retrying Step %s%s", progressStr, retryStr)
+		message = fmt.Sprintf("Retrying step %s%s", progressStr, retryStr)
 	default:
 		return
 	}
