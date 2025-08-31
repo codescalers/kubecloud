@@ -80,15 +80,15 @@ func main() {
 
 		// Cluster Metrics
 		rowPanel("Cluster Metrics", id+5, y+17),
-		graphPanel("Cluster Deployment Successes", "cluster_deployment_successes", "stat", id+6, y+18, 0, 8, 6, false),
-		graphPanel("Cluster Deployment Failures", "cluster_deployment_failures", "stat", id+7, y+18, 8, 8, 6, true),
-		graphPanel("Active Clusters", "active_clusters", "stat", id+8, y+18, 16, 8, 6, false),
+		graphPanel("Cluster Deployment Successes", "increase(cluster_deployment_successes[$__range])", "stat", id+6, y+18, 0, 8, 6, false),
+		graphPanel("Cluster Deployment Failures", "increase(cluster_deployment_failures[$__range])", "stat", id+7, y+18, 8, 8, 6, true),
+		graphPanel("Active Clusters", "increase(active_clusters[$__range])", "stat", id+8, y+18, 16, 8, 6, false),
 
 		// Users & Payments
 		rowPanel("Users & Payments", id+9, y+25),
-		graphPanel("User Registrations", "user_registrations", "stat", id+10, y+26, 0, 8, 6, false),
-		graphPanel("Stripe Payment Successes", "stripe_payment_successes", "stat", id+11, y+26, 8, 8, 6, false),
-		graphPanel("Stripe Payment Failures", "stripe_payment_failures", "stat", id+12, y+26, 16, 8, 6, true),
+		graphPanel("User Registrations", "increase(user_registrations[$__range])", "stat", id+10, y+26, 0, 8, 6, false),
+		graphPanel("Stripe Payment Successes", "increase(stripe_payment_successes[$__range])", "stat", id+11, y+26, 8, 8, 6, false),
+		graphPanel("Stripe Payment Failures", "increase(stripe_payment_failures[$__range])", "stat", id+12, y+26, 16, 8, 6, true),
 
 		// GORM
 		rowPanel("Database (GORM)", id+13, y+33),
@@ -113,7 +113,7 @@ func main() {
 			"to":   "now",
 		},
 		"timepicker": map[string]interface{}{
-			"hidden": true,
+			"hidden": false,
 		},
 		"panels":        panels,
 		"schemaVersion": 36,
