@@ -1,21 +1,14 @@
 ---
-# Dual-stack NAT masquerading configuration for k3s cluster external connectivity
-# This Job applies iptables rules on all cluster nodes to enable pod external access
+# Fix for external connectivity - applies direct masquerading rules
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: fix-nat-masquerade
   namespace: kube-system
-  labels:
-    app: fix-nat-masquerade
 spec:
-  parallelism: 10  # Run on all nodes simultaneously
-  completions: 10  # Adjust based on cluster size
-  backoffLimit: 3
+  parallelism: 2
+  completions: 2
   template:
-    metadata:
-      labels:
-        app: fix-nat-masquerade
     spec:
       hostNetwork: true
       hostPID: true
@@ -32,111 +25,40 @@ spec:
         - -c
         - |
           echo "Applying NAT masquerading rules for dual-stack pod external connectivity..."
-          echo "Node: $(hostname)"
           
-          # Detect available network interfaces
-          IPV4_IFACE=$(ip route get 8.8.8.8 | head -1 | awk '{print $5}' || echo "eth0")
-          IPV6_IFACE=$(ip -6 route get 2001:4860:4860::8888 2>/dev/null | head -1 | awk '{print $5}' || echo "eth2")
-          
-          echo "Detected IPv4 interface: $IPV4_IFACE"
-          echo "Detected IPv6 interface: $IPV6_IFACE"
-          
-          # IPv4 masquerading rules with interface detection
-          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 -o $IPV4_IFACE -j MASQUERADE 2>/dev/null; then
-            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 -o $IPV4_IFACE -j MASQUERADE
-            echo "Added IPv4 masquerading rule for 10.42.0.0/16 via $IPV4_IFACE"
-          else
-            echo "IPv4 masquerading rule already exists for $IPV4_IFACE"
+          # IPv4 masquerading rules
+          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 -o eth0 -j MASQUERADE 2>/dev/null; then
+            iptables -t nat -A POSTROUTING -s 10.42.0.0/16 -o eth0 -j MASQUERADE
+            echo "Added IPv4 masquerading rule for 10.42.0.0/16 via eth0"
           fi
           
           if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 ! -d 10.0.0.0/8 -j MASQUERADE 2>/dev/null; then
             iptables -t nat -A POSTROUTING -s 10.42.0.0/16 ! -d 10.0.0.0/8 -j MASQUERADE
             echo "Added IPv4 masquerading rule for 10.42.0.0/16 to external networks"
-          else
-            echo "IPv4 external masquerading rule already exists"
           fi
           
-          # IPv6 masquerading rules with interface detection
-          if ip -6 route get 2001:4860:4860::8888 >/dev/null 2>&1; then
-            if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 -o $IPV6_IFACE -j MASQUERADE 2>/dev/null; then
-              ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 -o $IPV6_IFACE -j MASQUERADE
-              echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 via $IPV6_IFACE"
-            else
-              echo "IPv6 masquerading rule already exists for $IPV6_IFACE"
-            fi
-            
-            if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE 2>/dev/null; then
-              ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE
-              echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 to external networks"
-            else
-              echo "IPv6 external masquerading rule already exists"
-            fi
-          else
-            echo "IPv6 connectivity not available on this node, skipping IPv6 rules"
+          # IPv6 masquerading rules
+          if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 -o eth2 -j MASQUERADE 2>/dev/null; then
+            ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 -o eth2 -j MASQUERADE
+            echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 via eth2"
+          fi
+          
+          if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE 2>/dev/null; then
+            ip6tables -t nat -A POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe::/32 -j MASQUERADE
+            echo "Added IPv6 masquerading rule for 2001:cafe:42::/56 to external networks"
           fi
           
           # Enable IPv6 forwarding
-          echo 1 > /proc/sys/net/ipv6/conf/all/forwarding 2>/dev/null || echo "Could not enable IPv6 forwarding"
-          echo "IPv6 forwarding configuration applied"
+          echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
+          echo "Enabled IPv6 forwarding"
           
           # Show current NAT rules
-          echo "\nCurrent IPv4 NAT POSTROUTING rules:"
-          iptables -t nat -L POSTROUTING -n --line-numbers | grep -E "(10\.42|MASQUERADE)" || echo "No IPv4 masquerading rules found"
+          echo "Current IPv4 NAT POSTROUTING rules:"
+          iptables -t nat -L POSTROUTING -n --line-numbers | grep -E "(10\.42|MASQUERADE)" || echo "No IPv4 rules found"
           
-          echo "\nCurrent IPv6 NAT POSTROUTING rules:"
-          ip6tables -t nat -L POSTROUTING -n --line-numbers 2>/dev/null | grep -E "(2001:cafe|MASQUERADE)" || echo "No IPv6 masquerading rules found"
+          echo "Current IPv6 NAT POSTROUTING rules:"
+          ip6tables -t nat -L POSTROUTING -n --line-numbers | grep -E "(2001:cafe|MASQUERADE)" || echo "No IPv6 rules found"
           
-          echo "\nDual-stack NAT masquerading configuration completed successfully on $(hostname)"
+          echo "Dual-stack NAT masquerading rules applied successfully"
         securityContext:
           privileged: true
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 200m
-            memory: 256Mi
-
----
-# DaemonSet for persistent NAT rule management (optional - for production clusters)
-# Uncomment if you need persistent NAT rule management across node reboots
-# apiVersion: apps/v1
-# kind: DaemonSet
-# metadata:
-#   name: calico-nat-manager
-#   namespace: kube-system
-#   labels:
-#     app: calico-nat-manager
-# spec:
-#   selector:
-#     matchLabels:
-#       app: calico-nat-manager
-#   template:
-#     metadata:
-#       labels:
-#         app: calico-nat-manager
-#     spec:
-#       hostNetwork: true
-#       tolerations:
-#       - operator: Exists
-#       containers:
-#       - name: nat-manager
-#         image: nicolaka/netshoot:latest
-#         command:
-#         - /bin/bash
-#         - -c
-#         - |
-#           while true; do
-#             # Check and reapply NAT rules every 5 minutes
-#             /scripts/apply-nat-rules.sh
-#             sleep 300
-#           done
-#         securityContext:
-#           privileged: true
-#         resources:
-#           requests:
-#             cpu: 50m
-#             memory: 64Mi
-#           limits:
-#             cpu: 100m
-#             memory: 128Mi
