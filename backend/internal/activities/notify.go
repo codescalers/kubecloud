@@ -3,14 +3,13 @@ package activities
 import (
 	"context"
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
 	"kubecloud/models"
 	"strconv"
 	"strings"
 	"time"
-
-	"kubecloud/internal/logger"
 
 	"github.com/xmonader/ewf"
 )
@@ -74,11 +73,7 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 			})
 		}
 
-		notification := models.NewNotification(config.UserID, "workflow_update", notificationPayload, models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeveritySuccess))
-		err = notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send workflow update notification")
-		}
+		sse.Notify(config.UserID, "workflow_update", models.NotificationSeverityInfo, notificationData)
 	}
 }
 
@@ -144,18 +139,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 		payload["error"] = err.Error()
 	}
 
-	notification := models.NewNotification(
-		config.UserID,
-		models.NotificationType(notificationType),
-		payload,
-		models.WithNoPersist(),
-		models.WithChannels(notification.ChannelUI),
-		models.WithSeverity(severity),
-	)
-	err = notificationService.Send(context.Background(), notification)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
-	}
+	sse.Notify(config.UserID, notificationType, models.NotificationSeverityInfo, notificationData)
 }
 
 func notifyStepHook(notificationService *notification.NotificationService) ewf.AfterStepHook {
@@ -231,7 +215,7 @@ func NotifyCreateDeploymentResult(notificationService *notification.Notification
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		config, confErr := getConfig(wf.State)
 		if confErr != nil {
-			logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
+			log.Error().Msg("Missing or invalid 'config' in workflow state")
 			return
 		}
 
@@ -244,17 +228,15 @@ func NotifyCreateDeploymentResult(notificationService *notification.Notification
 			if clusterErr == nil {
 				message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
 			}
-			notificationPayload = notification.MergePayload(notification.CommonPayload{
-				Subject: fmt.Sprintf("%s failed", workflowDesc),
-				Status:  "failed",
-				Message: message,
-				Error:   err.Error(),
-			}, map[string]string{})
-
-			notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload, models.WithChannels(notification.ChannelEmail))
-			err := notificationService.Send(ctx, notification)
+			notificationPayload = map[string]string{
+				"subject": fmt.Sprintf("%s failed", workflowDesc),
+				"status":  "failed",
+				"message": message,
+				"error":   err.Error(),
+			}
+			err := notificationService.Send(ctx, models.NotificationTypeDeployment, notificationPayload, config.UserID, wf.UUID)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to send deployment failure notification")
+				log.Error().Err(err).Msg("Failed to send deployment failure notification")
 			}
 			return
 		}
@@ -265,19 +247,17 @@ func NotifyCreateDeploymentResult(notificationService *notification.Notification
 			message = fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
 				workflowDesc, cluster.Name, nodeCount)
 		}
-		notificationPayload = notification.MergePayload(notification.CommonPayload{
-			Subject: fmt.Sprintf("%s completed successfully", workflowDesc),
-			Status:  "succeeded",
-			Message: message,
-		}, map[string]string{
+		notificationPayload = map[string]string{
+			"subject":      fmt.Sprintf("%s completed successfully", workflowDesc),
+			"status":       "succeeded",
+			"message":      message,
+			"timestamp":    time.Now().Format(time.RFC3339),
 			"cluster_name": cluster.Name,
-			"timestamp":    time.Now().Format(timeFormat),
-		})
+		}
 
-		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload, models.WithChannels(notification.ChannelEmail))
-		err = notificationService.Send(ctx, notification)
+		err = notificationService.Send(ctx, models.NotificationTypeDeployment, notificationPayload, config.UserID, wf.UUID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send deployment success notification")
+			log.Error().Err(err).Msg("Failed to send deployment success notification")
 		}
 	}
 }
@@ -286,7 +266,7 @@ func NotifyDeploymentDeleted(notificationService *notification.NotificationServi
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		config, confErr := getConfig(wf.State)
 		if confErr != nil {
-			logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
+			log.Error().Msg("Missing or invalid 'config' in workflow state")
 			return
 		}
 
@@ -304,19 +284,17 @@ func NotifyDeploymentDeleted(notificationService *notification.NotificationServi
 			nodeCount = len(cluster.Nodes)
 			message = fmt.Sprintf("Deployment for cluster '%s' with %d nodes was deleted", clusterName, nodeCount)
 		}
-		notificationPayload := notification.MergePayload(notification.CommonPayload{
-			Subject: "Deployment deleted",
-			Status:  "deleted",
-			Message: message,
-		}, map[string]string{
-			"timestamp":    time.Now().Format(timeFormat),
+		notificationPayload := map[string]string{
+			"subject":      "Deployment deleted",
+			"status":       "deleted",
+			"message":      message,
+			"timestamp":    time.Now().Format(time.RFC3339),
 			"cluster_name": clusterName,
-		})
+		}
 
-		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)
-		err = notificationService.Send(ctx, notification)
+		err = notificationService.Send(ctx, models.NotificationTypeDeployment, notificationPayload, config.UserID, wf.UUID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send deployment deleted notification")
+			log.Error().Err(err).Msg("Failed to send deployment deleted notification")
 		}
 	}
 }

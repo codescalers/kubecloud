@@ -536,7 +536,7 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 
 }
 
-func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.MetricsnotificationService *notification.NotificationService) ewf.AfterWorkflowHook {
+func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err != nil && isDeployWorkflow(wf.Name) {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
