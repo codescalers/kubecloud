@@ -83,7 +83,7 @@ cp config-example.json config.json
 # Edit config.json with your settings (see backend/README.md for details)
 # Build and run
 make build
-./main
+make run .
 ```
 
 The backend will start on the configured port (default: 8080).
