@@ -44,7 +44,7 @@ type App struct {
 }
 
 // NewApp create new instance of the app with all configs
-func NewApp(ctx context.Context, config internal.Configuration, ) (*App, error) {
+func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	router := gin.New()
 
 	router.Use(

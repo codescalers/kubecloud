@@ -269,7 +269,7 @@ It supports:
 			zerolog.ConsoleWriter{Out: os.Stderr},
 			rotator,
 		)
-		gin.DefaultWriter =  io.MultiWriter(os.Stderr, rotator)
+		gin.DefaultWriter = io.MultiWriter(os.Stderr, rotator)
 		log.Logger = zerolog.New(multi).With().Timestamp().Logger()
 
 		// Set log level based on debug configuration
@@ -279,7 +279,7 @@ It supports:
 		} else {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
-		
+
 		app, err := app.NewApp(cmd.Context(), config)
 		if err != nil {
 			return fmt.Errorf("failed to create new app: %w", err)
