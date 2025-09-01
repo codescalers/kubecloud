@@ -9,11 +9,11 @@
       <v-form @submit.prevent="handleSignUp" class="auth-form" v-model="isFormValid">
         <v-text-field
           v-model="form.name"
-          label="Name"
+          label="Username"
           prepend-inner-icon="mdi-account"
           variant="outlined"
           class="auth-field"
-          :rules="[RULES.name]"
+          :rules="[RULES.username]"
           required
         />
         <v-text-field
