@@ -40,9 +40,7 @@ func (m *MoneyCollector) CollectMoney() {
 	}
 	log.Debug().Int("total_users", len(users)).Msg("MoneyCollector: total users")
 	maxConcurrentBalanceFetches := m.config.MailSender.MaxConcurrentSends
-	if maxConcurrentBalanceFetches == 0 {
-		maxConcurrentBalanceFetches = 10
-	}
+
 	var wg sync.WaitGroup
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
 	for _, user := range users {
@@ -66,7 +64,7 @@ func (m *MoneyCollector) CollectMoney() {
 					return
 				}
 				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
-				if err := m.substrateClient.Transfer(userIdentity, uint64(balance-MinBalanceThreshold), substrate.AccountID(system.PublicKey())); err != nil {
+				if err := m.substrateClient.Transfer(userIdentity, balance-MinBalanceThreshold, substrate.AccountID(system.PublicKey())); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
 				}
 				return
