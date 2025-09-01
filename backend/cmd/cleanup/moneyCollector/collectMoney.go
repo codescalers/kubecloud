@@ -45,8 +45,8 @@ func (m *MoneyCollector) CollectMoney() {
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
 	for _, user := range users {
 		wg.Add(1)
-		balanceConcurrencyLimiter <- struct{}{}
 		go func(user models.User) {
+			balanceConcurrencyLimiter <- struct{}{}
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 			if user.Mnemonic == "" {
