@@ -277,11 +277,13 @@ It supports:
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
 
+		savedLogger := log.Logger
 		app, err := app.NewApp(cmd.Context(), config)
 		if err != nil {
 			return fmt.Errorf("failed to create new app: %w", err)
 		}
 
+		log.Logger = savedLogger
 		return gracefulShutdown(app)
 	},
 }

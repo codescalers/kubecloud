@@ -38,6 +38,7 @@ services:
       - ./backend/kubecloud.db:/app/kubecloud.db
       - ./backend/config.json:/app/config.json
       - /root/.ssh:/root/.ssh:ro
+      - ./logs:/opt/project/logs
     environment:
       - MYCELIUM_HOST=localhost
       - REDIS_HOST=redis-db
