@@ -9,6 +9,7 @@ import (
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
+	"os"
 	"strings"
 	"time"
 
@@ -17,13 +18,14 @@ import (
 )
 
 var (
-	criticalRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
-	standardRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
+	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 20, BackOff: ewf.ExponentialBackoff(30*time.Second, 10*time.Minute, 2.0)}
 
 	workflowsDescriptions = map[string]string{
 		WorkflowAddNode:           "Adding Node",
 		WorkflowRemoveNode:        "Removing Node",
-		WorkflowDeleteCluster:     "Deleting Cluster",
+		WorkflowDeleteCluster:     "Deleting Cluster", 
 		WorkflowDeleteAllClusters: "Deleting All Clusters",
 	}
 )
@@ -473,6 +475,7 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 	}
 
 	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
+	steps = append(steps, ewf.Step{Name: StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
 	workflow.Steps = steps
@@ -544,7 +547,7 @@ func createDeployerWorkflowTemplate(sse *internal.SSEManager, engine *ewf.Engine
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager, config internal.Configuration) {
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))
@@ -553,6 +556,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
 	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
+	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep(config.SSH.PrivateKeyPath))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
@@ -635,4 +639,81 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	}
 
 	return config, nil
+}
+
+func VerifyClusterReadyStep(privateKeyPath string) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		privateKeyBytes, err := os.ReadFile(privateKeyPath)
+		if err != nil {
+			log.Error().Err(err).Str("key_path", privateKeyPath).Msg("Failed to read SSH private key")
+			return fmt.Errorf("failed to read SSH private key")
+		}
+
+		// pick any master node
+		var master *kubedeployer.Node
+		for i := range cluster.Nodes {
+			if cluster.Nodes[i].Type == kubedeployer.NodeTypeMaster {
+				master = &cluster.Nodes[i]
+				break
+			}
+		}
+		if master == nil {
+			return fmt.Errorf("no master node found in cluster spec")
+		}
+
+		// ssh into master
+		output, err := internal.RunCommand(string(privateKeyBytes), master.MyceliumIP, "kubectl get nodes -o json")
+		if err != nil {
+			return fmt.Errorf("failed to run kubectl get nodes: %w", err)
+		}
+
+		var kubeNodes struct {
+			Items []struct {
+				Metadata struct {
+					Name string `json:"name"`
+				} `json:"metadata"`
+				Status struct {
+					Conditions []struct {
+						Type   string `json:"type"`
+						Status string `json:"status"`
+					} `json:"conditions"`
+				} `json:"status"`
+			} `json:"items"`
+		}
+		if err := json.Unmarshal([]byte(output), &kubeNodes); err != nil {
+			return fmt.Errorf("failed to parse kubectl output: %w", err)
+		}
+
+		expected := make(map[string]struct{})
+		for _, n := range cluster.Nodes {
+			expected[n.Name] = struct{}{}
+		}
+
+		for _, n := range kubeNodes.Items {
+			fmt.Printf("Found node in cluster: %s\n", n.Metadata.Name)
+			delete(expected, n.Metadata.Name)
+
+			ready := false
+			for _, cond := range n.Status.Conditions {
+				if cond.Type == "Ready" && cond.Status == "True" {
+					ready = true
+				}
+			}
+			if !ready {
+				return fmt.Errorf("node %s is not Ready", n.Metadata.Name)
+			}
+		}
+
+		if len(expected) > 0 {
+			return fmt.Errorf("some expected nodes not found in kubectl get nodes: %v", expected)
+		}
+
+		fmt.Println("Cluster is ready, all nodes found and Ready")
+		return nil
+	}
 }

@@ -41,4 +41,5 @@ const (
 	StepDeleteAllUserClusters   = "delete-all-user-clusters"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
+	StepVerifyClusterReady      = "verify-cluster-ready"
 )
