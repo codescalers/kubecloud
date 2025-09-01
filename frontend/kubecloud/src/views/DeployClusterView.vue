@@ -75,7 +75,7 @@
         </div>
       </div>
     </v-container>
-    <EditNodeModal v-if="editNodeModal.open && editNodeModal.node" :node="editNodeModal.node" :visible="editNodeModal.open" :availableSshKeys="availableSshKeys" @save="saveEditNode" @cancel="closeEditNodeModal" />
+    <EditNodeModal v-if="editNodeModal.open && editNodeModal.node" :node="editNodeModal.node" :visible="editNodeModal.open" :availableSshKeys="availableSshKeys" :existingNames="editNodeModal.existingNames" @save="saveEditNode" @cancel="closeEditNodeModal" />
   </div>
 </template>
 
@@ -265,16 +265,32 @@ onMounted(() => {
   fetchSshKeys();
 });
 
-const editNodeModal = ref({ open: false, type: '', idx: -1, node: null as null | VM });
+const editNodeModal = ref<{ open: boolean; type: string; idx: number; node: VM | null; existingNames: string[] }>({
+  open: false,
+  type: '',
+  idx: -1,
+  node: null,
+  existingNames: []
+});
 function openEditNodeModal(type: 'master' | 'worker', idx: number) {
   const node = type === 'master' ? { ...masters.value[idx] } : { ...workers.value[idx] };
-  editNodeModal.value = { open: true, type, idx, node };
+  const existingNames = allVMs.value
+    .filter((vm, i) => {
+      if (type === 'master') {
+        return i !== idx;
+      } else {
+        return i !== idx + masters.value.length;
+      }
+    })
+    .map(vm => vm.name);
+  editNodeModal.value = { open: true, type, idx, node, existingNames };
 }
 function closeEditNodeModal() {
-  editNodeModal.value = { open: false, type: '', idx: -1, node: null };
+  editNodeModal.value = { open: false, type: '', idx: -1, node: null, existingNames: [] };
 }
 function saveEditNode(updatedNode: VM) {
   if (!editNodeModal.value.node) return;
+
   if (editNodeModal.value.type === 'master') {
     masters.value.splice(editNodeModal.value.idx, 1, { ...updatedNode });
   } else if (editNodeModal.value.type === 'worker') {
