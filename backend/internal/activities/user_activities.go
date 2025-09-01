@@ -150,7 +150,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
 
-		sse.Notify(fmt.Sprintf("%d", userID), "user_registration", "Registering user is in progress")
+		sse.Notify(userID, "user_registration", "Registering user is in progress")
 
 		existingUser, err := db.GetUserByID(userID)
 		if err != nil {
@@ -262,7 +262,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
 
-		sse.Notify(fmt.Sprintf("%d", userID), "user_registration", "Account verification is in progress")
+		sse.Notify(userID, "user_registration", "Account verification is in progress")
 
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
@@ -422,7 +422,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			notificationData := map[string]interface{}{
 				"message": fmt.Sprintf("Voucher redeemed successfully for %.2f$", amountUSD),
 			}
-			sse.Notify(fmt.Sprintf("%d", userID), internal.Success, notificationData)
+			sse.Notify(userID, internal.Success, notificationData)
 		}
 
 		return nil

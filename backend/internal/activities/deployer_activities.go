@@ -396,7 +396,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 		}
 
 		if len(contractIDs) == 0 {
-			logger.GetLogger().Info().Str("user_id", config.UserID).Msg("No contracts to cancel")
+			logger.GetLogger().Info().Int("user_id", config.UserID).Msg("No contracts to cancel")
 			return nil
 		}
 

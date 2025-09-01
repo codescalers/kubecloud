@@ -326,7 +326,7 @@ func (s *GormDB) GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error) {
 }
 
 // CreateCluster creates a new cluster in the database
-func (s *GormDB) CreateCluster(userID string, cluster *Cluster) error {
+func (s *GormDB) CreateCluster(userID int, cluster *Cluster) error {
 	cluster.CreatedAt = time.Now()
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
@@ -334,14 +334,14 @@ func (s *GormDB) CreateCluster(userID string, cluster *Cluster) error {
 }
 
 // ListUserClusters returns all clusters for a specific user
-func (s *GormDB) ListUserClusters(userID string) ([]Cluster, error) {
+func (s *GormDB) ListUserClusters(userID int) ([]Cluster, error) {
 	var clusters []Cluster
 	query := s.db.Where("user_id = ?", userID).Find(&clusters)
 	return clusters, query.Error
 }
 
 // GetClusterByName returns a cluster by name for a specific user
-func (s *GormDB) GetClusterByName(userID string, projectName string) (Cluster, error) {
+func (s *GormDB) GetClusterByName(userID int, projectName string) (Cluster, error) {
 	var cluster Cluster
 	query := s.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&cluster)
 	return cluster, query.Error
@@ -356,12 +356,12 @@ func (s *GormDB) UpdateCluster(cluster *Cluster) error {
 }
 
 // DeleteCluster deletes a cluster by name for a specific user
-func (s *GormDB) DeleteCluster(userID string, projectName string) error {
+func (s *GormDB) DeleteCluster(userID int, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
 }
 
 // DeleteAllUserClusters deletes all clusters for a specific user
-func (s *GormDB) DeleteAllUserClusters(userID string) error {
+func (s *GormDB) DeleteAllUserClusters(userID int) error {
 	return s.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
 }
 

@@ -27,7 +27,7 @@ const (
 // Notification represents a persistent notification
 type Notification struct {
 	ID        uint               `json:"id" gorm:"primaryKey"`
-	UserID    string             `json:"user_id" gorm:"not null;index"`
+	UserID    int                `json:"user_id" gorm:"not null;index"`
 	Type      NotificationType   `json:"type" gorm:"not null"`
 	Title     string             `json:"title" gorm:"not null"`
 	Message   string             `json:"message" gorm:"not null"`
@@ -46,7 +46,7 @@ func (s *GormDB) CreateNotification(notification *Notification) error {
 }
 
 // GetUserNotifications retrieves notifications for a user with pagination
-func (s *GormDB) GetUserNotifications(userID string, limit, offset int) ([]Notification, error) {
+func (s *GormDB) GetUserNotifications(userID int, limit, offset int) ([]Notification, error) {
 	var notifications []Notification
 	err := s.db.Where("user_id = ?", userID).
 		Order("created_at DESC").
@@ -57,7 +57,7 @@ func (s *GormDB) GetUserNotifications(userID string, limit, offset int) ([]Notif
 }
 
 // MarkNotificationAsRead marks a specific notification as read
-func (s *GormDB) MarkNotificationAsRead(notificationID uint, userID string) error {
+func (s *GormDB) MarkNotificationAsRead(notificationID uint, userID int) error {
 	now := time.Now()
 	result := s.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
@@ -78,7 +78,7 @@ func (s *GormDB) MarkNotificationAsRead(notificationID uint, userID string) erro
 }
 
 // MarkAllNotificationsAsRead marks all notifications as read for a user
-func (s *GormDB) MarkAllNotificationsAsRead(userID string) error {
+func (s *GormDB) MarkAllNotificationsAsRead(userID int) error {
 	now := time.Now()
 	return s.db.Model(&Notification{}).
 		Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
@@ -89,7 +89,7 @@ func (s *GormDB) MarkAllNotificationsAsRead(userID string) error {
 }
 
 // DeleteNotification deletes a notification for a user
-func (s *GormDB) DeleteNotification(notificationID uint, userID string) error {
+func (s *GormDB) DeleteNotification(notificationID uint, userID int) error {
 	result := s.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
 
 	if result.Error != nil {
@@ -104,7 +104,7 @@ func (s *GormDB) DeleteNotification(notificationID uint, userID string) error {
 }
 
 // GetUnreadNotifications retrieves only unread notifications for a user with pagination
-func (s *GormDB) GetUnreadNotifications(userID string, limit, offset int) ([]Notification, error) {
+func (s *GormDB) GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error) {
 	var notifications []Notification
 	err := s.db.Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
 		Order("created_at DESC").
@@ -114,12 +114,12 @@ func (s *GormDB) GetUnreadNotifications(userID string, limit, offset int) ([]Not
 }
 
 // DeleteAllNotifications deletes all notifications for a user
-func (s *GormDB) DeleteAllNotifications(userID string) error {
+func (s *GormDB) DeleteAllNotifications(userID int) error {
 	return s.db.Where("user_id = ?", userID).Delete(&Notification{}).Error
 }
 
 // MarkNotificationAsUnread marks a specific notification as unread
-func (s *GormDB) MarkNotificationAsUnread(notificationID uint, userID string) error {
+func (s *GormDB) MarkNotificationAsUnread(notificationID uint, userID int) error {
 	result := s.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{

@@ -83,7 +83,7 @@ const (
 
 type DeploymentTask struct {
 	TaskID      string               `json:"task_id"`
-	UserID      string               `json:"user_id"`
+	UserID      int                  `json:"user_id"`
 	Status      TaskStatus           `json:"status"`
 	CreatedAt   time.Time            `json:"created_at"`
 	StartedAt   *time.Time           `json:"started_at,omitempty"`
@@ -94,7 +94,7 @@ type DeploymentTask struct {
 
 type DeploymentResult struct {
 	TaskID      string               `json:"task_id"`
-	UserID      string               `json:"user_id"`
+	UserID      int                  `json:"user_id"`
 	Status      TaskStatus           `json:"status"`
 	Message     string               `json:"message"`
 	Error       string               `json:"error,omitempty"`
