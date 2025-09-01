@@ -189,7 +189,7 @@ type GetUserResponse struct {
 // @Accept json
 // @Produce json
 // @Param body body RegisterInput true "Register Input"
-// @Success 201 {object} RegisterUserResponse "workflow_id: string, email: string"
+// @Success 202 {object} RegisterUserResponse "workflow_id: string, email: string"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -238,7 +238,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
+	Success(c, http.StatusAccepted, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      request.Email,
 	})
@@ -251,7 +251,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body VerifyCodeInput true "Verification details"
-// @Success 201 {object} VerifyRegisterUserResponse
+// @Success 202 {object} VerifyRegisterUserResponse
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -337,7 +337,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusCreated, "Verification is in progress", VerifyRegisterUserResponse{
+	Success(c, http.StatusAccepted, "Verification is in progress", VerifyRegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 		TokenPair:  tokenPair,
@@ -704,7 +704,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
+	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 	})
@@ -880,7 +880,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusOK, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
+	Success(c, http.StatusAccepted, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
