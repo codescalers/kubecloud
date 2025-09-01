@@ -33,7 +33,7 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Invoices are retrieved successfully", map[string]interface{}{
+	Success(c, http.StatusOK, "Invoices retrieved successfully", map[string]interface{}{
 		"invoices": invoices,
 	})
 }
@@ -59,7 +59,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Invoices are retrieved successfully", map[string]interface{}{
+	Success(c, http.StatusOK, "Invoices retrieved successfully", map[string]interface{}{
 		"invoices": invoices,
 	})
 }
@@ -133,7 +133,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	invoice, err := h.db.GetInvoice(id)
 	if err != nil {
 		log.Error().Err(err).Send()
-		Error(c, http.StatusNotFound, "Invoice is not found", "")
+		Error(c, http.StatusNotFound, "Invoice not found", "")
 		return
 	}
 

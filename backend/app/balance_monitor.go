@@ -79,12 +79,12 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 
 	err = internal.TransferTFTs(h.substrateClient, amountToTransfer, user.Mnemonic, h.systemIdentity)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to transfer TFTs for pending record ID %d", recordID)
+		return errors.Wrapf(err, "failed to transfer TFTs for pending record ID %d", recordID)
 	}
 
 	err = h.db.UpdatePendingRecordTransferredAmount(recordID, amountToTransfer)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to update transferred amount for pending record ID %d", recordID)
+		return errors.Wrapf(err, "failed to update transferred amount for pending record ID %d", recordID)
 	}
 
 	return nil

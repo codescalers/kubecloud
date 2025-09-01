@@ -84,7 +84,7 @@ func httpHealthCheck(ctx context.Context, url string) HealthStatus {
 
 func healthURL(baseURL string) (string, error) {
 	if len(strings.TrimSpace(baseURL)) == 0 {
-		return "", fmt.Errorf("url not set")
+		return "", fmt.Errorf("URL not set")
 	}
 	return url.JoinPath(baseURL, "health")
 }
@@ -92,7 +92,7 @@ func healthURL(baseURL string) (string, error) {
 func (h *Handler) checkGridProxy(ctx context.Context) HealthStatus {
 	url, err := healthURL(h.config.GridProxyURL)
 	if err != nil {
-		return healthStatusFromError(fmt.Errorf("gridproxy %s", err.Error()))
+		return healthStatusFromError(fmt.Errorf("grid proxy %s", err.Error()))
 	}
 	return httpHealthCheck(ctx, url)
 }

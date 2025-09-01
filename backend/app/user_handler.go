@@ -274,7 +274,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get user by email")
-		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
+		Error(c, http.StatusBadRequest, "Verification failed", "Make sure you have registered before")
 		return
 	}
 
@@ -631,7 +631,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 
 	}
 
-	Success(c, http.StatusAccepted, "password is updated successfully", nil)
+	Success(c, http.StatusAccepted, "Password updated successfully", nil)
 
 }
 
@@ -805,7 +805,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Balance is fetched", UserBalanceResponse{
+	Success(c, http.StatusOK, "Balance fetched successfully", UserBalanceResponse{
 		BalanceUSD:        internal.FromUSDMilliCentToUSD(usdMillicentBalance),
 		DebtUSD:           internal.FromUSDMilliCentToUSD(user.Debt),
 		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdPendingAmount),
@@ -880,7 +880,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusOK, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
+	Success(c, http.StatusOK, "Voucher redeemed successfully. Money transfer is in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
