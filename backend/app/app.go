@@ -44,8 +44,13 @@ type App struct {
 }
 
 // NewApp create new instance of the app with all configs
-func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
-	router := gin.Default()
+func NewApp(ctx context.Context, config internal.Configuration, ) (*App, error) {
+	router := gin.New()
+
+	router.Use(
+		gin.LoggerWithWriter(gin.DefaultWriter),
+		gin.RecoveryWithWriter(gin.DefaultWriter),
+	)
 
 	stripe.Key = config.StripeSecret
 

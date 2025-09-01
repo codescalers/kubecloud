@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"kubecloud/app"
 	"kubecloud/internal"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/natefinch/lumberjack"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -267,6 +269,7 @@ It supports:
 			zerolog.ConsoleWriter{Out: os.Stderr},
 			rotator,
 		)
+		gin.DefaultWriter =  io.MultiWriter(os.Stderr, rotator)
 		log.Logger = zerolog.New(multi).With().Timestamp().Logger()
 
 		// Set log level based on debug configuration
@@ -276,14 +279,11 @@ It supports:
 		} else {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
-
-		savedLogger := log.Logger
+		
 		app, err := app.NewApp(cmd.Context(), config)
 		if err != nil {
 			return fmt.Errorf("failed to create new app: %w", err)
 		}
-
-		log.Logger = savedLogger
 		return gracefulShutdown(app)
 	},
 }
