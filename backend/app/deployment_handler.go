@@ -26,6 +26,42 @@ type Response struct {
 	Message    string `json:"message"`
 }
 
+// VMInput represents the request body for creating a VM
+type VMInput struct {
+	Node NodeInput `json:"node" validate:"required"`
+}
+
+// NodeInput contains fields taken by user
+type NodeInput struct {
+	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`
+	Type     string            `json:"type"`
+	NodeID   uint32            `json:"node_id" validate:"required"`
+	CPU      uint8             `json:"cpu" validate:"required,min=1"`
+	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // MB
+	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // MB
+	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // MB
+	EnvVars  map[string]string `json:"env_vars,omitempty"`
+
+	// Optional fields
+	Flist      string `json:"flist,omitempty"`
+	Entrypoint string `json:"entrypoint,omitempty"`
+}
+
+// VMItem represents a single VM
+type VMItem struct {
+	ID          int64                  `json:"id"`
+	ProjectName string                 `json:"project_name"`
+	VM          map[string]interface{} `json:"vm"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// ListVMsResponse represents the full response for listing VMs
+type ListVMsResponse struct {
+	VMs   []VMItem `json:"vms"`
+	Count int      `json:"count"`
+}
+
 func (h *Handler) HandleListDeployments(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -490,17 +526,49 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	})
 }
 
+// @Summary Deploy a VM
+// @Description Creates and deploy a virtual machine
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param vm body VMInput true "VM configuration"
+// @Success 202 {object} map[string]interface{} "WorkflowID and Status"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /deployments/vms [post]
 func (h *Handler) HandleDeployVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
 		InternalServerError(c)
 		return
 	}
-
-	var vm kubedeployer.VM
-	if err := c.ShouldBindJSON(&vm); err != nil {
+	var input VMInput
+	if err := c.ShouldBindJSON(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request json format", err.Error())
 		return
+	}
+
+	if err := internal.ValidateStruct(input.Node); err != nil {
+		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		return
+	}
+
+	// Map to internal kubedeployer.VM
+	vm := kubedeployer.VM{
+		Node: kubedeployer.Node{
+			Name:       input.Node.Name,
+			Type:       kubedeployer.NodeType(input.Node.Type),
+			NodeID:     input.Node.NodeID,
+			CPU:        input.Node.CPU,
+			Memory:     input.Node.Memory,
+			RootSize:   input.Node.RootSize,
+			DiskSize:   input.Node.DiskSize,
+			EnvVars:    input.Node.EnvVars,
+			Flist:      input.Node.Flist,
+			Entrypoint: input.Node.Entrypoint,
+		},
 	}
 
 	if vm.Node.Name == "" {
@@ -543,6 +611,16 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 }
 
+// @Summary List VMs
+// @Description Get all virtual machines for the authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} ListVMsResponse "Vms are listed successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /deployments/vms [get]
 func (h *Handler) HandleListVMs(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -581,6 +659,19 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 	})
 }
 
+// @Summary List VM
+// @Description Get specific VM for authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "VM ID"
+// @Success 200 {object} VMItem
+// @Failure 400 {object} map[string]string "Bad Request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "VM not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /deployments/vms/{id} [get]
 func (h *Handler) HandleListVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
@@ -616,6 +707,19 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 	c.JSON(http.StatusOK, vmResult)
 }
 
+// @Summary Delete VM
+// @Description Delete a VM for authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "VM ID"
+// @Success 200 {object} map[string]interface{} "Deletion workflow started"
+// @Failure 400 {object} map[string]string "Bad Request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "VM not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /deployments/vms/{id} [delete]
 func (h *Handler) HandleDeleteVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {

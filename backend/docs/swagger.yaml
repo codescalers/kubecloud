@@ -130,6 +130,15 @@ definitions:
     - password
     - username
     type: object
+  app.ListVMsResponse:
+    properties:
+      count:
+        type: integer
+      vms:
+        items:
+          $ref: '#/definitions/app.VMItem'
+        type: array
+    type: object
   app.LoginInput:
     properties:
       email:
@@ -146,6 +155,48 @@ definitions:
     properties:
       enabled:
         type: boolean
+    type: object
+  app.NodeInput:
+    properties:
+      cpu:
+        minimum: 1
+        type: integer
+      disk_size:
+        description: MB
+        minimum: 10240
+        type: integer
+      entrypoint:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      flist:
+        description: Optional fields
+        type: string
+      memory:
+        description: MB
+        minimum: 2048
+        type: integer
+      name:
+        maxLength: 20
+        minLength: 3
+        type: string
+      node_id:
+        type: integer
+      root_size:
+        description: MB
+        minimum: 5120
+        type: integer
+      type:
+        type: string
+    required:
+    - cpu
+    - disk_size
+    - memory
+    - name
+    - node_id
+    - root_size
     type: object
   app.PendingRecordsResponse:
     properties:
@@ -277,6 +328,27 @@ definitions:
         type: number
       pending_balance_usd:
         type: number
+    type: object
+  app.VMInput:
+    properties:
+      node:
+        $ref: '#/definitions/app.NodeInput'
+    required:
+    - node
+    type: object
+  app.VMItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      project_name:
+        type: string
+      updated_at:
+        type: string
+      vm:
+        additionalProperties: true
+        type: object
     type: object
   app.VerifyCodeInput:
     properties:
@@ -423,6 +495,171 @@ info:
   title: KubeCloud API
   version: "1.0"
 paths:
+  /deployments/vms:
+    get:
+      consumes:
+      - application/json
+      description: Get all virtual machines for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Vms are listed successfully
+          schema:
+            $ref: '#/definitions/app.ListVMsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List VMs
+      tags:
+      - vms
+    post:
+      consumes:
+      - application/json
+      description: Creates and deploy a virtual machine
+      parameters:
+      - description: VM configuration
+        in: body
+        name: vm
+        required: true
+        schema:
+          $ref: '#/definitions/app.VMInput'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: WorkflowID and Status
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deploy a VM
+      tags:
+      - vms
+  /deployments/vms/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a VM for authenticated user
+      parameters:
+      - description: VM ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion workflow started
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: VM not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete VM
+      tags:
+      - vms
+    get:
+      consumes:
+      - application/json
+      description: Get specific VM for authenticated user
+      parameters:
+      - description: VM ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.VMItem'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: VM not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List VM
+      tags:
+      - vms
   /invoices:
     get:
       consumes:
