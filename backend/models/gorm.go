@@ -455,7 +455,6 @@ func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) err
 // CreateVM creates a new vm in the database
 func (s *GormDB) CreateVM(userID string, vm *VM) error {
 	vm.CreatedAt = time.Now()
-	vm.UpdatedAt = time.Now()
 	vm.UserID = userID
 	return s.db.Create(vm).Error
 }

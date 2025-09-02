@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
@@ -17,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
 	"golang.org/x/crypto/ssh"
+	"gorm.io/gorm"
 )
 
 // Response represents the response structure for deployment requests
@@ -591,9 +593,22 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 	if vm.Node.Name == "" {
 		vm.Node.Name = fmt.Sprintf("vm%s%d", config.UserID, vm.Node.NodeID)
 	}
+
+	if _, err := h.db.GetVMByName(config.UserID, vm.Node.Name); err == nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"error": fmt.Sprintf("VM name '%s' already exists", vm.Node.Name),
+		})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		log.Error().Err(err).Msg("failed to check VM name uniqueness")
+		InternalServerError(c)
+		return
+	}
+
 	if vm.Node.Type == "" {
 		vm.Node.Type = kubedeployer.NodeTypeMaster
 	}
+
 	if vm.Node.EnvVars == nil {
 		vm.Node.EnvVars = map[string]string{}
 	}
@@ -601,11 +616,6 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 	if err := internal.ValidateStruct(vm.Node); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
-	}
-
-	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
-	if vm.Network.Name == "" {
-		vm.Network.Name = vm.ProjectName + "net"
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeployVM)

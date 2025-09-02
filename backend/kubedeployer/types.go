@@ -460,19 +460,15 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 
 	// Parse IPRange
 	if temp.Network.IPRange != "" {
-		if ipNet, err := zos.ParseIPNet(temp.Network.IPRange); err != nil {
+		if _, err := zos.ParseIPNet(temp.Network.IPRange); err != nil {
 			return fmt.Errorf("failed to parse IP range '%s': %w", temp.Network.IPRange, err)
-		} else {
-			vm.Network.IPRange = ipNet
-		}
+		} 
 	}
 
 	// Parse ExternalIP
 	if temp.Network.ExternalIP != nil {
-		if ipNet, err := zos.ParseIPNet(*temp.Network.ExternalIP); err != nil {
+		if _, err := zos.ParseIPNet(*temp.Network.ExternalIP); err != nil {
 			return fmt.Errorf("failed to parse external IP '%s': %w", *temp.Network.ExternalIP, err)
-		} else {
-			vm.Network.ExternalIP = &ipNet
 		}
 	}
 
@@ -482,11 +478,7 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("failed to decode external SK: %w", err)
 		} else if len(decoded) != 32 {
 			return fmt.Errorf("invalid external SK length: expected 32 bytes, got %d", len(decoded))
-		} else {
-			var key [32]byte
-			copy(key[:], decoded)
-			vm.Network.ExternalSK = wgtypes.Key(key)
-		}
+		} 
 	}
 
 	// Helper function to convert string node ID to uint32
@@ -505,11 +497,9 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("failed to parse node ID for mycelium key: %w", err)
 		}
 
-		if decoded, err := base64.StdEncoding.DecodeString(myceliumKeyStr); err != nil {
+		if _, err := base64.StdEncoding.DecodeString(myceliumKeyStr); err != nil {
 			return fmt.Errorf("failed to decode mycelium key for node %d: %w", nodeID, err)
-		} else {
-			vm.Network.MyceliumKeys[nodeID] = decoded
-		}
+		} 
 	}
 
 	// Convert NodesIPRange
