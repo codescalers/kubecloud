@@ -77,6 +77,11 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
+	// Use notification configuration loaded within main configuration
+	notificationConfig := config.Notification
+
+	mailService := internal.NewMailService(config.MailSender.SendGridKey, config.MailSender.Email, notificationConfig.EmailTemplatesDirPath)
+
 	gridProxy := proxy.NewRetryingClient(proxy.NewClient(config.GridProxyURL))
 
 	manager := substrate.NewManager(config.TFChainURL)
@@ -133,17 +138,18 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
-	metrics := metrics.NewMetrics()
-	notificationConfig := config.Notification
-	mailService := internal.NewMailService(config.MailSender.SendGridKey, metrics)
-
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailService, config.MailSender.Email, notificationConfig.EmailTemplatesDirPath)
+	emailNotifier := notification.NewEmailNotifier(config.MailSender.SendGridKey, config.MailSender.Email, notificationConfig.EmailTemplatesDirPath)
 	err = emailNotifier.ParseTemplates()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init notification templates: %w", err)
 	}
-	notificationService := notification.NewNotificationService(db, ewfEngine, mailService, sseNotifier)
+	notificationService, err := notification.NewNotificationService(db, ewfEngine, notificationConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create notification service: %w", err)
+	}
+	notificationService.RegisterNotifier(sseNotifier)
+	notificationService.RegisterNotifier(emailNotifier)
 
 	// Create an app-level context for coordinating shutdown
 	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)

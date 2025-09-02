@@ -40,9 +40,8 @@ type Configuration struct {
 
 	Logger LoggerConfig `json:"logger"`
 
-	// Notification configuration
-	NotificationConfigPath string             `json:"notification_config_path"`
-	Notification           NotificationConfig `json:"-"`
+	// Notification configuration is loaded from a static path
+	Notification NotificationConfig `json:"-"`
 }
 
 type SSHConfig struct {
@@ -199,9 +198,9 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
-	config.Notification, err = loadNotificationConfig(config.NotificationConfigPath)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to load notification config")
+	if nCfg, err := loadNotificationConfig("./notification-config.json"); err == nil {
+		config.Notification = nCfg
+	} else {
 		config.Notification = NotificationConfig{}
 	}
 

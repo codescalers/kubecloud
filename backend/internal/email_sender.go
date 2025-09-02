@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"kubecloud/internal/metrics"
 	"mime"
 	"path/filepath"
 	"strings"
@@ -13,10 +12,6 @@ import (
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-)
-
-const (
-	ChannelEmail = "email"
 )
 
 //go:embed templates/reset_password.html
@@ -36,8 +31,7 @@ var systemAnnouncementMail []byte
 
 // MailService struct hods all functionalities of mail service
 type MailService struct {
-	client  *sendgrid.Client
-	metrics *metrics.Metrics
+	client *sendgrid.Client
 }
 
 type Attachment struct {
@@ -48,8 +42,7 @@ type Attachment struct {
 // NewMailService creates new instance of mail service
 func NewMailService(sendGridKey string, metrics *metrics.Metrics) MailService {
 	return MailService{
-		client:  sendgrid.NewSendClient(sendGridKey),
-		metrics: metrics,
+		client: sendgrid.NewSendClient(sendGridKey),
 	}
 }
 
@@ -154,54 +147,4 @@ func (service *MailService) SystemAnnouncementMailBody(body string) string {
 	template = strings.ReplaceAll(template, "-body-", body)
 
 	return template
-}
-
-func (service *MailService) InitNotificationTemplates() error {
-	tpl, err := template.ParseFS(emailTplFS, "templates/notifications/*.html")
-	if err != nil {
-		return fmt.Errorf("failed to parse notification templates: %w", err)
-	}
-	emailTpls = tpl
-	return nil
-}
-
-func (service MailService) Notify(notification models.Notification, receiver ...string) error {
-	if len(receiver) < 1 {
-		return fmt.Errorf("at least one email address is required: receiver")
-	}
-	if !isValidEmail(receiver[0]) {
-		return fmt.Errorf("receiver email address must be valid")
-	}
-	from := mail.NewEmail("KubeCloud", service.defaultSender)
-	receiverEmail := mail.NewEmail("KubeCloud User", receiver[0])
-
-	tplName := typeToTemplate[notification.Type]
-	if tplName == "" {
-		tplName = string(notification.Type)
-	}
-
-	var buf bytes.Buffer
-	if err := emailTpls.ExecuteTemplate(&buf, tplName, notification); err != nil {
-		return fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
-	}
-
-	subject := notification.Payload["subject"]
-	if subject == "" {
-		subject = string(notification.Type) + " Notification"
-	}
-
-	message := mail.NewSingleEmail(from, subject, receiverEmail, "", buf.String())
-	message.Content = []*mail.Content{
-		mail.NewContent("text/html", buf.String()),
-	}
-
-	_, err := service.client.Send(message)
-	if err != nil {
-		return fmt.Errorf("failed to send notification: %w", err)
-	}
-	return err
-}
-
-func (service MailService) GetType() string {
-	return ChannelEmail
 }

@@ -6,7 +6,6 @@ import (
 	"html/template"
 	"kubecloud/internal"
 	"kubecloud/models"
-	"os"
 	"path/filepath"
 
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -20,7 +19,8 @@ type EmailNotifier struct {
 	templatesDir  string
 }
 
-func NewEmailNotifier(mailService internal.MailService, defaultSender, templatesDir string) *EmailNotifier {
+func NewEmailNotifier(sendGridKey, defaultSender, templatesDir string) *EmailNotifier {
+	mailService := internal.NewMailService(sendGridKey, defaultSender, templatesDir)
 	return &EmailNotifier{
 		mailService:   mailService,
 		defaultSender: defaultSender,
@@ -32,18 +32,9 @@ func (n *EmailNotifier) GetType() string {
 	return ChannelEmail
 }
 
-func (n *EmailNotifier) GetStepName() string {
-	return "send-email-notification"
-}
-
 func (n *EmailNotifier) ParseTemplates() error {
 	if n.templatesDir == "" {
-
-		n.templatesDir = os.Getenv("TEMPLATE_DIR")
-		if n.templatesDir == "" {
-
-			n.templatesDir = "./internal/templates/notifications"
-		}
+		n.templatesDir = "./internal/templates/notifications"
 	}
 
 	tpl, err := template.ParseGlob(filepath.Join(n.templatesDir, "*.html"))
@@ -83,5 +74,8 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	}
 
 	err := n.mailService.SendMail(n.defaultSender, receiver[0], subject, buf.String())
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
+	}
 	return err
 }
