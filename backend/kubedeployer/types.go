@@ -462,7 +462,7 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 	if temp.Network.IPRange != "" {
 		if _, err := zos.ParseIPNet(temp.Network.IPRange); err != nil {
 			return fmt.Errorf("failed to parse IP range '%s': %w", temp.Network.IPRange, err)
-		} 
+		}
 	}
 
 	// Parse ExternalIP
@@ -478,7 +478,7 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 			return fmt.Errorf("failed to decode external SK: %w", err)
 		} else if len(decoded) != 32 {
 			return fmt.Errorf("invalid external SK length: expected 32 bytes, got %d", len(decoded))
-		} 
+		}
 	}
 
 	// Helper function to convert string node ID to uint32
@@ -499,7 +499,7 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 
 		if _, err := base64.StdEncoding.DecodeString(myceliumKeyStr); err != nil {
 			return fmt.Errorf("failed to decode mycelium key for node %d: %w", nodeID, err)
-		} 
+		}
 	}
 
 	// Convert NodesIPRange
