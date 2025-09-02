@@ -14,6 +14,7 @@ export interface NormalizedNode {
   healthy: boolean;
   rentable: boolean;
   rented: boolean;
+  rentedByTwinId?: number;
   dedicated: boolean;
   certificationType: string;
   extraFee: number;

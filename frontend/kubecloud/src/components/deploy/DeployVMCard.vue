@@ -27,10 +27,12 @@
         GPU
       </v-chip>
       <div class="spec-item" style="margin-top: 0.7em;">
-        <span class="spec-label">SSH Keys:</span>
-        <span v-for="id in vm.sshKeyIds" :key="id" class="ssh-key-chip">
-          {{ availableSshKeys.find(k => k.ID === id)?.name }}
-        </span>
+          <span class="spec-label">SSH Keys:</span>
+          <div class="ssh-keys-chips">
+            <span v-for="id in vm.sshKeyIds" :key="id" class="ssh-key-chip">
+              {{ availableSshKeys.find(k => k.ID === id)?.name }}
+            </span>
+          </div>
       </div>
     </div>
   </div>
@@ -79,6 +81,17 @@ const emit = defineEmits(['edit', 'delete']);
   font-size: 1em;
   color: var(--color-text, #cfd2fa);
   min-width: 110px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.ssh-keys-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  max-width: 100%;
 }
 .spec-label {
   color: var(--color-text-muted, #7c7fa5);
@@ -92,4 +105,4 @@ const emit = defineEmits(['edit', 'delete']);
   margin-right: 0.4em;
   font-size: 0.97em;
 }
-</style> 
+</style>

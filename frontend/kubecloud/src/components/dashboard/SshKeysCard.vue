@@ -116,8 +116,11 @@ const isDuplicateKey = computed(() => {
 const nameTouched = ref(false)
 const nameError = computed(() => {
   if (!nameTouched.value) return ''
-  if (!newKey.value.name) return 'Key name is required.'
-  if (sshKeys.value.some(k => k.name.trim().toLowerCase() === newKey.value.name.trim().toLowerCase())) {
+  const name = newKey.value.name.trim()
+  if (!name) return 'Key name is required.'
+  if (name.length < 3) return 'Key name must be at least 3 characters.'
+  if (name.length > 15) return 'Key name must be 15 characters or less.'
+  if (sshKeys.value.some(k => k.name.trim().toLowerCase() === name.toLowerCase())) {
     return 'Key name must be unique.'
   }
   return ''

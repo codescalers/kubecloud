@@ -13,6 +13,7 @@ export interface ApiError {
   message: string
   status?: number
   code?: string
+  silent: boolean
 }
 
 export interface ApiOptions {
@@ -117,7 +118,12 @@ class ApiClient {
         } catch (refreshError) {
           userStore.logout()
           router.push('/sign-in')
-          throw new Error('Session expired. Please log in again.')
+          throw {
+            message: 'Token expired',
+            status: 401,
+            code: 'TOKEN_EXPIRED',
+            silent: true
+          }
         }
       }
 
@@ -176,19 +182,20 @@ class ApiClient {
         }
       }
 
-      // Show error notification if requested
-      if (showNotifications) {
+      const isSilentError = (error as ApiError)?.silent ?? false
+      if (showNotifications && !isSilentError) {
         notificationStore.error(
           'Error',
-          errorMessage || errorMessage,
+          errorMessage,
           { duration: 8000 }
         )
       }
 
       throw {
         message: errorMessage,
-        status: 500,
-        code: 'UNKNOWN_ERROR'
+        status: (error as any)?.status || 500,
+        code: (error as any)?.code || 'UNKNOWN_ERROR',
+        silent: isSilentError
       } as ApiError
     } finally {
       // Clean up loading timeout if request completed before it fired

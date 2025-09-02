@@ -171,11 +171,6 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
-.feature-tag:hover {
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.05);
-}
-
 @media (max-width: 900px) {
   .hero-section {
     padding: 3rem 0 2rem 0;

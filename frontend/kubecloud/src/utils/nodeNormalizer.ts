@@ -19,6 +19,7 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     healthy: node.healthy,
     rentable: node.rentable,
     rented: node.rented,
+    rentedByTwinId: node.rentedByTwinId,
     dedicated: node.dedicated,
     extraFee: node.extraFee,
     certificationType: node.certificationType,
