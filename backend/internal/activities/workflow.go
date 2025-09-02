@@ -38,7 +38,8 @@ func RegisterEWFWorkflows(
 	engine.Register(StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(db, substrate))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db, notificationService))
-	engine.Register(StepSendNotification, SendNotification(db, notificationService.GetNotifiers()))
+	engine.Register(StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
+	engine.Register(StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate()
 	registerWorkflowTemplate.Steps = []ewf.Step{
@@ -117,8 +118,5 @@ func RegisterEWFWorkflows(
 	registerDeploymentActivities(engine, metrics, db, sse, notificationService)
 
 	notificationTemplate := newKubecloudWorkflowTemplate()
-	notificationTemplate.Steps = []ewf.Step{
-		{Name: StepSendNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 3, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
 	engine.RegisterTemplate(WorkflowSendNotification, &notificationTemplate)
 }

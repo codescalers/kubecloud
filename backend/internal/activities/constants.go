@@ -42,5 +42,6 @@ const (
 	StepDeleteAllUserClusters   = "delete-all-user-clusters"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
-	StepSendNotification        = "send-notification"
+	StepSendEmailNotification   = "send-email-notification"
+	StepSendUINotification      = "send-ui-notification"
 )

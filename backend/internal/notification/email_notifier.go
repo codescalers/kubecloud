@@ -32,6 +32,10 @@ func (n *EmailNotifier) GetType() string {
 	return ChannelEmail
 }
 
+func (n *EmailNotifier) GetStepName() string {
+	return "send-email-notification"
+}
+
 func (n *EmailNotifier) ParseTemplates() error {
 	if n.templatesDir == "" {
 		n.templatesDir = "./internal/templates/notifications"

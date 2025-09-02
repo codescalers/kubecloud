@@ -24,7 +24,7 @@ func SetUp(t testing.TB) (*App, error) {
 	configPath := filepath.Join(dir, "config.json")
 	dbPath := filepath.Join(dir, "testing.db")
 	workflowPath := filepath.Join(dir, "workflow_testing.db")
-	notificationConfigPath := filepath.Join(dir, "notification-config.json")
+	notificationConfigPath := "./notification-config.json"
 
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
 	publicKeyPath := privateKeyPath + ".pub"

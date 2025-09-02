@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/models"
+	"time"
 
 	"net/http"
 
@@ -20,6 +21,7 @@ const (
 type Notifier interface {
 	Notify(notification *models.Notification) error
 	GetType() string
+	GetStepName() string
 }
 
 type NotificationServiceInterface interface {
@@ -37,12 +39,10 @@ type NotificationService struct {
 }
 
 type SendOptions struct {
-	WithPersist bool
-
+	WithPersist  bool
 	WithChannels []string
 	WithSeverity models.NotificationSeverity
-
-	TaskID string
+	TaskID       string
 }
 
 func NewNotificationService(db models.DB, engine *ewf.Engine, notificationConfig internal.NotificationConfig) (*NotificationService, error) {
@@ -159,6 +159,21 @@ func (s *NotificationService) SendWithOptions(ctx context.Context, notificationT
 	if err != nil {
 		return fmt.Errorf("failed to create workflow: %w", err)
 	}
+
+	steps := []ewf.Step{}
+	for _, channel := range notification.Channels {
+		notifier, exists := s.notifiers[channel]
+		if !exists {
+			continue
+		}
+
+		retryPolicy := &ewf.RetryPolicy{MaxAttempts: 3, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+		steps = append(steps, ewf.Step{
+			Name:        notifier.GetStepName(),
+			RetryPolicy: retryPolicy,
+		})
+	}
+	workflow.Steps = steps
 	workflow.State["notification"] = notification
 	s.engine.RunAsync(ctx, workflow)
 
