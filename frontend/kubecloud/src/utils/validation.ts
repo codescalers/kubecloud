@@ -325,14 +325,19 @@ const createNumberRule = (fieldName: string, min: number, max: number) =>
     return result || true
   }
 
-const createCustomRule = (fieldName: string, customValidator: (val: any) => boolean | string) =>
-  (value: any): string | boolean => {
-    const result = validateNodeField(value, fieldName, {
-      required: true,
-      custom: customValidator
-    })
-    return result || true
-  }
+export const createUniqueNodeNameRule = (existingNames: string[], currentName: string) =>
+  (value: string): string | boolean => {
+    const basicValidation = createNameRule('Name')(value);
+    if (basicValidation !== true) {
+      return basicValidation;
+    }
+
+    if (existingNames.includes(value)) {
+      return 'Node name must be unique within the cluster';
+    }
+
+    return true;
+  };
 
 export const RULES = {
   nodeName: createNameRule('Name'),
