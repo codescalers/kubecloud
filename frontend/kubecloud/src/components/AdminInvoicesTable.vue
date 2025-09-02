@@ -16,7 +16,6 @@
           class="admin-table"
           :page="page"
           :items-per-page="itemsPerPage"
-          :footer-props="{ showFirstLastPage: true, itemsPerPageOptions: [5, 10, 20, 50] }"
           density="comfortable"
         >
           <template v-slot:item.created_at="{ item }">
@@ -71,8 +70,6 @@ const headers = [
   { title: 'Created At', key: 'created_at', width: '180px' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px' }
 ]
-
-
 
 const showInvoiceModal = ref(false)
 const selectedInvoice = ref<any | null>(null)
