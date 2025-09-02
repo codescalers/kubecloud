@@ -2,6 +2,8 @@ package internal
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -133,6 +135,26 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
+	config.Database.File, err = expandPath(config.Database.File)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand database file path: %w", err)
+	}
+
+	config.SSH.PrivateKeyPath, err = expandPath(config.SSH.PrivateKeyPath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand SSH private key path: %w", err)
+	}
+
+	config.SSH.PublicKeyPath, err = expandPath(config.SSH.PublicKeyPath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand SSH public key path: %w", err)
+	}
+
+	config.Logger.LogDir, err = expandPath(config.Logger.LogDir)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
+	}
+
 	validate := validator.New()
 	if err := validate.Struct(config); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
@@ -144,4 +166,31 @@ func LoadConfig() (Configuration, error) {
 	}
 
 	return config, nil
+}
+
+func expandPath(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+
+	path = os.ExpandEnv(path)
+
+	if strings.HasPrefix(path, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get home directory: %w", err)
+		}
+		if path == "~" {
+			path = home
+		} else if strings.HasPrefix(path, "~/") {
+			path = filepath.Join(home, path[2:])
+		}
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return filepath.Clean(absPath), nil
 }
