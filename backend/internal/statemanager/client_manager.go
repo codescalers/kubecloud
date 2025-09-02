@@ -15,6 +15,7 @@ type ClientConfig struct {
 	Mnemonic     string `json:"mnemonic"`
 	UserID       string `json:"user_id"`
 	Network      string `json:"network"`
+	Debug        bool   `json:"debug"`
 }
 
 // ValidateConfig validates the client configuration
@@ -54,7 +55,7 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 	}
 
 	// Create new client
-	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network)
+	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient: %w", err)
 	}

@@ -95,13 +95,16 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	sseManager := internal.NewSSEManager(db)
 
-	// start gridclient
+	plugingOpts := []deployer.PluginOpt{
+		deployer.WithNetwork(config.SystemAccount.Network),
+	}
+	if config.Debug {
+		plugingOpts = append(plugingOpts, deployer.WithLogs())
+	}
+
 	gridClient, err := deployer.NewTFPluginClient(
 		config.SystemAccount.Mnemonic,
-		deployer.WithNetwork(config.SystemAccount.Network),
-		deployer.WithGraphQlURL(config.GraphqlURL),
-		deployer.WithProxyURL(config.GridProxyURL),
-		deployer.WithSubstrateURL(config.TFChainURL),
+		plugingOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TF grid client: %w", err)

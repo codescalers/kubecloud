@@ -380,6 +380,7 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 		Mnemonic:     user.Mnemonic,
 		UserID:       userIDStr,
 		Network:      h.config.SystemAccount.Network,
+		Debug:        h.config.Debug,
 	}, nil
 }
 
