@@ -10,7 +10,6 @@
               <div class="add-form-wrapper">
                 <v-text-field
                   :rules="nameRules"
-                  validate-on="input"
                   v-model="addFormName"
                   label="Name"
                 />

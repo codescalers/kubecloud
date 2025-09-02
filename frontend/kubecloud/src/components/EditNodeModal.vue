@@ -11,7 +11,6 @@
             variant="outlined"
             density="compact"
             :rules="nameRules"
-            validate-on="input"
             class="form-field"
           />
           <label>vCPU</label>
