@@ -26,8 +26,8 @@ type Response struct {
 	Message    string `json:"message"`
 }
 
-// VMInput represents the request body for creating a VM
-type VMInput struct {
+// DeployVMInput represents the request body for creating a VM
+type DeployVMInput struct {
 	Node NodeInput `json:"node" validate:"required"`
 }
 
@@ -49,17 +49,34 @@ type NodeInput struct {
 
 // VMItem represents a single VM
 type VMItem struct {
-	ID          int64                  `json:"id"`
-	ProjectName string                 `json:"project_name"`
-	VM          map[string]interface{} `json:"vm"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	ID          int             `json:"id"`
+	ProjectName string          `json:"project_name"`
+	VM          kubedeployer.VM `json:"vm" swaggerignore:"true"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 // ListVMsResponse represents the full response for listing VMs
 type ListVMsResponse struct {
-	VMs   []VMItem `json:"vms"`
 	Count int      `json:"count"`
+	VMs   []VMItem `json:"vms"`
+}
+
+// DeployVMResponse represents the response after deploying a vm
+type DeployVMResponse struct {
+	WorkflowID string `json:"workflow_id" example:"123e4567-e89b-12d3-a456-426614174000"`
+	Status     string `json:"status" example:"running"`
+}
+
+// ListVMResponse represents a response with a single VM
+type ListVMResponse struct {
+	VM VMItem `json:"vm" swaggerignore:"true"`
+}
+
+// DeleteVMResponse represents the response when deleting a vm
+type DeleteVMResponse struct {
+	WorkflowID string `json:"workflow_id" example:"123e4567-e89b-12d3-a456-426614174000"`
+	Status     string `json:"status" example:"running"`
 }
 
 func (h *Handler) HandleListDeployments(c *gin.Context) {
@@ -532,11 +549,11 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param vm body VMInput true "VM configuration"
-// @Success 202 {object} map[string]interface{} "WorkflowID and Status"
-// @Failure 400 {object} map[string]string "Invalid request"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 500 {object} map[string]string "Internal server error"
+// @Param vm body DeployVMInput true "VM configuration"
+// @Success 202 {object} DeployVMResponse "WorkflowID and Status"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/vms [post]
 func (h *Handler) HandleDeployVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
@@ -544,7 +561,7 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	var input VMInput
+	var input DeployVMInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request json format", err.Error())
 		return
@@ -604,9 +621,9 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusAccepted, "VM deployment in progress", gin.H{
-		"WorkflowID": wf.UUID,
-		"Status":     string(wf.Status),
+	Success(c, http.StatusAccepted, "VM deployment in progress", DeployVMResponse{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
 	})
 
 }
@@ -618,8 +635,8 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {object} ListVMsResponse "Vms are listed successfully"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 500 {object} map[string]string "Internal server error"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/vms [get]
 func (h *Handler) HandleListVMs(c *gin.Context) {
 	userID, exists := c.Get("user_id")
@@ -636,7 +653,7 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 		return
 	}
 
-	vmList := make([]gin.H, 0, len(vms))
+	vmList := make([]VMItem, 0, len(vms))
 	for _, vm := range vms {
 		vmResult, err := vm.GetVMResult()
 		if err != nil {
@@ -644,18 +661,18 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 			continue
 		}
 
-		vmList = append(vmList, gin.H{
-			"id":           vm.ID,
-			"project_name": vm.ProjectName,
-			"vm":           vmResult,
-			"created_at":   vm.CreatedAt,
-			"updated_at":   vm.UpdatedAt,
+		vmList = append(vmList, VMItem{
+			ID:          vm.ID,
+			ProjectName: vm.ProjectName,
+			VM:          vmResult,
+			CreatedAt:   vm.CreatedAt,
+			UpdatedAt:   vm.UpdatedAt,
 		})
 	}
 
-	Success(c, http.StatusOK, "Vms are listed successfully", gin.H{
-		"vms":   vmList,
-		"count": len(vmList),
+	Success(c, http.StatusOK, "Vms are listed successfully", ListVMsResponse{
+		VMs:   vmList,
+		Count: len(vmList),
 	})
 }
 
@@ -666,11 +683,11 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "VM ID"
-// @Success 200 {object} VMItem
-// @Failure 400 {object} map[string]string "Bad Request"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 404 {object} map[string]string "VM not found"
-// @Failure 500 {object} map[string]string "Internal server error"
+// @Success 200 {object} ListVMResponse
+// @Failure 400 {object} APIResponse "Bad Request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "VM not found"
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/vms/{id} [get]
 func (h *Handler) HandleListVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
@@ -704,7 +721,13 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, vmResult)
+	Success(c, http.StatusOK, "Vm is listed successfully", ListVMResponse{VM: VMItem{
+		ID:          vm.ID,
+		ProjectName: vm.ProjectName,
+		VM:          vmResult,
+		CreatedAt:   vm.CreatedAt,
+		UpdatedAt:   vm.UpdatedAt,
+	}})
 }
 
 // @Summary Delete VM
@@ -714,11 +737,11 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "VM ID"
-// @Success 200 {object} map[string]interface{} "Deletion workflow started"
-// @Failure 400 {object} map[string]string "Bad Request"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 404 {object} map[string]string "VM not found"
-// @Failure 500 {object} map[string]string "Internal server error"
+// @Success 200 {object} DeleteVMResponse "Deletion workflow started"
+// @Failure 400 {object} APIResponse "Bad Request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "VM not found"
+// @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/vms/{id} [delete]
 func (h *Handler) HandleDeleteVM(c *gin.Context) {
 	config, err := h.getClientConfig(c)
@@ -757,9 +780,9 @@ func (h *Handler) HandleDeleteVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusOK, "VM deletion workflow started successfully", gin.H{
-		"WorkflowID": wf.UUID,
-		"Status":     string(wf.Status),
+	Success(c, http.StatusOK, "VM deletion workflow started successfully", DeleteVMResponse{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
 	})
 
 }

@@ -43,19 +43,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     }
                 }
@@ -84,7 +78,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.VMInput"
+                            "$ref": "#/definitions/app.DeployVMInput"
                         }
                     }
                 ],
@@ -92,35 +86,25 @@ const docTemplate = `{
                     "202": {
                         "description": "WorkflowID and Status",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/app.DeployVMResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     }
                 }
@@ -157,43 +141,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app.VMItem"
+                            "$ref": "#/definitions/app.ListVMResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "404": {
                         "description": "VM not found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     }
                 }
@@ -228,44 +200,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Deletion workflow started",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/app.DeleteVMResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "404": {
                         "description": "VM not found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     }
                 }
@@ -1928,6 +1887,43 @@ const docTemplate = `{
                 }
             }
         },
+        "app.DeleteVMResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "running"
+                },
+                "workflow_id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
+        "app.DeployVMInput": {
+            "type": "object",
+            "required": [
+                "node"
+            ],
+            "properties": {
+                "node": {
+                    "$ref": "#/definitions/app.NodeInput"
+                }
+            }
+        },
+        "app.DeployVMResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "running"
+                },
+                "workflow_id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
         "app.EmailInput": {
             "type": "object",
             "required": [
@@ -2021,6 +2017,9 @@ const docTemplate = `{
                     "type": "boolean"
                 }
             }
+        },
+        "app.ListVMResponse": {
+            "type": "object"
         },
         "app.ListVMsResponse": {
             "type": "object",
@@ -2315,17 +2314,6 @@ const docTemplate = `{
                 }
             }
         },
-        "app.VMInput": {
-            "type": "object",
-            "required": [
-                "node"
-            ],
-            "properties": {
-                "node": {
-                    "$ref": "#/definitions/app.NodeInput"
-                }
-            }
-        },
         "app.VMItem": {
             "type": "object",
             "properties": {
@@ -2340,10 +2328,6 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "vm": {
-                    "type": "object",
-                    "additionalProperties": true
                 }
             }
         },

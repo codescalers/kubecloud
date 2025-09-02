@@ -66,6 +66,31 @@ definitions:
       user:
         type: string
     type: object
+  app.DeleteVMResponse:
+    properties:
+      status:
+        example: running
+        type: string
+      workflow_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
+  app.DeployVMInput:
+    properties:
+      node:
+        $ref: '#/definitions/app.NodeInput'
+    required:
+    - node
+    type: object
+  app.DeployVMResponse:
+    properties:
+      status:
+        example: running
+        type: string
+      workflow_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+    type: object
   app.EmailInput:
     properties:
       email:
@@ -129,6 +154,8 @@ definitions:
     - email
     - password
     - username
+    type: object
+  app.ListVMResponse:
     type: object
   app.ListVMsResponse:
     properties:
@@ -329,13 +356,6 @@ definitions:
       pending_balance_usd:
         type: number
     type: object
-  app.VMInput:
-    properties:
-      node:
-        $ref: '#/definitions/app.NodeInput'
-    required:
-    - node
-    type: object
   app.VMItem:
     properties:
       created_at:
@@ -346,9 +366,6 @@ definitions:
         type: string
       updated_at:
         type: string
-      vm:
-        additionalProperties: true
-        type: object
     type: object
   app.VerifyCodeInput:
     properties:
@@ -510,15 +527,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
       security:
       - BearerAuth: []
       summary: List VMs
@@ -534,33 +547,26 @@ paths:
         name: vm
         required: true
         schema:
-          $ref: '#/definitions/app.VMInput'
+          $ref: '#/definitions/app.DeployVMInput'
       produces:
       - application/json
       responses:
         "202":
           description: WorkflowID and Status
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/app.DeployVMResponse'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
       security:
       - BearerAuth: []
       summary: Deploy a VM
@@ -583,32 +589,23 @@ paths:
         "200":
           description: Deletion workflow started
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/app.DeleteVMResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "404":
           description: VM not found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
       security:
       - BearerAuth: []
       summary: Delete VM
@@ -630,31 +627,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/app.VMItem'
+            $ref: '#/definitions/app.ListVMResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "404":
           description: VM not found
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
         "500":
           description: Internal server error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/app.APIResponse'
       security:
       - BearerAuth: []
       summary: List VM
