@@ -208,8 +208,10 @@ func deploymentFromVM(node *Node,
 			},
 		},
 	}
-
-	vm.EnvVars["SSH_KEY"] = userSSH
+	if userSSH != ""{
+		vm.EnvVars["SSH_KEY"] = userSSH
+	}
+	
 
 	depl := workloads.NewDeployment(
 		node.Name,
