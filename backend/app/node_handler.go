@@ -525,14 +525,14 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	limit := proxyTypes.DefaultLimit()
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
-		InternalServerError(c)
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
 		return
 	}
 
 	twinID64, err := strconv.ParseUint(twinIDParam, 10, 32)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
+		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
 		return
 	}
 
