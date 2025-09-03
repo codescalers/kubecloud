@@ -54,7 +54,7 @@ type UnreserveNodeResponse struct {
 	Email      string `json:"email"`
 }
 
-type TwinIDResponse struct {
+type TwinResponse struct {
 	PublicKey string `json:"public_key"`
 	AccountID string `json:"account_id"`
 	Relay     string `json:"relay"`
@@ -508,7 +508,7 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 // @Param limit query int false "Pagination limit"
 // @Param offset query int false "Pagination offset"
 // @Param filterParam  query string false "Other optional filter params"
-// @Success 200 {object} TwinIDResponse "Account ID is retrieved successfully"
+// @Success 200 {object} TwinResponse "Account ID is retrieved successfully"
 // @Failure 400 {object} APIResponse "Bad Request or Invalid params"
 // @Failure 404 {object} APIResponse "Twin ID not found"
 // @Failure 500 {object} APIResponse "Internal Server Error"
@@ -554,7 +554,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 		Error(c, http.StatusNotFound, "Twin ID not found", "")
 		return
 	}
-	Success(c, http.StatusOK, "Twin Details are retrieved successfully", TwinIDResponse{
+	Success(c, http.StatusOK, "Twin Details are retrieved successfully", TwinResponse{
 		AccountID: twins[0].AccountID,
 		TwinID:    twins[0].TwinID,
 		Relay:     twins[0].Relay,

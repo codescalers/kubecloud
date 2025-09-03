@@ -380,7 +380,7 @@ definitions:
       up_nodes:
         type: integer
     type: object
-  app.TwinIDResponse:
+  app.TwinResponse:
     properties:
       account_id:
         type: string
@@ -991,7 +991,7 @@ paths:
         "200":
           description: Account ID is retrieved successfully
           schema:
-            $ref: '#/definitions/app.TwinIDResponse'
+            $ref: '#/definitions/app.TwinResponse'
         "400":
           description: Bad Request or Invalid params
           schema:

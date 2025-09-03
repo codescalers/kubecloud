@@ -676,7 +676,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Account ID is retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.TwinIDResponse"
+                            "$ref": "#/definitions/app.TwinResponse"
                         }
                     },
                     "400": {
@@ -2725,7 +2725,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.TwinIDResponse": {
+        "app.TwinResponse": {
             "type": "object",
             "properties": {
                 "account_id": {
