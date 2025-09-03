@@ -49,6 +49,7 @@ services:
     environment:
       - VITE_API_BASE_URL=http://localhost:8080/api
       - VITE_STRIPE_PUBLISHABLE_KEY=""
+      - VITE_NETWORK="dev"
     build:
       context: frontend/kubecloud/.
       dockerfile: Dockerfile

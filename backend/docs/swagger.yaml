@@ -416,6 +416,17 @@ definitions:
       up_nodes:
         type: integer
     type: object
+  app.TwinResponse:
+    properties:
+      account_id:
+        type: string
+      public_key:
+        type: string
+      relay:
+        type: string
+      twin_id:
+        type: integer
+    type: object
   app.UnreserveNodeResponse:
     properties:
       contract_id:
@@ -1133,6 +1144,51 @@ paths:
       summary: Set maintenance mode
       tags:
       - admin
+  /twins/{twin_id}/account:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the account ID associated with a specific twin ID
+      parameters:
+      - description: Twin ID
+        in: path
+        name: twin_id
+        required: true
+        type: integer
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Other optional filter params
+        in: query
+        name: filterParam
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account ID is retrieved successfully
+          schema:
+            $ref: '#/definitions/app.TwinResponse'
+        "400":
+          description: Bad Request or Invalid params
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Twin ID not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Get account ID by twin ID
+      tags:
+      - twins
   /user:
     get:
       description: Retrieves all data of the user

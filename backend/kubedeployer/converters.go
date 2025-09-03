@@ -6,7 +6,6 @@ import (
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
-	"kubecloud/internal/logger"
 )
 
 const (
@@ -180,7 +179,6 @@ func (c *Cluster) PrepareCluster(userID string) error {
 		}
 	}
 
-	logger.GetLogger().Debug().Msgf("prepared cluster %+v", c)
 	return nil
 }
 

@@ -54,6 +54,13 @@ type UnreserveNodeResponse struct {
 	Email      string `json:"email"`
 }
 
+type TwinResponse struct {
+	PublicKey string `json:"public_key"`
+	AccountID string `json:"account_id"`
+	Relay     string `json:"relay"`
+	TwinID    uint   `json:"twin_id"`
+}
+
 // @Summary List nodes
 // @Description List nodes from proxy [rented nodes first + randomized shared nodes]
 // @Tags nodes
@@ -490,4 +497,68 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 	}
 
 	return nodes, count, nil
+}
+
+// @Summary Get account ID by twin ID
+// @Description Retrieve the account ID associated with a specific twin ID
+// @Tags twins
+// @Accept json
+// @Produce json
+// @Param twin_id path int true "Twin ID"
+// @Param limit query int false "Pagination limit"
+// @Param offset query int false "Pagination offset"
+// @Param filterParam  query string false "Other optional filter params"
+// @Success 200 {object} TwinResponse "Account ID is retrieved successfully"
+// @Failure 400 {object} APIResponse "Bad Request or Invalid params"
+// @Failure 404 {object} APIResponse "Twin ID not found"
+// @Failure 500 {object} APIResponse "Internal Server Error"
+// @Router /twins/{twin_id}/account [get]
+func (h *Handler) GetAccountIDHandler(c *gin.Context) {
+	twinIDParam := c.Param("twin_id")
+	if twinIDParam == "" {
+		Error(c, http.StatusBadRequest, "Twin ID is required", "")
+		return
+	}
+
+	query := c.Request.URL.Query()
+
+	limit := proxyTypes.DefaultLimit()
+	err := queryParamsToStruct(query, &limit)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		return
+	}
+
+	twinID64, err := strconv.ParseUint(twinIDParam, 10, 64)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
+		return
+	}
+
+	filter := proxyTypes.TwinFilter{}
+	filter.TwinID = &twinID64
+	err = queryParamsToStruct(query, &filter)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		return
+	}
+
+	twins, _, err := h.proxyClient.Twins(c.Request.Context(), filter, limit)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	if len(twins) == 0 {
+		Error(c, http.StatusNotFound, "Twin ID not found", "")
+		return
+	}
+	Success(c, http.StatusOK, "Twin Details are retrieved successfully", TwinResponse{
+		AccountID: twins[0].AccountID,
+		TwinID:    twins[0].TwinID,
+		Relay:     twins[0].Relay,
+		PublicKey: twins[0].PublicKey,
+	})
+
 }

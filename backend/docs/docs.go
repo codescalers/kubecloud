@@ -847,6 +847,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/twins/{twin_id}/account": {
+            "get": {
+                "description": "Retrieve the account ID associated with a specific twin ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "twins"
+                ],
+                "summary": "Get account ID by twin ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Twin ID",
+                        "name": "twin_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Other optional filter params",
+                        "name": "filterParam",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account ID is retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.TwinResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request or Invalid params",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Twin ID not found",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user": {
             "get": {
                 "description": "Retrieves all data of the user",
@@ -2922,6 +2990,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "app.TwinResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "relay": {
+                    "type": "string"
+                },
+                "twin_id": {
                     "type": "integer"
                 }
             }

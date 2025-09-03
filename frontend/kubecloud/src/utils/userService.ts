@@ -132,6 +132,13 @@ export interface PendingRecord {
   transfer_mode: string;
 }
 
+export interface TwinResponse {
+  public_key: string;
+  account_id: string;
+  relay: string;
+  twin_id: number;
+}
+
 export class UserService {
   async listNodes(filters?: NodeFilters) {
     const queryParams = new URLSearchParams()
@@ -359,6 +366,15 @@ export class UserService {
       errorMessage: 'Failed to load payments'
     })
     return response.data.data.pending_records
+  }
+
+  // Fetch twin account info
+  async getTwinAccount(twinId: number): Promise<TwinResponse> {
+    const response = await api.get<ApiResponse<TwinResponse>>(`/v1/twins/${twinId}/account`, {
+      requiresAuth: true,
+      showNotifications: false
+    })
+    return response.data.data
   }
 
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {
