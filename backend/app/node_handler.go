@@ -552,6 +552,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 
 	if len(twins) == 0 {
 		Error(c, http.StatusNotFound, "Twin ID not found", "")
+		return
 	}
 	Success(c, http.StatusOK, "Twin Details are retrieved successfully", AccountIDResponse{
 		AccountID: twins[0].AccountID,
