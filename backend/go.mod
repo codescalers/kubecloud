@@ -20,9 +20,9 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
 	github.com/swaggo/swag v1.16.6
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250703093252-e7500b106618
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.9-0.20250714083056-4943cdc054d8
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.9-0.20250714083056-4943cdc054d8
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.11
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.11-0.20250903103031-f18cbfb6964f
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20250727220238-fa576295fe80
@@ -87,11 +87,11 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.9-0.20250714083056-4943cdc054d8 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.11-0.20250903103031-f18cbfb6964f // indirect
 	github.com/threefoldtech/zosbase v0.1.10 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/tools v0.34.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
@@ -129,7 +129,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.39.0
 	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.26.0
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
