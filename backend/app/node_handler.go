@@ -55,7 +55,10 @@ type UnreserveNodeResponse struct {
 }
 
 type AccountIDResponse struct {
+	PublicKey string `json:"public_key"`
 	AccountID string `json:"account_id"`
+	Relay     string `json:"relay"`
+	TwinID    uint   `json:"twin_id"`
 }
 
 // @Summary List nodes
@@ -550,9 +553,11 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	if len(twins) == 0 {
 		Error(c, http.StatusNotFound, "Twin ID not found", "")
 	}
-
-	Success(c, http.StatusOK, "Account id is retrieved successfully", AccountIDResponse{
+	Success(c, http.StatusOK, "Twin Details are retrieved successfully", AccountIDResponse{
 		AccountID: twins[0].AccountID,
+		TwinID:    twins[0].TwinID,
+		Relay:     twins[0].Relay,
+		PublicKey: twins[0].PublicKey,
 	})
 
 }

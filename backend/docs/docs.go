@@ -2182,6 +2182,15 @@ const docTemplate = `{
             "properties": {
                 "account_id": {
                     "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "relay": {
+                    "type": "string"
+                },
+                "twin_id": {
+                    "type": "integer"
                 }
             }
         },
