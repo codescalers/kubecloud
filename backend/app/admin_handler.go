@@ -18,9 +18,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
-	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
+	"kubecloud/internal/logger"
 )
+
+type UserResponse struct {
+	models.User
+	Balance float64 `json:"balance"` // USD balance
+}
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
@@ -72,7 +77,7 @@ type MaintenanceModeStatus struct {
 // @ID get-all-users
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.User
+// @Success 200 {array} UserResponse
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /users [get]
@@ -80,13 +85,58 @@ type MaintenanceModeStatus struct {
 func (h *Handler) ListUsersHandler(c *gin.Context) {
 	users, err := h.db.ListAllUsers()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list all users")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
+		InternalServerError(c)
+		return
+	}
+	var usersWithBalance []UserResponse
+	const maxConcurrentBalanceFetches = 20
+	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
+
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		multiErr *multierror.Error
+	)
+
+	for _, user := range users {
+		wg.Add(1)
+		balanceConcurrencyLimiter <- struct{}{}
+
+		go func(user models.User) {
+			defer wg.Done()
+			defer func() { <-balanceConcurrencyLimiter }()
+
+			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+			if err != nil {
+				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
+				mu.Unlock()
+				return
+			}
+
+			balanceUSD := internal.FromUSDMilliCentToUSD(balance)
+			mu.Lock()
+			usersWithBalance = append(usersWithBalance, UserResponse{
+				User:    user,
+				Balance: balanceUSD,
+			})
+			mu.Unlock()
+		}(user)
+	}
+
+	wg.Wait()
+
+	// Check if there were any errors during balance fetching
+	if multiErr != nil {
+		logger.GetLogger().Error().Err(multiErr).Msg("errors occurred while fetching user balances")
 		InternalServerError(c)
 		return
 	}
 
 	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
-		"users": users,
+		"users": usersWithBalance,
 	})
 }
 
@@ -113,7 +163,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid user ID", err.Error())
 		return
 	}
@@ -156,7 +206,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -180,7 +230,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		}
 
 		if err := h.db.CreateVoucher(&voucher); err != nil {
-			log.Error().Err(err).Msg("failed to create voucher")
+			logger.GetLogger().Error().Err(err).Msg("failed to create voucher")
 			InternalServerError(c)
 			return
 		}
@@ -208,7 +258,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 
 	vouchers, err := h.db.ListAllVouchers()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list all vouchers")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all vouchers")
 		InternalServerError(c)
 		return
 	}
@@ -252,14 +302,14 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid user ID format", "")
 		return
 	}
 
 	user, err := h.db.GetUserByID(id)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -277,13 +327,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowAdminCreditBalance)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
 	if err := h.db.CreateTransaction(&transaction); err != nil {
-		log.Error().Err(err).Msg("Failed to create credit transaction")
+		logger.GetLogger().Error().Err(err).Msg("Failed to create credit transaction")
 		InternalServerError(c)
 		return
 	}
@@ -318,7 +368,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 	pendingRecords, err := h.db.ListAllPendingRecords()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list all pending records")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
 		InternalServerError(c)
 		return
 	}
@@ -327,14 +377,14 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 	for _, record := range pendingRecords {
 		usdAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to convert tft to usd amount")
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
 			InternalServerError(c)
 			return
 		}
 
 		usdTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to convert tft to usd transferred amount")
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
 			InternalServerError(c)
 			return
 		}
@@ -376,11 +426,11 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	var attachments []internal.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
-			log.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
+			logger.GetLogger().Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
 
 			attachments, err = h.parseAttachments(uploaded)
 			if err != nil {
-				log.Error().Err(err).Msg("failed to parse attachments")
+				logger.GetLogger().Error().Err(err).Msg("failed to parse attachments")
 				InternalServerError(c)
 				return
 			}
@@ -389,7 +439,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 
 	users, err := h.db.ListAllUsers()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list all users")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
 		return
 	}
@@ -404,7 +454,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		failedEmails []string
 	)
 
-	log.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
+	logger.GetLogger().Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
 	for _, user := range users {
 		wg.Add(1)
 		emailConcurrencyLimiter <- struct{}{}
@@ -413,7 +463,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 			defer func() { <-emailConcurrencyLimiter }()
 			err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, input.Subject, body, attachments...)
 			if err != nil {
-				log.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
 				failedEmails = append(failedEmails, user.Email)
 				mu.Unlock()
@@ -482,7 +532,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 
 			file, err := fh.Open()
 			if err != nil {
-				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to open attachment file")
+				logger.GetLogger().Error().Err(err).Str("filename", fh.Filename).Msg("failed to open attachment file")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, err)
 				mu.Unlock()
@@ -492,7 +542,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 
 			fileData, err := io.ReadAll(file)
 			if err != nil {
-				log.Error().Err(err).Str("filename", fh.Filename).Msg("failed to read attachment file")
+				logger.GetLogger().Error().Err(err).Str("filename", fh.Filename).Msg("failed to read attachment file")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, err)
 				mu.Unlock()
@@ -531,7 +581,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -542,7 +592,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 	}
 
 	if err := h.redis.SetMaintenanceMode(c.Request.Context(), request.Enabled); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -564,7 +614,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
 	enabled, err := h.redis.GetMaintenanceMode(c.Request.Context())
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}

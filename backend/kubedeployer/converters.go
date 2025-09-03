@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
+	zosTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
+	"kubecloud/internal/logger"
 )
 
 const (
@@ -43,6 +44,11 @@ func deploymentFromNode(
 		SizeGB: node.DiskSize / 1024,
 	}
 
+	var gpus []zosTypes.GPU
+	for _, gpuID := range node.GPUIDs {
+		gpus = append(gpus, zosTypes.GPU(gpuID))
+	}
+
 	vm := workloads.VM{
 		Name:           node.Name,
 		NodeID:         node.NodeID,
@@ -61,6 +67,7 @@ func deploymentFromNode(
 				MountPoint: K3S_DATA_DIR,
 			},
 		},
+		GPUs: gpus,
 	}
 
 	vm.EnvVars["K3S_NODE_NAME"] = node.Name
@@ -110,15 +117,26 @@ func nodeFromDeployment(
 	vm := depl.Vms[0]
 	var node Node
 
+	diskSizeMb := uint64(0)
+	if len(depl.Disks) > 0 {
+		diskSizeMb = depl.Disks[0].SizeGB * 1024
+	}
+
 	node.Name = vm.Name
 	node.NodeID = vm.NodeID
 	node.CPU = vm.CPU
 	node.Memory = vm.MemoryMB
 	node.RootSize = vm.RootfsSizeMB
+	node.DiskSize = diskSizeMb
 	node.EnvVars = vm.EnvVars
 	node.Flist = vm.Flist
 	node.Entrypoint = vm.Entrypoint
 	node.DiskSize = depl.Disks[0].SizeGB * 1024
+	node.GPUIDs = make([]string, len(vm.GPUs))
+
+	for i, gpu := range vm.GPUs {
+		node.GPUIDs[i] = string(gpu)
+	}
 
 	// computed fields
 	node.IP = vm.IP
@@ -162,7 +180,7 @@ func (c *Cluster) PrepareCluster(userID string) error {
 		}
 	}
 
-	log.Debug().Msgf("prepared cluster %+v", c)
+	logger.GetLogger().Debug().Msgf("prepared cluster %+v", c)
 	return nil
 }
 

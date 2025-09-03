@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService, type LoginRequest, type RegisterRequest } from '@/utils/authService'
-import { api } from '@/utils/api'
-import type { ApiResponse } from '@/utils/authService'
+import { api, createWorkflowStatusChecker } from '@/utils/api'
+import type { ApiResponse, VerifyCodeRequest } from '@/utils/authService'
 import { userService } from '@/utils/userService'
+import { useNotificationStore } from './notifications'
+import { WorkflowStatus } from '@/types/ewf'
+import router from '@/router'
 
 export interface User {
   id: number
@@ -14,6 +17,7 @@ export interface User {
   updated_at: string
   balance_usd?: number
   pending_balance_usd?: number
+  balance: number
 }
 
 export interface AuthState {
@@ -33,7 +37,6 @@ export const useUserStore = defineStore('user',
     const error = ref<string | null>(null)
     const netBalance = ref(0)
     const pendingBalance = ref(0)
-
     // Computed properties
     const isAdmin = computed(() => user.value?.admin)
     const isLoggedIn = computed(() => !!token.value)
@@ -46,10 +49,10 @@ export const useUserStore = defineStore('user',
       try {
         const loginData: LoginRequest = { email, password }
         const response = await authService.login(loginData)
-        
+
         // Store tokens
         authService.storeTokens(response.access_token, response.refresh_token)
-        
+
         // Set token in store
         token.value = response.access_token
         const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
@@ -98,6 +101,36 @@ export const useUserStore = defineStore('user',
       }
     }
 
+    const verifyCode = async (data: VerifyCodeRequest) => {
+      isLoading.value = true
+      error.value = null
+      try {
+        const response = await authService.verifyCode(data)
+        authService.storeTokens(response.access_token, response.refresh_token)
+        token.value = response.access_token
+        const workflowChecker = createWorkflowStatusChecker(response.workflow_id, {
+          initialDelay: 3000,
+          interval: 2000,
+        })
+        const status = await workflowChecker.status
+        if (status === WorkflowStatus.StatusCompleted) {
+          useNotificationStore().success('Registration Success', 'User registered successfully')
+        }
+        if (status === WorkflowStatus.StatusFailed) {
+          useNotificationStore().error('Registration Failed', 'Failed to register user')
+          throw new Error('Failed to register user')
+        }
+        const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
+        user.value = userRes.data.data.user
+        router.push('/dashboard')
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Verification failed'
+        throw err
+      } finally {
+        isLoading.value = false
+      }
+    }
+
     const updateProfile = async (updates: Partial<User>) => {
       if (!user.value) throw new Error('User not logged in')
 
@@ -125,9 +158,11 @@ export const useUserStore = defineStore('user',
         authService.storeTokens(response.access_token, tokens.refreshToken)
         token.value = response.access_token
       } catch (err) {
-        // If refresh fails, logout user
         logout()
-        throw err
+        throw {
+          message: 'Token refresh failed',
+          silent: true
+        }
       }
     }
 
@@ -136,11 +171,6 @@ export const useUserStore = defineStore('user',
       const { accessToken } = authService.getTokens()
       if (accessToken) {
         token.value = accessToken
-        // Optionally, fetch user profile here if you want to populate user.value on app start
-        // (async () => {
-        //   const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
-        //   user.value = userRes.data.data.user
-        // })()
       }
     }
 
@@ -167,6 +197,7 @@ export const useUserStore = defineStore('user',
       login,
       logout,
       register,
+      verifyCode,
       updateProfile,
       refreshToken,
       initializeAuth,
@@ -179,4 +210,4 @@ export const useUserStore = defineStore('user',
       pick: ['user', 'token']
     }
   }
-) 
+)

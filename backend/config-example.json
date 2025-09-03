@@ -56,5 +56,12 @@
   },
   "debug": false,
   "kyc_verifier_api_url": "kyc-url",
-  "kyc_challenge_domain": "kyc-domain"
+  "kyc_challenge_domain": "kyc-domain",
+  "logger": {
+    "log_dir": "./logs",
+    "max_size": 512,
+    "max_backups": 12,
+    "max_age": 30,
+    "compress": true
+  }
 }

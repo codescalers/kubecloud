@@ -8,11 +8,11 @@ import (
 	"kubecloud/models"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
+	"kubecloud/internal/logger"
 )
 
 func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
@@ -61,17 +61,16 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
-		if err == nil && !existingUser.Verified {
-			user.ID = existingUser.ID
-			if updateErr := db.UpdateUserByID(&user); updateErr != nil {
-				return fmt.Errorf("failed to update user: %w", updateErr)
+		if err == gorm.ErrRecordNotFound {
+			if err = db.RegisterUser(&user); err != nil {
+				return fmt.Errorf("user registration failed: %w", err)
 			}
 			return nil
 		}
 
-		err = db.RegisterUser(&user)
-		if err != nil {
-			return fmt.Errorf("user registration failed: %w", err)
+		user.ID = existingUser.ID
+		if updateErr := db.UpdateUserByID(&user); updateErr != nil {
+			return fmt.Errorf("failed to update user: %w", updateErr)
 		}
 
 		return nil
@@ -268,13 +267,13 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create keypair for SS58 address")
+			logger.GetLogger().Error().Err(err).Msg("failed to create keypair for SS58 address")
 			return err
 		}
 
 		sponseeAddress, err := internal.AccountAddressFromKeypair(sponseeKeyPair)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get SS58 address")
+			logger.GetLogger().Error().Err(err).Msg("failed to get SS58 address")
 			return err
 		}
 
@@ -286,7 +285,6 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 			ID:             userID,
 			Sponsored:      true,
 			AccountAddress: sponseeAddress,
-			Verified:       true,
 		}); err != nil {
 			return fmt.Errorf("failed to update user data: %w", err)
 		}
@@ -295,8 +293,10 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 	}
 }
 
-func SendWelcomeEmailStep(mailService internal.MailService, config internal.Configuration) ewf.StepFn {
+func SendWelcomeEmailStep(mailService internal.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		metrics.IncrementUserRegistration()
+
 		emailVal, ok := state["email"]
 		if !ok {
 			return fmt.Errorf("missing 'email' in state")
@@ -362,7 +362,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.Step
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, sse *internal.SSEManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -373,6 +373,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
+		amountUSD := internal.FromUSDMilliCentToUSD(amount)
 
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -403,7 +404,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
-			log.Error().Err(err).Msg("error converting usd")
+			logger.GetLogger().Error().Err(err).Msg("error converting usd")
 			return err
 		}
 
@@ -413,8 +414,15 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			TFTAmount:    requestedTFTs,
 			TransferMode: transferMode,
 		}); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			return err
+		}
+
+		if transferMode == models.RedeemVoucherMode && sse != nil {
+			notificationData := map[string]interface{}{
+				"message": fmt.Sprintf("Voucher redeemed successfully for %.2f$", amountUSD),
+			}
+			sse.Notify(fmt.Sprintf("%d", userID), internal.Success, notificationData)
 		}
 
 		return nil

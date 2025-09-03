@@ -27,9 +27,9 @@
             <template #append-inner>
               <v-tooltip text="Generate random name" location="top">
                 <template v-slot:activator="{ props }">
-                  <v-icon 
-                    icon="mdi-refresh" 
-                    size="small" 
+                  <v-icon
+                    icon="mdi-refresh"
+                    size="small"
                     color="primary"
                     @click="generateRandomName"
                     class="refresh-icon"
@@ -59,7 +59,7 @@
             <v-icon icon="mdi-server" class="mr-2"></v-icon>
             Master Nodes
           </h4>
-          <v-btn color="primary" :disabled="masters.length >= 3" prepend-icon="mdi-plus" size="small" variant="outlined" @click="addMaster">Add Master</v-btn>
+          <v-btn color="primary" prepend-icon="mdi-plus" size="small" variant="outlined" @click="addMaster">Add Master</v-btn>
         </div>
         <DeployVMCard v-for="(master, masterIdx) in masters" :key="masterIdx" :vm="master" type="master" :availableSshKeys="availableSshKeys" @edit="() => openEditNodeModal('master', masterIdx)" @delete="() => removeMaster(masterIdx)" />
         <div v-if="!masters.length" class="empty-state">

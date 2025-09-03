@@ -6,7 +6,7 @@
         <h1 class="auth-title">Verify Your Email</h1>
         <p class="auth-subtitle">Enter the verification code sent to your email</p>
       </div>
-      <v-form @submit.prevent="handleVerify" class="auth-form">
+      <v-form @submit.prevent="handleVerify" class="auth-form" v-model="isFormValid">
         <v-text-field
           v-model="form.email"
           label="Email Address"
@@ -14,18 +14,16 @@
           prepend-inner-icon="mdi-email"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.email"
-          required
+          :rules="[RULES.email]"
         />
         <v-text-field
           v-model="form.code"
           label="Verification Code"
-          type="text"
+          type="number"
           prepend-inner-icon="mdi-shield-key"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.code"
-          required
+          :rules="[RULES.verificationCode]"
         />
         <v-btn
           type="submit"
@@ -34,7 +32,7 @@
           size="large"
           variant="outlined"
           :loading="loading"
-          :disabled="resending"
+          :disabled="resending || !isFormValid"
         >
           <v-icon icon="mdi-check-circle" class="mr-2"></v-icon>
           Verify
@@ -42,52 +40,47 @@
       </v-form>
       <div class="auth-footer">
         <span class="auth-footer-text">Didn't receive a code?</span>
-        <v-btn variant="outlined" color="white" :disabled="loading" :loading="resending" @click="resendCode">Resend Code</v-btn>
+        <v-btn variant="outlined" color="white" :disabled="loading || resending || cooldown" :loading="resending" @click="resendCode">
+          {{ cooldown ? `Resend Code (${countdown}s)` : 'Resend Code' }}
+        </v-btn>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authService } from '../utils/authService'
+import { useNotificationStore } from '@/stores/notifications'
+import { useUserStore } from '@/stores/user'
+import { RULES } from "@/utils/validation"
 
 const route = useRoute()
 const router = useRouter()
 
-const form = reactive({
-  email: route.query.email ? String(route.query.email) : '',
-  code: ''
+// Check if we have valid registration data and pre-fill email
+onMounted(() => {
+  form.email = authService.getTempRegistrationEmail() || route.query.email ? String(route.query.email) : ""
+
 })
 
-const errors = reactive({
+const form = reactive({
   email: '',
   code: ''
 })
+const isFormValid = ref(true)
 const loading = ref(false)
 const resending = ref(false)
+const cooldown = ref(false)
+const countdown = ref(0)
 
-const clearErrors = () => {
-  errors.email = ''
-  errors.code = ''
-}
 
 const handleVerify = async () => {
-  clearErrors()
-  if (!form.email) {
-    errors.email = 'Email is required'
-    return
-  }
-  if (!form.code) {
-    errors.code = 'Verification code is required'
-    return
-  }
   try {
     loading.value = true
-    await authService.verifyCode({ email: form.email, code: Number(form.code) })
+    await useUserStore().verifyCode({ email: form.email, code: Number(form.code) })
     loading.value = false
-    router.push('/sign-in')
   } catch (error) {
     loading.value = false
     console.error(error)
@@ -96,19 +89,28 @@ const handleVerify = async () => {
 
 const resendCode = async () => {
   resending.value = true
-  if (!form.email) {
-    errors.email = 'Email is required to resend code'
-    return
-  }
   try {
-    await authService.register({
-      name: 'User',
-      email: form.email,
-      password: 'temporary',
-      confirm_password: 'temporary'
-    })
+    await authService.resendVerificationCode(form.email)
+    cooldown.value = true
+    countdown.value = 30
+    const interval = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) {
+        clearInterval(interval)
+        cooldown.value = false
+      }
+    }, 1000)
   } catch (error) {
     console.error(error)
+    // If no registration data found, show specific error
+    if (error instanceof Error && error.message.includes('No valid registration data')) {
+      useNotificationStore().error(
+        'Expired',
+        'No pending registration found for this email. Please register again.',
+      )
+      router.push("/sign-up")
+    }
+
   } finally {
     resending.value = false
   }

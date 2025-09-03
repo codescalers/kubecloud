@@ -11,7 +11,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
+)
+
+// Notification types
+const (
+	Success = "success"
+	Info    = "info"
+	Error   = "error"
 )
 
 // SSEManager handles Server-Sent Events for real-time notifications
@@ -32,7 +39,7 @@ type SSEMessage struct {
 }
 
 // NewSSEManager creates a new SSE manager
-func NewSSEManager(redis *RedisClient, db models.DB) *SSEManager {
+func NewSSEManager(db models.DB) *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
 		clients: make(map[string][]chan SSEMessage),
@@ -40,8 +47,6 @@ func NewSSEManager(redis *RedisClient, db models.DB) *SSEManager {
 		cancel:  cancel,
 		db:      db,
 	}
-
-	go manager.listenForResults(redis)
 
 	return manager
 }
@@ -120,7 +125,7 @@ func (s *SSEManager) Notify(userID string, msgType string, data any, taskID ...s
 		select {
 		case ch <- message:
 			// Message sent successfully
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(2 * time.Second):
 			// Client not responding, remove it
 			go s.RemoveClient(userID, ch)
 		case <-s.ctx.Done():
@@ -128,16 +133,6 @@ func (s *SSEManager) Notify(userID string, msgType string, data any, taskID ...s
 		}
 	}
 
-}
-
-// SendTaskUpdate is a convenience method for sending task updates
-func (s *SSEManager) SendTaskUpdate(userID, taskID string, status TaskStatus, message string, data any) {
-	payload := map[string]interface{}{
-		"status":  status,
-		"message": message,
-		"data":    data,
-	}
-	s.Notify(userID, "task_update", payload, taskID)
 }
 
 // HandleSSE handles SSE HTTP connections
@@ -172,7 +167,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			data, err := json.Marshal(message)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to marshal SSE message")
+				logger.GetLogger().Error().Err(err).Msg("Failed to marshal SSE message")
 				return false
 			}
 
@@ -180,26 +175,13 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 			return true
 
 		case <-c.Request.Context().Done():
-			log.Debug().Str("user_id", userIDStr).Msg("Client disconnected")
+			logger.GetLogger().Debug().Str("user_id", userIDStr).Msg("Client disconnected")
 			return false
 
 		case <-s.ctx.Done():
 			return false
 		}
 	})
-}
-
-// listenForResults listens for deployment results from Redis
-func (s *SSEManager) listenForResults(redis *RedisClient) {
-	callback := func(result *DeploymentResult) {
-		s.Notify(result.UserID, "deployment_update", result, result.TaskID)
-	}
-
-	if err := redis.SubscribeToResults(s.ctx, callback); err != nil {
-		if s.ctx.Err() == nil {
-			log.Error().Err(err).Msg("Failed to listen for Redis results")
-		}
-	}
 }
 
 // persistNotification saves notification to database
@@ -238,6 +220,6 @@ func (s *SSEManager) persistNotification(userID string, message SSEMessage) {
 	}
 
 	if err := s.db.CreateNotification(notification); err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("Failed to persist notification")
+		logger.GetLogger().Error().Err(err).Str("user_id", userID).Msg("Failed to persist notification")
 	}
 }

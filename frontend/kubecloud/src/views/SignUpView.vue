@@ -6,14 +6,14 @@
         <h1 class="auth-title">Create Account</h1>
         <p class="auth-subtitle">Join KubeCloud and start your journey</p>
       </div>
-      <v-form @submit.prevent="handleSignUp" class="auth-form">
+      <v-form @submit.prevent="handleSignUp" class="auth-form" v-model="isFormValid">
         <v-text-field
           v-model="form.name"
-          label="Name"
+          label="Username"
           prepend-inner-icon="mdi-account"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.name"
+          :rules="[RULES.username]"
           required
         />
         <v-text-field
@@ -23,7 +23,7 @@
           prepend-inner-icon="mdi-email"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.email"
+          :rules="[RULES.email]"
           required
         />
         <v-text-field
@@ -31,11 +31,11 @@
           label="Password"
           :type="showPassword ? 'text' : 'password'"
           prepend-inner-icon="mdi-lock"
-          :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+          :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
           @click:append-inner="showPassword = !showPassword"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.password"
+          :rules="[RULES.password]"
           required
         />
         <div class="password-requirements">
@@ -54,11 +54,11 @@
           label="Confirm Password"
           :type="showConfirmPassword ? 'text' : 'password'"
           prepend-inner-icon="mdi-lock-check"
-          :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
+          :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
           @click:append-inner="showConfirmPassword = !showConfirmPassword"
           variant="outlined"
           class="auth-field"
-          :error-messages="errors.confirmPassword"
+          :rules="[RULES.confirmPassword(form.confirmPassword, form.password)]"
           required
         />
         <v-btn
@@ -67,6 +67,7 @@
           block
           size="large"
           variant="outlined"
+          :disabled="loading || !isFormValid"
         >
           <v-icon icon="mdi-account-plus" class="mr-2"></v-icon>
           {{ 'Create Account' }}
@@ -82,6 +83,12 @@
           Sign In
         </v-btn>
       </div>
+      <router-link
+        to="/"
+        class="d-block text-white back-home-link"
+      >
+        Back to Home
+      </router-link>
     </div>
   </div>
 </template>
@@ -89,15 +96,14 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
-import { validateForm, VALIDATION_RULES } from '../utils/validation'
+import { RULES } from '../utils/validation'
 import LoadingComponent from '../components/LoadingComponent.vue'
 
 const router = useRouter()
-const notificationStore = useNotificationStore()
 const userStore = useUserStore()
 const loading = ref(false)
+const isFormValid = ref(false)
 const form = reactive({
   name: '',
   email: '',
@@ -105,86 +111,11 @@ const form = reactive({
   confirmPassword: '',
 })
 
-const errors = reactive({
-  name: '',
-  email: '',
-  password: '',
-  confirmPassword: ''
-})
-
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-const clearErrors = () => {
-  errors.name = ''
-  errors.email = ''
-  errors.password = ''
-  errors.confirmPassword = ''
-}
-
-const validateFormData = () => {
-  clearErrors()
-
-  if (form.name.length < 3) {
-    errors.name = 'Name must be at least 3 characters'
-    return false
-  }
-  if (form.name.length > 64) {
-    errors.name = 'Name must be no more than 64 characters'
-    return false
-  }
-
-  const validationFields = {
-    name: {
-      value: form.name,
-      rules: { required: true, minLength: 3 }
-    },
-    email: {
-      value: form.email,
-      rules: VALIDATION_RULES.EMAIL
-    },
-    password: {
-      value: form.password,
-      rules: VALIDATION_RULES.PASSWORD
-    },
-    confirmPassword: {
-      value: form.confirmPassword,
-      rules: {
-        required: true,
-        custom: (value: string) => {
-          if (value !== form.password) {
-            return 'Passwords do not match'
-          }
-          return true
-        }
-      }
-    }
-  }
-
-  const result = validateForm(validationFields)
-
-  if (!result.isValid) {
-    result.errors.forEach(error => {
-      if (error.includes('name')) {
-        errors.name = error
-      } else if (error.includes('email')) {
-        errors.email = error
-      } else if (error.includes('password') && !error.includes('confirm')) {
-        errors.password = error
-      } else if (error.includes('confirmPassword') || error.includes('do not match')) {
-        errors.confirmPassword = error
-      }
-    })
-    return false
-  }
-  return true
-}
 
 const handleSignUp = async () => {
-  if (!validateFormData()) {
-    // Don't show generic notification - inline errors are already shown
-    return
-  }
   loading.value = true
   try {
     await userStore.register({
@@ -343,5 +274,13 @@ const handleSignUp = async () => {
 .requirements-list {
   list-style-type: disc;
   padding-left: var(--space-4);
+}
+
+.back-home-link {
+  margin-top: 1rem;
+  text-decoration: none;
+}
+.back-home-link:hover {
+  text-decoration: underline;
 }
 </style>

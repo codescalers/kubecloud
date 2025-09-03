@@ -11,8 +11,8 @@ import (
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
-	"github.com/rs/zerolog/log"
 	"github.com/tyler-smith/go-bip39"
+	"kubecloud/internal/logger"
 )
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
@@ -44,7 +44,8 @@ func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnem
 	if err != nil {
 		return "", 0, fmt.Errorf("create twin failed: %w", err)
 	}
-	log.Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
+
+	logger.GetLogger().Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
 	return mnemonic, twinID, nil
 }
 
@@ -113,6 +114,10 @@ func GetUserBalanceUSDMillicent(substrateClient *substrate.Substrate, userMnemon
 
 // GetUserBalanceUSD gets balance of user in TFT
 func GetUserTFTBalance(substrateClient *substrate.Substrate, userMnemonic string) (uint64, error) {
+	if userMnemonic == "" {
+		return 0, nil
+	}
+
 	// Create identity from mnemonic
 	identity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {

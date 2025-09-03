@@ -10,19 +10,29 @@
 		<template #item="{ item, index, props: itemProps }">
 			<div>
 				<div v-bind="itemProps" class="node-option-row">
-					<NodeInfoRow :node="item.raw" :get-node-resources="getResources" :gpu-icon="gpuIcon" :cpu-label="cpuLabel" />
+					<NodeInfoRow
+						:node="item.raw"
+						:get-node-resources="getResources"
+						:gpu-icon="gpuIcon"
+						:cpu-label="cpuLabel"
+					/>
 				</div>
-				<v-divider v-if="index < (items?.length || 0) - 1" />
+				<v-divider v-if="index < items.length - 1" />
 			</div>
 		</template>
 		<template #selection="{ item }">
-			<NodeInfoRow :node="item.raw" :get-node-resources="getResources" :gpu-icon="gpuIcon" :cpu-label="cpuLabel" />
+			<NodeInfoRow
+				:node="item.raw"
+				:get-node-resources="getResources"
+				:gpu-icon="gpuIcon"
+				:cpu-label="cpuLabel"
+			/>
 		</template>
 	</v-select>
 </template>
 <script setup lang="ts">
 	import { computed } from 'vue';
-	import NodeInfoRow from '@/components/ui/NodeInfoRow.vue';
+	import NodeInfoRow from './NodeInfoRow.vue';
 	const props = withDefaults(defineProps<{
 		modelValue: number | null,
 		items: any[],
@@ -42,20 +52,16 @@
 		get: () => props.modelValue,
 		set: (val: number | null) => emit('update:modelValue', val)
 	});
-	function defaultResources(node: any) {
-		return {
-			cpu: node?.cpu ?? 0,
-			ram: node?.available_ram ?? 0,
-			storage: node?.available_storage ?? 0,
-		};
-	}
-	function getResources(node: any) {
-		return (props.getNodeResources ? props.getNodeResources(node) : defaultResources(node));
-	}
+
+	const getResources = (node: any) => props.getNodeResources?.(node) ?? {
+		cpu: node?.cpu ?? 0,
+		ram: node?.available_ram ?? 0,
+		storage: node?.available_storage ?? 0,
+	};
 </script>
 <style scoped>
 	.node-option-row {
 		margin: .5rem;
 		cursor: pointer;
 	}
-</style> 
+</style>

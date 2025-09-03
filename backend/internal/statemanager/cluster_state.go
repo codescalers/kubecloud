@@ -6,8 +6,8 @@ import (
 
 	"kubecloud/kubedeployer"
 
-	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
+	"kubecloud/internal/logger"
 )
 
 // GetCluster retrieves a cluster from workflow state with robust deserialization
@@ -52,7 +52,7 @@ func StoreCluster(state ewf.State, cluster kubedeployer.Cluster) {
 		state["cluster"] = string(jsonData)
 	} else {
 		// Fallback to direct storage if marshaling fails
-		log.Warn().Err(err).Msg("Failed to marshal cluster, falling back to direct storage")
+		logger.GetLogger().Warn().Err(err).Msg("Failed to marshal cluster, falling back to direct storage")
 		state["cluster"] = cluster
 	}
 }

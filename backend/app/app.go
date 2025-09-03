@@ -20,10 +20,10 @@ import (
 	"github.com/xmonader/ewf"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	"github.com/stripe/stripe-go/v82"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"kubecloud/internal/logger"
 
 	// Import the generated docs package
 	_ "kubecloud/docs"
@@ -31,22 +31,32 @@ import (
 
 // App holds all configurations for the app
 type App struct {
-	router        *gin.Engine
-	httpServer    *http.Server
-	config        internal.Configuration
-	handlers      Handler
-	db            models.DB
-	redis         *internal.RedisClient
-	sseManager    *internal.SSEManager
-	workerManager *internal.WorkerManager
-	gridClient    deployer.TFPluginClient
-	metrics       *metrics.Metrics
-	appCancel     context.CancelFunc
+	router     *gin.Engine
+	httpServer *http.Server
+	config     internal.Configuration
+	handlers   Handler
+	db         models.DB
+	redis      *internal.RedisClient
+	sseManager *internal.SSEManager
+	gridClient deployer.TFPluginClient
+	appCancel  context.CancelFunc
+	metrics    *metrics.Metrics
 }
 
 // NewApp create new instance of the app with all configs
 func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
-	router := gin.Default()
+	// Disable gin's default logging since we're using zerolog
+	gin.DisableConsoleColor()
+	gin.SetMode(gin.ReleaseMode)
+
+	// Create router without default middleware
+	router := gin.New()
+
+	// Add recovery middleware
+	router.Use(gin.Recovery())
+
+	// Add our custom logging middleware
+	router.Use(middlewares.GinLoggerMiddleware())
 
 	stripe.Key = config.StripeSecret
 
@@ -58,7 +68,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	db, err := models.NewSqliteDB(config.Database.File)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create user storage")
+		logger.GetLogger().Error().Err(err).Msg("Failed to create user storage")
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
@@ -70,39 +80,42 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	substrateClient, err := manager.Substrate()
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to substrate client")
+		logger.GetLogger().Error().Err(err).Msg("failed to connect to substrate client")
 		return nil, fmt.Errorf("failed to connect to substrate client: %w", err)
 	}
 
 	graphqlURL := []string{config.GraphqlURL}
 	graphqlClient, err := graphql.NewGraphQl(graphqlURL...)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to graphql client")
+		logger.GetLogger().Error().Err(err).Msg("failed to connect to graphql client")
 		return nil, fmt.Errorf("failed to connect to graphql client: %w", err)
 	}
 
 	firesquidURL := []string{config.FiresquidURL}
 	firesquidClient, err := graphql.NewGraphQl(firesquidURL...)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to firesquid client")
+		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return nil, fmt.Errorf("failed to connect to firesquid client: %w", err)
 	}
 
 	redisClient, err := internal.NewRedisClient(config.Redis)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create Redis client")
+		logger.GetLogger().Error().Err(err).Msg("Failed to create Redis client")
 		return nil, fmt.Errorf("failed to create Redis client: %w", err)
 	}
 
-	sseManager := internal.NewSSEManager(redisClient, db)
+	sseManager := internal.NewSSEManager(db)
 
-	// start gridclient
+	plugingOpts := []deployer.PluginOpt{
+		deployer.WithNetwork(config.SystemAccount.Network),
+	}
+	if config.Debug {
+		plugingOpts = append(plugingOpts, deployer.WithLogs())
+	}
+
 	gridClient, err := deployer.NewTFPluginClient(
 		config.SystemAccount.Mnemonic,
-		deployer.WithNetwork(config.SystemAccount.Network),
-		deployer.WithGraphQlURL(config.GraphqlURL),
-		deployer.WithProxyURL(config.GridProxyURL),
-		deployer.WithSubstrateURL(config.TFChainURL),
+		plugingOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TF grid client: %w", err)
@@ -114,7 +127,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// initialize workflow ewfEngine
 	ewfEngine, err := ewf.NewEngine(ewfStore)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to init EWF engine")
+		logger.GetLogger().Error().Err(err).Msg("failed to init EWF engine")
 		return nil, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
@@ -144,8 +157,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to create sponsor address from keypair: %w", err)
 	}
 
-	workerManager := internal.NewWorkerManager(redisClient, sseManager, config.DeployerWorkersNum, sshPublicKey, db, config.SystemAccount.Network)
-
 	// Validate KYC configuration
 	if strings.TrimSpace(config.KYCVerifierAPIURL) == "" {
 		appCancel()
@@ -171,16 +182,15 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics)
 
 	app := &App{
-		router:        router,
-		config:        config,
-		handlers:      *handler,
-		redis:         redisClient,
-		db:            db,
-		sseManager:    sseManager,
-		workerManager: workerManager,
-		appCancel:     appCancel,
-		gridClient:    gridClient,
-		metrics:       metrics,
+		router:     router,
+		config:     config,
+		handlers:   *handler,
+		redis:      redisClient,
+		db:         db,
+		sseManager: sseManager,
+		appCancel:  appCancel,
+		gridClient: gridClient,
+		metrics:    metrics,
 	}
 
 	activities.RegisterEWFWorkflows(
@@ -216,6 +226,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/health", app.handlers.HealthHandler)
 		v1.GET("/workflow/:workflow_id", app.handlers.GetWorkflowStatus)
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
+		v1.GET("/stats", app.handlers.GetStatsHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
@@ -260,7 +271,8 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/", app.handlers.GetUserHandler)
 				authGroup.PUT("/change_password", app.handlers.ChangePasswordHandler)
 				authGroup.GET("/nodes", app.handlers.ListNodesHandler)
-				authGroup.GET("/nodes/rented", app.handlers.ListReservedNodeHandler)
+				authGroup.GET("/nodes/rentable", app.handlers.ListRentableNodesHandler)
+				authGroup.GET("/nodes/rented", app.handlers.ListRentedNodesHandler)
 				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
 				authGroup.DELETE("/nodes/unreserve/:contract_id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/balance/charge", app.handlers.ChargeBalance)
@@ -293,23 +305,25 @@ func (app *App) registerHandlers() {
 				}
 				deploymentGroup.POST("", app.handlers.HandleDeployCluster)
 				deploymentGroup.GET("", app.handlers.HandleListDeployments)
+				deploymentGroup.DELETE("", app.handlers.HandleDeleteAllDeployments)
 				deploymentGroup.GET("/:name", app.handlers.HandleGetDeployment)
 				deploymentGroup.GET("/:name/kubeconfig", app.handlers.HandleGetKubeconfig)
 				deploymentGroup.DELETE("/:name", app.handlers.HandleDeleteCluster)
-
-				// Node management routes
 				deploymentGroup.POST("/:name/nodes", app.handlers.HandleAddNode)
 				deploymentGroup.DELETE("/:name/nodes/:node_name", app.handlers.HandleRemoveNode)
 			}
 
-			// Notification routes
-			deployerGroup.GET("/notifications", app.handlers.GetNotificationsHandler)
-			deployerGroup.PUT("/notifications/:notification_id/read", app.handlers.MarkNotificationReadHandler)
-			deployerGroup.PUT("/notifications/read-all", app.handlers.MarkAllNotificationsReadHandler)
-			deployerGroup.GET("/notifications/unread-count", app.handlers.GetUnreadNotificationCountHandler)
-			deployerGroup.DELETE("/notifications/:notification_id", app.handlers.DeleteNotificationHandler)
+			notificationGroup := deployerGroup.Group("/notifications")
+			{
+				notificationGroup.GET("", app.handlers.GetAllNotificationsHandler)
+				notificationGroup.GET("/unread", app.handlers.GetUnreadNotificationsHandler)
+				notificationGroup.PUT("/read-all", app.handlers.MarkAllNotificationsReadHandler)
+				notificationGroup.PUT("", app.handlers.DeleteAllNotificationsHandler)
+				notificationGroup.PUT("/:notification_id/read", app.handlers.MarkNotificationReadHandler)
+				notificationGroup.PUT("/:notification_id/unread", app.handlers.MarkNotificationUnreadHandler)
+				notificationGroup.DELETE("/:notification_id", app.handlers.DeleteNotificationHandler)
+			}
 		}
-
 	}
 	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
@@ -330,10 +344,10 @@ func (app *App) Run() error {
 		Handler: app.router,
 	}
 
-	log.Info().Msgf("Starting server at %s:%s", app.config.Server.Host, app.config.Server.Port)
+	logger.GetLogger().Info().Msgf("Starting server at %s:%s", app.config.Server.Host, app.config.Server.Port)
 
 	if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error().Err(err).Msg("Failed to start server")
+		logger.GetLogger().Error().Err(err).Msg("Failed to start server")
 		return err
 	}
 
@@ -349,12 +363,8 @@ func (app *App) Shutdown(ctx context.Context) error {
 
 	if app.httpServer != nil {
 		if err := app.httpServer.Shutdown(ctx); err != nil {
-			log.Error().Err(err).Msg("Failed to shutdown HTTP server")
+			logger.GetLogger().Error().Err(err).Msg("Failed to shutdown HTTP server")
 		}
-	}
-
-	if app.workerManager != nil {
-		app.workerManager.Stop()
 	}
 
 	if app.sseManager != nil {
@@ -363,13 +373,13 @@ func (app *App) Shutdown(ctx context.Context) error {
 
 	if app.redis != nil {
 		if err := app.redis.Close(); err != nil {
-			log.Error().Err(err).Msg("Failed to close Redis connection")
+			logger.GetLogger().Error().Err(err).Msg("Failed to close Redis connection")
 		}
 	}
 
 	if app.db != nil {
 		if err := app.db.Close(); err != nil {
-			log.Error().Err(err).Msg("Failed to close database connection")
+			logger.GetLogger().Error().Err(err).Msg("Failed to close database connection")
 		}
 	}
 

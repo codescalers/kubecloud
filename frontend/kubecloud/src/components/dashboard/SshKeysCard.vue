@@ -81,6 +81,9 @@
               @click:append-inner="pasteFromClipboard"
               @keyup.enter="handleAddKey"
             />
+              <v-btn variant="outlined" color="primary" class="mb-4" @click="generateSshKey" :disabled="isGeneratingKey || !newKey.name">
+                <v-icon left size="18">mdi-key-plus</v-icon> Generate SSH Key
+              </v-btn>
           </v-card-text>
           <v-card-actions>
             <v-spacer />
@@ -98,12 +101,14 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { userService, type SshKey, type AddSshKeyRequest } from '../../utils/userService'
+import { generateSSHKey } from '../../utils/sshUtils'
 
 const sshKeys = ref<SshKey[]>([])
 const addDialog = ref(false)
 const newKey = ref<AddSshKeyRequest>({ name: '', public_key: '' })
 const nameField = ref()
 const lastCopiedId = ref<number | null>(null)
+const isGeneratingKey = ref(false)
 
 const isValidSshKey = (key: string): boolean =>
   /^(ssh-(rsa|ed25519|dss|ecdsa)|ecdsa-sha2-nistp\d+|sk-ecdsa-sha2-nistp\d+|sk-ssh-ed25519) [A-Za-z0-9+/=]+( [^@\s]+@[^@\s]+)?$/.test(key.trim())
@@ -116,8 +121,11 @@ const isDuplicateKey = computed(() => {
 const nameTouched = ref(false)
 const nameError = computed(() => {
   if (!nameTouched.value) return ''
-  if (!newKey.value.name) return 'Key name is required.'
-  if (sshKeys.value.some(k => k.name.trim().toLowerCase() === newKey.value.name.trim().toLowerCase())) {
+  const name = newKey.value.name.trim()
+  if (!name) return 'Key name is required.'
+  if (name.length < 3) return 'Key name must be at least 3 characters.'
+  if (name.length > 15) return 'Key name must be 15 characters or less.'
+  if (sshKeys.value.some(k => k.name.trim().toLowerCase() === name.toLowerCase())) {
     return 'Key name must be unique.'
   }
   return ''
@@ -159,6 +167,20 @@ async function handleDeleteKey(id: number) {
 async function pasteFromClipboard() {
   newKey.value.public_key = await navigator.clipboard.readText()
 }
+
+async function generateSshKey() {
+  isGeneratingKey.value = true
+  try {
+    const { publicKey, privateKey } = await generateSSHKey()
+    newKey.value.public_key = publicKey
+    const url = URL.createObjectURL(new Blob([privateKey], { type: 'application/x-pem-file' }))
+    Object.assign(document.createElement('a'), { href: url, download: 'ssh-rsa_private_key.pem' }).click()
+  } catch (error) {
+    console.error('Error generating SSH key:', error)
+  }
+  isGeneratingKey.value = false
+}
+
 
 
 function openAddDialog() {

@@ -20,6 +20,7 @@
           { title: 'ID', key: 'id', width: '80px' },
           { title: 'Name', key: 'username' },
           { title: 'Email', key: 'email' },
+          { title: 'Balance', key: 'balance' },
           { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
         ]"
         :items="users"
@@ -27,9 +28,11 @@
         :page="currentPage"
         @update:page="$emit('update:currentPage', $event)"
         class="admin-table"
-        hide-default-footer
         density="comfortable"
       >
+        <template #item.balance="{ item }">
+          ${{ item.balance.toFixed(2) }}
+        </template>
         <template #item.actions="{ item }">
           <div style="display: flex; gap: var(--space-4); align-items: center;">
             <v-btn size="small" variant="outlined" class="action-btn" :disabled="!item.verified" @click="$emit('creditUser', item)">
@@ -44,16 +47,6 @@
         </template>
       </v-data-table>
     </div>
-    <div class="pagination-container">
-      <v-pagination
-        v-model="currentPageLocal"
-        :length="totalPages"
-        color="primary"
-        circle
-        size="small"
-        @update:modelValue="$emit('update:currentPage', currentPageLocal)"
-      />
-    </div>
   </div>
 </template>
 
@@ -65,14 +58,11 @@ const props = defineProps({
   users: Array as () => User[],
   searchQuery: String,
   currentPage: Number,
-  pageSize: Number,
-  totalPages: Number
+  pageSize: Number
 })
 const emit = defineEmits(['update:searchQuery', 'update:currentPage', 'deleteUser', 'creditUser'])
 
 const searchQueryLocal = ref(props.searchQuery)
-const currentPageLocal = ref(props.currentPage)
 
 watch(() => props.searchQuery, (val) => { searchQueryLocal.value = val })
-watch(() => props.currentPage, (val) => { currentPageLocal.value = val })
 </script>

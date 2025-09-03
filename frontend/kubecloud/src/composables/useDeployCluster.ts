@@ -24,25 +24,9 @@ export function useDeployCluster() {
   const workers = ref<VM[]>([]);
   const availableSshKeys = ref<SshKey[]>([]);
 
-  function addMaster() {
-    if (masters.value.length < 3) {
-      masters.value.push({
-        name: `Master${masters.value.length + 1}`,
-        vcpu: 2,
-        ram: 4,
-        node: null,
-        rootfs: ROOTFS,
-        disk: 25,
-        gpu: false,
-        sshKeyIds: availableSshKeys.value.length ? [availableSshKeys.value[0].ID] : [],
-        publicIp: false,
-        planetary: false,
-      });
-    }
-  }
-  function addWorker() {
-    workers.value.push({
-      name: `Worker${workers.value.length + 1}`,
+  function createDefaultVM(namePrefix: string, count: number): VM {
+    return {
+      name: `${namePrefix}${count + 1}`,
       vcpu: 2,
       ram: 4,
       node: null,
@@ -52,7 +36,14 @@ export function useDeployCluster() {
       sshKeyIds: availableSshKeys.value.length ? [availableSshKeys.value[0].ID] : [],
       publicIp: false,
       planetary: false,
-    });
+    };
+  }
+
+  function addMaster() {
+    masters.value.push(createDefaultVM('Master', masters.value.length));
+  }
+  function addWorker() {
+    workers.value.push(createDefaultVM('Worker', workers.value.length));
   }
   function removeMaster(idx: number) {
     masters.value.splice(idx, 1);
@@ -65,4 +56,4 @@ export function useDeployCluster() {
     masters, workers, availableSshKeys,
     addMaster, addWorker, removeMaster, removeWorker,
   };
-} 
+}

@@ -97,6 +97,10 @@ function handleNavigate(section: string) {
   // Save to localStorage for persistence
   localStorage.setItem('dashboard-section', section)
 }
+function handleNavigateToFund() {
+  selected.value = 'add-funds'
+  localStorage.setItem('dashboard-section', 'add-funds')
+}
 </script>
 
 <template>
@@ -121,7 +125,7 @@ function handleNavigate(section: string) {
                 :balance="userStore.netBalance"
                 @navigate="handleNavigate"
               />
-              <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" />
+              <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" @navigateToFund="handleNavigateToFund" />
               <BillingCard v-if="selected === 'billing'" :billingHistory="billingHistory" />
               <PaymentCard v-if="selected === 'add-funds'" />
               <SshKeysCard v-if="selected === 'ssh'" :sshKeys="sshKeys" />

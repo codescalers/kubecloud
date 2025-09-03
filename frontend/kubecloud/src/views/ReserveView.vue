@@ -95,14 +95,14 @@
                     Available Nodes
                   </h2>
                   <div class="nodes-count">
-                    {{ filteredNodes.length }} of {{ total }} nodes
+                    {{ filteredNodes.length }}  of {{ nodes.length }} nodes
                   </div>
                 </div>
                 <v-btn
                   color="primary"
                   variant="outlined"
                   :disabled="loading"
-                  @click="fetchNodes"
+                  @click="fetchNodes(nodeFilters)"
                   prepend-icon="mdi-refresh"
                   class="refresh-btn"
                   style="min-width: 120px;"
@@ -121,7 +121,7 @@
                 <p class="loading-text">Loading available nodes...</p>
               </div>
               <template v-else>
-                <div v-if="paginatedNodes.filter(n => !reservedNodeIds.has(n.nodeId)).length === 0" class="no-results">
+                <div v-if="paginatedNodes.length === 0" class="no-results">
                   <v-icon size="64" color="primary" class="mb-4">mdi-magnify-close</v-icon>
                   <h3>No nodes match your filters</h3>
                   <p>Try adjusting your filter criteria to see more options.</p>
@@ -136,7 +136,7 @@
                 <div v-else>
                   <v-row dense align="stretch">
                     <v-col
-                      v-for="node in paginatedNodes.filter(n => !reservedNodeIds.has(n.nodeId))"
+                      v-for="node in paginatedNodes"
                       :key="node.nodeId"
                       cols="12" sm="6" md="4" lg="3"
                     >
@@ -152,14 +152,13 @@
                       />
                     </v-col>
                   </v-row>
-                  <div v-if="filteredNodes.length > pageSize" class="d-flex justify-center mt-6">
-                    <v-pagination
-                      v-model="currentPage"
-                      :length="totalPages"
-                      color="primary"
-                    />
-                  </div>
                 </div>
+                <v-pagination
+                  v-model="currentPage"
+                  :length="totalPages"
+                  color="primary"
+                  class="mt-6"
+                />
               </template>
             </v-card>
           </v-col>
@@ -172,7 +171,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNodes } from '../composables/useNodes'
+import { useNodes, type NodeFilters } from '../composables/useNodes'
 import { userService } from '../utils/userService'
 import { useUserStore } from '../stores/user'
 import { useNormalizedNodes } from '../composables/useNormalizedNodes'
@@ -199,9 +198,9 @@ const {
 
 const reservingNodeId = ref<number | null>(null)
 const reservedNodeIds = ref(new Set<number>())
-
+const nodeFilters = <NodeFilters>{rentable: true}
 onMounted(() => {
-  fetchNodes()
+  fetchNodes(nodeFilters)
   // Add scroll animation observer
   const observerOptions = {
     threshold: 0.1,
@@ -228,7 +227,7 @@ const reserveNode = async (nodeId: number) => {
   try {
     await userService.reserveNode(nodeId)
     reservedNodeIds.value.add(nodeId) // Optimistically remove from UI
-    fetchNodes()
+    fetchNodes(nodeFilters)
   } catch (err) {
     console.error(err)
     reservedNodeIds.value.delete(nodeId)
@@ -248,9 +247,10 @@ const goBack = () => {
 // Pagination logic
 const currentPage = ref(1)
 const pageSize = 8
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredNodes.value.length / pageSize)))
 const paginatedNodes = computed(() =>
-  filteredNodes.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize)
+  filteredNodes.value.slice((currentPage.value - 1) * pageSize, currentPage.value * pageSize).filter(n => !reservedNodeIds.value.has(n.nodeId))
 )
 
 function handleNodeAction(node: any, payload: { nodeId: number; action: string }) {

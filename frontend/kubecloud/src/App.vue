@@ -4,7 +4,7 @@
     <v-main class="app-main">
       <RouterView />
     </v-main>
-    
+
     <AppFooter v-if="!isAuthPage" />
     <NotificationToast />
   </v-app>
@@ -26,15 +26,17 @@ const notificationStore = useNotificationStore()
 const maintenanceStore = useMaintenanceStore()
 
 // Global error handling
-onErrorCaptured((error: Error) => {
+onErrorCaptured((error: Error & { silent?: boolean }) => {
   console.error('Global error caught:', error)
 
   // Show error as toast notification
-  notificationStore.error(
-    'Something went wrong',
-    error.message || 'An unexpected error occurred. Please try refreshing the page.',
-    { duration: 8000 }
-  )
+  if (!error.silent) {
+    notificationStore.error(
+      'Something went wrong',
+      error.message || 'An unexpected error occurred. Please try refreshing the page.',
+      { duration: 8000 }
+    )
+  }
 
   // Prevent error from propagating and breaking the app
   return false
@@ -53,7 +55,7 @@ onMounted(async () => {
     if (maintenanceStore.isMaintenanceMode) {
       return
     }
-    await userStore.initializeAuth()
+    userStore.initializeAuth()
     useDeploymentEvents()
   } catch (error) {
     console.error('Failed to initialize application:', error)
@@ -62,11 +64,13 @@ onMounted(async () => {
   // Global error handlers for unhandled errors
   window.addEventListener('error', (event) => {
     console.error('Unhandled error:', event.error)
-    notificationStore.error(
-      'Unexpected Error',
-      event.error?.message || 'An unexpected error occurred',
-      { duration: 8000 }
-    )
+    if (!event.error?.silent) {
+      notificationStore.error(
+        'Unexpected Error',
+        event.error?.message || 'An unexpected error occurred',
+        { duration: 8000 }
+      )
+    }
   })
 })
 

@@ -140,9 +140,10 @@ onMounted(() => {
 
 .doc-card {
   text-align: center;
-  height: 100%;
+  height: 340px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 
 .doc-card * {
@@ -191,7 +192,7 @@ onMounted(() => {
 
 .doc-link {
   margin-top: auto;
-  margin-top: 2rem;
+  align-self: center;
 }
 
 @media (max-width: 900px) {

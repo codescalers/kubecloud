@@ -1,8 +1,9 @@
 import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker } from './api'
+import { api, createWorkflowStatusChecker, type ApiError } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
+import type { NodeFilters } from '@/composables/useNodes'
 
 export interface ReserveNodeRequest {
   // Add any required fields if needed
@@ -132,8 +133,7 @@ export interface PendingRecord {
 }
 
 export class UserService {
-  // List all available nodes
-  async listNodes(filters?: any) {
+  async listNodes(filters?: NodeFilters) {
     const queryParams = new URLSearchParams()
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
@@ -143,7 +143,7 @@ export class UserService {
       })
     }
 
-    const endpoint = `/v1/nodes${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    const endpoint = `${filters?.rentable ? '/v1/user/nodes/rentable' : '/v1/user/nodes'}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     return api.get<NodesResponse>(endpoint, {
       requiresAuth: true,
       showNotifications: false // Don't show notifications for node listing
@@ -183,22 +183,22 @@ export class UserService {
 
   // List reserved nodes
   async listReservedNodes() {
-    return api.get('/v1/user/nodes', { requiresAuth: true })
+    return api.get('/v1/user/nodes/rented', { requiresAuth: true })
   }
 
   // Unreserve a node
   async unreserveNode(contractId: string) {
     const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(`/v1/user/nodes/unreserve/${contractId}`, { requiresAuth: true, showNotifications: true })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Node unreservation error',
-        'Failed to unreserve node',
-      )
-      throw new Error('Failed to unreserve node')
-    }
-    if (status === WorkflowStatus.StatusCompleted) {
+    // const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
+    // const status = await workflowChecker.status
+    // if (status === WorkflowStatus.StatusFailed) {
+    //   useNotificationStore().error(
+    //     'Node unreservation error',
+    //     'Failed to unreserve node',
+    //   )
+    //   throw new Error('Failed to unreserve node')
+    // }
+    // if (status === WorkflowStatus.StatusCompleted) {
       try {
         await this.trackNodeStatus(response.data.data.contract_id, "rentable")
         useNotificationStore().success(
@@ -211,7 +211,7 @@ export class UserService {
           'Failed to verify node status',
         )
       }
-    }
+    // }
   }
 
   // Charge balance
@@ -293,10 +293,12 @@ export class UserService {
     const { balance_usd, debt_usd, pending_balance_usd } = response.data.data
     return {balance: (balance_usd || 0) - (debt_usd || 0), pending_balance: pending_balance_usd || 0}
   }catch(e){
-    useNotificationStore().error(
-      'Error',
-      'Failed to fetch balance',
-    )
+    if (!(e as ApiError)?.silent) {
+      useNotificationStore().error(
+        'Error',
+        'Failed to fetch balance',
+      )
+    }
     return {balance: 0, pending_balance: 0}
   }
   }

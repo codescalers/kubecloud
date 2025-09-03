@@ -14,6 +14,8 @@ const (
 	WorkflowRemoveNode         = "remove-node"
 	WorkflowDeployVM           = "deploy-vm"
 	WorkflowDeleteVM           = "delete-vm"
+	WorkflowDeleteAllClusters        = "delete-all-clusters"
+	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"
@@ -36,6 +38,9 @@ const (
 	StepUpdateNetwork           = "update-network"
 	StepRemoveCluster           = "remove-cluster"
 	StepRemoveClusterFromDB     = "remove-cluster-from-db"
+	StepGatherAllContractIDs    = "gather-all-contract-ids"
+	StepBatchCancelContracts    = "batch-cancel-contracts"
+	StepDeleteAllUserClusters   = "delete-all-user-clusters"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
 	StepDeployVMNetwork         = "deploy-vm-network"

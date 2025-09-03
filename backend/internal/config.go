@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Configuration struct holds all configs for the app
 type Configuration struct {
 	Server                               Server             `json:"server" validate:"required,dive"`
 	Database                             DB                 `json:"database" validate:"required"`
@@ -37,6 +36,8 @@ type Configuration struct {
 	// KYC Verifier config
 	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`
 	KYCChallengeDomain string `json:"kyc_challenge_domain" validate:"required"`
+
+	Logger LoggerConfig `json:"logger"`
 }
 
 type SSHConfig struct {
@@ -96,6 +97,15 @@ type InvoiceCompanyData struct {
 	Name        string `json:"name" validate:"required"`
 	Address     string `json:"address" validate:"required"`
 	Governorate string `json:"governorate" validate:"required"`
+}
+
+// Configuration struct holds all configs for the app
+type LoggerConfig struct {
+	LogDir     string `json:"log_dir"`
+	MaxSize    int    `json:"max_size"` // in MB
+	MaxBackups int    `json:"max_backups"`
+	MaxAgeDays int    `json:"max_age_days"` // in days
+	Compress   bool   `json:"compress"`
 }
 
 // LoadConfig load configurations

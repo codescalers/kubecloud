@@ -290,69 +290,6 @@ func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
 }
 
 // CreateNotification creates a new notification
-func (s *GormDB) CreateNotification(notification *Notification) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.db.Create(notification).Error
-}
-
-// GetUserNotifications retrieves notifications for a user with pagination
-func (s *GormDB) GetUserNotifications(userID string, limit, offset int) ([]Notification, error) {
-	var notifications []Notification
-	err := s.db.Where("user_id = ?", userID).
-		Order("created_at DESC").
-		Limit(limit).
-		Offset(offset).
-		Find(&notifications).Error
-	return notifications, err
-}
-
-// MarkNotificationAsRead marks a specific notification as read
-func (s *GormDB) MarkNotificationAsRead(notificationID uint, userID string) error {
-	now := time.Now()
-	result := s.db.Model(&Notification{}).
-		Where("id = ? AND user_id = ?", notificationID, userID).
-		Updates(map[string]interface{}{
-			"status":  NotificationStatusRead,
-			"read_at": &now,
-		})
-
-	if result.Error != nil {
-		return result.Error
-	}
-
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("notification not found or access denied")
-	}
-
-	return nil
-}
-
-// MarkAllNotificationsAsRead marks all notifications as read for a user
-func (s *GormDB) MarkAllNotificationsAsRead(userID string) error {
-	now := time.Now()
-	return s.db.Model(&Notification{}).
-		Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
-		Updates(map[string]interface{}{
-			"status":  NotificationStatusRead,
-			"read_at": &now,
-		}).Error
-}
-
-// GetUnreadNotificationCount returns the count of unread notifications for a user
-func (s *GormDB) GetUnreadNotificationCount(userID string) (int64, error) {
-	var count int64
-	err := s.db.Model(&Notification{}).
-		Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
-		Count(&count).Error
-	return count, err
-}
-
-// DeleteNotification deletes a notification for a user
-func (s *GormDB) DeleteNotification(notificationID uint, userID string) error {
-	return s.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{}).Error
-}
-
 // CreateSSHKey creates a new SSH key for a user
 func (s *GormDB) CreateSSHKey(sshKey *SSHKey) error {
 	sshKey.CreatedAt = time.Now()
@@ -424,6 +361,11 @@ func (s *GormDB) DeleteCluster(userID string, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
 }
 
+// DeleteAllUserClusters deletes all clusters for a specific user
+func (s *GormDB) DeleteAllUserClusters(userID string) error {
+	return s.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
+}
+
 func (s *GormDB) CreatePendingRecord(record *PendingRecord) error {
 	record.CreatedAt = time.Now()
 	return s.db.Create(record).Error
@@ -489,4 +431,16 @@ func (s *GormDB) ListUserVMS(userID string) ([]VM, error) {
 
 func (s *GormDB) DeleteVM(userID string, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
+// CountAllUsers returns the total number of users in the system
+func (s *GormDB) CountAllUsers() (int64, error) {
+	var count int64
+	err := s.db.Model(&User{}).Count(&count).Error
+	return count, err
+}
+
+// CountAllClusters returns the total number of clusters in the system
+func (s *GormDB) CountAllClusters() (int64, error) {
+	var count int64
+	err := s.db.Model(&Cluster{}).Count(&count).Error
+	return count, err
 }

@@ -97,31 +97,17 @@ func (h *Handler) checkGridProxy(ctx context.Context) HealthStatus {
 	return httpHealthCheck(ctx, url)
 }
 
-func tfchainHealthURL(tfchainURL string) (string, error) {
-	if tfchainURL == "" {
-		return "", fmt.Errorf("tfchain_url is empty")
-	}
-	url := strings.Replace(tfchainURL, "wss://", "https://", 1)
-	url = strings.Replace(url, "/ws", "/health", 1)
-	return url, nil
-}
-
-type tfchainHealth struct {
-	Peers           int  `json:"peers"`
-	IsSyncing       bool `json:"isSyncing"`
-	ShouldHavePeers bool `json:"shouldHavePeers"`
-}
-
 func (h *Handler) checkTFChainHealth(ctx context.Context) HealthStatus {
-	url, err := tfchainHealthURL(h.config.TFChainURL)
-	if err != nil {
-		return healthStatusFromError(err)
-	}
+	url := strings.Replace(h.config.TFChainURL, "wss://", "https://", 1)
+	url = strings.TrimSuffix(url, "/ws")
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	payload := `{"id":1,"jsonrpc":"2.0","method":"system_health","params":[]}`
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(payload))
 	if err != nil {
 		return healthStatusFromError(err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := healthHTTPClient.Do(req)
 	if err != nil {
@@ -133,14 +119,18 @@ func (h *Handler) checkTFChainHealth(ctx context.Context) HealthStatus {
 		return healthStatusFromError(fmt.Errorf("unexpected status: %s", resp.Status))
 	}
 
-	var health tfchainHealth
-	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
+	var rpcResp struct {
+		Result struct {
+			Peers     int  `json:"peers"`
+			IsSyncing bool `json:"isSyncing"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&rpcResp); err != nil {
 		return healthStatusFromError(err)
 	}
 
-	if health.IsSyncing || !health.ShouldHavePeers || health.Peers == 0 {
-		return healthStatusFromError(fmt.Errorf("syncing: %v, shouldHavePeers: %v, peers: %d",
-			health.IsSyncing, health.ShouldHavePeers, health.Peers))
+	if rpcResp.Result.IsSyncing || rpcResp.Result.Peers == 0 {
+		return healthStatusFromError(fmt.Errorf("syncing: %v, peers: %d", rpcResp.Result.IsSyncing, rpcResp.Result.Peers))
 	}
 
 	return healthStatusFromError(nil)
@@ -175,7 +165,7 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 		"database":           h.checkDatabase,
 		"redis":              h.checkRedis,
 		"gridproxy":          h.checkGridProxy,
-		"tfchain_health":     h.checkTFChainHealth,
+		"tfchain":            h.checkTFChainHealth,
 		"activation_service": h.checkActivationService,
 		"graphql":            h.checkGraphQL,
 		"firesquid":          h.checkFiresquid,

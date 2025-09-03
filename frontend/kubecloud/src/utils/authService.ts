@@ -1,6 +1,4 @@
-import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker } from './api'
-import { useNotificationStore } from '@/stores/notifications'
+import { api } from './api'
 
 // Types for auth requests and responses
 export interface RegisterRequest {
@@ -23,6 +21,8 @@ export interface VerifyCodeRequest {
 export interface VerifyCodeResponse {
   email: string
   workflow_id: string
+  access_token: string
+  refresh_token: string
 }
 
 export interface LoginRequest {
@@ -90,7 +90,7 @@ export interface ApiResponse<T> {
 // Auth service class
 export class AuthService {
   private static instance: AuthService
-
+  private tempRegistrationData: RegisterRequest | null = null
   private constructor() {}
 
   static getInstance(): AuthService {
@@ -107,46 +107,37 @@ export class AuthService {
       loadingMessage: 'Creating your account...',
       errorMessage: 'Registration failed',
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 2000, interval: 1000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Registration Success',
-        'User registered successfully',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Registration Failed',
-        'Failed to register user',
-      )
-      throw new Error('Failed to register user')
-    }
+
+    this.storeTempRegistrationData(data)
 
   }
 
   // Verify registration code
-  async verifyCode(data: VerifyCodeRequest): Promise<void> {
+  async verifyCode(data: VerifyCodeRequest): Promise<VerifyCodeResponse> {
     const response = await api.post<ApiResponse<VerifyCodeResponse>>('/v1/user/register/verify', data, {
       showNotifications: true,
       errorMessage: 'Verification failed',
       timeout: 60000
     })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 5000, interval: 3000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Verification Success',
-        'User verified successfully',
-      )
+
+    return response.data.data
+  }
+
+  // Resend verification code using stored registration data
+  async resendVerificationCode(email: string): Promise<void> {
+    const registrationData = this.getTempRegistrationData()
+    if (!registrationData || registrationData.email !== email) {
+      throw new Error('No valid registration data found for this email')
     }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Verification Failed',
-        'Failed to verify user',
-      )
-      throw new Error('Failed to verify user')
-    }
+
+    // Use the original register endpoint with the stored user data
+    await api.post<ApiResponse<RegisterResponse>>('/v1/user/register', registrationData, {
+      showNotifications: true,
+      loadingMessage: 'Resending verification code...',
+      errorMessage: 'Failed to resend verification code',
+      successMessage: 'Verification code sent to your email!',
+      timeout: 60000
+    })
   }
 
   // Login user
@@ -273,6 +264,38 @@ export class AuthService {
     localStorage.removeItem('refreshToken')
   }
 
+  // Store temporary registration data for resend functionality
+  private storeTempRegistrationData(data: RegisterRequest): void {
+    this.tempRegistrationData = {
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      confirm_password: data.confirm_password,
+    }
+  }
+
+  // Get temporary registration data
+  private getTempRegistrationData(): RegisterRequest | null {
+    return this.tempRegistrationData
+  }
+
+  getTempRegistrationEmail(): string | null {
+    return this.tempRegistrationData?.email || null
+  }
+
+  // Clear temporary registration data
+  private clearTempRegistrationData(): void {
+    this.tempRegistrationData = null
+  }
+
+  // Check if temporary registration data exists and is valid
+  hasTempRegistrationData(email?: string): boolean {
+    const data = this.getTempRegistrationData()
+    if (!data) return false
+    if (email && data.email !== email) return false
+    return true
+  }
+
   // Clear all auth-related localStorage items
   clearAllAuthData(): void {
     localStorage.removeItem('token')
@@ -280,6 +303,7 @@ export class AuthService {
     localStorage.removeItem('password_reset_session')
     localStorage.removeItem('user')
     this.clearTempTokens()
+    this.clearTempRegistrationData()
   }
 
   // Check if user is authenticated

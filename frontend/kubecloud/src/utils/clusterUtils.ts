@@ -1,4 +1,5 @@
 import { VALIDATION_RULES, validateField } from './validation';
+import { useClusterStore } from '../stores/clusters';
 
 /**
  * Generate a random cluster name using adjectives and nouns
@@ -14,12 +15,12 @@ export function generateClusterName(): string {
 
   const randomNoun = nouns[Math.floor(Math.random() * nouns.length)]
   const randomNumber = Math.floor(Math.random() * 999) + 1
-  
+
   return `${randomNoun}${randomNumber}`
 }
 
 /**
- * Validate cluster name according to backend requirements
+ * Validate cluster name according to backend requirements and check uniqueness
  * @param name - Cluster name to validate
  * @returns Object with isValid boolean and error message
  */
@@ -29,10 +30,27 @@ export function validateClusterName(name: string): { isValid: boolean; error: st
     rules: VALIDATION_RULES.CLUSTER_NAME,
     fieldName: 'Cluster name'
   });
-  
+
+  if (!result.isValid) {
+    return {
+      isValid: false,
+      error: result.errors.length > 0 ? result.errors[0] : ''
+    };
+  }
+
+  // Check for uniqueness in existing clusters
+  const clusterStore = useClusterStore();
+  const existingNames = clusterStore.clusters.map(c => c.cluster.name);
+  if (existingNames.includes(name)) {
+    return {
+      isValid: false,
+      error: 'Cluster name already exists'
+    };
+  }
+
   return {
-    isValid: result.isValid,
-    error: result.errors.length > 0 ? result.errors[0] : ''
+    isValid: true,
+    error: ''
   };
 }
 
@@ -58,4 +76,4 @@ export function getNodeInfo(nodeId: number | null, availableNodes: any[]): strin
 export function getSshKeyName(keyId: number, availableSshKeys: any[]): string {
   const key = availableSshKeys.find(k => k.ID === keyId)
   return key ? key.name : 'Unknown'
-} 
+}

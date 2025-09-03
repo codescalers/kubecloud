@@ -123,7 +123,7 @@
       <v-card class="pa-3">
         <v-card-title>Confirm Unreservation</v-card-title>
         <v-card-text>
-          Are you sure you want to unreserve this node? This action cannot be undone if there is an active cluster on the node.
+          Are you sure you want to unreserve this node?
         </v-card-text>
         <v-card-actions>
           <v-spacer />

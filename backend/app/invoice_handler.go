@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 // @Summary Get all invoices
@@ -28,7 +28,7 @@ import (
 func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 	invoices, err := h.db.ListInvoices()
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -54,7 +54,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 
 	invoices, err := h.db.ListUserInvoices(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -65,6 +65,9 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 }
 
 func (h *Handler) MonthlyInvoicesHandler() {
+	var lastProcessedMonth time.Month
+	var lastProcessedYear int
+
 	for {
 		now := time.Now()
 		monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
@@ -73,20 +76,29 @@ func (h *Handler) MonthlyInvoicesHandler() {
 			time.Sleep(monthLastDay.Sub(now))
 		}
 
+		// Check if invoices for the current month have already been created
+		if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
+			// Sleep until the first day of the next month to avoid running multiple times on the last day
+			nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
+			sleepDuration := nextMonth.Sub(now)
+			time.Sleep(sleepDuration)
+			continue
+		}
+
 		users, err := h.db.ListAllUsers()
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 		}
 		for _, user := range users {
-			if err = h.createUserInvoice(user, monthLastDay); err != nil {
-				log.Error().Err(err).Send()
+			if err = h.createUserInvoice(user); err != nil {
+				logger.GetLogger().Error().Err(err).Send()
 			}
 		}
 
-		// Sleep until the first day of the next month to avoid running multiple times on the last day
-		nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
-		sleepDuration := nextMonth.Sub(now)
-		time.Sleep(sleepDuration)
+		// Update the last processed month and year
+		lastProcessedMonth = now.Month()
+		lastProcessedYear = now.Year()
+
 	}
 }
 
@@ -113,14 +125,14 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid invoice ID", err.Error())
 		return
 	}
 
 	invoice, err := h.db.GetInvoice(id)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
 		return
 	}
@@ -129,21 +141,21 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	if len(invoice.FileData) == 0 {
 		user, err := h.db.GetUserByID(userID)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
 
 		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
 
 		invoice.FileData = pdfContent
 		if err := h.db.UpdateInvoicePDF(id, invoice.FileData); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
@@ -160,7 +172,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 }
 
-func (h *Handler) createUserInvoice(user models.User, monthLastDay time.Time) error {
+func (h *Handler) createUserInvoice(user models.User) error {
 	records, err := h.db.ListUserNodes(user.ID)
 	if err != nil {
 		return err
