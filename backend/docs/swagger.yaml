@@ -10,6 +10,11 @@ definitions:
       status:
         type: integer
     type: object
+  app.AccountIDResponse:
+    properties:
+      account_id:
+        type: string
+    type: object
   app.ChangePasswordInput:
     properties:
       confirm_password:
@@ -170,6 +175,15 @@ definitions:
       kubeconfig:
         type: string
     type: object
+  app.ListNodesWithDiscountResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/app.NodesWithDiscount'
+        type: array
+      total:
+        type: integer
+    type: object
   app.LoginInput:
     properties:
       email:
@@ -231,6 +245,12 @@ definitions:
     - node_id
     - root_size
     - type
+    type: object
+  app.NodesWithDiscount:
+    properties:
+      discount_price:
+        type: number
+      node: {}
     type: object
   app.PendingRecordsResponse:
     properties:
@@ -352,6 +372,17 @@ definitions:
       successful_emails:
         type: integer
       total_users:
+        type: integer
+    type: object
+  app.Stats:
+    properties:
+      countries:
+        type: integer
+      total_clusters:
+        type: integer
+      total_users:
+        type: integer
+      up_nodes:
         type: integer
     type: object
   app.UnreserveNodeResponse:
@@ -853,6 +884,28 @@ paths:
       summary: List pending records
       tags:
       - admin
+  /stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves comprehensive system statistics.
+      operationId: get-stats
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: System statistics retrieved successfully
+          schema:
+            $ref: '#/definitions/app.Stats'
+        "500":
+          description: Internal Server Error - Failed to retrieve statistics
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Get system statistics
+      tags:
+      - admin
   /system/maintenance/status:
     get:
       consumes:
@@ -903,6 +956,51 @@ paths:
       summary: Set maintenance mode
       tags:
       - admin
+  /twins/{twin_id}/account:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the account ID associated with a specific twin ID
+      parameters:
+      - description: Twin ID
+        in: path
+        name: twin_id
+        required: true
+        type: integer
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Other optional filter params
+        in: query
+        name: filterParam
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account ID is retrieved successfully
+          schema:
+            $ref: '#/definitions/app.AccountIDResponse'
+        "400":
+          description: Bad Request or Invalid params
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Twin ID not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Get account ID by twin ID
+      tags:
+      - twins
   /user:
     get:
       description: Retrieves all data of the user
@@ -1179,8 +1277,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Retrieves a list of nodes from the grid proxy based on the provided
-        filters.
+      description: List nodes from proxy [rented nodes first + randomized shared nodes]
       operationId: list-nodes
       parameters:
       - description: 'Filter by healthy nodes (default: true)'
@@ -1255,6 +1352,32 @@ paths:
       summary: Reserve node
       tags:
       - nodes
+  /user/nodes/rentable:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of rentable nodes from the grid proxy. These are
+        healthy nodes that are available for rent.
+      operationId: list-rentable-nodes
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Rentable nodes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesWithDiscountResponse'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: List rentable nodes
+      tags:
+      - nodes
   /user/nodes/rented:
     get:
       consumes:
@@ -1267,9 +1390,12 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/app.APIResponse'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesWithDiscountResponse'
+              type: object
         "500":
           description: Internal Server Error
           schema:
