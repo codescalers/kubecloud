@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"kubecloud/internal/logger"
+
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
-	"kubecloud/internal/logger"
 )
 
 func (c *Cluster) GetLeaderNode() (Node, error) {
@@ -260,7 +261,7 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 }
 
 func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
-	log.Debug().
+	logger.GetLogger().Debug().
 		Str("vm_name", vm.Node.Name).
 		Str("network_name", vm.Network.Name).
 		Msg("Deploying network for VM")
@@ -277,7 +278,7 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 
 	vm.Network = net
 
-	log.Debug().
+	logger.GetLogger().Debug().
 		Str("vm_name", vm.Node.Name).
 		Str("network_name", vm.Network.Name).
 		Msg("Successfully deployed network for VM")
@@ -286,7 +287,7 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 }
 
 func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error {
-	log.Debug().Msgf("Deploying VM %s", vm.Node.Name)
+	logger.GetLogger().Info().Str("Deploying VM %s", vm.Node.Name)
 
 	if err := vm.PrepareVM(); err != nil {
 		return fmt.Errorf("failed to prepare VM: %v", err)
@@ -301,9 +302,9 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error 
 		return fmt.Errorf("failed to create VM for node: %v", err)
 	}
 
-	log.Debug().Str("vm_name", vm.Node.Name).Msg("Starting deployment to grid")
+	logger.GetLogger().Debug().Str("vm_name", vm.Node.Name).Msg("Starting deployment to grid")
 	if err = c.GridClient.DeploymentDeployer.Deploy(ctx, &depl); err != nil {
-		log.Error().Err(err).Str("vm_name", vm.Node.Name).Msg("Failed to deploy node to grid")
+		logger.GetLogger().Error().Err(err).Str("vm_name", vm.Node.Name).Msg("Failed to deploy node to grid")
 		return fmt.Errorf("failed to deploy vm %s: %v", vm.Node.Name, err)
 	}
 
@@ -316,7 +317,7 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error 
 		return fmt.Errorf("failed to load VM state from deployment: %v", err)
 	}
 
-	log.Debug().Str("vm_name", vm.Node.Name).Msg("VM deployment successful")
+	logger.GetLogger().Debug().Str("vm_name", vm.Node.Name).Msg("VM deployment successful")
 	return nil
 }
 
@@ -324,7 +325,6 @@ func (c *Client) RemoveVM(ctx context.Context, projectName string) error {
 	if err := c.GridClient.CancelByProjectName(projectName); err != nil {
 		return fmt.Errorf("failed to cancel deployment contracts by project name: %v", err)
 	}
-
 	return nil
 }
 

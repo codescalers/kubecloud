@@ -8,7 +8,6 @@
     },
     "basePath": "/api/v1",
     "paths": {
-        "/deployments/vms": {
         "/deployments": {
             "get": {
                 "security": [
@@ -16,23 +15,11 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all virtual machines for the authenticated user",
-                "consumes": [
-                    "application/json"
-                ],
                 "description": "Retrieves a list of all deployments (clusters) for the authenticated user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "vms"
-                ],
-                "summary": "List VMs",
-                "responses": {
-                    "200": {
-                        "description": "Vms are listed successfully",
-                        "schema": {
-                            "$ref": "#/definitions/app.ListVMsResponse"
                     "deployments"
                 ],
                 "summary": "List deployments",
@@ -63,8 +50,137 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates and deploy a virtual machine",
                 "description": "Creates and deploys a new Kubernetes cluster",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployments"
+                ],
+                "summary": "Deploy cluster",
+                "parameters": [
+                    {
+                        "description": "Cluster configuration",
+                        "name": "cluster",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.ClusterInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Deployment workflow started successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes all deployments and their resources for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployments"
+                ],
+                "summary": "Delete all deployments",
+                "responses": {
+                    "200": {
+                        "description": "Delete all deployments workflow started successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deployments/vms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all virtual machines for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vms"
+                ],
+                "summary": "List VMs",
+                "responses": {
+                    "200": {
+                        "description": "Vms are listed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.ListVMsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates and deploy a virtual machine",
                 "consumes": [
                     "application/json"
                 ],
@@ -83,17 +199,6 @@
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/app.DeployVMInput"
-                    "deployments"
-                ],
-                "summary": "Deploy cluster",
-                "parameters": [
-                    {
-                        "description": "Cluster configuration",
-                        "name": "cluster",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/app.ClusterInput"
                         }
                     }
                 ],
@@ -106,13 +211,6 @@
                     },
                     "400": {
                         "description": "Invalid request",
-                        "description": "Deployment workflow started successfully",
-                        "schema": {
-                            "$ref": "#/definitions/app.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -202,7 +300,6 @@
                 "consumes": [
                     "application/json"
                 ],
-                "description": "Deletes all deployments and their resources for the authenticated user",
                 "produces": [
                     "application/json"
                 ],
@@ -230,14 +327,6 @@
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
-                    "deployments"
-                ],
-                "summary": "Delete all deployments",
-                "responses": {
-                    "200": {
-                        "description": "Delete all deployments workflow started successfully",
-                        "schema": {
-                            "$ref": "#/definitions/app.Response"
                         }
                     },
                     "401": {
@@ -630,6 +719,41 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Retrieves comprehensive system statistics.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get system statistics",
+                "operationId": "get-stats",
+                "responses": {
+                    "200": {
+                        "description": "System statistics retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Stats"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve statistics",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1136,7 +1260,7 @@
                         "UserMiddleware": []
                     }
                 ],
-                "description": "Retrieves a list of nodes from the grid proxy based on the provided filters.",
+                "description": "List nodes from proxy [rented nodes first + randomized shared nodes]",
                 "consumes": [
                     "application/json"
                 ],
@@ -1196,6 +1320,48 @@
                 }
             }
         },
+        "/user/nodes/rentable": {
+            "get": {
+                "description": "Retrieves a list of rentable nodes from the grid proxy. These are healthy nodes that are available for rent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List rentable nodes",
+                "operationId": "list-rentable-nodes",
+                "responses": {
+                    "200": {
+                        "description": "Rentable nodes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/nodes/rented": {
             "get": {
                 "security": [
@@ -1219,10 +1385,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/app.APIResponse"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -2279,6 +2454,9 @@
                 "workflow_id": {
                     "type": "string",
                     "example": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
         "app.DeploymentListResponse": {
             "type": "object",
             "properties": {
@@ -2405,6 +2583,28 @@
                 }
             }
         },
+        "app.KubeconfigResponse": {
+            "type": "object",
+            "properties": {
+                "kubeconfig": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.ListNodesWithDiscountResponse": {
+            "type": "object",
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.NodesWithDiscount"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.ListVMResponse": {
             "type": "object"
         },
@@ -2419,11 +2619,6 @@
                     "items": {
                         "$ref": "#/definitions/app.VMItem"
                     }
-        "app.KubeconfigResponse": {
-            "type": "object",
-            "properties": {
-                "kubeconfig": {
-                    "type": "string"
                 }
             }
         },
@@ -2456,21 +2651,6 @@
             "type": "object",
             "required": [
                 "cpu",
-                "disk_size",
-                "memory",
-                "name",
-                "node_id",
-                "root_size"
-            ],
-            "properties": {
-                "cpu": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "disk_size": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 10240
                 "memory",
                 "name",
                 "node_id",
@@ -2496,18 +2676,6 @@
                     }
                 },
                 "flist": {
-                    "description": "Optional fields",
-                    "type": "string"
-                },
-                "memory": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 2048
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 20,
-                    "minLength": 3
                     "type": "string"
                 },
                 "gpu_ids": {
@@ -2528,12 +2696,6 @@
                     "type": "integer"
                 },
                 "root_size": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 5120
-                },
-                "type": {
-                    "type": "string"
                     "description": "Storage in MB",
                     "type": "integer"
                 },
@@ -2545,6 +2707,15 @@
                         "leader"
                     ]
                 }
+            }
+        },
+        "app.NodesWithDiscount": {
+            "type": "object",
+            "properties": {
+                "discount_price": {
+                    "type": "number"
+                },
+                "node": {}
             }
         },
         "app.PendingRecordsResponse": {
@@ -2731,6 +2902,23 @@
                 }
             }
         },
+        "app.Stats": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "integer"
+                },
+                "total_clusters": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
+                },
+                "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.UnreserveNodeResponse": {
             "type": "object",
             "properties": {
@@ -2759,10 +2947,6 @@
                 }
             }
         },
-        "app.VMItem": {
-            "type": "object",
-            "properties": {
-                "created_at": {
         "app.UserResponse": {
             "type": "object",
             "required": [
@@ -2802,7 +2986,6 @@
                 "id": {
                     "type": "integer"
                 },
-                "project_name": {
                 "password": {
                     "type": "array",
                     "items": {
@@ -2826,6 +3009,20 @@
                 },
                 "verified": {
                     "type": "boolean"
+                }
+            }
+        },
+        "app.VMItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_name": {
+                    "type": "string"
                 }
             }
         },

@@ -431,6 +431,8 @@ func (s *GormDB) ListUserVMS(userID string) ([]VM, error) {
 
 func (s *GormDB) DeleteVM(userID string, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
+}
+
 // CountAllUsers returns the total number of users in the system
 func (s *GormDB) CountAllUsers() (int64, error) {
 	var count int64

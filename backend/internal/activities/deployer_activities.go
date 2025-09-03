@@ -622,7 +622,6 @@ func DeleteVMFromDBStep(db models.DB) ewf.StepFn {
 	}
 }
 
-
 func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int, sseManager *internal.SSEManager) {
 	steps := []ewf.Step{
 		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},

@@ -142,6 +142,221 @@ const docTemplate = `{
                 }
             }
         },
+        "/deployments/vms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all virtual machines for the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vms"
+                ],
+                "summary": "List VMs",
+                "responses": {
+                    "200": {
+                        "description": "Vms are listed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.ListVMsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates and deploy a virtual machine",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vms"
+                ],
+                "summary": "Deploy a VM",
+                "parameters": [
+                    {
+                        "description": "VM configuration",
+                        "name": "vm",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.DeployVMInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "WorkflowID and Status",
+                        "schema": {
+                            "$ref": "#/definitions/app.DeployVMResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deployments/vms/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get specific VM for authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vms"
+                ],
+                "summary": "List VM",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VM ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.ListVMResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "VM not found",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a VM for authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vms"
+                ],
+                "summary": "Delete VM",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "VM ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deletion workflow started",
+                        "schema": {
+                            "$ref": "#/definitions/app.DeleteVMResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "VM not found",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/deployments/{name}": {
             "get": {
                 "security": [
@@ -511,6 +726,41 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/stats": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Retrieves comprehensive system statistics.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get system statistics",
+                "operationId": "get-stats",
+                "responses": {
+                    "200": {
+                        "description": "System statistics retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Stats"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve statistics",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1017,7 +1267,7 @@ const docTemplate = `{
                         "UserMiddleware": []
                     }
                 ],
-                "description": "Retrieves a list of nodes from the grid proxy based on the provided filters.",
+                "description": "List nodes from proxy [rented nodes first + randomized shared nodes]",
                 "consumes": [
                     "application/json"
                 ],
@@ -1077,6 +1327,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/nodes/rentable": {
+            "get": {
+                "description": "Retrieves a list of rentable nodes from the grid proxy. These are healthy nodes that are available for rent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List rentable nodes",
+                "operationId": "list-rentable-nodes",
+                "responses": {
+                    "200": {
+                        "description": "Rentable nodes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/nodes/rented": {
             "get": {
                 "security": [
@@ -1100,10 +1392,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/app.APIResponse"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -2160,6 +2461,9 @@ const docTemplate = `{
                 "workflow_id": {
                     "type": "string",
                     "example": "123e4567-e89b-12d3-a456-426614174000"
+                }
+            }
+        },
         "app.DeploymentListResponse": {
             "type": "object",
             "properties": {
@@ -2286,6 +2590,28 @@ const docTemplate = `{
                 }
             }
         },
+        "app.KubeconfigResponse": {
+            "type": "object",
+            "properties": {
+                "kubeconfig": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.ListNodesWithDiscountResponse": {
+            "type": "object",
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.NodesWithDiscount"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.ListVMResponse": {
             "type": "object"
         },
@@ -2300,11 +2626,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/app.VMItem"
                     }
-        "app.KubeconfigResponse": {
-            "type": "object",
-            "properties": {
-                "kubeconfig": {
-                    "type": "string"
                 }
             }
         },
@@ -2337,21 +2658,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "cpu",
-                "disk_size",
-                "memory",
-                "name",
-                "node_id",
-                "root_size"
-            ],
-            "properties": {
-                "cpu": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "disk_size": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 10240
                 "memory",
                 "name",
                 "node_id",
@@ -2377,18 +2683,6 @@ const docTemplate = `{
                     }
                 },
                 "flist": {
-                    "description": "Optional fields",
-                    "type": "string"
-                },
-                "memory": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 2048
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 20,
-                    "minLength": 3
                     "type": "string"
                 },
                 "gpu_ids": {
@@ -2409,12 +2703,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "root_size": {
-                    "description": "MB",
-                    "type": "integer",
-                    "minimum": 5120
-                },
-                "type": {
-                    "type": "string"
                     "description": "Storage in MB",
                     "type": "integer"
                 },
@@ -2426,6 +2714,15 @@ const docTemplate = `{
                         "leader"
                     ]
                 }
+            }
+        },
+        "app.NodesWithDiscount": {
+            "type": "object",
+            "properties": {
+                "discount_price": {
+                    "type": "number"
+                },
+                "node": {}
             }
         },
         "app.PendingRecordsResponse": {
@@ -2612,6 +2909,23 @@ const docTemplate = `{
                 }
             }
         },
+        "app.Stats": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "integer"
+                },
+                "total_clusters": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
+                },
+                "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.UnreserveNodeResponse": {
             "type": "object",
             "properties": {
@@ -2640,10 +2954,6 @@ const docTemplate = `{
                 }
             }
         },
-        "app.VMItem": {
-            "type": "object",
-            "properties": {
-                "created_at": {
         "app.UserResponse": {
             "type": "object",
             "required": [
@@ -2683,7 +2993,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "project_name": {
                 "password": {
                     "type": "array",
                     "items": {
@@ -2707,6 +3016,20 @@ const docTemplate = `{
                 },
                 "verified": {
                     "type": "boolean"
+                }
+            }
+        },
+        "app.VMItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_name": {
+                    "type": "string"
                 }
             }
         },
