@@ -78,8 +78,5 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	}
 
 	err := n.mailService.SendMail(n.defaultSender, receiver[0], subject, buf.String())
-	if err != nil {
-		return fmt.Errorf("failed to send notification: %w", err)
-	}
 	return err
 }

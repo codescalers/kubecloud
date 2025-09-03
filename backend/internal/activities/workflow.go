@@ -118,5 +118,9 @@ func RegisterEWFWorkflows(
 	registerDeploymentActivities(engine, metrics, db, notificationService)
 
 	notificationTemplate := newKubecloudWorkflowTemplate()
+	notificationTemplate.Steps = []ewf.Step{
+		{Name: StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+	}
 	engine.RegisterTemplate(WorkflowSendNotification, &notificationTemplate)
 }
