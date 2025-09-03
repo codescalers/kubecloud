@@ -31,7 +31,7 @@ type ListNodesResponse struct {
 }
 
 type NodesWithDiscount struct {
-	Node          interface{}
+	proxyTypes.Node
 	DiscountPrice float64 `json:"discount_price"`
 }
 
@@ -529,7 +529,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 		return
 	}
 
-	twinID64, err := strconv.ParseUint(twinIDParam, 10, 32)
+	twinID64, err := strconv.ParseUint(twinIDParam, 10, 64)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
