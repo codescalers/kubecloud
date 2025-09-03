@@ -150,6 +150,9 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 	notificationService.RegisterNotifier(sseNotifier)
 	notificationService.RegisterNotifier(emailNotifier)
+	if err := notificationService.ValidateConfigsChannelsAgainstRegistered(); err != nil {
+		return nil, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
+	}
 
 	// Create an app-level context for coordinating shutdown
 	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)

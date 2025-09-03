@@ -68,11 +68,11 @@ func (s *NotificationService) loadTemplatesFromConfigFile(notificationConfig int
 				Severity: models.NotificationSeverity(ruleConfig.Severity),
 			}
 		}
-
-		s.registerTemplate(notificationType, NotificationTemplate{
+		notificationTemplate := NotificationTemplate{
 			Default:  defaultRule,
 			ByStatus: byStatusRules,
-		})
+		}
+		s.registerTemplate(notificationType, notificationTemplate)
 	}
 
 	return nil
@@ -100,6 +100,7 @@ func (s *NotificationService) Send(ctx context.Context, notification *models.Not
 	if err != nil {
 		return fmt.Errorf("failed to create workflow: %w", err)
 	}
+
 	workflow.State["notification"] = notification
 	s.engine.RunAsync(ctx, workflow)
 	return nil
@@ -137,4 +138,29 @@ func (s *NotificationService) applyTemplateFallbacks(notification *models.Notifi
 	if notification.Severity == "" {
 		notification.Severity = models.NotificationSeverityInfo
 	}
+}
+
+func (s *NotificationService) ValidateConfigsChannelsAgainstRegistered() error {
+	if len(s.notifiers) == 0 {
+		return fmt.Errorf("no notifiers registered")
+	}
+
+	for tName, tpl := range s.templates {
+		for _, ch := range tpl.Default.Channels {
+			if _, ok := s.notifiers[ch]; !ok {
+				return fmt.Errorf("channel %s in template %s is not registered", ch, tName)
+			}
+		}
+		// Validate by_status rule channels
+		if tpl.ByStatus != nil {
+			for status, rule := range tpl.ByStatus {
+				for _, ch := range rule.Channels {
+					if _, ok := s.notifiers[ch]; !ok {
+						return fmt.Errorf("channel %s in template %s (status %v) is not registered", ch, tName, status)
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
