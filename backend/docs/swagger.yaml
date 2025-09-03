@@ -10,17 +10,6 @@ definitions:
       status:
         type: integer
     type: object
-  app.AccountIDResponse:
-    properties:
-      account_id:
-        type: string
-      public_key:
-        type: string
-      relay:
-        type: string
-      twin_id:
-        type: integer
-    type: object
   app.ChangePasswordInput:
     properties:
       confirm_password:
@@ -389,6 +378,17 @@ definitions:
       total_users:
         type: integer
       up_nodes:
+        type: integer
+    type: object
+  app.TwinIDResponse:
+    properties:
+      account_id:
+        type: string
+      public_key:
+        type: string
+      relay:
+        type: string
+      twin_id:
         type: integer
     type: object
   app.UnreserveNodeResponse:
@@ -991,7 +991,7 @@ paths:
         "200":
           description: Account ID is retrieved successfully
           schema:
-            $ref: '#/definitions/app.AccountIDResponse'
+            $ref: '#/definitions/app.TwinIDResponse'
         "400":
           description: Bad Request or Invalid params
           schema:

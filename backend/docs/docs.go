@@ -676,7 +676,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Account ID is retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.AccountIDResponse"
+                            "$ref": "#/definitions/app.TwinIDResponse"
                         }
                     },
                     "400": {
@@ -2177,23 +2177,6 @@ const docTemplate = `{
                 }
             }
         },
-        "app.AccountIDResponse": {
-            "type": "object",
-            "properties": {
-                "account_id": {
-                    "type": "string"
-                },
-                "public_key": {
-                    "type": "string"
-                },
-                "relay": {
-                    "type": "string"
-                },
-                "twin_id": {
-                    "type": "integer"
-                }
-            }
-        },
         "app.ChangePasswordInput": {
             "type": "object",
             "required": [
@@ -2738,6 +2721,23 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "app.TwinIDResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "relay": {
+                    "type": "string"
+                },
+                "twin_id": {
                     "type": "integer"
                 }
             }
