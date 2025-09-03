@@ -307,10 +307,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			InternalServerError(c)
 			return
 		}
-		payload := notification.CommonPayload{
-			Message: "User email is verified",
-		}
-		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityInfo))
+		notification := models.NewNotification(fmt.Sprintf("%d", user.ID), "user_registration", map[string]string{"status": "User email is verified"}, models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityInfo))
 		err = h.notificationService.Send(context.Background(), notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send user registration notification")
@@ -645,7 +642,9 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 		"subject": "Your password was changed",
 		"message": "Your account password has been successfully updated.",
 	}
-	err = h.notificationService.Send(c, models.NotificationTypeUser, payload, fmt.Sprintf("%d", c.GetInt("user_id")))
+
+	notification := models.NewNotification(fmt.Sprintf("%d", c.GetInt("user_id")), models.NotificationTypeUser, payload)
+	err = h.notificationService.Send(c, notification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to send password changed notification")
 	}
@@ -997,7 +996,8 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		"subject": "New SSH key added",
 		"message": fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
 	}
-	err := h.notificationService.Send(c, models.NotificationTypeUser, payload, fmt.Sprintf("%d", userID))
+	notification := models.NewNotification(fmt.Sprintf("%d", userID), models.NotificationTypeUser, payload)
+	err := h.notificationService.Send(c, notification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to send ssh key added notification")
 	}

@@ -340,7 +340,6 @@ func (app *App) registerHandlers() {
 				notificationGroup.PATCH("/:notification_id/read", app.handlers.MarkNotificationReadHandler)
 				notificationGroup.PATCH("/:notification_id/unread", app.handlers.MarkNotificationUnreadHandler)
 				notificationGroup.DELETE("/:notification_id", app.handlers.DeleteNotificationHandler)
-				notificationGroup.GET("/stream", app.notificationService.HandleNotificationSSE)
 			}
 		}
 	}

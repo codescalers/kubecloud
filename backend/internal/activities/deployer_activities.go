@@ -507,7 +507,8 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 			"message": "Your cluster has started deploying.",
 		}
 
-		err := notificationService.Send(ctx, models.NotificationTypeDeployment, payload, userID, w.UUID)
+		notification := models.NewNotification(userID, models.NotificationTypeDeployment, payload)
+		err := notificationService.Send(ctx, notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
 		}
@@ -584,7 +585,7 @@ func createDeployerWorkflowTemplate(notificationService *notification.Notificati
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager, notificationService *notification.NotificationService) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService) {
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))

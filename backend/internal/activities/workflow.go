@@ -31,9 +31,9 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(db))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
-	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics,notificationService ))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, sse))
-	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db,notificationService))
+	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
+	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, notificationService))
+	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db, notificationService))
 	engine.Register(StepCreateIdentity, CreateIdentityStep())
 	engine.Register(StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(db, substrate))
@@ -115,7 +115,7 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUnreserveNode, &unreserveNodeTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, sse, notificationService)
+	registerDeploymentActivities(engine, metrics, db, notificationService)
 
 	notificationTemplate := newKubecloudWorkflowTemplate()
 	engine.RegisterTemplate(WorkflowSendNotification, &notificationTemplate)

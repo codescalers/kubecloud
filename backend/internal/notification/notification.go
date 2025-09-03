@@ -6,10 +6,6 @@ import (
 	"kubecloud/models"
 	"time"
 
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/xmonader/ewf"
 )
 
@@ -25,8 +21,7 @@ type Notifier interface {
 }
 
 type NotificationServiceInterface interface {
-	Send(ctx context.Context, notificationType models.NotificationType, payload map[string]string, userID string, taskID ...string) error
-	SendWithOptions(ctx context.Context, notificationType models.NotificationType, payload map[string]string, userID string, opts *SendOptions) error
+	Send(ctx context.Context, notification *models.Notification) error
 	GetNotifiers() map[string]Notifier
 	RegisterNotifier(notifier Notifier)
 }
@@ -36,13 +31,6 @@ type NotificationService struct {
 	notifiers             map[string]Notifier
 	engine                *ewf.Engine
 	notificationTemplates map[models.NotificationType]models.Notification
-}
-
-type SendOptions struct {
-	WithPersist  bool
-	WithChannels []string
-	WithSeverity models.NotificationSeverity
-	TaskID       string
 }
 
 func NewNotificationService(db models.DB, engine *ewf.Engine, notificationConfig internal.NotificationConfig) (*NotificationService, error) {
@@ -99,59 +87,13 @@ func (s *NotificationService) GetNotifiers() map[string]Notifier {
 	return s.notifiers
 }
 
-// SendOptions holds optional behaviors for sending notifications
+func (s *NotificationService) Send(ctx context.Context, notification *models.Notification) error {
+	s.applyTemplateFallbacks(notification)
 
-func (s *NotificationService) Send(ctx context.Context, notificationType models.NotificationType, payload map[string]string, userID string, taskID ...string) error {
-	var opts *SendOptions
-	if len(taskID) > 0 {
-		opts = &SendOptions{TaskID: taskID[0], WithPersist: true}
-	}
-	return s.SendWithOptions(ctx, notificationType, payload, userID, opts)
-}
-
-func (s *NotificationService) SendWithOptions(ctx context.Context, notificationType models.NotificationType, payload map[string]string, userID string, opts *SendOptions) error {
-
-	if opts == nil {
-		opts = &SendOptions{WithPersist: true}
-	}
-
-	tpl, hasTpl := s.templates[notificationType]
-	var rule ChannelRule
-	if hasTpl {
-		rule = tpl.Default
-		if status, ok := payload["status"]; ok && tpl.ByStatus != nil {
-			if r, exists := tpl.ByStatus[status]; exists {
-				rule = r
-			}
-		}
-	}
-
-	finalChannels := opts.WithChannels
-	if len(finalChannels) == 0 && hasTpl {
-		finalChannels = rule.Channels
-	}
-	if len(finalChannels) == 0 {
-		finalChannels = []string{ChannelUI}
-	}
-
-	finalSeverity := opts.WithSeverity
-	if (finalSeverity == models.NotificationSeverity("")) && hasTpl {
-		finalSeverity = rule.Severity
-	}
-
-	notification := &models.Notification{
-		ID:       uuid.NewString(),
-		UserID:   userID,
-		Type:     notificationType,
-		Channels: append([]string{}, finalChannels...),
-		Severity: finalSeverity,
-		Payload:  payload,
-		TaskID:   opts.TaskID,
-	}
-
-	if opts.WithPersist {
+	// Persist to database if enabled
+	if notification.Persist {
 		if err := s.db.CreateNotification(notification); err != nil {
-			return err
+			return fmt.Errorf("failed to persist notification: %w", err)
 		}
 	}
 
@@ -176,31 +118,39 @@ func (s *NotificationService) SendWithOptions(ctx context.Context, notificationT
 	workflow.Steps = steps
 	workflow.State["notification"] = notification
 	s.engine.RunAsync(ctx, workflow)
-
 	return nil
 }
 
-// HandleNotificationSSE streams notifications via Server-Sent Events (SSE)
-// @Summary Stream notifications
-// @Description Streams user-specific notifications via Server-Sent Events (SSE). Keeps the HTTP connection open and pushes events as they occur.
-// @Tags notifications
-// @Produce text/event-stream
-// @Success 200 {string} string "event stream"
-// @Failure 500 {object} gin.H "SSE notifier not available"
-// @Security UserMiddleware
-// @Router /notifications/stream [get]
-func (s *NotificationService) HandleNotificationSSE(c *gin.Context) {
-	uiNotifier, ok := s.notifiers[ChannelUI]
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "SSE notifier not available"})
+func (s *NotificationService) applyTemplateFallbacks(notification *models.Notification) {
+	template, hasTemplate := s.templates[notification.Type]
+	if !hasTemplate {
+		if len(notification.Channels) == 0 {
+			notification.Channels = []string{ChannelUI}
+		}
+		if notification.Severity == "" {
+			notification.Severity = models.NotificationSeverityInfo
+		}
 		return
 	}
 
-	sseNotifier, ok := uiNotifier.(*SSENotifier)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "SSE notifier not available"})
-		return
+	rule := template.Default
+	if status, ok := notification.Payload["status"]; ok && template.ByStatus != nil {
+		if r, exists := template.ByStatus[status]; exists {
+			rule = r
+		}
 	}
-	sseNotifier.GetSSEManager().HandleSSE(c)
 
+	if len(notification.Channels) == 0 {
+		notification.Channels = rule.Channels
+	}
+	if notification.Severity == "" {
+		notification.Severity = rule.Severity
+	}
+
+	if len(notification.Channels) == 0 {
+		notification.Channels = []string{ChannelUI}
+	}
+	if notification.Severity == "" {
+		notification.Severity = models.NotificationSeverityInfo
+	}
 }
