@@ -31,8 +31,8 @@ type ListNodesResponse struct {
 }
 
 type NodesWithDiscount struct {
-	Node interface{}
-	DiscountPrice   float64 `json:"discount_price"`
+	Node          interface{}
+	DiscountPrice float64 `json:"discount_price"`
 }
 
 type ListNodesWithDiscountResponse struct {
