@@ -5,6 +5,8 @@ import type { RentedNode } from '../composables/useNodeManagement';
 export function normalizeNode(node: RawNode): NormalizedNode {
   return {
     nodeId: node.nodeId,
+    farmId: node.farmId,
+    twinId: node.twinId,
     cpu: node.total_resources?.cru ?? 0,
     ram: node.total_resources?.mru ? Math.round(node.total_resources.mru / (1024 * 1024 * 1024)) : 0,
     available_ram: getAvailableRAM(node),

@@ -25,13 +25,20 @@
         <span class="text-white ml-1">{{ r.value() }}</span>
       </div>
     </v-card-text>
-    <v-card-actions class="pt-3 px-4 pb-4">
+    <v-card-actions class="pt-3 px-4 pb-4 d-flex flex-column">
+      <v-btn
+        variant="outlined"
+        block
+        @click="openMonitoring"
+        aria-label="Check Node Health"
+      >
+        Check Node Health
+      </v-btn>
       <v-btn
         :color="buttonColor"
         variant="outlined"
         block
         class="font-weight-bold"
-        style="border-radius:8px;"
         @click="handleAction"
         :aria-label="buttonLabel"
         :loading="loading"
@@ -45,8 +52,7 @@
 
 <script setup lang="ts">
 import type { NormalizedNode } from '../types/normalizedNode';
-import { defineProps, defineEmits, computed } from 'vue';
-
+import { defineProps, defineEmits, ref, computed, onMounted } from 'vue';
 
 const props = defineProps<{ node: NormalizedNode; loading?: boolean; disabled?: boolean; buttonLabel?: string }>();
 const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
@@ -99,6 +105,44 @@ const resources = [
     value: () => `${props.node.storage} GB`
   }
 ];
+
+const orgID = 2;
+const network = ref('dev');
+
+onMounted(() => {
+  network.value = getNetwork((typeof window !== 'undefined' && (window as any).__ENV__?.VITE_NETWORK) || (import.meta as any).env?.VITE_NETWORK);
+});
+
+const getNetwork = (network: string): string => {
+  switch (network) {
+    case 'dev':
+      return 'development';
+    case 'qa':
+      return 'qa';
+    case 'test':
+      return 'testing';
+    case 'main':
+      return 'production';
+    default:
+      return 'development';
+  }
+};
+
+const monitoringUrl = computed(() => {
+  const baseUrl = 'https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics';
+  const params = new URLSearchParams();
+  params.set('orgId', orgID.toString());
+  params.set('refresh', '30s');
+  params.set('var-network', network.value);
+  params.set('var-farm', props.node.farmId.toString());
+  params.set('var-node', props.node.twinId.toString());
+  params.set('var-diskdevices', '[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+');
+  return `${baseUrl}?${params.toString()}`;
+});
+
+const openMonitoring = () => {
+  window.open(monitoringUrl.value, '_blank');
+};
 
 const priceColor = '#10B981';
 const priceLabelColor = '#a3a3a3';
