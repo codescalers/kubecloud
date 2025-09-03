@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	"kubecloud/models"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -207,6 +208,46 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	if usdMillicentBalance-user.Debt < internal.FromUSDToUSDMillicent(node.PriceUsd)/24/30 {
 		Error(c, http.StatusBadRequest, "You should at least have enough balance for one hour", "")
 		return
+	}
+
+	// fund user to fulfill discount
+	rentedNodes, _, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// add newly rented node
+	rentedNodes = append(rentedNodes, node)
+
+	// calculate resources usage in USD applying discount
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(c.Request.Context(), userID, user.Mnemonic, rentedNodes, discount(h.config.AppliedDiscount))
+	if err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// fund user to fulfill discount
+	if dailyUsageInUSDMillicent > 0 {
+		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
+		if err != nil {
+			log.Error().Err(err).Send()
+			InternalServerError(c)
+			return
+		}
+
+		if err := h.db.CreateTransferRecord(&models.TransferRecord{
+			UserID:    userID,
+			Username:  user.Username,
+			TFTAmount: tftAmount,
+			Operation: models.DepositOperation,
+		}); err != nil {
+			log.Error().Err(err).Send()
+			InternalServerError(c)
+			return
+		}
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowReserveNode)

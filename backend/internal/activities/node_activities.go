@@ -87,6 +87,11 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
 
+		err = db.DeleteUserNode(contractID)
+		if err != nil {
+			return fmt.Errorf("failed to delete user node: %w", err)
+		}
+
 		return nil
 	}
 }

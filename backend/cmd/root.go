@@ -163,12 +163,21 @@ func addFlags() error {
 	}
 
 	// === Monitor Balance Interval In Hours ===
-	if err := bindIntFlag(rootCmd, "monitor_balance_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
-		return fmt.Errorf("failed to bind monitor_balance_interval_in_minutes flag: %w", err)
+	if err := bindIntFlag(rootCmd, "settle_transfer_records_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
+		return fmt.Errorf("failed to bind settle_transfer_records_interval_in_minutes flag: %w", err)
 	}
 
 	if err := bindIntFlag(rootCmd, "notify_admins_for_pending_records_in_hours", 1, "Number of hours to notify admins about pending records"); err != nil {
 		return fmt.Errorf("failed to bind notify_admins_for_pending_records_in_hours flag: %w", err)
+	}
+
+	// === Applied Discount ===
+	if err := bindStringFlag(rootCmd, "applied_discount", "", "Applied discount to fund users"); err != nil {
+		return fmt.Errorf("failed to bind applied_discount flag: %w", err)
+	}
+
+	if err := bindIntFlag(rootCmd, "minimum_tft_amount_in_wallet", 10, "Minimum TFT amount in wallet"); err != nil {
+		return fmt.Errorf("failed to bind minimum_tft_amount_in_wallet flag: %w", err)
 	}
 
 	// === KYC Verifier ===
@@ -293,7 +302,7 @@ func gracefulShutdown(app *app.App) error {
 	go func() {
 		log.Info().Msg("Starting KubeCloud server")
 
-		if err := app.Run(); err != nil && err != http.ErrServerClosed {
+		if err := app.Run(ctx); err != nil && err != http.ErrServerClosed {
 			log.Error().Err(err).Msg("Failed to start server")
 			stop()
 		}

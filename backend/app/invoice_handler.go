@@ -188,12 +188,13 @@ func (h *Handler) createUserInvoice(user models.User) error {
 	var totalInvoiceCostUSD float64
 
 	for _, record := range records {
-		billReports, err := internal.ListContractBillReportsPerMonth(h.graphqlClient, record.ContractID, now)
+		// get bill reports for the last month
+		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, now.AddDate(0, -1, 0), now)
 		if err != nil {
 			return err
 		}
 
-		totalAmountTFT, err := internal.AmountBilledPerMonth(billReports)
+		totalAmountTFT, err := internal.CalculateTotalAmountBilledForReports(billReports)
 		if err != nil {
 			return err
 		}

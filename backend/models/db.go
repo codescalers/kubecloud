@@ -15,6 +15,7 @@ type DB interface {
 	GetUserByEmail(email string) (User, error)
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
+	DeductUserBalance(user *User, amount uint64) error
 	UpdatePassword(email string, hashedPassword []byte) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
@@ -32,6 +33,7 @@ type DB interface {
 	UpdateInvoicePDF(id int, data []byte) error
 	CreateUserNode(userNode *UserNodes) error
 	ListUserNodes(userID int) ([]UserNodes, error)
+	DeleteUserNode(contractID uint32) error
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)
@@ -53,12 +55,12 @@ type DB interface {
 	UpdateCluster(cluster *Cluster) error
 	DeleteCluster(userID string, projectName string) error
 	DeleteAllUserClusters(userID string) error
-	// pending records methods
-	CreatePendingRecord(record *PendingRecord) error
-	ListAllPendingRecords() ([]PendingRecord, error)
-	ListOnlyPendingRecords() ([]PendingRecord, error)
-	ListUserPendingRecords(userID int) ([]PendingRecord, error)
-	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
+	// Transfer records methods
+	CreateTransferRecord(record *TransferRecord) error
+	ListTransferRecords() ([]TransferRecord, error)
+	ListUserTransferRecords(userID int) ([]TransferRecord, error)
+	ListPendingTransferRecords() ([]TransferRecord, error)
+	UpdateTransferRecordState(recordID int, state state, failure string) error
 	// stats methods
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)

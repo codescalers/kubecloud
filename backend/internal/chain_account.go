@@ -91,14 +91,14 @@ func ActivateAccount(substrateAccountID string, url string) error {
 }
 
 // TransferTFTs transfer balance to users' account
-func TransferTFTs(substrateClient *substrate.Substrate, tftBalance uint64, userMnemonic string, systemIdentity substrate.Identity) error {
+func TransferTFTs(substrateClient *substrate.Substrate, tftBalance uint64, destinationMnemonic string, sourceIdentity substrate.Identity) error {
 	// Create identity of user from mnemonic
-	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	destinationIdentity, err := substrate.NewIdentityFromSr25519Phrase(destinationMnemonic)
 	if err != nil {
 		return err
 	}
 
-	return substrateClient.Transfer(systemIdentity, tftBalance, substrate.AccountID(userIdentity.PublicKey()))
+	return substrateClient.Transfer(sourceIdentity, tftBalance, substrate.AccountID(destinationIdentity.PublicKey()))
 }
 
 // GetUserBalanceUSDMillicent gets balance of user in USD Millicent

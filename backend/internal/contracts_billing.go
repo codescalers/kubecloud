@@ -17,16 +17,15 @@ type ContractBillReports struct {
 }
 
 type Report struct {
-	ContractID   string `json:"contractID"`
-	Timestamp    string `json:"timestamp"`
-	AmountBilled string `json:"amountBilled"`
+	ContractID       string `json:"contractID"`
+	Timestamp        string `json:"timestamp"`
+	AmountBilled     string `json:"amountBilled"`
+	DiscountRecieved string `json:"discountRecieved"`
 }
 
-// ListContractBillReportsPerMonth returns bill reports for contract ID month ago
-func ListContractBillReportsPerMonth(graphqlClient graphql.GraphQl, contractID uint64, currentTime time.Time) (ContractBillReports, error) {
-	monthAgo := currentTime.AddDate(0, -1, 0)
-
-	options := fmt.Sprintf(`(where: {contractID_eq: %v, timestamp_lte: %v, timestamp_gte: %v}, orderBy: id_ASC)`, contractID, currentTime.Unix(), monthAgo.Unix())
+// ListContractBillReports returns bill reports for contract ID month ago
+func ListContractBillReports(graphqlClient graphql.GraphQl, contractID uint64, startTime, endTime time.Time) (ContractBillReports, error) {
+	options := fmt.Sprintf(`(where: {contractID_eq: %v, timestamp_lte: %v, timestamp_gte: %v}, orderBy: id_ASC)`, contractID, endTime.Unix(), startTime.Unix())
 	billingReportsCount, err := graphqlClient.GetItemTotalCount("contractBillReports", options)
 	if err != nil {
 		return ContractBillReports{}, err
@@ -36,8 +35,9 @@ func ListContractBillReportsPerMonth(graphqlClient graphql.GraphQl, contractID u
               contractID
               timestamp
               amountBilled
+              discountRecieved
             }
-          }`, contractID, currentTime.Unix(), monthAgo.Unix()),
+          }`, contractID, endTime.Unix(), startTime.Unix()),
 		map[string]interface{}{
 			"billingReportsCount": billingReportsCount,
 		})
@@ -60,7 +60,7 @@ func ListContractBillReportsPerMonth(graphqlClient graphql.GraphQl, contractID u
 }
 
 // TODO: check returned float or int
-func AmountBilledPerMonth(reports ContractBillReports) (uint64, error) {
+func CalculateTotalAmountBilledForReports(reports ContractBillReports) (uint64, error) {
 	var totalAmount uint64
 	for _, report := range reports.Reports {
 		amount, err := strconv.ParseInt(report.AmountBilled, 10, 64)
