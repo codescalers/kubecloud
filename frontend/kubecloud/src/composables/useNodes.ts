@@ -125,6 +125,17 @@ export function useNodes() {
     return !node.rented && node.rentable
   }
 
+  // Fetch account id for a twin id
+  async function fetchAccountId(twinId: number): Promise<string> {
+    try {
+      const response = await userService.getTwinAccount(twinId)
+      return response.account_id
+    } catch (err: any) {
+      console.error('Failed to fetch account id:', err)
+      return ''
+    }
+  }
+
   return {
     nodes, // RawNode[]
     normalizedNodes, // NormalizedNode[]
@@ -141,6 +152,7 @@ export function useNodes() {
     updateFilters,
     clearFilters,
     getNodeType,
-    isNodeRentable
+    isNodeRentable,
+    fetchAccountId
   }
 }

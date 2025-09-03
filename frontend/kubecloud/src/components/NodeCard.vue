@@ -53,17 +53,13 @@
 <script setup lang="ts">
 import type { NormalizedNode } from '../types/normalizedNode';
 import { defineProps, defineEmits, ref, computed, onMounted } from 'vue';
+import { useNodes } from '../composables/useNodes';
 
 const props = defineProps<{ node: NormalizedNode; loading?: boolean; disabled?: boolean; buttonLabel?: string }>();
-const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
-const buttonColor = computed(() =>
-  buttonLabel.value.toLowerCase().includes('unreserve') ? 'error' : 'primary'
-);
 const emit = defineEmits(['action', 'signin']);
-
-const actionType = computed(() =>
-  buttonLabel.value.toLowerCase().includes('unreserve') ? 'unreserve' : 'reserve'
-);
+const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
+const buttonColor = computed(() => buttonLabel.value.toLowerCase().includes('unreserve') ? 'error' : 'primary');
+const actionType = computed(() => buttonLabel.value.toLowerCase().includes('unreserve') ? 'unreserve' : 'reserve');
 
 function handleAction() {
   emit('action', { nodeId: props.node.nodeId, action: actionType.value });
@@ -71,78 +67,52 @@ function handleAction() {
 
 const baseNodePrice = computed(() => {
   const base = Number(props.node.price_usd ?? 0);
-  // Divide extra fee by 1000 as it's in musd
   const extra = Number(props.node.extraFee ?? 0) / 1000;
   const price = base + extra;
   return isNaN(price) ? null : price;
 });
-
-const monthlyPrice = computed(() => {
-  return baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2);
-});
-
-const hourlyPrice = computed(() => {
-  return baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2);
-});
-
+const monthlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2));
+const hourlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2));
 const resources = [
-  {
-    icon: 'mdi-cpu-64-bit',
-    color: '#0ea5e9',
-    label: 'CPU:',
-    value: () => `${props.node.cpu} vCPU`
-  },
-  {
-    icon: 'mdi-memory',
-    color: '#10B981',
-    label: 'RAM:',
-    value: () => `${props.node.ram} GB`
-  },
-  {
-    icon: 'mdi-harddisk',
-    color: '#38bdf8',
-    label: 'Storage:',
-    value: () => `${props.node.storage} GB`
-  }
+  { icon: 'mdi-cpu-64-bit', color: '#0ea5e9', label: 'CPU:', value: () => `${props.node.cpu} vCPU` },
+  { icon: 'mdi-memory', color: '#10B981', label: 'RAM:', value: () => `${props.node.ram} GB` },
+  { icon: 'mdi-harddisk', color: '#38bdf8', label: 'Storage:', value: () => `${props.node.storage} GB` }
 ];
 
-const orgID = 2;
-const network = ref('dev');
+const { fetchAccountId } = useNodes();
+const monitoringUrl = ref('');
 
-onMounted(() => {
-  network.value = getNetwork((typeof window !== 'undefined' && (window as any).__ENV__?.VITE_NETWORK) || (import.meta as any).env?.VITE_NETWORK);
-});
-
-const getNetwork = (network: string): string => {
-  switch (network) {
-    case 'dev':
-      return 'development';
-    case 'qa':
-      return 'qa';
-    case 'test':
-      return 'testing';
-    case 'main':
-      return 'production';
-    default:
-      return 'development';
+function getNetwork(env: string): string {
+  switch (env) {
+    case 'dev': return 'development';
+    case 'qa': return 'qa';
+    case 'test': return 'testing';
+    case 'main': return 'production';
+    default: return 'development';
   }
-};
+}
 
-const monitoringUrl = computed(() => {
-  const baseUrl = 'https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics';
-  const params = new URLSearchParams();
-  params.set('orgId', orgID.toString());
-  params.set('refresh', '30s');
-  params.set('var-network', network.value);
-  params.set('var-farm', props.node.farmId.toString());
-  params.set('var-node', props.node.twinId.toString());
-  params.set('var-diskdevices', '[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+');
-  return `${baseUrl}?${params.toString()}`;
+onMounted(async () => {
+  let accountId = '';
+  if (props.node.twinId) {
+    accountId = await fetchAccountId(props.node.twinId);
+  }
+  const env = (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_NETWORK) || (import.meta as any).env?.VITE_NETWORK;
+  const network = getNetwork(env);
+  const params = new URLSearchParams({
+    orgId: '2',
+    refresh: '30s',
+    'var-network': network,
+    'var-farm': props.node.farmId?.toString(),
+    'var-node': accountId,
+    'var-diskdevices': '[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+'
+  });
+  monitoringUrl.value = `https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics?${params.toString()}`;
 });
 
-const openMonitoring = () => {
+function openMonitoring() {
   window.open(monitoringUrl.value, '_blank');
-};
+}
 
 const priceColor = '#10B981';
 const priceLabelColor = '#a3a3a3';
