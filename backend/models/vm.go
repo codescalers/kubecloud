@@ -13,7 +13,6 @@ type VM struct {
 	ProjectName string    `gorm:"index:idx_vm_user_project,unique" json:"project_name" binding:"required"`
 	Result      string    `gorm:"type:text" json:"result"`
 	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // GetVMResult deserializes the Result field into a kubedeployer.VM

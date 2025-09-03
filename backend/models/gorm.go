@@ -459,8 +459,8 @@ func (s *GormDB) CreateVM(userID string, vm *VM) error {
 	return s.db.Create(vm).Error
 }
 
-// GetVMByName returns a vm by name for a specific user
-func (s *GormDB) GetVMByName(userID string, projectName string) (VM, error) {
+// GetVMByProjectName returns a vm by name for a specific user
+func (s *GormDB) GetVMByProjectName(userID string, projectName string) (VM, error) {
 	var vm VM
 	query := s.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&vm)
 	return vm, query.Error
@@ -475,7 +475,6 @@ func (s *GormDB) GetVMByID(userID string, vmID string) (VM, error) {
 
 // UpdateVM updates an existing vm
 func (s *GormDB) UpdateVM(vm *VM) error {
-	vm.UpdatedAt = time.Now()
 	return s.db.Model(&VM{}).
 		Where("user_id = ? AND project_name = ?", vm.UserID, vm.ProjectName).
 		Updates(vm).Error

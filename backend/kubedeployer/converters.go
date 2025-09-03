@@ -167,7 +167,7 @@ func (c *Cluster) PrepareCluster(userID string) error {
 }
 
 func GetVMProjectName(userID, nodeName string) string {
-	return "vm" + userID
+	return "kc" + userID + "vm" + nodeName
 }
 
 func deploymentFromVM(node *Node,

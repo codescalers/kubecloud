@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
+	"gorm.io/gorm"
 )
 
 var (
@@ -259,15 +261,10 @@ func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("failed to set VM result: %w", err)
 		}
 
-		existingVM, err := db.GetVMByName(config.UserID, vm.ProjectName)
-		if err != nil {
+		_, err = db.GetVMByProjectName(config.UserID, vm.ProjectName)
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 			if err := db.CreateVM(config.UserID, dbVM); err != nil {
 				return fmt.Errorf("failed to create VM in database: %w", err)
-			}
-		} else {
-			existingVM.Result = dbVM.Result
-			if err := db.UpdateVM(&existingVM); err != nil {
-				return fmt.Errorf("failed to update VM in database: %w", err)
 			}
 		}
 

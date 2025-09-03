@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
@@ -18,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
 	"golang.org/x/crypto/ssh"
-	"gorm.io/gorm"
 )
 
 // Response represents the response structure for deployment requests
@@ -55,7 +53,6 @@ type VMItem struct {
 	ProjectName string          `json:"project_name"`
 	VM          kubedeployer.VM `json:"vm" swaggerignore:"true"`
 	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 // ListVMsResponse represents the full response for listing VMs
@@ -577,32 +574,23 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 	// Map to internal kubedeployer.VM
 	vm := kubedeployer.VM{
 		Node: kubedeployer.Node{
-			Name:       input.Node.Name,
-			Type:       kubedeployer.NodeType(input.Node.Type),
-			NodeID:     input.Node.NodeID,
-			CPU:        input.Node.CPU,
-			Memory:     input.Node.Memory,
-			RootSize:   input.Node.RootSize,
-			DiskSize:   input.Node.DiskSize,
-			EnvVars:    input.Node.EnvVars,
-			Flist:      input.Node.Flist,
-			Entrypoint: input.Node.Entrypoint,
+			Name:         input.Node.Name,
+			Type:         kubedeployer.NodeType(input.Node.Type),
+			NodeID:       input.Node.NodeID,
+			CPU:          input.Node.CPU,
+			Memory:       input.Node.Memory,
+			RootSize:     input.Node.RootSize,
+			DiskSize:     input.Node.DiskSize,
+			EnvVars:      input.Node.EnvVars,
+			Flist:        input.Node.Flist,
+			Entrypoint:   input.Node.Entrypoint,
+			OriginalName: input.Node.Name,
 		},
 	}
+	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
 
 	if vm.Node.Name == "" {
-		vm.Node.Name = fmt.Sprintf("vm%s%d", config.UserID, vm.Node.NodeID)
-	}
-
-	if _, err := h.db.GetVMByName(config.UserID, vm.Node.Name); err == nil {
-		c.JSON(http.StatusConflict, gin.H{
-			"error": fmt.Sprintf("VM name '%s' already exists", vm.Node.Name),
-		})
-		return
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Error().Err(err).Msg("failed to check VM name uniqueness")
-		InternalServerError(c)
-		return
+		vm.Node.Name = vm.ProjectName
 	}
 
 	if vm.Node.Type == "" {
@@ -611,6 +599,10 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	if vm.Node.EnvVars == nil {
 		vm.Node.EnvVars = map[string]string{}
+	}
+
+	if vm.Network.Name == "" {
+		vm.Network.Name = vm.ProjectName + "net"
 	}
 
 	if err := internal.ValidateStruct(vm.Node); err != nil {
@@ -676,7 +668,6 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 			ProjectName: vm.ProjectName,
 			VM:          vmResult,
 			CreatedAt:   vm.CreatedAt,
-			UpdatedAt:   vm.UpdatedAt,
 		})
 	}
 
@@ -736,7 +727,6 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 		ProjectName: vm.ProjectName,
 		VM:          vmResult,
 		CreatedAt:   vm.CreatedAt,
-		UpdatedAt:   vm.UpdatedAt,
 	}})
 }
 
@@ -790,7 +780,7 @@ func (h *Handler) HandleDeleteVM(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(c, wf)
 
-	Success(c, http.StatusOK, "VM deletion workflow started successfully", DeleteVMResponse{
+	Success(c, http.StatusOK, "VM deletion in progress", DeleteVMResponse{
 		WorkflowID: wf.UUID,
 		Status:     string(wf.Status),
 	})

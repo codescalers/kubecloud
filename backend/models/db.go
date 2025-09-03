@@ -52,7 +52,7 @@ type DB interface {
 	DeleteCluster(userID string, projectName string) error
 	// VM Methods
 	CreateVM(userID string, vm *VM) error
-	GetVMByName(userID string, projectName string) (VM, error)
+	GetVMByProjectName(userID string, projectName string) (VM, error)
 	GetVMByID(userID string, vmID string) (VM, error)
 	UpdateVM(vm *VM) error
 	ListUserVMS(userID string) ([]VM, error)
