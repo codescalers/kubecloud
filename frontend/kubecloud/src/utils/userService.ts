@@ -132,7 +132,7 @@ export interface PendingRecord {
   transfer_mode: string;
 }
 
-export interface TwinIDResponse {
+export interface TwinResponse {
   public_key: string;
   account_id: string;
   relay: string;
@@ -369,8 +369,8 @@ export class UserService {
   }
 
   // Fetch twin account info
-  async getTwinAccount(twinId: number): Promise<TwinIDResponse> {
-    const response = await api.get<ApiResponse<TwinIDResponse>>(`/v1/twins/${twinId}/account`, {
+  async getTwinAccount(twinId: number): Promise<TwinResponse> {
+    const response = await api.get<ApiResponse<TwinResponse>>(`/v1/twins/${twinId}/account`, {
       requiresAuth: true,
       showNotifications: false
     })
