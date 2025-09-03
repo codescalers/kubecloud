@@ -525,7 +525,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	limit := proxyTypes.DefaultLimit()
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		InternalServerError(c)
 		return
 	}
 
