@@ -19,11 +19,12 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/v82"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"kubecloud/internal/logger"
 
 	// Import the generated docs package
 	_ "kubecloud/docs"

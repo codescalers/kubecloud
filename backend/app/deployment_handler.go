@@ -31,24 +31,24 @@ type Response struct {
 
 // DeployVMInput represents the request body for creating a VM
 type DeployVMInput struct {
-	Node NodeInput `json:"node" validate:"required"`
+	Node VMInput `json:"node" validate:"required"`
 }
 
-// // NodeInput contains fields taken by user
-// type NodeInput struct {
-// 	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`
-// 	Type     string            `json:"type"`
-// 	NodeID   uint32            `json:"node_id" validate:"required"`
-// 	CPU      uint8             `json:"cpu" validate:"required,min=1"`
-// 	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // MB
-// 	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // MB
-// 	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // MB
-// 	EnvVars  map[string]string `json:"env_vars,omitempty"`
+// NodeInput contains fields taken by user
+type VMInput struct {
+	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`
+	Type     string            `json:"type"`
+	NodeID   uint32            `json:"node_id" validate:"required"`
+	CPU      uint8             `json:"cpu" validate:"required,min=1"`
+	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // MB
+	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // MB
+	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // MB
+	EnvVars  map[string]string `json:"env_vars,omitempty"`
 
-// 	// Optional fields
-// 	Flist      string `json:"flist,omitempty"`
-// 	Entrypoint string `json:"entrypoint,omitempty"`
-// }
+	// Optional fields
+	Flist      string `json:"flist,omitempty"`
+	Entrypoint string `json:"entrypoint,omitempty"`
+}
 
 // VMItem represents a single VM
 type VMItem struct {
