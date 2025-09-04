@@ -10,7 +10,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.0
-	github.com/redis/go-redis/v9 v9.12.0
+	github.com/redis/go-redis/v9 v9.13.0
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/signintech/gopdf v0.33.0
 	github.com/spf13/cobra v1.10.1
