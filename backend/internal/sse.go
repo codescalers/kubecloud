@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 // Notification types
@@ -167,7 +167,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			data, err := json.Marshal(message)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to marshal SSE message")
+				logger.GetLogger().Error().Err(err).Msg("Failed to marshal SSE message")
 				return false
 			}
 
@@ -175,7 +175,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 			return true
 
 		case <-c.Request.Context().Done():
-			log.Debug().Str("user_id", userIDStr).Msg("Client disconnected")
+			logger.GetLogger().Debug().Str("user_id", userIDStr).Msg("Client disconnected")
 			return false
 
 		case <-s.ctx.Done():
@@ -220,6 +220,6 @@ func (s *SSEManager) persistNotification(userID string, message SSEMessage) {
 	}
 
 	if err := s.db.CreateNotification(notification); err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("Failed to persist notification")
+		logger.GetLogger().Error().Err(err).Str("user_id", userID).Msg("Failed to persist notification")
 	}
 }

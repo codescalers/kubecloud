@@ -11,8 +11,8 @@ import (
 	"time"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
-	"github.com/rs/zerolog/log"
 	"github.com/vedhavyas/go-subkey"
+	"kubecloud/internal/logger"
 )
 
 type httpClient interface {
@@ -89,9 +89,9 @@ func (c *KYCClient) CreateSponsorship(ctx context.Context, sponsorAddress string
 	}
 
 	// Debug logs for troubleshooting
-	log.Debug().Msgf("KYC Sponsorship Debug: sponsorAddress=%s, sponseeAddress=%s", sponsorAddress, sponseeAddress)
-	log.Debug().Msgf("KYC Sponsorship Debug: sponsorChallenge=%s, sponseeChallenge=%s", sponsorChallenge, sponseeChallenge)
-	log.Debug().Msgf("KYC Sponsorship Debug: sponsorSignature=%s, sponseeSignature=%s", sponsorSignature, sponseeSignature)
+	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorAddress=%s, sponseeAddress=%s", sponsorAddress, sponseeAddress)
+	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorChallenge=%s, sponseeChallenge=%s", sponsorChallenge, sponseeChallenge)
+	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorSignature=%s, sponseeSignature=%s", sponsorSignature, sponseeSignature)
 
 	// Prepare HTTP request
 	url := fmt.Sprintf("%s/api/v1/sponsorships", c.APIURL)
@@ -125,7 +125,7 @@ func (c *KYCClient) CreateSponsorship(ctx context.Context, sponsorAddress string
 		return fmt.Errorf("sponsorship creation failed with status: %s and response: %s", resp.Status, bodyBytes.String())
 	}
 
-	log.Info().Msgf("Sponsorship created successfully between sponsor %s and sponsee %s", sponsorAddress, sponseeAddress)
+	logger.GetLogger().Info().Msgf("Sponsorship created successfully between sponsor %s and sponsee %s", sponsorAddress, sponseeAddress)
 	return nil
 }
 

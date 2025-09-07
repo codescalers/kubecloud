@@ -5,18 +5,14 @@ import (
 	"fmt"
 	"kubecloud/app"
 	"kubecloud/internal"
+	"kubecloud/internal/logger"
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/natefinch/lumberjack"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -209,7 +205,7 @@ func init() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := addFlags(); err != nil {
-		log.Fatal().Err(err).Msg("Failed to add flags")
+		logger.GetLogger().Fatal().Err(err).Msg("Failed to add flags")
 	}
 }
 
@@ -223,7 +219,7 @@ func initConfig() {
 	}
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Warn().Err(err).Msg("No configuration file found, using defaults")
+		logger.GetLogger().Warn().Err(err).Msg("No configuration file found, using defaults")
 	}
 }
 
@@ -243,38 +239,25 @@ It supports:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config, err := internal.LoadConfig()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to read configurations")
+			logger.GetLogger().Error().Err(err).Msg("Failed to read configurations")
 			return fmt.Errorf("failed to read configuration: %w", err)
 		}
 
 		// === LOGGER SETUP  ===
-		logDir := config.Logger.LogDir
-		if logDir == "" {
-			logDir = "./logs"
-		}
-		if err := os.MkdirAll(logDir, 0755); err != nil {
-			log.Fatal().Err(err).Msg("failed to create logs directory")
-		}
-		logFile := filepath.Join(logDir, "app.log")
-		rotator := &lumberjack.Logger{
-			Filename:   logFile,
+		// Initialize shared logger
+		loggerConfig := logger.LoggerConfig{
+			LogDir:     config.Logger.LogDir,
 			MaxSize:    config.Logger.MaxSize,
 			MaxBackups: config.Logger.MaxBackups,
 			MaxAge:     config.Logger.MaxAgeDays,
 			Compress:   config.Logger.Compress,
 		}
-		multi := zerolog.MultiLevelWriter(
-			zerolog.ConsoleWriter{Out: os.Stderr},
-			rotator,
-		)
-		log.Logger = zerolog.New(multi).With().Timestamp().Logger()
-
-		// Set log level based on debug configuration
-		if config.Debug {
-			zerolog.SetGlobalLevel(zerolog.DebugLevel)
-			log.Debug().Msg("Debug logging enabled")
-		} else {
-			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+		if loggerConfig.LogDir == "" {
+			loggerConfig.LogDir = "./logs"
+		}
+		fmt.Printf("Setting up logging to: %s/app.log\n", loggerConfig.LogDir)
+		if err := logger.InitLogger(loggerConfig, config.Debug); err != nil {
+			return fmt.Errorf("failed to initialize logger: %w", err)
 		}
 
 		app, err := app.NewApp(cmd.Context(), config)
@@ -291,10 +274,10 @@ func gracefulShutdown(app *app.App) error {
 	defer stop()
 
 	go func() {
-		log.Info().Msg("Starting KubeCloud server")
+		logger.GetLogger().Info().Msg("Starting KubeCloud server")
 
 		if err := app.Run(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("Failed to start server")
+			logger.GetLogger().Error().Err(err).Msg("Failed to start server")
 			stop()
 		}
 	}()
@@ -304,20 +287,20 @@ func gracefulShutdown(app *app.App) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	log.Info().Msg("Shutting down...")
+	logger.GetLogger().Info().Msg("Shutting down...")
 	if err := app.Shutdown(shutdownCtx); err != nil {
-		log.Error().Err(err).Msg("Server shutdown failed")
+		logger.GetLogger().Error().Err(err).Msg("Server shutdown failed")
 		return err
 	}
 
-	log.Info().Msg("Server gracefully stopped.")
+	logger.GetLogger().Info().Msg("Server gracefully stopped.")
 	return nil
 }
 
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Error().Err(err).Msg("Command execution failed")
+		logger.GetLogger().Error().Err(err).Msg("Command execution failed")
 		os.Exit(1)
 	}
 }

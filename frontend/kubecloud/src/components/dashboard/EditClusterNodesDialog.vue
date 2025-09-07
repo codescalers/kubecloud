@@ -9,7 +9,7 @@
             <v-form ref="form"  v-model="formValid">
               <div class="add-form-wrapper">
                 <v-text-field
-                  :rules="[RULES.nodeName]"
+                  :rules="nameRules"
                   v-model="addFormName"
                   label="Name"
                 />
@@ -67,14 +67,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { ROOTFS } from '../../composables/useDeployCluster';
 import NodeSelect from '../ui/NodeSelect.vue';
-import { RULES } from "../../utils/validation";
+import { RULES, createUniqueNodeNameRule } from "../../utils/validation";
 import { useNodes } from '../../composables/useNodes';
 import { useNotificationStore } from '../../stores/notifications';
 
@@ -83,7 +83,6 @@ const props = defineProps<{
   cluster: any
 }>();
 const emit = defineEmits(['update:modelValue', 'nodes-updated', 'remove-node']);
-
 // Initialize composables
 const { nodes, loading: nodesLoading, fetchNodes } = useNodes()
 const notificationStore = useNotificationStore()
@@ -99,12 +98,6 @@ const clusterNodes = computed(() => {
 
 const editNodes = ref<any[]>([])
 watch(() => clusterNodes.value, (val) => { editNodes.value = val || [] }, { immediate: true })
-const editNodesWithStorage = computed(() =>
-  (editNodes.value || []).map(node => ({
-    ...node,
-    storage: Math.round(((node.root_size || 0) + (node.disk_size || 0) + (node.storage || 0)) / 1024)
-  }))
-);
 
 // Add node form state
 const addFormNodeId = ref<number|null>(null);
@@ -120,10 +113,11 @@ const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
 const form = ref<any>(null)
+const names = clusterNodes.value.map((node: any) => node.original_name);
+const nameRules = computed(() => [
+  createUniqueNodeNameRule(names, addFormName.value)
+]);
 
-// Delete confirmation dialog state
-const deleteConfirmDialog = ref(false);
-const nodeToDelete = ref<string>('');
 
 // Node management functions
 async function addNodeToDeployment(deploymentName: string, clusterPayload: { name: string, nodes: any[] }) {
@@ -147,11 +141,7 @@ async function handleAddNode(payload: any) {
 }
 
 
-function handleClose() {
-  resetForm()
-  emit('update:modelValue', false)
 
-}
 
 // Reset form fields to default values
 function resetForm() {

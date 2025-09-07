@@ -11,8 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -54,6 +55,57 @@ type UnreserveNodeResponse struct {
 	Email      string `json:"email"`
 }
 
+type TwinResponse struct {
+	PublicKey string `json:"public_key"`
+	AccountID string `json:"account_id"`
+	Relay     string `json:"relay"`
+	TwinID    uint   `json:"twin_id"`
+}
+
+// @Summary List all grid nodes
+// @Description List all nodes from the grid proxy (no user-specific filtering)
+// @Tags nodes
+// @ID list-all-grid-nodes
+// @Accept json
+// @Produce json
+// @Param healthy query bool false "Filter by healthy nodes (default: false)"
+// @Param size query int false "Limit the number of nodes returned (default: 50)"
+// @Param page query int false "page number (default: 1)"
+// @Success 200 {object} APIResponse{data=ListNodesResponse} "All grid nodes retrieved successfully"
+// @Failure 400 {object} APIResponse "Invalid filter parameters"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /nodes [get]
+func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
+	query := c.Request.URL.Query()
+
+	limit := proxyTypes.DefaultLimit()
+	limit.RetCount = true
+	err := queryParamsToStruct(query, &limit)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		return
+	}
+
+	filter := proxyTypes.NodeFilter{}
+	err = queryParamsToStruct(query, &filter)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		return
+	}
+
+	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "All grid nodes retrieved successfully", ListNodesResponse{
+		Total: count,
+		Nodes: nodes,
+	})
+}
+
 // @Summary List nodes
 // @Description List nodes from proxy [rented nodes first + randomized shared nodes]
 // @Tags nodes
@@ -73,7 +125,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	rentedNodes, rentedNodesCount, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -98,7 +150,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 
 	twinID, err := h.getTwinIDFromUserID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -163,7 +215,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 32)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -173,7 +225,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -185,12 +237,12 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	nodes, _, err := h.proxyClient.Nodes(c.Request.Context(), filter, proxyTypes.Limit{})
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 	if len(nodes) == 0 {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "No nodes are available for rent.", "")
 		return
 	}
@@ -199,7 +251,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	// validate user has enough balance for reserving node
 	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 	}
 
@@ -211,7 +263,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowReserveNode)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -255,7 +307,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 
 	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -330,14 +382,14 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
 
 	contractID64, err := strconv.ParseUint(contractIDParam, 10, 32)
 	if err != nil {
-		log.Error().Msg("Invalid contract ID or type")
+		logger.GetLogger().Error().Msg("Invalid contract ID or type")
 		InternalServerError(c)
 		return
 	}
@@ -345,7 +397,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUnreserveNode)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -490,4 +542,68 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 	}
 
 	return nodes, count, nil
+}
+
+// @Summary Get account ID by twin ID
+// @Description Retrieve the account ID associated with a specific twin ID
+// @Tags twins
+// @Accept json
+// @Produce json
+// @Param twin_id path int true "Twin ID"
+// @Param limit query int false "Pagination limit"
+// @Param offset query int false "Pagination offset"
+// @Param filterParam  query string false "Other optional filter params"
+// @Success 200 {object} TwinResponse "Account ID is retrieved successfully"
+// @Failure 400 {object} APIResponse "Bad Request or Invalid params"
+// @Failure 404 {object} APIResponse "Twin ID not found"
+// @Failure 500 {object} APIResponse "Internal Server Error"
+// @Router /twins/{twin_id}/account [get]
+func (h *Handler) GetAccountIDHandler(c *gin.Context) {
+	twinIDParam := c.Param("twin_id")
+	if twinIDParam == "" {
+		Error(c, http.StatusBadRequest, "Twin ID is required", "")
+		return
+	}
+
+	query := c.Request.URL.Query()
+
+	limit := proxyTypes.DefaultLimit()
+	err := queryParamsToStruct(query, &limit)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		return
+	}
+
+	twinID64, err := strconv.ParseUint(twinIDParam, 10, 64)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
+		return
+	}
+
+	filter := proxyTypes.TwinFilter{}
+	filter.TwinID = &twinID64
+	err = queryParamsToStruct(query, &filter)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		return
+	}
+
+	twins, _, err := h.proxyClient.Twins(c.Request.Context(), filter, limit)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	if len(twins) == 0 {
+		Error(c, http.StatusNotFound, "Twin ID not found", "")
+		return
+	}
+	Success(c, http.StatusOK, "Twin Details are retrieved successfully", TwinResponse{
+		AccountID: twins[0].AccountID,
+		TwinID:    twins[0].TwinID,
+		Relay:     twins[0].Relay,
+		PublicKey: twins[0].PublicKey,
+	})
+
 }

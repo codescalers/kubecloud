@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 // @Summary Get all invoices
@@ -28,7 +28,7 @@ import (
 func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 	invoices, err := h.db.ListInvoices()
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -54,7 +54,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 
 	invoices, err := h.db.ListUserInvoices(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -87,11 +87,11 @@ func (h *Handler) MonthlyInvoicesHandler() {
 
 		users, err := h.db.ListAllUsers()
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 		}
 		for _, user := range users {
 			if err = h.createUserInvoice(user); err != nil {
-				log.Error().Err(err).Send()
+				logger.GetLogger().Error().Err(err).Send()
 			}
 		}
 
@@ -125,14 +125,14 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid invoice ID", err.Error())
 		return
 	}
 
 	invoice, err := h.db.GetInvoice(id)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
 		return
 	}
@@ -141,21 +141,21 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	if len(invoice.FileData) == 0 {
 		user, err := h.db.GetUserByID(userID)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
 
 		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
 
 		invoice.FileData = pdfContent
 		if err := h.db.UpdateInvoicePDF(id, invoice.FileData); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}

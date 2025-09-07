@@ -6,9 +6,9 @@ import (
 
 	"kubecloud/kubedeployer"
 
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/xmonader/ewf"
+	"kubecloud/internal/logger"
 )
 
 // GridClientState represents the critical state that needs to be preserved
@@ -41,9 +41,9 @@ func SaveGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Clien
 	// Store as JSON string in workflow state
 	if stateBytes, err := json.Marshal(gridState); err == nil {
 		workflowState["gridclient_state"] = string(stateBytes)
-		log.Debug().Msg("Saved GridClient state to workflow state")
+		logger.GetLogger().Debug().Msg("Saved GridClient state to workflow state")
 	} else {
-		log.Warn().Err(err).Msg("Failed to marshal GridClient state")
+		logger.GetLogger().Warn().Err(err).Msg("Failed to marshal GridClient state")
 	}
 }
 
@@ -55,7 +55,7 @@ func RestoreGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Cl
 
 	stateStr, ok := workflowState["gridclient_state"].(string)
 	if !ok || stateStr == "" {
-		log.Debug().Msg("No GridClient state found in workflow state")
+		logger.GetLogger().Debug().Msg("No GridClient state found in workflow state")
 		return nil // Not an error, just no state to restore
 	}
 
@@ -78,6 +78,6 @@ func RestoreGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Cl
 		}
 	}
 
-	log.Debug().Msg("Restored GridClient state from workflow state")
+	logger.GetLogger().Debug().Msg("Restored GridClient state from workflow state")
 	return nil
 }

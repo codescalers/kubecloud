@@ -4,10 +4,10 @@ import (
 	"kubecloud/internal"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"kubecloud/internal/logger"
 )
 
 func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
@@ -16,7 +16,7 @@ func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
 
 	for range ticker.C {
 		if err := h.updateUserDebt(gridClient); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 		}
 	}
 }
@@ -30,13 +30,13 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 	for _, user := range users {
 		userNodes, err := h.db.ListUserNodes(user.ID)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 		// Create identity from mnemonic
 		identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 
@@ -45,7 +45,7 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 			calculatorClient := calculator.NewCalculator(gridClient.SubstrateConn, identity)
 			debt, err := calculatorClient.CalculateContractOverdue(node.ContractID, time.Hour)
 			if err != nil {
-				log.Error().Err(err).Send()
+				logger.GetLogger().Error().Err(err).Send()
 				continue
 			}
 			totalDebt += debt
@@ -54,13 +54,13 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 
 		totalDebtUSD, err := internal.FromTFTtoUSDMillicent(h.substrateClient, uint64(totalDebt))
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 		user.Debt = totalDebtUSD
 		err = h.db.UpdateUserByID(&user)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 		}
 	}
 

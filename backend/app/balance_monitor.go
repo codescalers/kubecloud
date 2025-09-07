@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
@@ -24,7 +24,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 			}
 
 			if err := h.settlePendingPayments(records); err != nil {
-				log.Error().Err(err).Send()
+				logger.GetLogger().Error().Err(err).Send()
 			}
 
 		case <-adminNotifyTicker.C:
@@ -35,7 +35,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 
 			if len(records) > 0 {
 				if err := h.notifyAdminWithPendingRecords(records); err != nil {
-					log.Error().Err(err).Send()
+					logger.GetLogger().Error().Err(err).Send()
 				}
 			}
 		}
@@ -52,18 +52,18 @@ func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
 		// getting balance every time to ensure we have the latest balance
 		systemTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, h.config.SystemAccount.Mnemonic)
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
 			continue
 		}
 
 		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
 		if systemTFTBalance < amountToTransfer {
-			log.Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
+			logger.GetLogger().Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
 			continue
 		}
 
 		if err = h.transferTFTsToUser(record.UserID, record.ID, amountToTransfer); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 	}
@@ -101,7 +101,7 @@ func (h *Handler) notifyAdminWithPendingRecords(records []models.PendingRecord) 
 	for _, admin := range admins {
 		err = h.mailService.SendMail(h.config.MailSender.Email, admin.Email, subject, body)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 	}

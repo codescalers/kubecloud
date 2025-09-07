@@ -25,13 +25,20 @@
         <span class="text-white ml-1">{{ r.value() }}</span>
       </div>
     </v-card-text>
-    <v-card-actions class="pt-3 px-4 pb-4">
+    <v-card-actions class="pt-3 px-4 pb-4 d-flex flex-column">
+      <v-btn
+        variant="outlined"
+        block
+        @click="openMonitoring"
+        aria-label="Check Node Health"
+      >
+        Check Node Health
+      </v-btn>
       <v-btn
         :color="buttonColor"
         variant="outlined"
         block
         class="font-weight-bold"
-        style="border-radius:8px;"
         @click="handleAction"
         :aria-label="buttonLabel"
         :loading="loading"
@@ -45,19 +52,14 @@
 
 <script setup lang="ts">
 import type { NormalizedNode } from '../types/normalizedNode';
-import { defineProps, defineEmits, computed } from 'vue';
-
+import { defineProps, defineEmits, ref, computed, onMounted } from 'vue';
+import { useNodes } from '../composables/useNodes';
 
 const props = defineProps<{ node: NormalizedNode; loading?: boolean; disabled?: boolean; buttonLabel?: string }>();
-const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
-const buttonColor = computed(() =>
-  buttonLabel.value.toLowerCase().includes('unreserve') ? 'error' : 'primary'
-);
 const emit = defineEmits(['action', 'signin']);
-
-const actionType = computed(() =>
-  buttonLabel.value.toLowerCase().includes('unreserve') ? 'unreserve' : 'reserve'
-);
+const buttonLabel = computed(() => props.buttonLabel || 'Reserve Node');
+const buttonColor = computed(() => buttonLabel.value.toLowerCase().includes('unreserve') ? 'error' : 'primary');
+const actionType = computed(() => buttonLabel.value.toLowerCase().includes('unreserve') ? 'unreserve' : 'reserve');
 
 function handleAction() {
   emit('action', { nodeId: props.node.nodeId, action: actionType.value });
@@ -65,40 +67,52 @@ function handleAction() {
 
 const baseNodePrice = computed(() => {
   const base = Number(props.node.price_usd ?? 0);
-  // Divide extra fee by 1000 as it's in musd
   const extra = Number(props.node.extraFee ?? 0) / 1000;
   const price = base + extra;
   return isNaN(price) ? null : price;
 });
-
-const monthlyPrice = computed(() => {
-  return baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2);
-});
-
-const hourlyPrice = computed(() => {
-  return baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2);
-});
-
+const monthlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2));
+const hourlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2));
 const resources = [
-  {
-    icon: 'mdi-cpu-64-bit',
-    color: '#0ea5e9',
-    label: 'CPU:',
-    value: () => `${props.node.cpu} vCPU`
-  },
-  {
-    icon: 'mdi-memory',
-    color: '#10B981',
-    label: 'RAM:',
-    value: () => `${props.node.ram} GB`
-  },
-  {
-    icon: 'mdi-harddisk',
-    color: '#38bdf8',
-    label: 'Storage:',
-    value: () => `${props.node.storage} GB`
-  }
+  { icon: 'mdi-cpu-64-bit', color: '#0ea5e9', label: 'CPU:', value: () => `${props.node.cpu} vCPU` },
+  { icon: 'mdi-memory', color: '#10B981', label: 'RAM:', value: () => `${props.node.ram} GB` },
+  { icon: 'mdi-harddisk', color: '#38bdf8', label: 'Storage:', value: () => `${props.node.storage} GB` }
 ];
+
+const { fetchAccountId } = useNodes();
+const monitoringUrl = ref('');
+
+function getNetwork(env: string): string {
+  switch (env) {
+    case 'dev': return 'development';
+    case 'qa': return 'qa';
+    case 'test': return 'testing';
+    case 'main': return 'production';
+    default: return 'development';
+  }
+}
+
+onMounted(async () => {
+  let accountId = '';
+  if (props.node.twinId) {
+    accountId = await fetchAccountId(props.node.twinId);
+  }
+  const env = (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_NETWORK) || (import.meta as any).env?.VITE_NETWORK;
+  const network = getNetwork(env);
+  const params = new URLSearchParams({
+    orgId: '2',
+    refresh: '30s',
+    'var-network': network,
+    'var-farm': props.node.farmId?.toString(),
+    'var-node': accountId,
+    'var-diskdevices': '[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+'
+  });
+  monitoringUrl.value = `https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics?${params.toString()}`;
+});
+
+function openMonitoring() {
+  window.open(monitoringUrl.value, '_blank');
+}
 
 const priceColor = '#10B981';
 const priceLabelColor = '#a3a3a3';

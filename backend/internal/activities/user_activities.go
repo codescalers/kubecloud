@@ -8,11 +8,11 @@ import (
 	"kubecloud/models"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
+	"kubecloud/internal/logger"
 )
 
 func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
@@ -267,13 +267,13 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to create keypair for SS58 address")
+			logger.GetLogger().Error().Err(err).Msg("failed to create keypair for SS58 address")
 			return err
 		}
 
 		sponseeAddress, err := internal.AccountAddressFromKeypair(sponseeKeyPair)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get SS58 address")
+			logger.GetLogger().Error().Err(err).Msg("failed to get SS58 address")
 			return err
 		}
 
@@ -404,7 +404,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
-			log.Error().Err(err).Msg("error converting usd")
+			logger.GetLogger().Error().Err(err).Msg("error converting usd")
 			return err
 		}
 
@@ -414,7 +414,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			TFTAmount:    requestedTFTs,
 			TransferMode: transferMode,
 		}); err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			return err
 		}
 

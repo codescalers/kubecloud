@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"kubecloud/internal/logger"
 )
 
 type Stats struct {
@@ -29,21 +29,21 @@ type Stats struct {
 func (h *Handler) GetStatsHandler(c *gin.Context) {
 	totalUsers, err := h.db.CountAllUsers()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to count total users")
+		logger.GetLogger().Error().Err(err).Msg("failed to count total users")
 		InternalServerError(c)
 		return
 	}
 
 	totalClusters, err := h.db.CountAllClusters()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to count total clusters")
+		logger.GetLogger().Error().Err(err).Msg("failed to count total clusters")
 		InternalServerError(c)
 		return
 	}
 
 	stats, err := h.proxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up"}})
 	if err != nil {
-		log.Error().Err(err).Msg("failed to retrieve up nodes count")
+		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)
 		return
 	}
