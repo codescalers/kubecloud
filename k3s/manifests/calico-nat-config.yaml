@@ -33,11 +33,9 @@ spec:
         - /bin/sh
         - -c
         - |
-          # Wait for Calico to be ready
-          while ! iptables -t nat -L cali-nat-outgoing >/dev/null 2>&1; do
-            echo "Waiting for Calico NAT chains to be created..."
-            sleep 5
-          done
+          # Wait for basic iptables to be available and add rules directly
+          echo "Setting up NAT rules..."
+          sleep 10
           
           # Add IPv4 NAT rule if not exists
           if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 ! -d 10.42.0.0/16 -j MASQUERADE 2>/dev/null; then
