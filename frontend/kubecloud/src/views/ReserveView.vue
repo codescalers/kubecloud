@@ -18,7 +18,7 @@
     <section class="hero-section">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
-          <h1 class="hero-title kubecloud-gradient kubecloud-glow-blue">
+          <h1 class="hero-title mycelium-cloud-gradient mycelium-cloud-glow-blue">
             Reserve Your Node
           </h1>
           <p class="hero-description">
@@ -91,7 +91,7 @@
             <v-card class="reservation-card">
               <div class="nodes-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
                 <div style="display: flex; align-items: center; gap: 1.2rem;">
-                  <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
+                  <h2 class="card-title mycelium-cloud-gradient mycelium-cloud-glow-blue">
                     Available Nodes
                   </h2>
                   <div class="nodes-count">

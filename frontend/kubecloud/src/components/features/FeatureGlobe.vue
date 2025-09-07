@@ -47,7 +47,7 @@ let rotationX = 0
 let autoRotate = true
 
 const GLOBE_RADIUS = 2.9
-const POINT_COLOR = '#60a5fa' // KubeCloud blue
+const POINT_COLOR = '#60a5fa' // Mycelium Cloud blue
 const POINT_COLOR_HIGHLIGHT = '#fff'
 const ARC_COLOR = '#38bdf8' // Cyan
 

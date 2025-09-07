@@ -16,20 +16,20 @@ import { useUserStore } from './stores/user'
 
 const vuetify = createVuetify({
   theme: {
-    defaultTheme: 'kubecloudTheme',
+    defaultTheme: 'myceliumCloudTheme',
     themes: {
-      kubecloudTheme: {
+      myceliumCloudTheme: {
         dark: true,
         colors: {
-          primary: '#3B82F6',      // kubecloud blue
-          secondary: '#EA580C',    // kubecloud orange
-          accent: '#60A5FA',       // kubecloud blue-light
-          surface: '#1E293B',      // kubecloud slate
-          background: '#0F172A',   // kubecloud navy
-          success: '#10B981',      // kubecloud success
-          warning: '#F59E0B',      // kubecloud warning
-          error: '#EF4444',        // kubecloud error
-          info: '#0891B2',         // kubecloud cyan
+          primary: '#3B82F6',      // mycelium cloud blue
+          secondary: '#EA580C',    // mycelium cloud orange
+          accent: '#60A5FA',       // mycelium cloud blue-light
+          surface: '#1E293B',      // mycelium cloud slate
+          background: '#0F172A',   // mycelium cloud navy
+          success: '#10B981',      // mycelium cloud success
+          warning: '#F59E0B',      // mycelium cloud warning
+          error: '#EF4444',        // mycelium cloud error
+          info: '#0891B2',         // mycelium cloud cyan
           'on-primary': '#FFFFFF',
           'on-secondary': '#FFFFFF',
           'on-surface': '#F1F5F9',

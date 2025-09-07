@@ -2,8 +2,8 @@
   <footer class="app-footer">
     <div class="footer-content">
       <div class="footer-brand">
-        <router-link to="/" class="footer-logo" aria-label="KubeCloud logo">
-          <img :src="logo" alt="KubeCloud Logo" class="logo" width="110">
+        <router-link to="/" class="footer-logo" aria-label="Mycelium Cloud logo">
+          <img :src="logo" alt="Mycelium Cloud Logo" class="logo" width="110">
         </router-link>
       </div>
       <nav class="footer-links">

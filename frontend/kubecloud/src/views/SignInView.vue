@@ -35,7 +35,7 @@
           <v-btn
             variant="text"
             size="small"
-            class="kubecloud-hover-blue pa-0"
+            class="mycelium-cloud-hover-blue pa-0"
             :disabled="loading"
             @click="router.push('/forgot-password')"
           >
