@@ -162,7 +162,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 	}
 
 	id, err := strconv.Atoi(userID)
-	if err != nil {
+	if err != nil || id == 0 {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid user ID", err.Error())
 		return
@@ -301,7 +301,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 
 	id, err := strconv.Atoi(userID)
-	if err != nil {
+	if err != nil || id == 0 {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid user ID format", "")
 		return

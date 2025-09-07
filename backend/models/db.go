@@ -39,20 +39,20 @@ type DB interface {
 	GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error)
 	// Notification methods
 	CreateNotification(notification *Notification) error
-	GetUserNotifications(userID string, limit, offset int) ([]Notification, error)
-	GetUnreadNotifications(userID string, limit, offset int) ([]Notification, error)
-	MarkNotificationAsRead(notificationID uint, userID string) error
-	MarkNotificationAsUnread(notificationID uint, userID string) error
-	MarkAllNotificationsAsRead(userID string) error
-	DeleteNotification(notificationID uint, userID string) error
-	DeleteAllNotifications(userID string) error
+	GetUserNotifications(userID int, limit, offset int) ([]Notification, error)
+	GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error)
+	MarkNotificationAsRead(notificationID uint, userID int) error
+	MarkNotificationAsUnread(notificationID uint, userID int) error
+	MarkAllNotificationsAsRead(userID int) error
+	DeleteNotification(notificationID uint, userID int) error
+	DeleteAllNotifications(userID int) error
 	// Cluster methods
-	CreateCluster(userID string, cluster *Cluster) error
-	ListUserClusters(userID string) ([]Cluster, error)
-	GetClusterByName(userID string, projectName string) (Cluster, error)
+	CreateCluster(userID int, cluster *Cluster) error
+	ListUserClusters(userID int) ([]Cluster, error)
+	GetClusterByName(userID int, projectName string) (Cluster, error)
 	UpdateCluster(cluster *Cluster) error
-	DeleteCluster(userID string, projectName string) error
-	DeleteAllUserClusters(userID string) error
+	DeleteCluster(userID int, projectName string) error
+	DeleteAllUserClusters(userID int) error
 	// pending records methods
 	CreatePendingRecord(record *PendingRecord) error
 	ListAllPendingRecords() ([]PendingRecord, error)

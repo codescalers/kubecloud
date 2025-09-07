@@ -9,7 +9,6 @@ import (
 	"kubecloud/kubedeployer"
 	"net/http"
 	"os"
-	"strconv"
 
 	"kubecloud/internal/logger"
 
@@ -77,16 +76,15 @@ type NodeInput struct {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments [get]
 func (h *Handler) HandleListDeployments(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	id := fmt.Sprintf("%v", userID)
-	clusters, err := h.db.ListUserClusters(id)
+	clusters, err := h.db.ListUserClusters(userID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("user_id", id).Msg("Failed to list user clusters")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user clusters")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
 		return
 	}
@@ -127,8 +125,8 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/{name} [get]
 func (h *Handler) HandleGetDeployment(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
@@ -139,15 +137,14 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 		return
 	}
 
-	id := fmt.Sprintf("%v", userID)
-	projectName = kubedeployer.GetProjectName(id, projectName)
-	cluster, err := h.db.GetClusterByName(id, projectName)
+	projectName = kubedeployer.GetProjectName(userID, projectName)
+	cluster, err := h.db.GetClusterByName(userID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.GetLogger().Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Deployment not found")
+			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Database error when looking up deployment")
+			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Database error when looking up deployment")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -184,8 +181,8 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/{name}/kubeconfig [get]
 func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
@@ -196,15 +193,14 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	id := fmt.Sprintf("%v", userID)
-	projectName = kubedeployer.GetProjectName(id, projectName)
-	cluster, err := h.db.GetClusterByName(id, projectName)
+	projectName = kubedeployer.GetProjectName(userID, projectName)
+	cluster, err := h.db.GetClusterByName(userID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.GetLogger().Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Deployment not found")
+			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Str("user_id", id).Str("project_name", projectName).Msg("Database error when looking up deployment for kubeconfig")
+			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Database error when looking up deployment for kubeconfig")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -257,18 +253,12 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 }
 
 func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, error) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		return statemanager.ClientConfig{}, fmt.Errorf("user_id not found in context")
 	}
-	userIDStr := fmt.Sprintf("%v", userID)
 
-	userIDInt, err := strconv.Atoi(userIDStr)
-	if err != nil {
-		return statemanager.ClientConfig{}, fmt.Errorf("failed to parse user ID: %v", err)
-	}
-
-	user, err := h.db.GetUserByID(userIDInt)
+	user, err := h.db.GetUserByID(userID)
 	if err != nil {
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -276,7 +266,7 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 	return statemanager.ClientConfig{
 		SSHPublicKey: h.sshPublicKey,
 		Mnemonic:     user.Mnemonic,
-		UserID:       userIDStr,
+		UserID:       userID,
 		Network:      h.config.SystemAccount.Network,
 		Debug:        h.config.Debug,
 	}, nil
@@ -323,7 +313,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		c.JSON(http.StatusConflict, gin.H{"error": "deployment already exists"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		logger.GetLogger().Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when checking for existing deployment")
+		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when checking for existing deployment")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing deployments"})
 		return
 	}
@@ -382,7 +372,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for deletion")
+			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for deletion")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -491,7 +481,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Str("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for adding node")
+			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for adding node")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -572,10 +562,10 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	cluster, err := h.db.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			logger.GetLogger().Error().Err(err).Str("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Deployment not found")
+			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Str("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Database error when looking up deployment for node removal")
+			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Database error when looking up deployment for node removal")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
