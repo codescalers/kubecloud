@@ -45,10 +45,14 @@ spec:
             iptables -t nat -I POSTROUTING 1 -s 10.42.0.0/16 ! -d 10.42.0.0/16 -j MASQUERADE
           fi
           
-          # Add IPv6 NAT rule if not exists
-          if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE 2>/dev/null; then
-            echo "Adding IPv6 NAT rule..."
-            ip6tables -t nat -I POSTROUTING 1 -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE
+          # Add IPv6 NAT rule if not exists and IPv6 is available
+          if ip6tables -t nat -L >/dev/null 2>&1; then
+            if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE 2>/dev/null; then
+              echo "Adding IPv6 NAT rule..."
+              ip6tables -t nat -I POSTROUTING 1 -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE
+            fi
+          else
+            echo "IPv6 NAT tables not available"
           fi
           
           echo "NAT rules configured successfully"

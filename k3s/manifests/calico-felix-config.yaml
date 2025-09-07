@@ -3,6 +3,6 @@ kind: FelixConfiguration
 metadata:
   name: default
 spec:
-  iptablesBackend: Legacy
   chainInsertMode: Insert
+  iptablesBackend: Legacy
   natOutgoingAddress: ""
