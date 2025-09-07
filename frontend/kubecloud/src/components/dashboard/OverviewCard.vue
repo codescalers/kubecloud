@@ -2,7 +2,7 @@
   <div class="dashboard-card">
     <div class="mb-8">
       <h3 class="dashboard-card-title">Dashboard Overview</h3>
-      <p class="dashboard-card-subtitle">Your KubeCloud platform at a glance</p>
+      <p class="dashboard-card-subtitle">Your MyceliumCloud platform at a glance</p>
     </div>
     <!-- Stats Grid -->
     <StatsGrid :stats="statsData" />

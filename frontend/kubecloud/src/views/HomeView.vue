@@ -103,7 +103,7 @@ const features = [
     <section class="hero-globe-section">
       <div class="hero-globe-content">
         <div class="hero-globe-text">
-          <h1 class="hero-title">KubeCloud</h1>
+          <h1 class="hero-title">MyceliumCloud</h1>
           <p class="hero-subtitle">Revolutionary Kubernetes platform that transforms how teams deploy and manage cloud-native applications at scale</p>
         </div>
         <div class="globe-wrapper">
@@ -157,7 +157,7 @@ const features = [
             Ready to Transform Your Kubernetes Experience?
           </h2>
           <p class="cta-description">
-            Join thousands of developers and DevOps engineers who trust KubeCloud for their production workloads.
+            Join thousands of developers and DevOps engineers who trust MyceliumCloud for their production workloads.
           </p>
           <v-btn
             v-if="userStore.isLoggedIn"
@@ -166,7 +166,7 @@ const features = [
             size="x-large"
             to="/deploy"
           >
-            Deploy Cluster  
+            Deploy Cluster
           </v-btn>
           <v-btn
             v-else

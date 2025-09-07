@@ -12,7 +12,7 @@
       </nav>
     </div>
     <div class="footer-bottom">
-      <span class="footer-copyright">© {{ new Date().getFullYear() }} KubeCloud. All rights reserved.</span>
+      <span class="footer-copyright">© {{ new Date().getFullYear() }} MyceliumCloud. All rights reserved.</span>
     </div>
   </footer>
 </template>
