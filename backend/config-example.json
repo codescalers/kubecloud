@@ -60,5 +60,6 @@
     "max_backups": 12,
     "max_age": 30,
     "compress": true
-  }
+  },
+  "notification_config_path": "./notification-config-example.json"
 }
