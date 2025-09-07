@@ -628,12 +628,6 @@
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Invalid notification ID",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
@@ -768,12 +762,6 @@
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Invalid notification ID",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
@@ -836,12 +824,6 @@
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Invalid notification ID",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
@@ -902,12 +884,6 @@
                                     }
                                 }
                             ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid notification ID",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "401": {

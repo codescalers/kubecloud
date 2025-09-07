@@ -1259,10 +1259,6 @@ paths:
                 data:
                   type: object
               type: object
-        "400":
-          description: Invalid notification ID
-          schema:
-            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Authentication required
           schema:
@@ -1301,10 +1297,6 @@ paths:
                 data:
                   type: object
               type: object
-        "400":
-          description: Invalid notification ID
-          schema:
-            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Authentication required
           schema:
@@ -1343,10 +1335,6 @@ paths:
                 data:
                   type: object
               type: object
-        "400":
-          description: Invalid notification ID
-          schema:
-            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Authentication required
           schema:
@@ -1379,10 +1367,6 @@ paths:
                 data:
                   type: object
               type: object
-        "400":
-          description: Invalid notification ID
-          schema:
-            $ref: '#/definitions/app.APIResponse'
         "401":
           description: Authentication required
           schema:
