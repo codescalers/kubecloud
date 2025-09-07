@@ -44,17 +44,31 @@ func main() {
 	configPath := flag.String("config", "../../config.json", "Path to config file")
 	flag.Parse()
 	loadConfig(*configPath)
-	db, err := models.NewSqliteDB(config.Database.File)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create database")
+
+	_, err := os.Stat(config.Database.File)
+	if os.IsNotExist(err) {
+		log.Error().Err(err).Msg("Database file does not exist")
 		return
 	}
+	if err != nil {
+		log.Error().Err(err).Msg("Error checking database file")
+		return
+	}
+
+	db, err := models.NewSqliteDB(config.Database.File)
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to open database")
+		return
+	}
+	defer db.Close()
 
 	substrateClient, err := substrate.NewManager(config.TFChainURL).Substrate()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create substrate client")
 		return
 	}
+	defer substrateClient.Close()
 
 	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
 	moneyCollector.CollectMoney()
