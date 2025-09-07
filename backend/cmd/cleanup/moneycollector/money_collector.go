@@ -30,7 +30,7 @@ func NewMoneyCollector(db models.DB, config internal.Configuration, substrateCli
 func (m *MoneyCollector) CollectMoney() {
 	system, err := substrate.NewIdentityFromSr25519Phrase(m.config.SystemAccount.Mnemonic)
 	if err != nil {
-		log.Error().Err(err).Msg("MoneyCollector: failed to create system identity")
+		log.Error().Err(err).Msg("MoneyCollector: failed to load system identity")
 		return
 	}
 	users, err := m.db.ListAllUsers()
@@ -60,7 +60,7 @@ func (m *MoneyCollector) CollectMoney() {
 			if balance > MinBalanceThreshold {
 				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
 				if err != nil {
-					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to create user identity")
+					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to load user identity")
 					return
 				}
 				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
