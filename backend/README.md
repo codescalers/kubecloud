@@ -1,6 +1,6 @@
 # Mycelium Cloud
 
-Mycelium Cloud is a CLI tool that helps you deploy and manage Mycelium cloud clusters on the decentralized TFGrid.
+Mycelium Cloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
 
 ## Configuration
 
