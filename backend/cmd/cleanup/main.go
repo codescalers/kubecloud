@@ -6,7 +6,7 @@ import (
 	"kubecloud/models"
 	"os"
 
-	moneyCollector "kubecloud/cmd/cleanup/moneyCollector"
+	moneycollector "kubecloud/cmd/cleanup/moneycollector"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
@@ -56,9 +56,7 @@ func main() {
 		return
 	}
 
-	moneyCollector := moneyCollector.NewMoneyCollector(db, config, substrateClient)
+	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
 	moneyCollector.CollectMoney()
-
-	os.Exit(0)
 
 }

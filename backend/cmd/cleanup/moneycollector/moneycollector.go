@@ -1,4 +1,4 @@
-package MoneyCollector
+package moneycollector
 
 import (
 	"kubecloud/internal"
