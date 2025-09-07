@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -170,20 +171,36 @@ func LoadConfig() (Configuration, error) {
 
 func expandPath(path string) (string, error) {
 	if path == "" {
-		return "", nil
+		return ".", nil
 	}
 
 	path = os.ExpandEnv(path)
 
 	if strings.HasPrefix(path, "~") {
-		home, err := os.UserHomeDir()
+
+		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to get home directory: %w", err)
 		}
+
 		if path == "~" {
-			path = home
+			path = homeDir
 		} else if strings.HasPrefix(path, "~/") {
-			path = filepath.Join(home, path[2:])
+			path = filepath.Join(homeDir, path[2:])
+		} else {
+			parts := strings.SplitN(path, "/", 2)
+			username := parts[0][1:]
+
+			user, err := user.Lookup(username)
+			if err != nil {
+				return "", fmt.Errorf("user %s not found: %w", username, err)
+			}
+
+			if len(parts) == 1 {
+				path = user.HomeDir
+			} else {
+				path = filepath.Join(user.HomeDir, parts[1])
+			}
 		}
 	}
 
