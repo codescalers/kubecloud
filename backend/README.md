@@ -69,7 +69,7 @@ export MYCELIUMCLOUD_SERVER_PORT=8080
 Some configuration options can be passed directly as CLI flags. For example:
 
 ```bash
-kubecloud --config /path/to/config.json
+myceliumcloud --config /path/to/config.json
 ```
 
 ### Priority Order
