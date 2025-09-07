@@ -274,7 +274,7 @@ func gracefulShutdown(app *app.App) error {
 	defer stop()
 
 	go func() {
-		logger.GetLogger().Info().Msg("Starting KubeCloud server")
+		logger.GetLogger().Info().Msg("Starting Mycelium Cloud server")
 
 		if err := app.Run(); err != nil && err != http.ErrServerClosed {
 			logger.GetLogger().Error().Err(err).Msg("Failed to start server")

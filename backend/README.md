@@ -1,14 +1,14 @@
-# KubeCloud
+# Mycelium Cloud
 
-KubeCloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
+Mycelium Cloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
 
 ## Configuration
 
-KubeCloud supports configuration through environment variables, CLI flags, and configuration files.
+Mycelium Cloud supports configuration through environment variables, CLI flags, and configuration files.
 
 ### Configuration File
 
-By default, KubeCloud looks for a `config.json` file in the current directory. You can specify a custom configuration file path using the `--config` or `-c` flag:
+By default, Mycelium Cloud looks for a `config.json` file in the current directory. You can specify a custom configuration file path using the `--config` or `-c` flag:
 
 ```bash
 kubecloud --config /path/to/config.json
@@ -48,8 +48,8 @@ The configuration file should be in JSON format. Example:
     "net": "main"
   },
   "invoice": {
-    "name": "KubeCloud Invoice",
-    "address": "123 KubeCloud St, Cloud City, CC 12345",
+    "name": "Mycelium Cloud Invoice",
+    "address": "123 Mycelium Cloud St, Cloud City, CC 12345",
     "governorate": "Cloud Governorate"
   }
 }
@@ -57,11 +57,11 @@ The configuration file should be in JSON format. Example:
 
 ### Environment Variables
 
-You can override configuration values using environment variables. Environment variables should be prefixed with `KUBECLOUD_`. For example:
+You can override configuration values using environment variables. Environment variables should be prefixed with `MYCELIUMCLOUD_`. For example:
 
 ```bash
-export KUBECLOUD_SERVER_HOST=localhost
-export KUBECLOUD_SERVER_PORT=8080
+export MYCELIUMCLOUD_SERVER_HOST=localhost
+export MYCELIUMCLOUD_SERVER_PORT=8080
 ```
 
 ### CLI Flags
