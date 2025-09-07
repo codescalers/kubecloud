@@ -307,7 +307,10 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			InternalServerError(c)
 			return
 		}
-		notification := models.NewNotification(fmt.Sprintf("%d", user.ID), "user_registration", map[string]string{"status": "User email is verified"}, models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityInfo))
+		payload := notification.CommonPayload{
+			Message: "User email is verified",
+		}
+		notification := models.NewNotification(fmt.Sprintf("%d", user.ID), "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityInfo))
 		err = h.notificationService.Send(context.Background(), notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send user registration notification")
@@ -637,13 +640,13 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 
 	}
 
-	payload := map[string]string{
-		"status":  "password_changed",
-		"subject": "Your password was changed",
-		"message": "Your account password has been successfully updated.",
+	payload := notification.CommonPayload{
+		Status:  "password_changed",
+		Subject: "Your password was changed",
+		Message: "Your account password has been successfully updated.",
 	}
 
-	notification := models.NewNotification(fmt.Sprintf("%d", c.GetInt("user_id")), models.NotificationTypeUser, payload)
+	notification := models.NewNotification(fmt.Sprintf("%d", c.GetInt("user_id")), models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
 	err = h.notificationService.Send(c, notification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to send password changed notification")
@@ -991,12 +994,12 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	payload := map[string]string{
-		"status":  "ssh_key_added",
-		"subject": "New SSH key added",
-		"message": fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
+	payload := notification.CommonPayload{
+		Status:  "ssh_key_added",
+		Subject: "New SSH key added",
+		Message: fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
 	}
-	notification := models.NewNotification(fmt.Sprintf("%d", userID), models.NotificationTypeUser, payload)
+	notification := models.NewNotification(fmt.Sprintf("%d", userID), models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
 	err := h.notificationService.Send(c, notification)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to send ssh key added notification")

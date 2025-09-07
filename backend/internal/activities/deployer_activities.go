@@ -496,12 +496,12 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 	workflow := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	workflow.BeforeWorkflowHooks = append(workflow.BeforeWorkflowHooks, func(ctx context.Context, w *ewf.Workflow) {
 		userID := w.State["config"].(statemanager.ClientConfig).UserID
-		payload := map[string]string{
-			"status":  "started",
-			"message": "Your cluster has started deploying.",
+		payload := notification.CommonPayload{
+			Status:  "started",
+			Message: "Your cluster has started deploying.",
 		}
 
-		notification := models.NewNotification(userID, models.NotificationTypeDeployment, payload)
+		notification := models.NewNotification(userID, models.NotificationTypeDeployment, notification.MergePayload(payload, map[string]string{}))
 		err := notificationService.Send(ctx, notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to send notification")

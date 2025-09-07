@@ -19,6 +19,45 @@ type Notifier interface {
 	GetStepName() string
 }
 
+type ChannelRule struct {
+	Channels []string
+	Severity models.NotificationSeverity
+}
+
+type NotificationTemplate struct {
+	Default  ChannelRule
+	ByStatus map[string]ChannelRule
+}
+
+// CommonPayload represents commonly used payload fields across channels
+type CommonPayload struct {
+	Subject string
+	Status  string
+	Message string
+	Error   string
+}
+
+// MergePayload combines CommonPayload with additional fields
+func MergePayload(cp CommonPayload, extras map[string]string) map[string]string {
+	out := make(map[string]string)
+	if cp.Subject != "" {
+		out["subject"] = cp.Subject
+	}
+	if cp.Status != "" {
+		out["status"] = cp.Status
+	}
+	if cp.Message != "" {
+		out["message"] = cp.Message
+	}
+	if cp.Error != "" {
+		out["error"] = cp.Error
+	}
+	for k, v := range extras {
+		out[k] = v
+	}
+	return out
+}
+
 type NotificationServiceInterface interface {
 	Send(ctx context.Context, notification *models.Notification) error
 	GetNotifiers() map[string]Notifier

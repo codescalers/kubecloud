@@ -36,35 +36,17 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 				message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
 			}
 
-			notificationPayload = map[string]string{
-				"message": message,
-				"name":    wf.Name,
-				"error":   err.Error(),
-			}
+			notificationPayload = notification.MergePayload(notification.CommonPayload{
+				Message: message,
+				Error:   err.Error(),
+			}, map[string]string{
+				"name": wf.Name,
+			})
 
 			notification := models.NewNotification(config.UserID, "workflow_update", notificationPayload, models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityError))
 			err = notificationService.Send(ctx, notification)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Msg("Failed to send workflow update notification")
-			}
-			return
-		}
-		cluster, clusterErr := statemanager.GetCluster(wf.State)
-		if clusterErr != nil {
-			notificationPayload = map[string]string{
-				"message": fmt.Sprintf("%s completed successfully", workflowDesc),
-				"name":    wf.Name,
-			}
-		} else {
-			nodeCount := len(cluster.Nodes)
-			message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
-				workflowDesc, cluster.Name, nodeCount)
-
-			notificationPayload = map[string]string{
-				"message":      message,
-				"name":         wf.Name,
-				"cluster_name": cluster.Name,
-				"node_count":   fmt.Sprintf("%d", nodeCount),
 			}
 			return
 		}
@@ -78,7 +60,6 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 
 		} else {
 			nodeCount := len(cluster.Nodes)
-			totalSteps := nodeCount + 2
 			message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
 				workflowDesc, cluster.Name, nodeCount)
 
@@ -87,8 +68,7 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 			}, map[string]string{
 				"name":         wf.Name,
 				"cluster_name": cluster.Name,
-				"node_count":   fmt.Sprintf("%d", nodeCount),
-				"total_steps":  fmt.Sprintf("%d", totalSteps),
+				"node_count":   strconv.Itoa(nodeCount),
 			})
 		}
 
@@ -144,14 +124,20 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 		return
 	}
 
-	payload := map[string]string{
-		"message":       fmt.Sprintf("Deploying cluster %q - %s", clusterName, message),
-		"workflow_name": workflowName,
-		"step_name":     stepName,
-		"cluster_name":  clusterName,
-		"current_step":  strconv.Itoa(current),
-		"total_steps":   strconv.Itoa(total),
-	}
+	payload := notification.MergePayload(
+		notification.CommonPayload{
+			Subject: "Cluster Deployment",
+			Status:  status,
+			Message: fmt.Sprintf("Deploying cluster %q - %s", clusterName, message),
+		},
+		map[string]string{
+			"workflow_name": workflowName,
+			"step_name":     stepName,
+			"cluster_name":  clusterName,
+			"current_step":  strconv.Itoa(current),
+			"total_steps":   strconv.Itoa(total),
+		},
+	)
 	if err != nil {
 		payload["error"] = err.Error()
 	}
@@ -162,6 +148,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 		payload,
 		models.WithNoPersist(),
 		models.WithChannels(notification.ChannelUI),
+		models.WithSeverity(severity),
 	)
 	err = notificationService.Send(context.Background(), notification)
 	if err != nil {
@@ -255,12 +242,13 @@ func NotifyCreateDeploymentResult(notificationService *notification.Notification
 			if clusterErr == nil {
 				message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
 			}
-			notificationPayload = map[string]string{
-				"subject": fmt.Sprintf("%s failed", workflowDesc),
-				"status":  "failed",
-				"message": message,
-				"error":   err.Error(),
-			}
+			notificationPayload = notification.MergePayload(notification.CommonPayload{
+				Subject: fmt.Sprintf("%s failed", workflowDesc),
+				Status:  "failed",
+				Message: message,
+				Error:   err.Error(),
+			}, map[string]string{})
+
 			notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload, models.WithChannels(notification.ChannelEmail))
 			err := notificationService.Send(ctx, notification)
 			if err != nil {
@@ -275,13 +263,14 @@ func NotifyCreateDeploymentResult(notificationService *notification.Notification
 			message = fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
 				workflowDesc, cluster.Name, nodeCount)
 		}
-		notificationPayload = map[string]string{
-			"subject":      fmt.Sprintf("%s completed successfully", workflowDesc),
-			"status":       "succeeded",
-			"message":      message,
-			"timestamp":    time.Now().Format(time.RFC3339),
+		notificationPayload = notification.MergePayload(notification.CommonPayload{
+			Subject: fmt.Sprintf("%s completed successfully", workflowDesc),
+			Status:  "succeeded",
+			Message: message,
+		}, map[string]string{
 			"cluster_name": cluster.Name,
-		}
+			"timestamp":    time.Now().Format(timeFormat),
+		})
 
 		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload, models.WithChannels(notification.ChannelEmail))
 		err = notificationService.Send(ctx, notification)
@@ -313,13 +302,14 @@ func NotifyDeploymentDeleted(notificationService *notification.NotificationServi
 			nodeCount = len(cluster.Nodes)
 			message = fmt.Sprintf("Deployment for cluster '%s' with %d nodes was deleted", clusterName, nodeCount)
 		}
-		notificationPayload := map[string]string{
-			"subject":      "Deployment deleted",
-			"status":       "deleted",
-			"message":      message,
-			"timestamp":    time.Now().Format(time.RFC3339),
+		notificationPayload := notification.MergePayload(notification.CommonPayload{
+			Subject: "Deployment deleted",
+			Status:  "deleted",
+			Message: message,
+		}, map[string]string{
+			"timestamp":    time.Now().Format(timeFormat),
 			"cluster_name": clusterName,
-		}
+		})
 
 		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)
 		err = notificationService.Send(ctx, notification)
