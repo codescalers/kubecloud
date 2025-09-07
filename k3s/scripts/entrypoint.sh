@@ -1,5 +1,8 @@
 #!/bin/bash
 
+mount --make-shared /run
+mount --make-shared /sys
+
 if [ ! -z "${K3S_DATA_DIR}" ]; then
     echo "k3s data-dir set to: $K3S_DATA_DIR"
     cp -r /var/lib/rancher/k3s/* $K3S_DATA_DIR && rm -rf /var/lib/rancher/k3s
@@ -12,7 +15,6 @@ EXTRA_ARGS="$EXTRA_ARGS --flannel-backend=none --disable-network-policy"
 if [[ "${DUAL_STACK}" = "true" && "${MASTER}" = "true" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS --cluster-cidr=10.42.0.0/16,2001:cafe:42::/56"
     EXTRA_ARGS="$EXTRA_ARGS --service-cidr=10.43.0.0/16,2001:cafe:43::/112"
-    EXTRA_ARGS="$EXTRA_ARGS --service-ip-family-policy=RequireDualStack"
 fi
 
 if [[ "${DUAL_STACK}" = "true" ]]; then
