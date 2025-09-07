@@ -198,8 +198,8 @@ func addFlags() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	viper.SetEnvPrefix("kubecloud") // Prefix for environment variables
-	viper.AutomaticEnv()            // Automatically bind environment variables
+	viper.SetEnvPrefix("myceliumcloud") // Prefix for environment variables
+	viper.AutomaticEnv()                // Automatically bind environment variables
 
 	// Map environment variables to their corresponding keys
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -224,9 +224,9 @@ func initConfig() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "KubeCloud",
+	Use:   "MyceliumCloud",
 	Short: "Deploy secure, decentralized Kubernetes clusters on TFGrid with Mycelium networking and QSFS storage.",
-	Long: `KubeCloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
+	Long: `Mycelium Cloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
 
 It supports:
 - GPU and dedicated nodes for high-performance workloads
