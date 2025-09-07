@@ -35,14 +35,14 @@ services:
       - mycelium
     working_dir: /opt/project
     volumes:
-      - ./backend/kubecloud.db:/app/kubecloud.db
+      - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
       - REDIS_HOST=redis-db
       - REDIS_PORT=6379
-    command: ["/kubecloud", "--config", "/app/config.json"]
+    command: ["/myceliumCloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
 
   frontend:
