@@ -13,8 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xmonader/ewf"
 	"kubecloud/internal/logger"
+
+	"github.com/xmonader/ewf"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
@@ -475,6 +481,7 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 	}
 
 	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
+	steps = append(steps, ewf.Step{Name: StepFetchKubeconfig, RetryPolicy: standardRetryPolicy})
 	steps = append(steps, ewf.Step{Name: StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
@@ -556,7 +563,8 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
 	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
-	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep(config.SSH.PrivateKeyPath))
+	engine.Register(StepFetchKubeconfig, FetchKubeconfigStep(config.SSH.PrivateKeyPath))
+	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
@@ -641,79 +649,83 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	return config, nil
 }
 
-func VerifyClusterReadyStep(privateKeyPath string) ewf.StepFn {
+func FetchKubeconfigStep(privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
 			return fmt.Errorf("failed to get cluster from state: %w", err)
 		}
 
-		privateKeyBytes, err := os.ReadFile(privateKeyPath)
-		if err != nil {
-			log.Error().Err(err).Str("key_path", privateKeyPath).Msg("Failed to read SSH private key")
-			return fmt.Errorf("failed to read SSH private key")
-		}
-
-		// pick any master node
 		var master *kubedeployer.Node
 		for i := range cluster.Nodes {
-			if cluster.Nodes[i].Type == kubedeployer.NodeTypeMaster {
+			if cluster.Nodes[i].Type == kubedeployer.NodeTypeLeader || cluster.Nodes[i].Type == kubedeployer.NodeTypeMaster {
 				master = &cluster.Nodes[i]
 				break
 			}
 		}
 		if master == nil {
-			return fmt.Errorf("no master node found in cluster spec")
+			return fmt.Errorf("no leader or master node found in cluster")
 		}
 
-		// ssh into master
-		output, err := internal.RunCommand(string(privateKeyBytes), master.MyceliumIP, "kubectl get nodes -o json")
+		privateKeyBytes, err := os.ReadFile(privateKeyPath)
 		if err != nil {
-			return fmt.Errorf("failed to run kubectl get nodes: %w", err)
+			return fmt.Errorf("failed to read SSH private key: %w", err)
 		}
 
-		var kubeNodes struct {
-			Items []struct {
-				Metadata struct {
-					Name string `json:"name"`
-				} `json:"metadata"`
-				Status struct {
-					Conditions []struct {
-						Type   string `json:"type"`
-						Status string `json:"status"`
-					} `json:"conditions"`
-				} `json:"status"`
-			} `json:"items"`
-		}
-		if err := json.Unmarshal([]byte(output), &kubeNodes); err != nil {
-			return fmt.Errorf("failed to parse kubectl output: %w", err)
+		kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), master)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve kubeconfig via SSH: %w", err)
 		}
 
-		expected := make(map[string]struct{})
-		for _, n := range cluster.Nodes {
-			expected[n.Name] = struct{}{}
+		state["kubeconfig"] = kubeconfig
+		return nil
+	}
+}
+
+func VerifyClusterReadyStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster: %w", err)
 		}
 
-		for _, n := range kubeNodes.Items {
-			fmt.Printf("Found node in cluster: %s\n", n.Metadata.Name)
-			delete(expected, n.Metadata.Name)
+		kubeconfig, ok := state["kubeconfig"].(string)
+		if !ok || kubeconfig == "" {
+			return fmt.Errorf("kubeconfig not found in workflow state")
+		}
 
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		if err != nil {
+			return fmt.Errorf("failed to parse kubeconfig: %w", err)
+		}
+
+		clientset, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create kubernetes client: %w", err)
+		}
+
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list nodes: %w", err)
+		}
+
+		for _, n := range nodes.Items {
 			ready := false
 			for _, cond := range n.Status.Conditions {
-				if cond.Type == "Ready" && cond.Status == "True" {
+				if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
 					ready = true
+					break
 				}
 			}
 			if !ready {
-				return fmt.Errorf("node %s is not Ready", n.Metadata.Name)
+				return fmt.Errorf("node %s is not ready", n.Name)
 			}
 		}
 
-		if len(expected) > 0 {
-			return fmt.Errorf("some expected nodes not found in kubectl get nodes: %v", expected)
-		}
+		logger.GetLogger().Info().
+			Str("cluster", cluster.Name).
+			Msg("All nodes are Ready")
 
-		fmt.Println("Cluster is ready, all nodes found and Ready")
 		return nil
 	}
 }
