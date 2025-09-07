@@ -1,6 +1,6 @@
 # Mycelium Cloud
 
-Mycelium Cloud is a CLI tool that helps you deploy and manage Kubernetes clusters on the decentralized TFGrid.
+Mycelium Cloud is a CLI tool that helps you deploy and manage Mycelium cloud clusters on the decentralized TFGrid.
 
 ## Configuration
 
@@ -11,7 +11,7 @@ Mycelium Cloud supports configuration through environment variables, CLI flags, 
 By default, Mycelium Cloud looks for a `config.json` file in the current directory. You can specify a custom configuration file path using the `--config` or `-c` flag:
 
 ```bash
-kubecloud --config /path/to/config.json
+myceliumcloud --config /path/to/config.json
 ```
 
 The configuration file should be in JSON format. Example:
