@@ -55,6 +55,282 @@ data:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  name: ippools.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: IPPool
+    listKind: IPPoolList
+    plural: ippools
+    singular: ippool
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: IPPoolSpec contains the specification for an IPPool resource.
+            properties:
+              allowedUses:
+                description: AllowedUse controls what the IP pool will be used for.
+                  If not specified or empty, defaults to ["Tunnel", "Workload"] for
+                  back-compatibility
+                items:
+                  type: string
+                type: array
+              blockSize:
+                description: The block size to use for IP address assignments from
+                  this pool. Defaults to 26 for IPv4 and 122 for IPv6.
+                type: integer
+              cidr:
+                description: The pool CIDR.
+                type: string
+              disableBGPExport:
+                description: 'Disable exporting routes from this IP Pool''s CIDR over
+                  BGP. [Default: false]'
+                type: boolean
+              disabled:
+                description: When disabled is true, Calico IPAM will not assign addresses
+                  from this pool.
+                type: boolean
+              encapsulation:
+                description: The encapsulation type used for packets sent from this
+                  IP pool.
+                type: string
+              ipipMode:
+                description: 'Contains configuration for IPIP tunneling for this pool.
+                  If not specified, then this is defaulted to "Never" (i.e. IPIP tunneling
+                  is disabled).'
+                type: string
+              natOutgoing:
+                description: 'When nat-outgoing is true, packets sent from Calico networked
+                  containers in this pool to destinations outside of this pool will
+                  be masqueraded.'
+                type: boolean
+              nodeSelector:
+                description: Allows IPPool to allocate for a specific node by label
+                  selector.
+                type: string
+              vxlanMode:
+                description: 'Contains configuration for VXLAN tunneling for this pool.
+                  If not specified, then this is defaulted to "Never" (i.e. VXLAN tunneling
+                  is disabled).'
+                type: string
+            required:
+            - cidr
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ipamconfigs.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: IPAMConfig
+    listKind: IPAMConfigList
+    plural: ipamconfigs
+    singular: ipamconfig
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: IPAMConfigSpec contains the specification for an IPAMConfig resource.
+            properties:
+              autoAllocateBlocks:
+                type: boolean
+              maxBlocksPerHost:
+                description: MaxBlocksPerHost, if non-zero, is the max number of blocks
+                  that can be affine to each host.
+                type: integer
+              strictAffinity:
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: blockaffinities.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: BlockAffinity
+    listKind: BlockAffinityList
+    plural: blockaffinities
+    singular: blockaffinity
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BlockAffinitySpec contains the specification for a BlockAffinity resource.
+            properties:
+              cidr:
+                type: string
+              deleted:
+                description: Deleted indicates that this block affinity is being deleted.
+                  This field is a string for compatibility with older releases that
+                  mistakenly treat this field as a string.
+                type: string
+              node:
+                type: string
+              state:
+                type: string
+            required:
+            - cidr
+            - deleted
+            - node
+            - state
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: ipamblocks.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  names:
+    kind: IPAMBlock
+    listKind: IPAMBlockList
+    plural: ipamblocks
+    singular: ipamblock
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object.'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents.'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: IPAMBlockSpec contains the specification for an IPAMBlock resource.
+            properties:
+              affinity:
+                type: string
+              allocations:
+                items:
+                  type: integer
+                  nullable: true
+                type: array
+              attributes:
+                items:
+                  properties:
+                    handle_id:
+                      type: string
+                    secondary:
+                      additionalProperties:
+                        type: string
+                      type: object
+                  type: object
+                type: array
+              cidr:
+                type: string
+              deleted:
+                type: boolean
+              strictAffinity:
+                type: boolean
+              unallocated:
+                items:
+                  type: integer
+                type: array
+            required:
+            - allocations
+            - attributes
+            - cidr
+            - strictAffinity
+            - unallocated
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
   name: bgpconfigurations.crd.projectcalico.org
 spec:
   group: crd.projectcalico.org
@@ -181,6 +457,308 @@ status:
     plural: ""
   conditions: []
   storedVersions: []
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: caliconodestatuses.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CalicoNodeStatusSpec contains the specification for a CalicoNodeStatus resource.
+            type: object
+            properties:
+              node:
+                type: string
+              classes:
+                items:
+                  type: string
+                type: array
+              updatePeriodSeconds:
+                type: integer
+          status:
+            description: CalicoNodeStatusStatus defines the observed state of CalicoNodeStatus.
+            type: object
+            properties:
+              lastUpdated:
+                type: string
+              agent:
+                type: object
+                properties:
+                  birdV4:
+                    type: object
+                    properties:
+                      state:
+                        type: string
+                      version:
+                        type: string
+                      routerID:
+                        type: string
+                      lastBootTime:
+                        type: string
+                      lastReconfigTime:
+                        type: string
+                  birdV6:
+                    type: object
+                    properties:
+                      state:
+                        type: string
+                      version:
+                        type: string
+                      routerID:
+                        type: string
+                      lastBootTime:
+                        type: string
+                      lastReconfigTime:
+                        type: string
+  scope: Cluster
+  names:
+    plural: caliconodestatuses
+    singular: caliconodestatus
+    kind: CalicoNodeStatus
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: bgpfilters.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: BGPFilterSpec contains the specification for a BGPFilter resource.
+            type: object
+            properties:
+              exportV4:
+                items:
+                  type: object
+                  properties:
+                    cidr:
+                      type: string
+                    matchOperator:
+                      type: string
+                    action:
+                      type: string
+                type: array
+              importV4:
+                items:
+                  type: object
+                  properties:
+                    cidr:
+                      type: string
+                    matchOperator:
+                      type: string
+                    action:
+                      type: string
+                type: array
+              exportV6:
+                items:
+                  type: object
+                  properties:
+                    cidr:
+                      type: string
+                    matchOperator:
+                      type: string
+                    action:
+                      type: string
+                type: array
+              importV6:
+                items:
+                  type: object
+                  properties:
+                    cidr:
+                      type: string
+                    matchOperator:
+                      type: string
+                    action:
+                      type: string
+                type: array
+  scope: Cluster
+  names:
+    plural: bgpfilters
+    singular: bgpfilter
+    kind: BGPFilter
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterinformations.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterInformationSpec contains the values of describing the cluster.
+            type: object
+            properties:
+              clusterGUID:
+                description: ClusterGUID is the GUID of the cluster
+                type: string
+              clusterType:
+                description: ClusterType describes the type of the cluster
+                type: string
+              datastoreReady:
+                description: DatastoreReady is used during significant datastore migrations to signal to components such as Felix that it should wait before accessing the datastore.
+                type: boolean
+              variant:
+                description: Variant declares which variant of Calico should be active.
+                type: string
+  scope: Cluster
+  names:
+    plural: clusterinformations
+    singular: clusterinformation
+    kind: ClusterInformation
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: felixconfigurations.crd.projectcalico.org
+spec:
+  group: crd.projectcalico.org
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FelixConfigurationSpec contains the values of the Felix configuration.
+            type: object
+            properties:
+              iptablesBackend:
+                type: string
+              iptablesRefreshInterval:
+                type: string
+              iptablesPostWriteCheckInterval:
+                type: string
+              iptablesLockFilePath:
+                type: string
+              iptablesLockTimeout:
+                type: string
+              iptablesLockProbeInterval:
+                type: string
+              natOutgoingAddress:
+                type: string
+              natPortRange:
+                type: string
+              chainInsertMode:
+                type: string
+  scope: Cluster
+  names:
+    plural: felixconfigurations
+    singular: felixconfiguration
+    kind: FelixConfiguration
+
+---
+# ClusterRole for calico-cni-plugin
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: calico-cni-plugin
+rules:
+  # The CNI plugin needs to get pods, nodes, and namespaces.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - nodes
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups: [""]
+    resources:
+      - pods/status
+    verbs:
+      - patch
+      - update
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - blockaffinities
+      - ipamblocks
+      - ipamhandles
+      - clusterinformations
+      - ippools
+      - ipamconfigs
+      - ipreservations
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+  - apiGroups: ["crd.projectcalico.org"]
+    resources:
+      - ipamconfigs
+      - clusterinformations
+    verbs:
+      - create
+      - update
+
+---
+# Bind the ClusterRole to the calico-cni-plugin ServiceAccount.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: calico-cni-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: calico-cni-plugin
+subjects:
+- kind: ServiceAccount
+  name: calico-cni-plugin
+  namespace: kube-system
 
 ---
 # Source: calico/templates/calico-node.yaml
@@ -595,6 +1173,11 @@ rules:
       - clusterinformations
       - hostendpoints
       - blockaffinities
+      - ipamhandles
+      - ipamconfigs
+      - ipreservations
+      - caliconodestatuses
+      - bgpfilters
     verbs:
       - get
       - list
@@ -605,9 +1188,17 @@ rules:
       - ippools
       - felixconfigurations
       - clusterinformations
+      - ipamhandles
+      - ipamconfigs
+      - ipamblocks
+      - ipreservations
+      - blockaffinities
+      - caliconodestatuses
+      - bgpfilters
     verbs:
       - create
       - update
+      - delete
   # Calico stores some configuration information on the node.
   - apiGroups: [""]
     resources:
@@ -625,12 +1216,25 @@ rules:
     verbs:
       - create
       - update
+  # Required for CNI plugin to create service account tokens
+  - apiGroups: [""]
+    resources:
+      - serviceaccounts/token
+    verbs:
+      - create
 
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: calico-node
+  namespace: kube-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: calico-cni-plugin
   namespace: kube-system
 
 ---
