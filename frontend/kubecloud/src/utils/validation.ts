@@ -301,10 +301,10 @@ export const validateNodeField = (value: any, fieldName: string, rules: Validati
   return result.isValid ? undefined : result.errors[0]
 }
 
-const toVuetifyRule = (validator: (value: any) => string | undefined) => 
+const toVuetifyRule = (validator: (value: any) => string | undefined) =>
   (value: any): string | boolean => validator(value) || true
 
-const createNameRule = (fieldName: string, minLength: number = 3, maxLength: number = 20) => 
+const createNameRule = (fieldName: string, minLength: number = 3, maxLength: number = 20) =>
   (value: any): string | boolean => {
     const result = validateNodeField(value, fieldName, {
       required: true,
@@ -315,7 +315,7 @@ const createNameRule = (fieldName: string, minLength: number = 3, maxLength: num
     return result || true
   }
 
-const createNumberRule = (fieldName: string, min: number, max: number) => 
+const createNumberRule = (fieldName: string, min: number, max: number) =>
   (value: any): string | boolean => {
     const result = validateNodeField(value, fieldName, {
       required: true,
@@ -325,28 +325,33 @@ const createNumberRule = (fieldName: string, min: number, max: number) =>
     return result || true
   }
 
-const createCustomRule = (fieldName: string, customValidator: (val: any) => boolean | string) => 
-  (value: any): string | boolean => {
-    const result = validateNodeField(value, fieldName, {
-      required: true,
-      custom: customValidator
-    })
-    return result || true
-  }
+export const createUniqueNodeNameRule = (existingNames: string[], currentName: string) =>
+  (value: string): string | boolean => {
+    const basicValidation = createNameRule('Name')(value);
+    if (basicValidation !== true) {
+      return basicValidation;
+    }
+
+    if (existingNames.includes(value)) {
+      return 'Node name must be unique within the cluster';
+    }
+
+    return true;
+  };
 
 export const RULES = {
   nodeName: createNameRule('Name'),
-  clusterName: createNameRule('Cluster name'),  
+  clusterName: createNameRule('Cluster name'),
   ram: createNumberRule('RAM', NODE_VALIDATION.RAM.min, NODE_VALIDATION.RAM.max),
-  storage: createNumberRule('Storage', NODE_VALIDATION.STORAGE.min, NODE_VALIDATION.STORAGE.max),  
+  storage: createNumberRule('Storage', NODE_VALIDATION.STORAGE.min, NODE_VALIDATION.STORAGE.max),
   cpu: createNumberRule('CPU', NODE_VALIDATION.CPU.min, NODE_VALIDATION.CPU.max),
   email: toVuetifyRule(validateEmail),
-  verificationCode: toVuetifyRule(validateVerificationCode),  
+  verificationCode: toVuetifyRule(validateVerificationCode),
   creditAmount: toVuetifyRule(validateCreditAmount),
   creditMemo: toVuetifyRule(validateCreditMemo),
-  
+
   // Add missing validation rules for auth views
-  name: createNameRule('Name', 3, 64),
+  username: createNameRule('Username', 3, 64),
   password: (value: any): string | boolean => {
     const result = validateField({
       value,
@@ -385,7 +390,7 @@ export const RULES = {
       ['ram', RULES.ram(node.ram)],
       ['disk', RULES.storage(node.disk)]
     ]
-    
+
     return Object.fromEntries(
       validations
         .filter(([, error]) => error !== true)

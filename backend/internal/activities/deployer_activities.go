@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
+	"kubecloud/internal/logger"
 )
 
 var (
@@ -27,21 +27,6 @@ var (
 		WorkflowDeleteAllClusters: "Deleting All Clusters",
 	}
 )
-
-// getWorkflowDescription returns a user-friendly description for the workflow
-func getWorkflowDescription(workflowName string) string {
-	if desc, exists := workflowsDescriptions[workflowName]; exists {
-		return desc
-	}
-
-	// Handle deploy-X-nodes workflows
-	if strings.Contains(workflowName, "deploy") {
-		return "Deploying Cluster"
-	}
-
-	// Fallback to workflow name
-	return workflowName
-}
 
 func isWorkloadAlreadyDeployedError(err error) bool {
 	errMsg := err.Error()
@@ -57,18 +42,18 @@ func ensureClient(state ewf.State) {
 	// Get config first
 	config, err := getConfig(state)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get config")
+		logger.GetLogger().Error().Err(err).Msg("Failed to get config")
 		return
 	}
 
 	// Use the statemanager to get or create client
 	_, err = statemanager.GetKubeClient(state, config)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to ensure kubeclient")
+		logger.GetLogger().Error().Err(err).Msg("Failed to ensure kubeclient")
 		return
 	}
 
-	log.Debug().Msg("Kubeclient ensured and ready for use")
+	logger.GetLogger().Debug().Msg("Kubeclient ensured and ready for use")
 }
 
 func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
@@ -357,7 +342,7 @@ func GatherAllContractIDsStep(db models.DB) ewf.StepFn {
 		for _, cluster := range clusters {
 			clusterResult, err := cluster.GetClusterResult()
 			if err != nil {
-				log.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+				logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
 				continue
 			}
 
@@ -411,7 +396,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 		}
 
 		if len(contractIDs) == 0 {
-			log.Info().Str("user_id", config.UserID).Msg("No contracts to cancel")
+			logger.GetLogger().Info().Str("user_id", config.UserID).Msg("No contracts to cancel")
 			return nil
 		}
 
@@ -475,49 +460,27 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
-func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int) {
+func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int, sseManager *internal.SSEManager) {
 	steps := []ewf.Step{
 		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
-		stepName := fmt.Sprintf("deploy_node_%d", i) // TODO: should be cleaned
+		stepName := getDeployNodeStepName(i + 1)
 		engine.Register(stepName, DeployNodeStep(metrics))
+
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
 	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
-	workflow := BaseWFTemplate
+	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
 	workflow.Steps = steps
+	workflow.AfterStepHooks = []ewf.AfterStepHook{
+		notifyStepHook(sseManager),
+	}
 
 	engine.RegisterTemplate(wfName, &workflow)
-}
-
-func validateConfig(config statemanager.ClientConfig) error {
-	return statemanager.ValidateConfig(config)
-}
-
-// DEPRECATED: each setup uses ensureClient now
-func SetupClient(ctx context.Context, wf *ewf.Workflow) {
-	config, ok := wf.State["config"].(statemanager.ClientConfig)
-	if !ok {
-		log.Error().Msg("Missing or invalid 'config' in workflow state")
-		return
-	}
-
-	if err := validateConfig(config); err != nil {
-		log.Error().Err(err).Msg("Invalid workflow configuration")
-		return
-	}
-
-	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create kubeclient")
-		return
-	}
-
-	wf.State["kubeclient"] = kubeClient
 }
 
 func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
@@ -528,117 +491,57 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 		kubeClient.Close()
 		delete(wf.State, "kubeclient")
 	} else {
-		log.Warn().Msg("No kubeclient found in workflow state to close")
+		logger.GetLogger().Warn().Msg("No kubeclient found in workflow state to close")
 	}
 
-	if err != nil {
-		log.Error().Err(err).Str("workflow_name", wf.Name).Msg("Workflow completed with error")
-	} else {
-		log.Info().Str("workflow_name", wf.Name).Msg("Workflow completed successfully")
-	}
 }
 
-func NotifyUser(sse *internal.SSEManager) ewf.AfterWorkflowHook {
+func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		config, confErr := getConfig(wf.State)
-		if confErr != nil {
-			log.Error().Msg("Missing or invalid 'config' in workflow state")
-			return
-		}
-
-		workflowDesc := getWorkflowDescription(wf.Name)
-		var notificationData map[string]interface{}
-
-		if err != nil {
-			message := fmt.Sprintf("%s failed", workflowDesc)
-			if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
-				message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
-			}
-
-			notificationData = map[string]interface{}{
-				"type":    "workflow_update",
-				"message": message,
-				"data":    map[string]interface{}{"name": wf.Name, "error": err.Error()},
-			}
-		} else {
+		if err != nil && isDeployWorkflow(wf.Name) {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
-			if clusterErr != nil {
-				notificationData = map[string]interface{}{
-					"type":    "workflow_update",
-					"message": fmt.Sprintf("%s completed successfully", workflowDesc),
-					"data":    map[string]interface{}{"name": wf.Name, "error": false},
-				}
-			} else {
-				nodeCount := len(cluster.Nodes)
-				message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
-					workflowDesc, cluster.Name, nodeCount)
-
-				notificationData = map[string]interface{}{
-					"type":    "workflow_update",
-					"message": message,
-					"data": map[string]interface{}{
-						"name":         wf.Name,
-						"cluster_name": cluster.Name,
-						"node_count":   nodeCount,
-						"cluster":      cluster,
-						"error":        false,
-					},
-				}
+			if clusterErr != nil || cluster.ProjectName == "" {
+				logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
+				return
 			}
-		}
 
-		sse.Notify(config.UserID, "workflow_update", notificationData)
+			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
+
+			rollbackWf, rollbackErr := engine.NewWorkflow("rollback-failed-deployment")
+			if rollbackErr != nil {
+				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+				return
+			}
+
+			rollbackWf.State["config"] = wf.State["config"]
+			rollbackWf.State["cluster"] = wf.State["cluster"]
+			rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
+			rollbackWf.State["project_name"] = cluster.ProjectName
+
+			rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+
+			// wait the rollback workflow to finish before closing the client
+			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+				return
+			}
+
+			metrics.DecActiveClusterCount()
+		}
 	}
 }
 
-var BaseWFTemplate = ewf.WorkflowTemplate{
-	BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-		func(ctx context.Context, w *ewf.Workflow) {
-			log.Info().Str("workflow_name", w.Name).Msg("Starting workflow")
-		},
-		// SetupClient,
-	},
-	AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-		// NotifyUser,
-		CloseClient,
-	},
-	BeforeStepHooks: []ewf.BeforeStepHook{
-		func(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-			log.Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
-		},
-	},
-	AfterStepHooks: []ewf.AfterStepHook{
-		func(ctx context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
-			if err != nil {
-				log.Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
-			} else {
-				log.Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
-			}
-		},
-	},
-}
+func createDeployerWorkflowTemplate(sse *internal.SSEManager, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+	template := newKubecloudWorkflowTemplate()
+	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
+		[]ewf.AfterWorkflowHook{
+			notifyWorkflowProgress(sse),
+			deploymentFailureHook(engine, metrics),
+			CloseClient,
+		}...)
 
-func createDeployWorkflowTemplates(engine *ewf.Engine, metrics *metrics.Metrics) {
-	for i := 1; i <= 10; i++ {
-		workflowName := fmt.Sprintf("deploy-%d-nodes", i)
-
-		steps := []ewf.Step{
-			{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
-		}
-
-		for j := 0; j < i; j++ {
-			stepName := fmt.Sprintf("deploy_node_%d", j)
-			engine.Register(stepName, DeployNodeStep(metrics))
-			steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
-		}
-
-		steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
-
-		workflowTemplate := BaseWFTemplate
-		workflowTemplate.Steps = steps
-
-		engine.RegisterTemplate(workflowName, &workflowTemplate)
-	}
+	return template
 }
 
 func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
@@ -655,18 +558,14 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
 	engine.Register(StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
 
-	createDeployWorkflowTemplates(engine, metrics)
-
-	BaseWFTemplate.AfterWorkflowHooks = append(BaseWFTemplate.AfterWorkflowHooks, NotifyUser(sse))
-
-	deleteWFTemplate := BaseWFTemplate
+	deleteWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
 	deleteWFTemplate.Steps = []ewf.Step{
 		{Name: StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 		{Name: StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(WorkflowDeleteCluster, &deleteWFTemplate)
 
-	deleteAllDeploymentsWFTemplate := BaseWFTemplate
+	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
 	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
 		{Name: StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
 		{Name: StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
@@ -674,7 +573,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
-	addNodeWFTemplate := BaseWFTemplate
+	addNodeWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
 	addNodeWFTemplate.Steps = []ewf.Step{
 		{Name: StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: StepAddNode, RetryPolicy: standardRetryPolicy},
@@ -682,12 +581,18 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(WorkflowAddNode, &addNodeWFTemplate)
 
-	removeNodeWFTemplate := BaseWFTemplate
+	removeNodeWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
 		{Name: StepRemoveNode, RetryPolicy: standardRetryPolicy},
 		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(WorkflowRemoveNode, &removeNodeWFTemplate)
+
+	rollbackWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	rollbackWFTemplate.Steps = []ewf.Step{
+		{Name: StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+	}
+	engine.RegisterTemplate(WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
 }
 
 func getFromState[T any](state ewf.State, key string) (T, error) {
@@ -700,7 +605,7 @@ func getFromState[T any](state ewf.State, key string) (T, error) {
 	val, ok := value.(T)
 	if !ok {
 		var zero T
-		log.Error().Msgf("Expected '%s' to be of %+v, but got %+v", key, zero, value)
+		logger.GetLogger().Error().Msgf("Expected '%s' to be of %+v, but got %+v", key, zero, value)
 		return zero, fmt.Errorf("invalid '%s' in state", key)
 	}
 	return val, nil

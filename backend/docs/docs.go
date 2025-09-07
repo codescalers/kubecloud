@@ -518,6 +518,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/stats": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Retrieves comprehensive system statistics.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get system statistics",
+                "operationId": "get-stats",
+                "responses": {
+                    "200": {
+                        "description": "System statistics retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.Stats"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve statistics",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/system/maintenance/status": {
             "get": {
                 "security": [
@@ -584,6 +619,74 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/twins/{twin_id}/account": {
+            "get": {
+                "description": "Retrieve the account ID associated with a specific twin ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "twins"
+                ],
+                "summary": "Get account ID by twin ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Twin ID",
+                        "name": "twin_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Other optional filter params",
+                        "name": "filterParam",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Account ID is retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.TwinResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request or Invalid params",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Twin ID not found",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1017,7 +1120,7 @@ const docTemplate = `{
                         "UserMiddleware": []
                     }
                 ],
-                "description": "Retrieves a list of nodes from the grid proxy based on the provided filters.",
+                "description": "List nodes from proxy [rented nodes first + randomized shared nodes]",
                 "consumes": [
                     "application/json"
                 ],
@@ -1077,6 +1180,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/nodes/rentable": {
+            "get": {
+                "description": "Retrieves a list of rentable nodes from the grid proxy. These are healthy nodes that are available for rent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List rentable nodes",
+                "operationId": "list-rentable-nodes",
+                "responses": {
+                    "200": {
+                        "description": "Rentable nodes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/nodes/rented": {
             "get": {
                 "security": [
@@ -1100,10 +1245,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/app.APIResponse"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
@@ -2260,6 +2414,20 @@ const docTemplate = `{
                 }
             }
         },
+        "app.ListNodesWithDiscountResponse": {
+            "type": "object",
+            "properties": {
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.NodesWithDiscount"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.LoginInput": {
             "type": "object",
             "required": [
@@ -2345,6 +2513,15 @@ const docTemplate = `{
                         "leader"
                     ]
                 }
+            }
+        },
+        "app.NodesWithDiscount": {
+            "type": "object",
+            "properties": {
+                "discount_price": {
+                    "type": "number"
+                },
+                "node": {}
             }
         },
         "app.PendingRecordsResponse": {
@@ -2527,6 +2704,40 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total_users": {
+                    "type": "integer"
+                }
+            }
+        },
+        "app.Stats": {
+            "type": "object",
+            "properties": {
+                "countries": {
+                    "type": "integer"
+                },
+                "total_clusters": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
+                },
+                "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "app.TwinResponse": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                },
+                "relay": {
+                    "type": "string"
+                },
+                "twin_id": {
                     "type": "integer"
                 }
             }

@@ -11,8 +11,8 @@ import (
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
-	"github.com/rs/zerolog/log"
 	"github.com/tyler-smith/go-bip39"
+	"kubecloud/internal/logger"
 )
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
@@ -45,7 +45,7 @@ func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnem
 		return "", 0, fmt.Errorf("create twin failed: %w", err)
 	}
 
-	log.Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
+	logger.GetLogger().Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
 	return mnemonic, twinID, nil
 }
 

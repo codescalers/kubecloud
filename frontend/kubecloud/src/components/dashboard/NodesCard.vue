@@ -238,6 +238,8 @@ const statCards = [
 const normalizedNodes = computed(() =>
   rentedNodes.value.map(node => ({
     nodeId: node.nodeId,
+    farmId: node.farmId,
+    twinId: node.twinId,
     price_usd: node.price_usd ?? 'N/A',
     cpu: Math.round(node.total_resources?.cru ?? 0),
     ram: Math.round(node.total_resources?.mru ? node.total_resources.mru / (1024*1024*1024) : 0),

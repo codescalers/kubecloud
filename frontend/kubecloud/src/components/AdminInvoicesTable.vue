@@ -14,7 +14,8 @@
           :headers="headers"
           :items="invoices"
           class="admin-table"
-          hide-default-footer
+          :page="page"
+          :items-per-page="itemsPerPage"
           density="comfortable"
         >
           <template v-slot:item.created_at="{ item }">
@@ -58,6 +59,8 @@
 import { ref, defineProps } from 'vue'
 import {formatDate} from '../utils/uiUtils.ts'
 const props = defineProps<{ invoices: any[] }>()
+const page = ref(1)
+const itemsPerPage = ref(10)
 
 const headers = [
   { title: 'ID', key: 'id', width: '80px' },
@@ -67,8 +70,6 @@ const headers = [
   { title: 'Created At', key: 'created_at', width: '180px' },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px' }
 ]
-
-
 
 const showInvoiceModal = ref(false)
 const selectedInvoice = ref<any | null>(null)
@@ -133,4 +134,4 @@ function closeInvoiceModal() {
   border-color: var(--color-primary) !important;
   color: var(--color-primary) !important;
 }
-</style> 
+</style>

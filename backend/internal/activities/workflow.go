@@ -1,48 +1,15 @@
 package activities
 
 import (
-	"context"
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"kubecloud/models"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
-
-var userWorkflowTemplate = ewf.WorkflowTemplate{
-	BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-		func(ctx context.Context, w *ewf.Workflow) {
-			log.Info().Str("workflow_name", w.Name).Msg("Starting workflow")
-		},
-	},
-	BeforeStepHooks: []ewf.BeforeStepHook{
-		func(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-			log.Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
-		},
-	},
-	AfterStepHooks: []ewf.AfterStepHook{
-		func(ctx context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
-			if err != nil {
-				log.Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
-			} else {
-				log.Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
-			}
-		},
-	},
-	AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-		func(ctx context.Context, w *ewf.Workflow, err error) {
-			if err != nil {
-				log.Error().Err(err).Str("workflow_name", w.Name).Msg("Workflow completed with error")
-			} else {
-				log.Info().Str("workflow_name", w.Name).Msg("Workflow completed successfully")
-			}
-		},
-	},
-}
 
 func RegisterEWFWorkflows(
 	engine *ewf.Engine,
@@ -71,7 +38,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(db, substrate))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
 
-	registerWorkflowTemplate := userWorkflowTemplate
+	registerWorkflowTemplate := newKubecloudWorkflowTemplate()
 	registerWorkflowTemplate.Steps = []ewf.Step{
 		{Name: StepCreateUser, RetryPolicy: &ewf.RetryPolicy{
 			MaxAttempts: 2,
@@ -88,7 +55,7 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUserRegistration, &registerWorkflowTemplate)
 
-	userVerificationTemplate := userWorkflowTemplate
+	userVerificationTemplate := newKubecloudWorkflowTemplate()
 	userVerificationTemplate.Steps = []ewf.Step{
 		{Name: StepSetupTFChain, RetryPolicy: &ewf.RetryPolicy{
 			MaxAttempts: 5,
@@ -109,7 +76,7 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUserVerification, &userVerificationTemplate)
 
-	chargeBalanceTemplate := userWorkflowTemplate
+	chargeBalanceTemplate := newKubecloudWorkflowTemplate()
 	chargeBalanceTemplate.Steps = []ewf.Step{
 		{Name: StepCreatePaymentIntent, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepUpdateCreditCardBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
@@ -117,28 +84,28 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowChargeBalance, &chargeBalanceTemplate)
 
-	adminCreditBalanceTemplate := userWorkflowTemplate
+	adminCreditBalanceTemplate := newKubecloudWorkflowTemplate()
 	adminCreditBalanceTemplate.Steps = []ewf.Step{
 		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowAdminCreditBalance, &adminCreditBalanceTemplate)
 
-	redeemVoucherTemplate := userWorkflowTemplate
+	redeemVoucherTemplate := newKubecloudWorkflowTemplate()
 	redeemVoucherTemplate.Steps = []ewf.Step{
 		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowRedeemVoucher, &redeemVoucherTemplate)
 
-	reserveNodeTemplate := userWorkflowTemplate
+	reserveNodeTemplate := newKubecloudWorkflowTemplate()
 	reserveNodeTemplate.Steps = []ewf.Step{
 		{Name: StepCreateIdentity, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowReserveNode, &reserveNodeTemplate)
 
-	unreserveNodeTemplate := userWorkflowTemplate
+	unreserveNodeTemplate := newKubecloudWorkflowTemplate()
 	unreserveNodeTemplate.Steps = []ewf.Step{
 		{Name: StepUnreserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}

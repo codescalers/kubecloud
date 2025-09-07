@@ -10,10 +10,17 @@ type Client struct {
 	GridClient deployer.TFPluginClient
 }
 
-func NewClient(mnemonic, gridNet string) (*Client, error) {
+func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
+	plugingOpts := []deployer.PluginOpt{
+		deployer.WithNetwork(gridNet),
+	}
+	if debug {
+		plugingOpts = append(plugingOpts, deployer.WithLogs())
+	}
+
 	tfplugin, err := deployer.NewTFPluginClient(
 		mnemonic,
-		deployer.WithNetwork(gridNet),
+		plugingOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TFPluginClient: %v", err)

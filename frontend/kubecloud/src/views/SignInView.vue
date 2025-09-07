@@ -65,6 +65,13 @@
         >
           Sign Up
         </v-btn>
+
+            <router-link
+              to="/"
+              class="text-white back-home-link"
+            >
+              Back to Home
+            </router-link>
       </div>
     </div>
   </div>
@@ -221,5 +228,14 @@ const handleSignIn = async () => {
 
 .auth-field :deep(.v-field__append-inner .v-icon) {
   font-size: 1.2rem;
+}
+
+.back-home-link {
+  display: block;
+  margin-top: 1rem;
+  text-decoration: none;
+}
+.back-home-link:hover {
+  text-decoration: underline;
 }
 </style>

@@ -1,5 +1,5 @@
 import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker } from './api'
+import { api, createWorkflowStatusChecker, type ApiError } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
@@ -130,6 +130,13 @@ export interface PendingRecord {
   user_id: number;
   username: string;
   transfer_mode: string;
+}
+
+export interface TwinResponse {
+  public_key: string;
+  account_id: string;
+  relay: string;
+  twin_id: number;
 }
 
 export class UserService {
@@ -293,10 +300,12 @@ export class UserService {
     const { balance_usd, debt_usd, pending_balance_usd } = response.data.data
     return {balance: (balance_usd || 0) - (debt_usd || 0), pending_balance: pending_balance_usd || 0}
   }catch(e){
-    useNotificationStore().error(
-      'Error',
-      'Failed to fetch balance',
-    )
+    if (!(e as ApiError)?.silent) {
+      useNotificationStore().error(
+        'Error',
+        'Failed to fetch balance',
+      )
+    }
     return {balance: 0, pending_balance: 0}
   }
   }
@@ -357,6 +366,15 @@ export class UserService {
       errorMessage: 'Failed to load payments'
     })
     return response.data.data.pending_records
+  }
+
+  // Fetch twin account info
+  async getTwinAccount(twinId: number): Promise<TwinResponse> {
+    const response = await api.get<ApiResponse<TwinResponse>>(`/v1/twins/${twinId}/account`, {
+      requiresAuth: true,
+      showNotifications: false
+    })
+    return response.data.data
   }
 
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {

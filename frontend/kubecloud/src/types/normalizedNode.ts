@@ -14,8 +14,11 @@ export interface NormalizedNode {
   healthy: boolean;
   rentable: boolean;
   rented: boolean;
+  rentedByTwinId?: number;
   dedicated: boolean;
   certificationType: string;
   extraFee: number;
+  farmId: number;
+  twinId: number;
   // Add any other UI fields needed
 }

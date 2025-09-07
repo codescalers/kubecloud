@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 const (
@@ -145,7 +145,7 @@ func (r *RedisClient) subscribeToStream(ctx context.Context, streamKey, consumer
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			log.Error().Err(err).Str("stream", streamKey).Str("consumer", consumerName).Msg("Failed to read from stream")
+			logger.GetLogger().Error().Err(err).Str("stream", streamKey).Str("consumer", consumerName).Msg("Failed to read from stream")
 			continue
 		}
 
@@ -174,7 +174,7 @@ func (r *RedisClient) SubscribeToTasks(ctx context.Context, consumerName string,
 	return r.subscribeToStream(ctx, TaskStreamKey, ConsumerGroup, consumerName, func(messageID string, data []byte) {
 		var task DeploymentTask
 		if err := json.Unmarshal(data, &task); err != nil {
-			log.Error().Err(err).Str("message_id", messageID).Msg("Failed to unmarshal task")
+			logger.GetLogger().Error().Err(err).Str("message_id", messageID).Msg("Failed to unmarshal task")
 			return
 		}
 		task.MessageID = messageID
@@ -187,7 +187,7 @@ func (r *RedisClient) SubscribeToResults(ctx context.Context, callback func(*Dep
 	return r.subscribeToStream(ctx, ResultStreamKey, ConsumerGroup+"_results", "result_consumer", func(messageID string, data []byte) {
 		var result DeploymentResult
 		if err := json.Unmarshal(data, &result); err != nil {
-			log.Error().Err(err).Str("message_id", messageID).Msg("Failed to unmarshal result")
+			logger.GetLogger().Error().Err(err).Str("message_id", messageID).Msg("Failed to unmarshal result")
 			return
 		}
 		callback(&result)
@@ -235,7 +235,7 @@ func (r *RedisClient) HandleUnacknowledgedTasks(ctx context.Context, consumerNam
 	for _, pendingMsg := range pendingMessages {
 		readResult := r.client.XRange(ctx, TaskStreamKey, pendingMsg.ID, pendingMsg.ID)
 		if readResult.Err() != nil {
-			log.Error().Err(readResult.Err()).Str("message_id", pendingMsg.ID).Msg("Failed to read unacknowledged message")
+			logger.GetLogger().Error().Err(readResult.Err()).Str("message_id", pendingMsg.ID).Msg("Failed to read unacknowledged message")
 			continue
 		}
 
@@ -244,7 +244,7 @@ func (r *RedisClient) HandleUnacknowledgedTasks(ctx context.Context, consumerNam
 			var task DeploymentTask
 			if taskData, ok := message.Values["data"].(string); ok {
 				if err := json.Unmarshal([]byte(taskData), &task); err != nil {
-					log.Error().Err(err).Str("message_id", message.ID).Msg("Failed to unmarshal unacknowledged task")
+					logger.GetLogger().Error().Err(err).Str("message_id", message.ID).Msg("Failed to unmarshal unacknowledged task")
 					continue
 				}
 				task.MessageID = message.ID

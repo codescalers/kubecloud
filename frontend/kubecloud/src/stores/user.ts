@@ -158,9 +158,11 @@ export const useUserStore = defineStore('user',
         authService.storeTokens(response.access_token, tokens.refreshToken)
         token.value = response.access_token
       } catch (err) {
-        // If refresh fails, logout user
         logout()
-        throw err
+        throw {
+          message: 'Token refresh failed',
+          silent: true
+        }
       }
     }
 
@@ -169,11 +171,6 @@ export const useUserStore = defineStore('user',
       const { accessToken } = authService.getTokens()
       if (accessToken) {
         token.value = accessToken
-        // Optionally, fetch user profile here if you want to populate user.value on app start
-        // (async () => {
-        //   const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
-        //   user.value = userRes.data.data.user
-        // })()
       }
     }
 
