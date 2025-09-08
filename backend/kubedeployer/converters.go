@@ -183,8 +183,9 @@ func (c *Cluster) PrepareCluster(userID int) error {
 	return nil
 }
 
-func GetVMProjectName(userID, nodeName string) string {
-	return "kc" + userID + "vm" + nodeName
+func GetVMProjectName(userID int, nodeName string) string {
+	userIDStr := fmt.Sprintf("%d", userID)
+	return "kc" + userIDStr + "vm" + nodeName
 }
 
 func deploymentFromVM(node *Node,

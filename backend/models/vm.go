@@ -9,7 +9,7 @@ import (
 // VM represents a deployed vm in the system
 type VM struct {
 	ID          int       `gorm:"primaryKey;autoIncrement;column:id"`
-	UserID      string    `gorm:"index:idx_vm_user_project,unique" json:"user_id" binding:"required"`
+	UserID      int       `gorm:"index:idx_vm_user_project,unique" json:"user_id" binding:"required"`
 	ProjectName string    `gorm:"index:idx_vm_user_project,unique" json:"project_name" binding:"required"`
 	Result      string    `gorm:"type:text" json:"result"`
 	CreatedAt   time.Time `json:"created_at"`

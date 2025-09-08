@@ -865,16 +865,15 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/vms [get]
 func (h *Handler) HandleListVMs(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	id := fmt.Sprintf("%v", userID)
-	vms, err := h.db.ListUserVMS(id)
+	vms, err := h.db.ListUserVMS(userID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("user_id", id).Msg("Failed to list user VMs")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user VMs")
 		InternalServerError(c)
 		return
 	}
@@ -930,7 +929,7 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 	vm, err := h.db.GetVMByID(config.UserID, vmID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).
-			Str("user_id", config.UserID).
+			Int("user_id", config.UserID).
 			Str("vm_id", vmID).
 			Msg("Failed to find VM")
 		Error(c, http.StatusNotFound, "Vm is not found", err.Error())

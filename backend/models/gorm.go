@@ -395,21 +395,21 @@ func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) err
 }
 
 // CreateVM creates a new vm in the database
-func (s *GormDB) CreateVM(userID string, vm *VM) error {
+func (s *GormDB) CreateVM(userID int, vm *VM) error {
 	vm.CreatedAt = time.Now()
 	vm.UserID = userID
 	return s.db.Create(vm).Error
 }
 
 // GetVMByProjectName returns a vm by name for a specific user
-func (s *GormDB) GetVMByProjectName(userID string, projectName string) (VM, error) {
+func (s *GormDB) GetVMByProjectName(userID int, projectName string) (VM, error) {
 	var vm VM
 	query := s.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&vm)
 	return vm, query.Error
 }
 
 // GetVMByID returns a vm by id for a specific user
-func (s *GormDB) GetVMByID(userID string, vmID string) (VM, error) {
+func (s *GormDB) GetVMByID(userID int, vmID string) (VM, error) {
 	var vm VM
 	query := s.db.Where("user_id = ? AND id = ?", userID, vmID).First(&vm)
 	return vm, query.Error
@@ -422,14 +422,14 @@ func (s *GormDB) UpdateVM(vm *VM) error {
 		Updates(vm).Error
 }
 
-func (s *GormDB) ListUserVMS(userID string) ([]VM, error) {
+func (s *GormDB) ListUserVMS(userID int) ([]VM, error) {
 	var vms []VM
 	query := s.db.Where("user_id = ?", userID).Find(&vms)
 	return vms, query.Error
 
 }
 
-func (s *GormDB) DeleteVM(userID string, projectName string) error {
+func (s *GormDB) DeleteVM(userID int, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
 }
 
