@@ -1,0 +1,1 @@
+exec: /scripts/setup_cilium_networking.sh
