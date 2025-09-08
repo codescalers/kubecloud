@@ -13,7 +13,7 @@ import (
 type ClientConfig struct {
 	SSHPublicKey string `json:"ssh_public_key"`
 	Mnemonic     string `json:"mnemonic"`
-	UserID       string `json:"user_id"`
+	UserID       int    `json:"user_id"`
 	Network      string `json:"network"`
 	Debug        bool   `json:"debug"`
 }
@@ -29,7 +29,7 @@ func ValidateConfig(config ClientConfig) error {
 	if config.SSHPublicKey == "" {
 		return fmt.Errorf("missing SSH public key in config")
 	}
-	if config.UserID == "" {
+	if config.UserID == 0 {
 		return fmt.Errorf("missing user ID in config")
 	}
 

@@ -11,10 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"kubecloud/internal/logger"
 )
 
 var (
@@ -59,6 +60,50 @@ type TwinResponse struct {
 	AccountID string `json:"account_id"`
 	Relay     string `json:"relay"`
 	TwinID    uint   `json:"twin_id"`
+}
+
+// @Summary List all grid nodes
+// @Description List all nodes from the grid proxy (no user-specific filtering)
+// @Tags nodes
+// @ID list-all-grid-nodes
+// @Accept json
+// @Produce json
+// @Param healthy query bool false "Filter by healthy nodes (default: false)"
+// @Param size query int false "Limit the number of nodes returned (default: 50)"
+// @Param page query int false "page number (default: 1)"
+// @Success 200 {object} APIResponse{data=ListNodesResponse} "All grid nodes retrieved successfully"
+// @Failure 400 {object} APIResponse "Invalid filter parameters"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /nodes [get]
+func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
+	query := c.Request.URL.Query()
+
+	limit := proxyTypes.DefaultLimit()
+	limit.RetCount = true
+	err := queryParamsToStruct(query, &limit)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		return
+	}
+
+	filter := proxyTypes.NodeFilter{}
+	err = queryParamsToStruct(query, &filter)
+	if err != nil {
+		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		return
+	}
+
+	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "All grid nodes retrieved successfully", ListNodesResponse{
+		Total: count,
+		Nodes: nodes,
+	})
 }
 
 // @Summary List nodes

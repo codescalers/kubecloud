@@ -229,6 +229,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/twins/:twin_id/account", app.handlers.GetAccountIDHandler)
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
 		v1.GET("/stats", app.handlers.GetStatsHandler)
+		v1.GET("/nodes", app.handlers.ListAllGridNodesHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))

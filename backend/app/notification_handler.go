@@ -53,12 +53,13 @@ func convertToNotificationResponse(notification models.Notification) Notificatio
 }
 
 // getUserIDFromContext extracts and validates user ID from context
-func getUserIDFromContext(c *gin.Context) (string, error) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		return "", fmt.Errorf("unauthorized")
+func getUserIDFromContext(c *gin.Context) (int, error) {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		return 0, fmt.Errorf("unauthorized")
 	}
-	return fmt.Sprint(userID), nil
+
+	return userID, nil
 }
 
 // validatePaginationParams validates and normalizes pagination parameters
