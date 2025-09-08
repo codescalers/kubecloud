@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
+
 	"github.com/xmonader/ewf"
 )
 
@@ -42,18 +43,18 @@ func ensureClient(state ewf.State) {
 	// Get config first
 	config, err := getConfig(state)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get config")
+		logger.GetLogger().Error().Err(err).Msg("Failed to get config")
 		return
 	}
 
 	// Use the statemanager to get or create client
 	_, err = statemanager.GetKubeClient(state, config)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to ensure kubeclient")
+		logger.GetLogger().Error().Err(err).Msg("Failed to ensure kubeclient")
 		return
 	}
 
-	log.Debug().Msg("Kubeclient ensured and ready for use")
+	logger.GetLogger().Debug().Msg("Kubeclient ensured and ready for use")
 }
 
 func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
@@ -278,7 +279,7 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
+func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -292,12 +293,26 @@ func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		projectName, ok := state["project_name"].(string)
-		if !ok {
-			return fmt.Errorf("missing or invalid 'project_name' in state")
+		// in a Rollaback, cluster is in state, in a delete, we need to load from db
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			projectName, ok := state["project_name"].(string)
+			if !ok {
+				return fmt.Errorf("missing or invalid 'project_name' in state")
+			}
+
+			dbCluster, err := db.GetClusterByName(config.UserID, projectName)
+			if err != nil {
+				return fmt.Errorf("failed to get cluster from database: %w", err)
+			}
+
+			cluster, err = dbCluster.GetClusterResult()
+			if err != nil {
+				return fmt.Errorf("failed to get cluster result: %w", err)
+			}
 		}
 
-		if err := kubeClient.CancelCluster(ctx, projectName); err != nil {
+		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {
 			return fmt.Errorf("failed to cancel deployment: %w", err)
 		}
 
@@ -342,7 +357,7 @@ func GatherAllContractIDsStep(db models.DB) ewf.StepFn {
 		for _, cluster := range clusters {
 			clusterResult, err := cluster.GetClusterResult()
 			if err != nil {
-				log.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+				logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
 				continue
 			}
 
@@ -396,7 +411,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 		}
 
 		if len(contractIDs) == 0 {
-			log.Info().Str("user_id", config.UserID).Msg("No contracts to cancel")
+			logger.GetLogger().Info().Int("user_id", config.UserID).Msg("No contracts to cancel")
 			return nil
 		}
 
@@ -491,7 +506,7 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 		kubeClient.Close()
 		delete(wf.State, "kubeclient")
 	} else {
-		log.Warn().Msg("No kubeclient found in workflow state to close")
+		logger.GetLogger().Warn().Msg("No kubeclient found in workflow state to close")
 	}
 
 }
@@ -501,15 +516,15 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 		if err != nil && isDeployWorkflow(wf.Name) {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
 			if clusterErr != nil || cluster.ProjectName == "" {
-				log.Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
+				logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
 				return
 			}
 
-			log.Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
+			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
 
 			rollbackWf, rollbackErr := engine.NewWorkflow("rollback-failed-deployment")
 			if rollbackErr != nil {
-				log.Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
 				return
 			}
 
@@ -523,7 +538,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			// wait the rollback workflow to finish before closing the client
 			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-				log.Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
 				return
 			}
 
@@ -548,7 +563,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))
-	engine.Register(StepRemoveCluster, CancelDeploymentStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(db, metrics))
 	engine.Register(StepAddNode, AddNodeStep(metrics))
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
@@ -605,7 +620,7 @@ func getFromState[T any](state ewf.State, key string) (T, error) {
 	val, ok := value.(T)
 	if !ok {
 		var zero T
-		log.Error().Msgf("Expected '%s' to be of %+v, but got %+v", key, zero, value)
+		logger.GetLogger().Error().Msgf("Expected '%s' to be of %+v, but got %+v", key, zero, value)
 		return zero, fmt.Errorf("invalid '%s' in state", key)
 	}
 	return val, nil

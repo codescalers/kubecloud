@@ -10,7 +10,7 @@
             v-model="localNode.name"
             variant="outlined"
             density="compact"
-            :rules="[RULES.nodeName]"
+            :rules="nameRules"
             class="form-field"
           />
           <label>vCPU</label>
@@ -86,15 +86,16 @@
   </div>
 </template>
 <script setup lang="ts">
-import { defineProps, defineEmits, watch, ref } from 'vue';
+import { defineProps, defineEmits, watch, ref, computed } from 'vue';
 import type { PropType } from 'vue';
 import type { VM, SshKey } from '../composables/useDeployCluster';
-import { RULES } from '../utils/validation';
+import { RULES, createUniqueNodeNameRule } from '../utils/validation';
 
 const props = defineProps({
   node: { type: Object as PropType<VM>, required: true },
   visible: { type: Boolean, required: true },
-  availableSshKeys: { type: Array as PropType<SshKey[]>, required: true }
+  availableSshKeys: { type: Array as PropType<SshKey[]>, required: true },
+  existingNames: { type: Array as PropType<string[]>, required: true }
 });
 
 const emit = defineEmits<{ (e: 'save', node: VM): void; (e: 'cancel'): void }>();
@@ -102,11 +103,14 @@ const localNode = ref<VM>({ ...props.node });
 const selectedSshKeyIds = ref<number[]>([]);
 const formRef = ref();
 const isFormValid = ref(false);
+const nameRules = computed(() => [
+  createUniqueNodeNameRule(props.existingNames, props.node.name)
+]);
 
 // When the modal opens or node changes, set the selected SSH key appropriately
 watch(
   [() => props.node, () => props.availableSshKeys],
-  ([node, keys]) => {
+  ([node]) => {
     localNode.value = { ...node };
     if (node.sshKeyIds && node.sshKeyIds.length > 0) {
       selectedSshKeyIds.value = [...node.sshKeyIds];

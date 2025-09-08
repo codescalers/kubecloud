@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
+	"kubecloud/internal/logger"
 )
 
 // Notification types
@@ -23,7 +23,7 @@ const (
 
 // SSEManager handles Server-Sent Events for real-time notifications
 type SSEManager struct {
-	clients map[string][]chan SSEMessage // userID -> client channels
+	clients map[int][]chan SSEMessage // userID -> client channels
 	mu      sync.RWMutex
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -42,7 +42,7 @@ type SSEMessage struct {
 func NewSSEManager(db models.DB) *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
-		clients: make(map[string][]chan SSEMessage),
+		clients: make(map[int][]chan SSEMessage),
 		ctx:     ctx,
 		cancel:  cancel,
 		db:      db,
@@ -69,7 +69,7 @@ func (s *SSEManager) Stop() {
 }
 
 // AddClient adds a new client channel for a user
-func (s *SSEManager) AddClient(userID string) chan SSEMessage {
+func (s *SSEManager) AddClient(userID int) chan SSEMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -80,7 +80,7 @@ func (s *SSEManager) AddClient(userID string) chan SSEMessage {
 }
 
 // RemoveClient removes a client channel for a user
-func (s *SSEManager) RemoveClient(userID string, clientChan chan SSEMessage) {
+func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -99,7 +99,7 @@ func (s *SSEManager) RemoveClient(userID string, clientChan chan SSEMessage) {
 }
 
 // Notify sends a message to all clients of a specific user
-func (s *SSEManager) Notify(userID string, msgType string, data any, taskID ...string) {
+func (s *SSEManager) Notify(userID int, msgType string, data any, taskID ...string) {
 	message := SSEMessage{
 		Type:      msgType,
 		Data:      data,
@@ -137,13 +137,11 @@ func (s *SSEManager) Notify(userID string, msgType string, data any, taskID ...s
 
 // HandleSSE handles SSE HTTP connections
 func (s *SSEManager) HandleSSE(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-
-	userIDStr := fmt.Sprintf("%v", userID)
 
 	// Set SSE headers
 	c.Header("Content-Type", "text/event-stream")
@@ -151,11 +149,11 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	c.Header("Connection", "keep-alive")
 
 	// Add client and get channel
-	clientChan := s.AddClient(userIDStr)
-	defer s.RemoveClient(userIDStr, clientChan)
+	clientChan := s.AddClient(userID)
+	defer s.RemoveClient(userID, clientChan)
 
 	// Send initial connection message
-	s.Notify(userIDStr, "connected", map[string]string{"status": "connected"})
+	s.Notify(userID, "connected", map[string]string{"status": "connected"})
 
 	// Stream messages to client
 	c.Stream(func(w io.Writer) bool {
@@ -167,7 +165,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			data, err := json.Marshal(message)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to marshal SSE message")
+				logger.GetLogger().Error().Err(err).Msg("Failed to marshal SSE message")
 				return false
 			}
 
@@ -175,7 +173,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 			return true
 
 		case <-c.Request.Context().Done():
-			log.Debug().Str("user_id", userIDStr).Msg("Client disconnected")
+			logger.GetLogger().Debug().Int("user_id", userID).Msg("Client disconnected")
 			return false
 
 		case <-s.ctx.Done():
@@ -185,7 +183,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 }
 
 // persistNotification saves notification to database
-func (s *SSEManager) persistNotification(userID string, message SSEMessage) {
+func (s *SSEManager) persistNotification(userID int, message SSEMessage) {
 	if s.db == nil {
 		return
 	}
@@ -220,6 +218,6 @@ func (s *SSEManager) persistNotification(userID string, message SSEMessage) {
 	}
 
 	if err := s.db.CreateNotification(notification); err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("Failed to persist notification")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to persist notification")
 	}
 }

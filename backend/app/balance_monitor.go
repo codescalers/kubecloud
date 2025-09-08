@@ -6,6 +6,8 @@ import (
 	"kubecloud/models"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -32,7 +34,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 			}
 
 			if err := h.settlePendingPayments(records); err != nil {
-				log.Error().Err(err).Send()
+				logger.GetLogger().Error().Err(err).Send()
 			}
 
 		case <-adminNotifyTicker.C:
@@ -43,7 +45,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 			if len(records) > 0 {
 				if err := h.notifyAdminWithPendingRecords(records); err != nil {
-					log.Error().Err(err).Send()
+					logger.GetLogger().Error().Err(err).Send()
 				}
 			}
 
@@ -125,7 +127,7 @@ func (h *Handler) settlePendingPayments(records []models.TransferRecord) error {
 		// getting balance every time to ensure we have the latest balance
 		systemTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, h.config.SystemAccount.Mnemonic)
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
 			continue
 		}
 
@@ -256,7 +258,7 @@ func (h *Handler) notifyAdminWithPendingRecords(records []models.TransferRecord)
 	for _, admin := range admins {
 		err = h.mailService.SendMail(h.config.MailSender.Email, admin.Email, subject, body)
 		if err != nil {
-			log.Error().Err(err).Send()
+			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
 	}

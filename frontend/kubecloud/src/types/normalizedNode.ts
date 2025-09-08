@@ -18,5 +18,7 @@ export interface NormalizedNode {
   dedicated: boolean;
   certificationType: string;
   extraFee: number;
+  farmId: number;
+  twinId: number;
   // Add any other UI fields needed
 }

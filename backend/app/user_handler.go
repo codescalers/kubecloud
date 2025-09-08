@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog/log"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -22,8 +23,9 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 
 	"github.com/vedhavyas/go-subkey"
@@ -191,7 +193,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -217,7 +219,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUserRegistration)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to start registration workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to start registration workflow")
 		InternalServerError(c)
 		return
 	}
@@ -252,7 +254,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	var request VerifyCodeInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -265,7 +267,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	// get user by email
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get user by email")
+		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
 		return
 	}
@@ -292,23 +294,23 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			ID:       user.ID,
 			Verified: true,
 		}); err != nil {
-			log.Error().Err(err).Msg("failed to update user data")
+			logger.GetLogger().Error().Err(err).Msg("failed to update user data")
 			InternalServerError(c)
 			return
 		}
 
-		h.sseManager.Notify(fmt.Sprintf("%d", user.ID), "user_registration", "User email is verified")
+		h.sseManager.Notify(user.ID, "user_registration", "User email is verified")
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUserVerification)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to start user verification workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to start user verification workflow")
 		InternalServerError(c)
 		return
 	}
 
 	if err = h.ewfEngine.Store().SaveWorkflow(c.Request.Context(), wf); err != nil {
-		log.Error().Err(err).Msg("failed to save user verification workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to save user verification workflow")
 		InternalServerError(c)
 		return
 	}
@@ -324,7 +326,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate token pair")
+		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
 		return
 	}
@@ -366,7 +368,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	// get user by email
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get user by email")
+		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
 		return
 	}
@@ -381,21 +383,21 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	// Check KYC verification status without blocking login
 	sponsored, err := h.kycClient.IsUserVerified(c.Request.Context(), user.AccountAddress)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to check KYC verification status")
+		logger.GetLogger().Error().Err(err).Msg("failed to check KYC verification status")
 		InternalServerError(c)
 		return
 	}
 	if user.Sponsored != sponsored {
 		user.Sponsored = sponsored
 		if err := h.db.UpdateUserByID(&user); err != nil {
-			log.Error().Err(err).Msg("failed to update user sponsorship status")
+			logger.GetLogger().Error().Err(err).Msg("failed to update user sponsorship status")
 		}
 	}
 
 	// create token pairs
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate token pair")
+		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
 		return
 	}
@@ -419,7 +421,7 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 	var request RefreshTokenInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -431,7 +433,7 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 
 	accessToken, err := h.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusUnauthorized, "refresh token failed", "Invalid or expired refresh token")
 
 		return
@@ -459,7 +461,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	var request EmailInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -472,7 +474,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	// get user by email
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to get user ")
+		logger.GetLogger().Error().Err(err).Msg("failed to get user ")
 		Error(c, http.StatusNotFound, "user lookup failed", "failed to get user")
 		return
 
@@ -483,7 +485,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	err = h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed to send verification code")
+		logger.GetLogger().Error().Err(err).Msg("failed to send verification code")
 		InternalServerError(c)
 		return
 	}
@@ -497,7 +499,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	)
 
 	if err != nil {
-		log.Error().Err(err).Msg("error updating user data")
+		logger.GetLogger().Error().Err(err).Msg("error updating user data")
 		InternalServerError(c)
 		return
 	}
@@ -525,7 +527,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	var request VerifyCodeInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -543,7 +545,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 			return
 
 		}
-		log.Error().Err(err).Msg("failed to get user by email")
+		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		InternalServerError(c)
 		return
 
@@ -564,7 +566,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	// create token pairs
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate token pair")
+		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
 		return
 	}
@@ -589,7 +591,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	var request ChangePasswordInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 
 		return
@@ -603,21 +605,21 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	// hash password
 	hashedPassword, err := internal.HashAndSaltPassword([]byte(request.Password))
 	if err != nil {
-		log.Error().Err(err).Msg("error hashing password")
+		logger.GetLogger().Error().Err(err).Msg("error hashing password")
 		InternalServerError(c)
 		return
 	}
 
 	err = h.db.UpdatePassword(request.Email, hashedPassword)
 	if err == gorm.ErrRecordNotFound {
-		log.Error().Err(err).Msg("user is not found")
+		logger.GetLogger().Error().Err(err).Msg("user is not found")
 		Error(c, http.StatusNotFound, "user is not found", err.Error())
 
 		return
 	}
 
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 
@@ -644,7 +646,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	var request ChargeBalanceInput
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -656,14 +658,14 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
 
 	paymentMethod, err := internal.CreatePaymentMethod(request.CardType, request.PaymentToken)
 	if err != nil {
-		log.Error().Err(err).Msg("error creating payment method")
+		logger.GetLogger().Error().Err(err).Msg("error creating payment method")
 		InternalServerError(c)
 		return
 	}
@@ -672,7 +674,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		Customer: stripe.String(user.StripeCustomerID),
 	})
 	if err != nil {
-		log.Error().Err(err).Msg("error attaching payment method to customer")
+		logger.GetLogger().Error().Err(err).Msg("error attaching payment method to customer")
 		InternalServerError(c)
 		return
 	}
@@ -699,7 +701,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowChargeBalance)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -734,7 +736,7 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
@@ -765,7 +767,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
@@ -773,7 +775,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	// check voucher exists
 	voucher, err := h.db.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Voucher is not found", "")
 		return
 	}
@@ -792,7 +794,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 
 	err = h.db.RedeemVoucher(voucher.Code)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -806,7 +808,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 
 	tftAmount, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -852,7 +854,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 
 	sshKeys, err := h.db.ListUserSSHKeys(userID)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list SSH keys")
+		logger.GetLogger().Error().Err(err).Msg("failed to list SSH keys")
 		InternalServerError(c)
 		return
 	}
@@ -883,7 +885,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 
 	var request SSHKeyInput
 	if err := c.ShouldBindJSON(&request); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -911,7 +913,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 			Error(c, http.StatusBadRequest, "Duplicate SSH key", "SSH key name or public key already exists for this user.")
 			return
 		}
-		log.Error().Err(err).Msg("failed to create SSH key")
+		logger.GetLogger().Error().Err(err).Msg("failed to create SSH key")
 		InternalServerError(c)
 		return
 	}
@@ -960,7 +962,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
 			return
 		}
-		log.Error().Err(err).Msg("failed to delete SSH key")
+		logger.GetLogger().Error().Err(err).Msg("failed to delete SSH key")
 		InternalServerError(c)
 		return
 	}

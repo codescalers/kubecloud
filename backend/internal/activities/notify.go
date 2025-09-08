@@ -8,15 +8,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog/log"
 	"github.com/xmonader/ewf"
+	"kubecloud/internal/logger"
 )
 
 func notifyWorkflowProgress(sse *internal.SSEManager) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		config, confErr := getConfig(wf.State)
 		if confErr != nil {
-			log.Error().Msg("Missing or invalid 'config' in workflow state")
+			logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
 			return
 		}
 
@@ -73,7 +73,7 @@ func notifyStepProgress(sse *internal.SSEManager, state ewf.State, workflowName,
 
 	config, confErr := getConfig(state)
 	if confErr != nil {
-		log.Error().Msg("Missing or invalid 'config' in workflow state for step notification")
+		logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state for step notification")
 		return
 	}
 
