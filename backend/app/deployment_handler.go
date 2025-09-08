@@ -928,12 +928,22 @@ func (h *Handler) HandleListVM(c *gin.Context) {
 
 	vm, err := h.db.GetVMByID(config.UserID, vmID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).
-			Int("user_id", config.UserID).
-			Str("vm_id", vmID).
-			Msg("Failed to find VM")
-		Error(c, http.StatusNotFound, "Vm is not found", err.Error())
-		return
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.GetLogger().Error().Err(err).
+				Int("user_id", config.UserID).
+				Str("vm_id", vmID).
+				Msg("Failed to find VM")
+			Error(c, http.StatusNotFound, "Vm is not found", err.Error())
+			return
+		} else {
+			logger.GetLogger().Error().Err(err).
+				Int("user_id", config.UserID).
+				Str("vm_id", vmID).
+				Msg("Database error while fetching VM")
+			InternalServerError(c)
+			return
+		}
+
 	}
 
 	vmResult, err := vm.GetVMResult()
