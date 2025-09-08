@@ -332,7 +332,7 @@ func TestCreditUserHandler(t *testing.T) {
 		var result map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "Transaction is created successfully, Money transfer is in progress", result["message"])
+		assert.Equal(t, "User is credited with 1$ successfully", result["message"])
 		assert.NotNil(t, result["data"])
 		data, ok := result["data"].(map[string]interface{})
 		assert.True(t, ok)
@@ -411,7 +411,7 @@ func TestCreditUserHandler(t *testing.T) {
 	})
 }
 
-func TestListPendingRecordsHandler(t *testing.T) {
+func TestListTransferRecordsHandler(t *testing.T) {
 	app, err := SetUp(t)
 	require.NoError(t, err)
 	router := app.router
@@ -419,34 +419,34 @@ func TestListPendingRecordsHandler(t *testing.T) {
 	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
 	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
-	t.Run("Test ListPendingRecordsHandler successfully", func(t *testing.T) {
+	t.Run("Test ListTransferRecordsHandler successfully", func(t *testing.T) {
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
-		req, _ := http.NewRequest("GET", "/api/v1/pending-records", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/transfer-records", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusOK, resp.Code)
 	})
 
-	t.Run("Test ListPendingRecordsHandler with no token", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/api/v1/pending-records", nil)
+	t.Run("Test ListTransferRecordsHandler with no token", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/transfer-records", nil)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
-	t.Run("Test ListPendingRecordsHandler with non-admin user", func(t *testing.T) {
+	t.Run("Test ListTransferRecordsHandler with non-admin user", func(t *testing.T) {
 		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
-		req, _ := http.NewRequest("GET", "/api/v1/pending-records", nil)
+		req, _ := http.NewRequest("GET", "/api/v1/transfer-records", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusForbidden, resp.Code)
 	})
 
-	t.Run("Test ListPendingRecordsHandler with non-existing user", func(t *testing.T) {
+	t.Run("Test ListTransferRecordsHandler with non-existing user", func(t *testing.T) {
 		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
-		req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/pending-records/%d", nonAdminUser.ID+1), nil)
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/transfer-records/%d", nonAdminUser.ID+1), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)

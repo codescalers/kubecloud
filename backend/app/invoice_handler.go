@@ -10,8 +10,9 @@ import (
 
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Get all invoices
@@ -194,14 +195,11 @@ func (h *Handler) createUserInvoice(user models.User) error {
 			return err
 		}
 
-		totalAmountTFT, err := internal.CalculateTotalAmountBilledForReports(billReports)
+		totalAmountBilledInUSDMillicent, err := h.calculateTotalUsageOfReportsInUSDMillicent(billReports.Reports)
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := internal.FromTFTtoUSDMillicent(h.substrateClient, totalAmountTFT)
-		if err != nil {
-			return err
-		}
+
 		rentRecordStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		if record.CreatedAt.After(rentRecordStart) {
 			rentRecordStart = record.CreatedAt
@@ -218,7 +216,7 @@ func (h *Handler) createUserInvoice(user models.User) error {
 			totalHours = GetHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountBilledInUSDMillicent)
 
 		nodeItems = append(nodeItems, models.NodeItem{
 			NodeID:        record.NodeID,

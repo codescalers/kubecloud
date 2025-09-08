@@ -16,6 +16,8 @@ type DiscountPackage struct {
 	Discount        int
 }
 
+// DeductBalanceBasedOnUsage deducts the user balance based on the usage
+// This function is called every 24 hours
 func (h *Handler) DeductBalanceBasedOnUsage() {
 	usageDeductionTicker := time.NewTicker(24 * time.Hour)
 	defer usageDeductionTicker.Stop()
