@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,8 +60,11 @@ type VMItem struct {
 
 // ListVMsResponse represents the full response for listing VMs
 type ListVMsResponse struct {
-	Count int      `json:"count"`
-	VMs   []VMItem `json:"vms"`
+	VMs        []VMItem `json:"vms"`
+	Count      int      `json:"count"`
+	TotalCount int64    `json:"total_count"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"page_size"`
 }
 
 // DeployVMResponse represents the response after deploying a vm
@@ -871,9 +875,37 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 		return
 	}
 
-	vms, err := h.db.ListUserVMS(userID)
+	page := c.DefaultQuery("page", "1")
+	size := c.DefaultQuery("size", "10")
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+	projectNameFilter := c.Query("project_name")
+
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
+		return
+	}
+
+	sizeInt, err := strconv.Atoi(size)
+	if err != nil || sizeInt < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
+		return
+	}
+
+	validSortBy := map[string]bool{"created_at": true, "project_name": true}
+	if !validSortBy[sortBy] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_by field"})
+		return
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_order, must be 'asc' or 'desc'"})
+		return
+	}
+
+	vms, totalCount, err := h.db.ListUserVMSWithParams(userID, pageInt, sizeInt, sortBy, sortOrder, projectNameFilter)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user VMs")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user VMs with parameters")
 		InternalServerError(c)
 		return
 	}
@@ -894,9 +926,13 @@ func (h *Handler) HandleListVMs(c *gin.Context) {
 		})
 	}
 
+	// 3. Return the paginated response
 	Success(c, http.StatusOK, "Vms are listed successfully", ListVMsResponse{
-		VMs:   vmList,
-		Count: len(vmList),
+		VMs:        vmList,
+		Count:      len(vmList),
+		TotalCount: totalCount,
+		Page:       pageInt,
+		PageSize:   sizeInt,
 	})
 }
 

@@ -429,6 +429,36 @@ func (s *GormDB) ListUserVMS(userID int) ([]VM, error) {
 
 }
 
+func (s *GormDB) ListUserVMSWithParams(userID int, page, size int, sortBy, sortOrder, projectNameFilter string) ([]VM, int64, error) {
+	var vms []VM
+	var totalCount int64
+
+	query := s.db.Model(&VM{}).Where("user_id = ?", userID)
+
+	if projectNameFilter != "" {
+		query = query.Where("project_name ILIKE ?", "%"+projectNameFilter+"%")
+	}
+
+	if err := query.Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	sortColumn := "created_at"
+	if sortBy == "project_name" {
+		sortColumn = "project_name"
+	}
+	query = query.Order(sortColumn + " " + sortOrder)
+
+	offset := (page - 1) * size
+	query = query.Limit(size).Offset(offset)
+
+	if err := query.Find(&vms).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return vms, totalCount, nil
+}
+
 func (s *GormDB) DeleteVM(userID int, projectName string) error {
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
 }
