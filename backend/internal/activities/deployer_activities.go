@@ -494,9 +494,9 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
-	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 	steps = append(steps, ewf.Step{Name: StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
 	steps = append(steps, ewf.Step{Name: StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
+	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
 	workflow.Steps = steps
