@@ -26,7 +26,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20250727220238-fa576295fe80
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.17.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.30.1
