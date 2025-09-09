@@ -51,6 +51,13 @@ The configuration file should be in JSON format. Example:
     "name": "KubeCloud Invoice",
     "address": "123 KubeCloud St, Cloud City, CC 12345",
     "governorate": "Cloud Governorate"
+  },
+  "logger": {
+  "log_dir": "./app/logs",
+  "max_size": 512,
+  "max_backups": 12,
+  "max_age": 30,
+  "compress": true
   }
 }
 ```

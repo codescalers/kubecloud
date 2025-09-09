@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend/kubecloud.db:/app/kubecloud.db
       - ./backend/config.json:/app/config.json
+      - ./backend/logs:/opt/project/logs
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
