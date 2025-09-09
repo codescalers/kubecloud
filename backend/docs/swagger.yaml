@@ -10,6 +10,16 @@ definitions:
       status:
         type: integer
     type: object
+  app.AddNodeInput:
+    properties:
+      name:
+        type: string
+      node:
+        $ref: '#/definitions/kubedeployer.Node'
+    required:
+    - name
+    - node
+    type: object
   app.ChangePasswordInput:
     properties:
       confirm_password:
@@ -170,6 +180,15 @@ definitions:
       kubeconfig:
         type: string
     type: object
+  app.ListNodesResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/types.Node'
+        type: array
+      total:
+        type: integer
+    type: object
   app.ListNodesWithDiscountResponse:
     properties:
       nodes:
@@ -243,9 +262,84 @@ definitions:
     type: object
   app.NodesWithDiscount:
     properties:
+      certificationType:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      cpu_benchmark:
+        $ref: '#/definitions/types.CpuBenchmark'
+      created:
+        type: integer
+      dedicated:
+        type: boolean
       discount_price:
         type: number
-      node: {}
+      dmi:
+        $ref: '#/definitions/types.Dmi'
+      extraFee:
+        type: integer
+      farm_free_ips:
+        type: integer
+      farmId:
+        type: integer
+      farmName:
+        type: string
+      farmingPolicyId:
+        type: integer
+      features:
+        items:
+          type: string
+        type: array
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
+      gridVersion:
+        type: integer
+      healthy:
+        type: boolean
+      id:
+        type: string
+      inDedicatedFarm:
+        type: boolean
+      location:
+        $ref: '#/definitions/types.Location'
+      nodeId:
+        type: integer
+      num_gpu:
+        type: integer
+      power:
+        $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
+      publicConfig:
+        $ref: '#/definitions/types.PublicConfig'
+      rentContractId:
+        type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
+      rentedByTwinId:
+        type: integer
+      serialNumber:
+        type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
+      status:
+        type: string
+      total_resources:
+        $ref: '#/definitions/types.Capacity'
+      twinId:
+        type: integer
+      updatedAt:
+        type: integer
+      uptime:
+        type: integer
+      used_resources:
+        $ref: '#/definitions/types.Capacity'
     type: object
   app.PendingRecordsResponse:
     properties:
@@ -371,7 +465,11 @@ definitions:
     type: object
   app.Stats:
     properties:
+      cores:
+        type: integer
       countries:
+        type: integer
+      ssd:
         type: integer
       total_clusters:
         type: integer
@@ -475,6 +573,19 @@ definitions:
       workflow_id:
         type: string
     type: object
+  gridtypes.Unit:
+    enum:
+    - 1024
+    - 1048576
+    - 1073741824
+    - 1099511627776
+    format: int64
+    type: integer
+    x-enum-varnames:
+    - Kilobyte
+    - Megabyte
+    - Gigabyte
+    - Terabyte
   internal.TokenPair:
     properties:
       access_token:
@@ -482,6 +593,80 @@ definitions:
       refresh_token:
         type: string
     type: object
+  kubedeployer.Node:
+    properties:
+      contract_id:
+        type: integer
+      cpu:
+        minimum: 1
+        type: integer
+      disk_size:
+        description: Storage in MB
+        minimum: 10240
+        type: integer
+      entrypoint:
+        type: string
+      env_vars:
+        additionalProperties:
+          type: string
+        type: object
+      flist:
+        description: Optional fields
+        type: string
+      gpu_ids:
+        description: List of GPU IDs
+        items:
+          type: string
+        type: array
+      ip:
+        description: Computed
+        type: string
+      memory:
+        description: Memory in MB
+        minimum: 2048
+        type: integer
+      mycelium_ip:
+        type: string
+      name:
+        maxLength: 20
+        minLength: 3
+        type: string
+      node_id:
+        type: integer
+      original_name:
+        type: string
+      planetary_ip:
+        type: string
+      root_size:
+        description: Storage in MB
+        minimum: 5120
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/kubedeployer.NodeType'
+        enum:
+        - worker
+        - master
+        - leader
+    required:
+    - cpu
+    - disk_size
+    - memory
+    - name
+    - node_id
+    - root_size
+    - type
+    type: object
+  kubedeployer.NodeType:
+    enum:
+    - worker
+    - master
+    - leader
+    type: string
+    x-enum-varnames:
+    - NodeTypeWorker
+    - NodeTypeMaster
+    - NodeTypeLeader
   models.Invoice:
     properties:
       created_at:
@@ -561,6 +746,237 @@ definitions:
     - created_at
     - expires_at
     - value
+    type: object
+  types.BIOS:
+    properties:
+      vendor:
+        type: string
+      version:
+        type: string
+    type: object
+  types.Baseboard:
+    properties:
+      manufacturer:
+        type: string
+      product_name:
+        type: string
+    type: object
+  types.Capacity:
+    properties:
+      cru:
+        type: integer
+      hru:
+        $ref: '#/definitions/gridtypes.Unit'
+      mru:
+        $ref: '#/definitions/gridtypes.Unit'
+      sru:
+        $ref: '#/definitions/gridtypes.Unit'
+    type: object
+  types.CpuBenchmark:
+    properties:
+      multi:
+        type: number
+      node_twin_id:
+        type: integer
+      single:
+        type: number
+      threads:
+        type: integer
+      updated_at:
+        type: integer
+      workloads:
+        type: integer
+    type: object
+  types.Dmi:
+    properties:
+      baseboard:
+        $ref: '#/definitions/types.Baseboard'
+      bios:
+        $ref: '#/definitions/types.BIOS'
+      memory:
+        items:
+          $ref: '#/definitions/types.Memory'
+        type: array
+      node_twin_id:
+        type: integer
+      processor:
+        items:
+          $ref: '#/definitions/types.Processor'
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  types.Location:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      region:
+        type: string
+    type: object
+  types.Memory:
+    properties:
+      manufacturer:
+        type: string
+      type:
+        type: string
+    type: object
+  types.Node:
+    properties:
+      certificationType:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      cpu_benchmark:
+        $ref: '#/definitions/types.CpuBenchmark'
+      created:
+        type: integer
+      dedicated:
+        type: boolean
+      dmi:
+        $ref: '#/definitions/types.Dmi'
+      extraFee:
+        type: integer
+      farm_free_ips:
+        type: integer
+      farmId:
+        type: integer
+      farmName:
+        type: string
+      farmingPolicyId:
+        type: integer
+      features:
+        items:
+          type: string
+        type: array
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
+      gridVersion:
+        type: integer
+      healthy:
+        type: boolean
+      id:
+        type: string
+      inDedicatedFarm:
+        type: boolean
+      location:
+        $ref: '#/definitions/types.Location'
+      nodeId:
+        type: integer
+      num_gpu:
+        type: integer
+      power:
+        $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
+      publicConfig:
+        $ref: '#/definitions/types.PublicConfig'
+      rentContractId:
+        type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
+      rentedByTwinId:
+        type: integer
+      serialNumber:
+        type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
+      status:
+        type: string
+      total_resources:
+        $ref: '#/definitions/types.Capacity'
+      twinId:
+        type: integer
+      updatedAt:
+        type: integer
+      uptime:
+        type: integer
+      used_resources:
+        $ref: '#/definitions/types.Capacity'
+    type: object
+  types.NodeGPU:
+    properties:
+      contract:
+        type: integer
+      device:
+        type: string
+      id:
+        type: string
+      node_twin_id:
+        type: integer
+      updated_at:
+        type: integer
+      vendor:
+        type: string
+    type: object
+  types.NodePower:
+    properties:
+      state:
+        type: string
+      target:
+        type: string
+    type: object
+  types.Processor:
+    properties:
+      thread_count:
+        type: string
+      version:
+        type: string
+    type: object
+  types.PublicConfig:
+    properties:
+      domain:
+        type: string
+      gw4:
+        type: string
+      gw6:
+        type: string
+      ipv4:
+        type: string
+      ipv6:
+        type: string
+    type: object
+  types.Speed:
+    properties:
+      download:
+        description: in bit/sec
+        type: number
+      node_twin_id:
+        type: integer
+      tcp_download_ipv6:
+        description: in bit/sec
+        type: number
+      tcp_upload_ipv6:
+        description: in bit/sec
+        type: number
+      udp_download_ipv4:
+        description: in bit/sec
+        type: number
+      udp_download_ipv6:
+        description: in bit/sec
+        type: number
+      udp_upload_ipv4:
+        description: in bit/sec
+        type: number
+      udp_upload_ipv6:
+        description: in bit/sec
+        type: number
+      updated_at:
+        type: integer
+      upload:
+        description: in bit/sec let's suppose default is ipv4/tcp
+        type: number
     type: object
 info:
   contact: {}
@@ -771,7 +1187,7 @@ paths:
         name: cluster
         required: true
         schema:
-          $ref: '#/definitions/app.ClusterInput'
+          $ref: '#/definitions/app.AddNodeInput'
       produces:
       - application/json
       responses:
@@ -866,6 +1282,48 @@ paths:
       summary: Get all invoices
       tags:
       - admin
+  /nodes:
+    get:
+      consumes:
+      - application/json
+      description: List all nodes from the grid proxy (no user-specific filtering)
+      operationId: list-all-grid-nodes
+      parameters:
+      - description: 'Filter by healthy nodes (default: false)'
+        in: query
+        name: healthy
+        type: boolean
+      - description: 'Limit the number of nodes returned (default: 50)'
+        in: query
+        name: size
+        type: integer
+      - description: 'page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All grid nodes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesResponse'
+              type: object
+        "400":
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: List all grid nodes
+      tags:
+      - nodes
   /pending-records:
     get:
       consumes:

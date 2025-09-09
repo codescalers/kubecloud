@@ -288,12 +288,12 @@ func (c *Client) DeleteAllDeployments() (string, error) {
 }
 
 func (c *Client) AddNode(deploymentName string, node kubedeployer.Node) (string, error) {
-	cluster := kubedeployer.Cluster{
-		Name:  deploymentName,
-		Nodes: []kubedeployer.Node{node},
+	input := app.AddNodeInput{
+		ClusterName: deploymentName,
+		Node:        node,
 	}
 
-	resp, err := c.makeRequest("POST", "/deployments/"+deploymentName+"/nodes", cluster, true)
+	resp, err := c.makeRequest("POST", "/deployments/"+deploymentName+"/nodes", input, true)
 	if err != nil {
 		return "", err
 	}

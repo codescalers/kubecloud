@@ -12,6 +12,8 @@ import (
 
 	"kubecloud/internal/logger"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
@@ -64,6 +66,12 @@ type NodeInput struct {
 	GPUIDs     []string          `json:"gpu_ids,omitempty"`            // List of GPU IDs
 	Flist      string            `json:"flist,omitempty"`
 	Entrypoint string            `json:"entrypoint,omitempty"`
+}
+
+// AddNodeInput represents the input structure for adding a node to a cluster
+type AddNodeInput struct {
+	ClusterName string            `json:"name" binding:"required"`
+	Node        kubedeployer.Node `json:"node" binding:"required"`
 }
 
 // @Summary List deployments
@@ -450,7 +458,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param cluster body ClusterInput true "Cluster configuration with new node"
+// @Param cluster body AddNodeInput true "Cluster configuration with new node"
 // @Success 202 {object} Response "Node addition workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
@@ -464,18 +472,18 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		return
 	}
 
-	var cluster kubedeployer.Cluster
-	if err := c.ShouldBindJSON(&cluster); err != nil {
+	var input AddNodeInput
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
 		return
 	}
 
-	if err := internal.ValidateStruct(cluster); err != nil {
+	if err := internal.ValidateStruct(input); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 
-	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
+	projectName := kubedeployer.GetProjectName(config.UserID, input.ClusterName)
 	existingCluster, err := h.db.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -495,10 +503,10 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	}
 
 	// TODO: find a better place for this
-	cluster.Nodes[0].OriginalName = cluster.Nodes[0].Name
+	input.Node.OriginalName = input.Node.Name
 
 	for _, node := range cl.Nodes {
-		if node.OriginalName == cluster.Nodes[0].OriginalName {
+		if node.OriginalName == input.Node.OriginalName {
 			c.JSON(http.StatusConflict, gin.H{"error": "Node with the same name already exists"})
 			return
 		}
@@ -513,7 +521,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	wf.State = ewf.State{
 		"config":  config,
 		"cluster": cl,
-		"node":    cluster.Nodes[0],
+		"node":    input.Node,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)
