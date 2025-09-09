@@ -18,7 +18,9 @@ const systemStats = ref<SystemStats>({
   total_users: 0,
   total_clusters: 0,
   up_nodes: 0,
-  countries: 0
+  countries: 0,
+  cores: 0,
+  ssd: 0
 })
 const statsLoaded = ref(false)
 const adminStats = computed(() => [

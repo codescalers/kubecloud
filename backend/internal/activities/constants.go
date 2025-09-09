@@ -41,4 +41,6 @@ const (
 	StepDeleteAllUserClusters   = "delete-all-user-clusters"
 	StepDeployNode              = "deploy-node"
 	StepDeployNetwork           = "deploy-network"
+	StepFetchKubeconfig         = "fetch_kubeconfig"
+	StepVerifyClusterReady      = "verify-cluster-ready"
 )

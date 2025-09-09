@@ -145,15 +145,16 @@ func nodeFromDeployment(
 	return node, nil
 }
 
-func GetProjectName(userID, clusterName string) string {
-	return "kc" + userID + clusterName
+func GetProjectName(userID int, clusterName string) string {
+	userIDStr := fmt.Sprintf("%d", userID)
+	return "kc" + userIDStr + clusterName
 }
 
-func GetNodeName(userID, clusterName, nodeName string) string {
+func GetNodeName(userID int, clusterName, nodeName string) string {
 	return GetProjectName(userID, clusterName) + nodeName
 }
 
-func (c *Cluster) PrepareCluster(userID string) error {
+func (c *Cluster) PrepareCluster(userID int) error {
 	projectName := GetProjectName(userID, c.Name)
 	networkName := projectName + "net"
 

@@ -350,4 +350,4 @@ watch(() => [props.width, props.height, props.pointCount, props.nodes, props.arc
     min-height: 180px;
   }
 }
-</style> 
+</style>

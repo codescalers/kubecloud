@@ -111,5 +111,5 @@ func RegisterEWFWorkflows(
 	}
 	engine.RegisterTemplate(WorkflowUnreserveNode, &unreserveNodeTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, sse)
+	registerDeploymentActivities(engine, metrics, db, sse, config)
 }

@@ -9,7 +9,7 @@ import (
 // Cluster represents a deployed cluster in the system
 type Cluster struct {
 	ID          int       `gorm:"primaryKey;autoIncrement;column:id"`
-	UserID      string    `gorm:"user_id;index" json:"user_id" binding:"required"`
+	UserID      int       `gorm:"user_id;index" json:"user_id" binding:"required"`
 	ProjectName string    `gorm:"project_name;uniqueIndex:idx_user_project" json:"project_name" binding:"required"`
 	Result      string    `gorm:"type:text" json:"result"` // JSON serialized kubedeployer.Cluster
 	CreatedAt   time.Time `json:"created_at"`
