@@ -3,9 +3,10 @@ package app
 import (
 	"net/http"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"kubecloud/internal/logger"
 )
 
 type Stats struct {
@@ -13,6 +14,8 @@ type Stats struct {
 	TotalClusters uint32 `json:"total_clusters"`
 	UpNodes       uint32 `json:"up_nodes"`
 	Countries     uint32 `json:"countries"`
+	Cores         uint32 `json:"cores"`
+	SSD           uint32 `json:"ssd"`
 }
 
 // @Summary Get system statistics
@@ -53,5 +56,7 @@ func (h *Handler) GetStatsHandler(c *gin.Context) {
 		TotalClusters: uint32(totalClusters),
 		UpNodes:       uint32(stats.Nodes),
 		Countries:     uint32(stats.Countries),
+		Cores:         uint32(stats.TotalCRU),
+		SSD:           uint32(stats.TotalSRU),
 	})
 }

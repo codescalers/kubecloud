@@ -286,7 +286,7 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
+func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -300,12 +300,26 @@ func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		projectName, ok := state["project_name"].(string)
-		if !ok {
-			return fmt.Errorf("missing or invalid 'project_name' in state")
+		// in a Rollaback, cluster is in state, in a delete, we need to load from db
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			projectName, ok := state["project_name"].(string)
+			if !ok {
+				return fmt.Errorf("missing or invalid 'project_name' in state")
+			}
+
+			dbCluster, err := db.GetClusterByName(config.UserID, projectName)
+			if err != nil {
+				return fmt.Errorf("failed to get cluster from database: %w", err)
+			}
+
+			cluster, err = dbCluster.GetClusterResult()
+			if err != nil {
+				return fmt.Errorf("failed to get cluster result: %w", err)
+			}
 		}
 
-		if err := kubeClient.CancelCluster(ctx, projectName); err != nil {
+		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {
 			return fmt.Errorf("failed to cancel deployment: %w", err)
 		}
 
@@ -558,7 +572,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))
-	engine.Register(StepRemoveCluster, CancelDeploymentStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(db, metrics))
 	engine.Register(StepAddNode, AddNodeStep(metrics))
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
