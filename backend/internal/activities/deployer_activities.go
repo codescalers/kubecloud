@@ -26,7 +26,7 @@ import (
 var (
 	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
 	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
-	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 20, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
+	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
 
 	workflowsDescriptions = map[string]string{
 		WorkflowAddNode:           "Adding Node",
