@@ -670,15 +670,9 @@ func FetchKubeconfigStep(privateKeyPath string) ewf.StepFn {
 			return fmt.Errorf("failed to get cluster from state: %w", err)
 		}
 
-		var master *kubedeployer.Node
-		for i := range cluster.Nodes {
-			if cluster.Nodes[i].Type == kubedeployer.NodeTypeLeader || cluster.Nodes[i].Type == kubedeployer.NodeTypeMaster {
-				master = &cluster.Nodes[i]
-				break
-			}
-		}
-		if master == nil {
-			return fmt.Errorf("no leader or master node found in cluster")
+		master, err := cluster.GetLeaderNode()
+		if err != nil {
+			return fmt.Errorf("failed to get leader node in cluster")
 		}
 
 		privateKeyBytes, err := os.ReadFile(privateKeyPath)
@@ -686,7 +680,7 @@ func FetchKubeconfigStep(privateKeyPath string) ewf.StepFn {
 			return fmt.Errorf("failed to read SSH private key: %w", err)
 		}
 
-		kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), master)
+		kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), &master)
 		if err != nil {
 			return fmt.Errorf("failed to retrieve kubeconfig via SSH: %w", err)
 		}
