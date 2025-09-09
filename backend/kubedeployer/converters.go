@@ -188,7 +188,7 @@ func GetVMProjectName(userID int, nodeName string) string {
 	return "kc" + userIDStr + "vm" + nodeName
 }
 
-func deploymentFromVM(node *Node,
+func deploymentFromVM(node *VM,
 	projectName string,
 	networkName string,
 	userSSH string,

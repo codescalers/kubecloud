@@ -258,14 +258,8 @@ func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
 		dbVM := &models.VM{
 			ProjectName: vm.ProjectName,
 		}
-
-		machine := kubedeployer.VM{
-			Node:        vm.Node,
-			ProjectName: vm.ProjectName,
-			Network:     vm.Network,
-		}
-
-		if err := dbVM.SetVMResult(machine); err != nil {
+		//TODO:
+		if err := dbVM.SetVMResult(vm); err != nil {
 			return fmt.Errorf("failed to set VM result: %w", err)
 		}
 
@@ -554,14 +548,14 @@ func DeployVMStep(metrics *metrics.Metrics) ewf.StepFn {
 		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
 				metrics.IncrementVMDeploymentFailure()
-				return fmt.Errorf("VM already deployed: %s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("VM already deployed: %s %w", vm.Name, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
 				metrics.IncrementVMDeploymentFailure()
-				return fmt.Errorf("VM invalid:%s %w", vm.Node.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("VM invalid:%s %w", vm.Name, ewf.ErrFailWorkflowNow)
 			}
 			metrics.IncrementVMDeploymentFailure()
-			return fmt.Errorf("failed to deploy VM %s: %w", vm.Node.Name, err)
+			return fmt.Errorf("failed to deploy VM %s: %w", vm.Name, err)
 		}
 
 		metrics.IncrementVMDeploymentSuccess()
@@ -590,10 +584,10 @@ func DeleteVMStep(metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		projectName := kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
+		projectName := kubedeployer.GetVMProjectName(config.UserID, vm.Name)
 
 		if err := kubeClient.RemoveVM(ctx, projectName); err != nil {
-			return fmt.Errorf("failed to remove VM %s: %w", vm.Node.Name, err)
+			return fmt.Errorf("failed to remove VM %s: %w", vm.Name, err)
 		}
 
 		statemanager.SaveGridClientState(state, kubeClient)

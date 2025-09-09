@@ -29,15 +29,14 @@ type Response struct {
 	Message    string `json:"message"`
 }
 
-// DeployVMInput represents the request body for creating a VM
-type DeployVMInput struct {
-	Node VMInput `json:"node" validate:"required"`
-}
+// // DeployVMInput represents the request body for creating a VM
+// type DeployVMInput struct {
+// 	Node VMInput `json:"node" validate:"required"`
+// }
 
 // NodeInput contains fields taken by user
 type VMInput struct {
 	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`
-	Type     string            `json:"type"`
 	NodeID   uint32            `json:"node_id" validate:"required"`
 	CPU      uint8             `json:"cpu" validate:"required,min=1"`
 	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // MB
@@ -788,52 +787,46 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	var input DeployVMInput
+	var input VMInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request json format", err.Error())
 		return
 	}
 
-	if err := internal.ValidateStruct(input.Node); err != nil {
+	if err := internal.ValidateStruct(input); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 
 	// Map to internal kubedeployer.VM
 	vm := kubedeployer.VM{
-		Node: kubedeployer.Node{
-			Name:         input.Node.Name,
-			Type:         kubedeployer.NodeType(input.Node.Type),
-			NodeID:       input.Node.NodeID,
-			CPU:          input.Node.CPU,
-			Memory:       input.Node.Memory,
-			RootSize:     input.Node.RootSize,
-			DiskSize:     input.Node.DiskSize,
-			EnvVars:      input.Node.EnvVars,
-			Flist:        input.Node.Flist,
-			Entrypoint:   input.Node.Entrypoint,
-			OriginalName: input.Node.Name,
-		},
+			Name:         input.Name,
+			NodeID:       input.NodeID,
+			CPU:          input.CPU,
+			Memory:       input.Memory,
+			RootSize:     input.RootSize,
+			DiskSize:     input.DiskSize,
+			EnvVars:      input.EnvVars,
+			Flist:        input.Flist,
+			Entrypoint:   input.Entrypoint,
+			OriginalName: input.Name,
+		
 	}
-	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Node.Name)
+	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Name)
 
-	if vm.Node.Name == "" {
-		vm.Node.Name = vm.ProjectName
+	if vm.Name == "" {
+		vm.Name = vm.ProjectName
 	}
 
-	if vm.Node.Type == "" {
-		vm.Node.Type = kubedeployer.NodeTypeMaster
-	}
-
-	if vm.Node.EnvVars == nil {
-		vm.Node.EnvVars = map[string]string{}
+	if vm.EnvVars == nil {
+		vm.EnvVars = map[string]string{}
 	}
 
 	if vm.Network.Name == "" {
 		vm.Network.Name = vm.ProjectName + "net"
 	}
 
-	if err := internal.ValidateStruct(vm.Node); err != nil {
+	if err := internal.ValidateStruct(vm); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}

@@ -262,11 +262,11 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 
 func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 	logger.GetLogger().Debug().
-		Str("vm_name", vm.Node.Name).
+		Str("vm_name", vm.Name).
 		Str("network_name", vm.Network.Name).
 		Msg("Deploying network for VM")
 
-	net, err := createNetworkWorkload(vm.Network.Name, vm.ProjectName, []uint32{vm.Node.NodeID})
+	net, err := createNetworkWorkload(vm.Network.Name, vm.ProjectName, []uint32{vm.NodeID})
 	if err != nil {
 		return fmt.Errorf("failed to create network workload: %v", err)
 	}
@@ -279,7 +279,7 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 	vm.Network = net
 
 	logger.GetLogger().Debug().
-		Str("vm_name", vm.Node.Name).
+		Str("vm_name", vm.Name).
 		Str("network_name", vm.Network.Name).
 		Msg("Successfully deployed network for VM")
 
@@ -287,28 +287,28 @@ func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
 }
 
 func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error {
-	logger.GetLogger().Info().Str("Deploying VM %s", vm.Node.Name)
+	logger.GetLogger().Info().Str("Deploying VM %s", vm.Name)
 
 	if err := vm.PrepareVM(); err != nil {
 		return fmt.Errorf("failed to prepare VM: %v", err)
 	}
-
+	//TODO:
 	if err := vm.Node.AssignNodeIP(ctx, c.GridClient, vm.Network.Name); err != nil {
-		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Node.Name, err)
+		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Name, err)
 	}
 
-	depl, err := deploymentFromVM(&vm.Node, vm.ProjectName, vm.Network.Name, userSSHKey)
+	depl, err := deploymentFromVM(vm, vm.ProjectName, vm.Network.Name, userSSHKey)
 	if err != nil {
 		return fmt.Errorf("failed to create VM for node: %v", err)
 	}
 
-	logger.GetLogger().Debug().Str("vm_name", vm.Node.Name).Msg("Starting deployment to grid")
+	logger.GetLogger().Debug().Str("vm_name", vm.Name).Msg("Starting deployment to grid")
 	if err = c.GridClient.DeploymentDeployer.Deploy(ctx, &depl); err != nil {
-		logger.GetLogger().Error().Err(err).Str("vm_name", vm.Node.Name).Msg("Failed to deploy node to grid")
-		return fmt.Errorf("failed to deploy vm %s: %v", vm.Node.Name, err)
+		logger.GetLogger().Error().Err(err).Str("vm_name", vm.Name).Msg("Failed to deploy node to grid")
+		return fmt.Errorf("failed to deploy vm %s: %v", vm.Name, err)
 	}
 
-	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, vm.Node.NodeID, vm.Node.Name)
+	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, vm.NodeID, vm.Name)
 	if err != nil {
 		return fmt.Errorf("failed to load VM deployment state: %v", err)
 	}
@@ -317,7 +317,7 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error 
 		return fmt.Errorf("failed to load VM state from deployment: %v", err)
 	}
 
-	logger.GetLogger().Debug().Str("vm_name", vm.Node.Name).Msg("VM deployment successful")
+	logger.GetLogger().Debug().Str("vm_name", vm.Name).Msg("VM deployment successful")
 	return nil
 }
 

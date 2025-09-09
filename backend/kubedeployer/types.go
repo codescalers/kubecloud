@@ -312,7 +312,27 @@ func (c *Cluster) UnmarshalJSON(data []byte) error {
 }
 
 type VM struct {
-	Node Node `json:"node" validate:"required"`
+	// Node Node `json:"node" validate:"required"`
+	Name   string `json:"name" validate:"required,min=3,max=20,alphanum"`
+	NodeID uint32 `json:"node_id" validate:"required"`
+
+	CPU      uint8             `json:"cpu" validate:"required,min=1"`
+	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // Memory in MB
+	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // Storage in MB
+	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // Storage in MB
+	GPUIDs   []string          `json:"gpu_ids,omitempty"`                       // List of GPU IDs
+	EnvVars  map[string]string `json:"env_vars"`
+
+	// Optional fields
+	Flist      string `json:"flist,omitempty"`
+	Entrypoint string `json:"entrypoint,omitempty"`
+
+	// Computed
+	IP           string `json:"ip,omitempty"`
+	MyceliumIP   string `json:"mycelium_ip,omitempty"`
+	PlanetaryIP  string `json:"planetary_ip,omitempty"`
+	ContractID   uint64 `json:"contract_id,omitempty"`
+	OriginalName string `json:"original_name,omitempty"`
 	// Computed
 	Network     workloads.ZNet `json:"network,omitempty"`
 	ProjectName string         `json:"project_name,omitempty"`
@@ -322,9 +342,23 @@ type VM struct {
 func (vm VM) MarshalJSON() ([]byte, error) {
 	// Create a serializable version of the VM
 	serializable := struct {
-		Node        Node   `json:"node"`
-		ProjectName string `json:"project_name,omitempty"`
-		Network     struct {
+		Name         string            `json:"name"`
+		NodeID       uint32            `json:"node_id"`
+		CPU          uint8             `json:"cpu"`
+		Memory       uint64            `json:"memory"`
+		RootSize     uint64            `json:"root_size"`
+		DiskSize     uint64            `json:"disk_size"`
+		GPUIDs       []string          `json:"gpu_ids,omitempty"`
+		EnvVars      map[string]string `json:"env_vars"`
+		Flist        string            `json:"flist,omitempty"`
+		Entrypoint   string            `json:"entrypoint,omitempty"`
+		IP           string            `json:"ip,omitempty"`
+		MyceliumIP   string            `json:"mycelium_ip,omitempty"`
+		PlanetaryIP  string            `json:"planetary_ip,omitempty"`
+		ContractID   uint64            `json:"contract_id,omitempty"`
+		OriginalName string            `json:"original_name,omitempty"`
+		ProjectName  string            `json:"project_name,omitempty"`
+		Network      struct {
 			Name             string            `json:"name"`
 			Description      string            `json:"description"`
 			Nodes            []uint32          `json:"nodes"`
@@ -342,8 +376,22 @@ func (vm VM) MarshalJSON() ([]byte, error) {
 			Keys             map[string]string `json:"keys,omitempty"` // base64 encoded
 		} `json:"network,omitempty"`
 	}{
-		Node:        vm.Node,
-		ProjectName: vm.ProjectName,
+		ProjectName:  vm.ProjectName,
+		Name:         vm.Name,
+		NodeID:       vm.NodeID,
+		CPU:          vm.CPU,
+		Memory:       vm.Memory,
+		RootSize:     vm.RootSize,
+		DiskSize:     vm.DiskSize,
+		GPUIDs:       vm.GPUIDs,
+		EnvVars:      vm.EnvVars,
+		Flist:        vm.Flist,
+		Entrypoint:   vm.Entrypoint,
+		IP:           vm.IP,
+		MyceliumIP:   vm.MyceliumIP,
+		PlanetaryIP:  vm.PlanetaryIP,
+		ContractID:   vm.ContractID,
+		OriginalName: vm.OriginalName,
 	}
 
 	// Handle network serialization
@@ -415,9 +463,24 @@ func (vm VM) MarshalJSON() ([]byte, error) {
 func (vm *VM) UnmarshalJSON(data []byte) error {
 	// First unmarshal into a temporary structure
 	var temp struct {
-		Node        Node   `json:"node"`
-		ProjectName string `json:"project_name,omitempty"`
-		Network     struct {
+		ProjectName  string            `json:"project_name,omitempty"`
+		Name         string            `json:"name"`
+		NodeID       uint32            `json:"node_id"`
+		CPU          uint8             `json:"cpu"`
+		Memory       uint64            `json:"memory"`
+		RootSize     uint64            `json:"root_size"`
+		DiskSize     uint64            `json:"disk_size"`
+		GPUIDs       []string          `json:"gpu_ids,omitempty"`
+		EnvVars      map[string]string `json:"env_vars"`
+		Flist        string            `json:"flist,omitempty"`
+		Entrypoint   string            `json:"entrypoint,omitempty"`
+		IP           string            `json:"ip,omitempty"`
+		MyceliumIP   string            `json:"mycelium_ip,omitempty"`
+		PlanetaryIP  string            `json:"planetary_ip,omitempty"`
+		ContractID   uint64            `json:"contract_id,omitempty"`
+		OriginalName string            `json:"original_name,omitempty"`
+
+		Network struct {
 			Name             string            `json:"name"`
 			Description      string            `json:"description"`
 			Nodes            []uint32          `json:"nodes"`
@@ -440,8 +503,23 @@ func (vm *VM) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("failed to unmarshal cluster: %w", err)
 	}
 
-	vm.Node = temp.Node
 	vm.ProjectName = temp.ProjectName
+	vm.ProjectName = temp.ProjectName
+	vm.Name = temp.Name
+	vm.NodeID = temp.NodeID
+	vm.CPU = temp.CPU
+	vm.Memory = temp.Memory
+	vm.RootSize = temp.RootSize
+	vm.DiskSize = temp.DiskSize
+	vm.GPUIDs = temp.GPUIDs
+	vm.EnvVars = temp.EnvVars
+	vm.Flist = temp.Flist
+	vm.Entrypoint = temp.Entrypoint
+	vm.IP = temp.IP
+	vm.MyceliumIP = temp.MyceliumIP
+	vm.PlanetaryIP = temp.PlanetaryIP
+	vm.ContractID = temp.ContractID
+	vm.OriginalName = temp.OriginalName
 
 	// Initialize network with basic fields
 	vm.Network = workloads.ZNet{
@@ -566,9 +644,9 @@ func (v *VM) PrepareVM() error {
 		v.Network.Name = v.ProjectName + "net"
 	}
 
-	if v.Node.OriginalName == "" {
-		v.Node.OriginalName = v.Node.Name
-		v.Node.Name = v.ProjectName + v.Node.OriginalName
+	if v.OriginalName == "" {
+		v.OriginalName = v.Name
+		v.Name = v.ProjectName + v.OriginalName
 	}
 
 	return nil
@@ -580,10 +658,10 @@ func (v *VM) LoadFromDeployment(deployment workloads.Deployment) error {
 	}
 
 	vm := deployment.Vms[0]
-	v.Node.IP = vm.IP
-	v.Node.MyceliumIP = vm.MyceliumIP
-	v.Node.PlanetaryIP = vm.PlanetaryIP
-	v.Node.ContractID = deployment.ContractID
+	v.IP = vm.IP
+	v.MyceliumIP = vm.MyceliumIP
+	v.PlanetaryIP = vm.PlanetaryIP
+	v.ContractID = deployment.ContractID
 
 	return nil
 }
