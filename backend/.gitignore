@@ -3,3 +3,5 @@ config.json
 *DS_store
 *DS_Store
 logs/*
+*.log
+*.log.*
