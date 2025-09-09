@@ -1,5 +1,5 @@
 ---
-# CiliumNetworkPolicy CRD
+# Cilium Network Policy CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -28,7 +28,7 @@ spec:
     - ciliumnp
 
 ---
-# CiliumClusterwideNetworkPolicy CRD
+# Cilium Cluster Wide Network Policy CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -56,7 +56,7 @@ spec:
     - ccnp
 
 ---
-# CiliumEndpoint CRD
+# Cilium Endpoint CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -85,36 +85,7 @@ spec:
     - ciliumep
 
 ---
-# CiliumNode CRD
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: ciliumnodes.cilium.io
-spec:
-  group: cilium.io
-  versions:
-  - name: v2
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-          status:
-            type: object
-  scope: Cluster
-  names:
-    plural: ciliumnodes
-    singular: ciliumnode
-    kind: CiliumNode
-    shortNames:
-    - cn
-    - cnode
-
----
-# CiliumIdentity CRD
+# Cilium Identity CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -142,39 +113,11 @@ spec:
     - ciliumid
 
 ---
-# CiliumLocalRedirectPolicy CRD
+# Cilium Node CRD
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: ciliumlocalredirectpolicies.cilium.io
-spec:
-  group: cilium.io
-  versions:
-  - name: v2
-    served: true
-    storage: true
-    schema:
-      openAPIV3Schema:
-        type: object
-        properties:
-          spec:
-            type: object
-          status:
-            type: object
-  scope: Namespaced
-  names:
-    plural: ciliumlocalredirectpolicies
-    singular: ciliumlocalredirectpolicy
-    kind: CiliumLocalRedirectPolicy
-    shortNames:
-    - clrp
-
----
-# CiliumEgressGatewayPolicy CRD
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: ciliumegressgatewaypolicies.cilium.io
+  name: ciliumnodes.cilium.io
 spec:
   group: cilium.io
   versions:
@@ -191,8 +134,9 @@ spec:
             type: object
   scope: Cluster
   names:
-    plural: ciliumegressgatewaypolicies
-    singular: ciliumegressgatewaypolicy
-    kind: CiliumEgressGatewayPolicy
+    plural: ciliumnodes
+    singular: ciliumnode
+    kind: CiliumNode
     shortNames:
-    - cegp
+    - cn
+    - cnode
