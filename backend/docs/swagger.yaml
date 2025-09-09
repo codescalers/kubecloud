@@ -564,8 +564,8 @@ definitions:
     type: object
 info:
   contact: {}
-  description: API documentation for KubeCloud.
-  title: KubeCloud API
+  description: API documentation for Mycelium Cloud.
+  title: Mycelium Cloud API
   version: "1.0"
 paths:
   /deployments:
