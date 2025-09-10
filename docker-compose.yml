@@ -43,7 +43,7 @@ services:
       - MYCELIUM_HOST=localhost
       - REDIS_HOST=redis-db
       - REDIS_PORT=6379
-    command: ["/myceliumCloud", "--config", "/app/config.json"]
+    command: ["/myceliumcloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
 
   frontend:
