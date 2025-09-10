@@ -12,8 +12,6 @@ import (
 
 	"kubecloud/internal/logger"
 
-	"kubecloud/internal/logger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
