@@ -698,17 +698,16 @@ func (h *Handler) HandleDeployVM(c *gin.Context) {
 
 	// Map to internal kubedeployer.VM
 	vm := kubedeployer.VM{
-			Name:         input.Name,
-			NodeID:       input.NodeID,
-			CPU:          input.CPU,
-			Memory:       input.Memory,
-			RootSize:     input.RootSize,
-			DiskSize:     input.DiskSize,
-			EnvVars:      input.EnvVars,
-			Flist:        input.Flist,
-			Entrypoint:   input.Entrypoint,
-			OriginalName: input.Name,
-		
+		Name:         input.Name,
+		NodeID:       input.NodeID,
+		CPU:          input.CPU,
+		Memory:       input.Memory,
+		RootSize:     input.RootSize,
+		DiskSize:     input.DiskSize,
+		EnvVars:      input.EnvVars,
+		Flist:        input.Flist,
+		Entrypoint:   input.Entrypoint,
+		OriginalName: input.Name,
 	}
 	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Name)
 
