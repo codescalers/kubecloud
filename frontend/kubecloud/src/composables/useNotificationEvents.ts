@@ -5,22 +5,53 @@ import { useClusterStore } from '../stores/clusters'
 import { useNodeManagement } from './useNodeManagement'
 
 // TypeScript interfaces matching the backend notification model
-export type NotificationType = 'deployment' | 'billing' | 'user' | 'connected' | 'node'
-export type NotificationSeverity = 'info' | 'error' | 'warning' | 'success'
-export interface NotificationData {
+
+/** Supported notification types for different system events */
+type NotificationType = 'deployment' | 'billing' | 'user' | 'connected' | 'node'
+
+/** Severity levels for notifications affecting UI display */
+type NotificationSeverity = 'info' | 'error' | 'warning' | 'success'
+
+/** Core notification data structure */
+interface NotificationData {
+  /** Notification title/subject */
   subject: string
+  /** Detailed notification message */
   message: string
 }
 
-export interface SSEMessage {
+/** Server-Sent Event message structure from backend */
+interface SSEMessage {
+  /** Type of notification event */
   type: NotificationType
+  /** Notification content data */
   data: NotificationData
+  /** Severity level for UI styling */
   severity: NotificationSeverity
+  /** Optional task identifier for tracking */
   task_id?: string
+  /** Event timestamp */
   timestamp: string
 }
 
-export function useNotificationEvents() {
+/** Configuration options for notification event handling */
+interface NotificationEventsOptions {
+  /** Maximum number of reconnection attempts (default: 5) */
+  maxReconnectAttempts?: number
+  /** Delay between reconnection attempts in milliseconds (default: 2000) */
+  reconnectDelay?: number
+}
+
+/**
+ * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
+ * 
+ * Provides a reactive connection to the backend notification system with automatic
+ * reconnection, message handling, and integration with various stores for data updates.
+ * 
+ * @param options Configuration options for connection behavior
+ * @returns Object containing connection methods and reactive state
+ */
+export function useNotificationEvents(options: NotificationEventsOptions) {
   const eventSource = ref<EventSource | null>(null)
   const notificationStore = useNotificationStore()
   const userStore = useUserStore()
@@ -29,9 +60,16 @@ export function useNotificationEvents() {
 
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
-  const maxReconnectAttempts = 5
-  const reconnectDelay = 2000 // 2 seconds
+  const maxReconnectAttempts = options.maxReconnectAttempts || 5
+  const reconnectDelay = options.reconnectDelay || 2000
 
+  /**
+   * Establishes SSE connection to the backend notification service
+   * 
+   * Creates an EventSource connection with authentication token and sets up
+   * event handlers for open, message, and error events. Includes automatic
+   * reconnection logic on connection failures.
+   */
   function connect() {
     if (eventSource.value || isConnected.value) return
 
@@ -74,17 +112,23 @@ export function useNotificationEvents() {
     }
   }
 
+  /**
+   * Processes incoming SSE messages and routes them to appropriate handlers
+   * 
+   * Parses the message data, displays notifications via the notification store,
+   * and triggers specific actions based on the notification type.
+   * 
+   * @param event The SSE message containing notification data
+   */
   function handleSSEMessage(event: SSEMessage) {
     const { type, data, severity } = event
 
-    // Handle connection confirmation
     if (type === 'connected') {
       isConnected.value = true
       return
     }
 
-    // Get title and message content
-    const { subject, message } = getNotificationData(event)
+    const { subject, message } = getNotificationData(data, type)
 
     switch (severity) {
       case 'success':
@@ -102,12 +146,20 @@ export function useNotificationEvents() {
         break
     }
 
-    // Handle specific notification types
-    handleSpecificNotificationType(type, event)
+    handleSpecificNotificationType(type)
   }
 
-  function getNotificationData(event: SSEMessage): { subject: string; message: string } {
-    const { type, data } = event
+  /**
+   * Extracts and formats notification subject and message from event data
+   * 
+   * Ensures both subject and message are present, falling back to defaults
+   * based on notification type if not provided in the data.
+   * 
+   * @param data The notification data from the SSE event
+   * @param type The type of notification for fallback generation
+   * @returns Formatted subject and message strings
+   */
+  function getNotificationData(data: NotificationData, type: NotificationType): { subject: string; message: string } {
     let message = ''
     let subject = ''
     if (data?.message) {
@@ -117,44 +169,28 @@ export function useNotificationEvents() {
       subject = data.subject
     }
 
-    if (!message) message = parseNotificationMessage(event)
+    if (!message) message = parseDefaultNotificationMessage(data, type)
     if (!subject) {
       subject = type.charAt(0).toUpperCase() + type.slice(1);
     }
     return { subject, message }
   }
 
-  function parseNotificationMessage(message: SSEMessage): string {
-    const { data, type } = message
-
-    // Handle different data formats
+  /**
+   * Generates default notification messages based on notification type
+   * 
+   * Provides fallback messages when the notification data doesn't include
+   * a specific message, ensuring users always receive meaningful feedback.
+   * 
+   * @param data The notification data (may be string or object)
+   * @param type The notification type for message generation
+   * @returns Default message string for the notification type
+   */
+  function parseDefaultNotificationMessage(data: NotificationData,type: NotificationType): string {
     if (typeof data === 'string') {
       return data
     }
-
-    if (data && typeof data === 'object') {
-      // Try to get message from data object
-      if (data.message) {
-        return data.message
-      }
-
-      if (data.title && data.description) {
-        return `${data.title}: ${data.description}`
-      }
-
-      if (data.title) {
-        return data.title
-      }
-
-      if (data.description) {
-        return data.description
-      }
-
-      if (data.status) {
-        return `Status: ${data.status}`
-      }
-    }
-
+    
     // Fallback based on type
     switch (type as NotificationType) {
       case 'deployment':
@@ -165,42 +201,82 @@ export function useNotificationEvents() {
         return 'Account information updated'
       case 'connected':
         return 'Connected to notification service'
+      case 'node':
+        return 'Node status updated'
       default:
         return 'System notification'
     }
   }
 
-  function handleSpecificNotificationType(type: string, message: SSEMessage) {
-    switch (type as NotificationType) {
+  /**
+   * Routes notification types to their specific handler functions
+   * 
+   * Triggers appropriate actions based on notification type, such as
+   * refreshing data stores or updating UI state.
+   * 
+   * @param type The notification type to handle
+   */
+  function handleSpecificNotificationType(type: NotificationType) {
+    switch (type) {
       case 'deployment':
-        handleDeploymentNotification(message)
+        handleDeploymentNotification()
+        break
+      case 'node':
+        handleNodeNotification()
         break
       case 'billing':
-        handleBillingNotification(message)
+        handleBillingNotification()
         break
       case 'user':
-        handleUserNotification(message)
+        handleUserNotification()
         break
       case 'connected':
-        // Connection notifications don't need special handling
         break
     }
   }
 
-  function handleDeploymentNotification(message: SSEMessage) {
+  /**
+   * Handles deployment-related notifications
+   * 
+   * Refreshes cluster data to reflect deployment status changes.
+   */
+  function handleDeploymentNotification() {
     refreshClusterData()
   }
 
-  function handleBillingNotification(message: SSEMessage) {
-    // TODO: Handle billing-specific logic if needed
-    console.log('Billing notification received:', message)
+  /**
+   * Handles node-related notifications
+   * 
+   * Fetches updated node rental information when node status changes.
+   */
+  function handleNodeNotification() {
+    fetchRentedNodes()
   }
 
-  function handleUserNotification(message: SSEMessage) {
+  /**
+   * Handles billing-related notifications
+   * 
+   * Updates user's net balance when billing information changes.
+   */
+  function handleBillingNotification() {
+    userStore.updateNetBalance();
+  }
+
+  /**
+   * Handles user-related notifications
+   * 
+   * Currently logs the notification; can be extended for user-specific logic.
+   */
+  function handleUserNotification() {
     // TODO: Handle user-specific logic if needed
-    console.log('User notification received:', message)
+    console.log('User notification received')
   }
 
+  /**
+   * Closes the SSE connection
+   * 
+   * Properly terminates the EventSource connection and updates connection state.
+   */
   function disconnect() {
     if (eventSource.value) {
       eventSource.value.close()
@@ -209,7 +285,12 @@ export function useNotificationEvents() {
     isConnected.value = false
   }
 
-  // Refresh all cluster-related data
+  /**
+   * Refreshes all cluster-related data from the backend
+   * 
+   * Fetches updated cluster information and rented nodes data in parallel
+   * to ensure UI reflects the latest state after deployment notifications.
+   */
   async function refreshClusterData() {
     try {
       await Promise.all([clusterStore.fetchClusters(), fetchRentedNodes()])
@@ -218,7 +299,12 @@ export function useNotificationEvents() {
     }
   }
 
-  // Watch for token changes to reconnect
+  /**
+   * Watches for token changes to reconnect
+   * 
+   * Automatically reconnects to the SSE connection when the user's authentication token changes.
+   * Disconnects when the token is removed.
+   */
   watch(
     () => userStore.token,
     (newToken) => {
@@ -249,6 +335,5 @@ export function useNotificationEvents() {
     connect,
     disconnect,
     isConnected,
-    refreshClusterData,
   }
 }
