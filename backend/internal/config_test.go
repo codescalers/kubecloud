@@ -5,6 +5,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExpandPath(t *testing.T) {
@@ -30,7 +32,7 @@ func TestExpandPath(t *testing.T) {
 		{
 			name:     "empty path",
 			input:    "",
-			expected: ".",
+			expected: cwd,
 			hasError: false,
 		},
 		// Bare tilde
@@ -139,22 +141,15 @@ func TestExpandPath(t *testing.T) {
 			result, err := expandPath(tt.input)
 
 			if tt.hasError {
-				if err == nil {
-					t.Errorf("expandPath(%q) expected error, got nil", tt.input)
-				}
+				assert.Error(t, err, "expandPath(%q) expected error, got nil", tt.input)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("expandPath(%q) unexpected error: %v", tt.input, err)
-				return
-			}
+			assert.NoError(t, err, "expandPath(%q) unexpected error: %v", tt.input, err)
 
 			// Clean the result for comparison
 			expected := filepath.Clean(tt.expected)
-			if result != expected {
-				t.Errorf("expandPath(%q) = %q, want %q", tt.input, result, expected)
-			}
+			assert.Equal(t, expected, result, "expandPath(%q)", tt.input)
 		})
 	}
 }
