@@ -5,7 +5,7 @@
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">Documentation</h1>
-          <p class="section-subtitle">Find guides, API references, and tutorials to get the most out of KubeCloud.</p>
+          <p class="section-subtitle">Find guides, API references, and tutorials to get the most out of Mycelium Cloud.</p>
         </div>
       </div>
     </section>

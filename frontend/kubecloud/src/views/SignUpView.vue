@@ -4,7 +4,7 @@
     <div class="auth-content">
       <div class="auth-header">
         <h1 class="auth-title">Create Account</h1>
-        <p class="auth-subtitle">Join KubeCloud and start your journey</p>
+        <p class="auth-subtitle">Join Mycelium Cloud and start your journey</p>
       </div>
       <v-form @submit.prevent="handleSignUp" class="auth-form" v-model="isFormValid">
         <v-text-field

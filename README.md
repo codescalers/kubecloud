@@ -1,10 +1,10 @@
-# KubeCloud
+# Mycelium Cloud
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8.svg)](https://golang.org/)
 [![Node.js Version](https://img.shields.io/badge/Node.js-18+-339933.svg)](https://nodejs.org/)
 
-KubeCloud is a comprehensive cloud-native platform designed for deploying, managing, and monitoring Kubernetes clusters on the decentralized TFGrid infrastructure. It provides a complete solution with backend APIs, frontend UI, custom resource definitions (CRDs), monitoring dashboards, and networking components to streamline cloud operations in a decentralized environment.
+Mycelium Cloud is a comprehensive cloud-native platform designed for deploying, managing, and monitoring Kubernetes clusters on the decentralized TFGrid infrastructure. It provides a complete solution with backend APIs, frontend UI, custom resource definitions (CRDs), monitoring dashboards, and networking components to streamline cloud operations in a decentralized environment.
 
 ## Table of Contents
 
@@ -227,4 +227,4 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ---
 
-**KubeCloud** - Empowering decentralized cloud operations with Kubernetes.
+**Mycelium Cloud** - Empowering decentralized cloud operations with Kubernetes.

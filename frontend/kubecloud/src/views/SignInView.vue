@@ -4,7 +4,7 @@
     <div class="auth-content">
       <div class="auth-header">
         <h1 class="auth-title">Welcome Back!</h1>
-        <p class="auth-subtitle">Sign in to your KubeCloud account</p>
+        <p class="auth-subtitle">Sign in to your Mycelium Cloud account</p>
       </div>
       <v-form @submit.prevent="handleSignIn" class="auth-form" ref="formRef" v-model="isFormValid">
         <v-text-field
@@ -35,7 +35,7 @@
           <v-btn
             variant="text"
             size="small"
-            class="kubecloud-hover-blue pa-0"
+            class="mycelium-cloud-hover-blue pa-0"
             :disabled="loading"
             @click="router.push('/forgot-password')"
           >

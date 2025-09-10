@@ -110,7 +110,7 @@ func main() {
 
 	dashboard := map[string]interface{}{
 		"id":                    nil,
-		"title":                 "Kubecloud Dashboard",
+		"title":                 "Mycelium Cloud Dashboard",
 		"editable":              true,
 		"updateIntervalSeconds": 5,
 		"refresh":               "5s",

@@ -3,7 +3,7 @@
     <!-- Header Section -->
     <div class="card-header">
       <div class="header-content">
-        <h2 class="card-title kubecloud-gradient kubecloud-glow-blue">
+        <h2 class="card-titl">
           My Nodes
         </h2>
         <p class="card-description">

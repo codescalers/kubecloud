@@ -48,4 +48,6 @@ const (
 	StepStoreVMDeployment       = "store-vm-deployment"
 	StepDeleteVM                = "delete-vm"
 	StepDeleteDB                = "delete-vm-db"
+	StepFetchKubeconfig         = "fetch_kubeconfig"
+	StepVerifyClusterReady      = "verify-cluster-ready"
 )
