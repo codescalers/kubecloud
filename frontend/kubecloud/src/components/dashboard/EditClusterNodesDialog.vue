@@ -1,5 +1,5 @@
 <template>
-    <v-dialog v-model="props.modelValue" max-width="900">
+    <v-dialog v-model="props.modelValue" max-width="900" @click:outside="emit('update:modelValue', false)">
       <BaseDialogCard>
         <template #title>
           Add Node
