@@ -33,11 +33,7 @@ func TestRegisterHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		if resp.Code != http.StatusAccepted {
-			t.Logf("Expected status %d, got %d", http.StatusAccepted, resp.Code)
-			t.Logf("Response body: %s", resp.Body.String())
-		}
-		assert.Equal(t, http.StatusAccepted, resp.Code)
+		assert.Equalf(t, http.StatusAccepted, resp.Code, "Expected status %d, got %d. Body: %s", http.StatusAccepted, resp.Code, resp.Body.String())
 
 	})
 
