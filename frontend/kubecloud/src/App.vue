@@ -20,7 +20,7 @@ import { api, type ApiResponse } from './utils/api'
 import NavBar from './components/NavBar.vue'
 import AppFooter from './components/AppFooter.vue'
 import NotificationToast from './components/NotificationToast.vue'
-import { useDeploymentEvents } from "./composables/useDeploymentEvents"
+import { useNotificationEvents } from './composables/useNotificationEvents'
 const route = useRoute()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
@@ -56,28 +56,7 @@ onMounted(async () => {
       return
     }
     userStore.initializeAuth()
-    useDeploymentEvents()
-
-    // Initialize notifications after auth is ready
-    const initializeNotifications = async () => {
-      if (userStore.token) {
-        try {
-          // Load user data if not already loaded
-          if (!userStore.user) {
-            const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
-            userStore.user = userRes.data.data.user
-          }
-          
-          // Load notifications
-          await notificationStore.loadNotifications()
-        } catch (error) {
-          console.error('Failed to initialize notifications:', error)
-        }
-      }
-    }
-
-    // Initialize notifications after a short delay to ensure auth is ready
-    setTimeout(initializeNotifications, 500)
+    useNotificationEvents()
   } catch (error) {
     console.error('Failed to initialize application:', error)
   }

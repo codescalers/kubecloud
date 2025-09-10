@@ -5,12 +5,16 @@ import { useClusterStore } from '../stores/clusters'
 import { useNodeManagement } from './useNodeManagement'
 
 // TypeScript interfaces matching the backend notification model
-export type NotificationType = 'deployment' | 'billing' | 'user' | 'connected'
+export type NotificationType = 'deployment' | 'billing' | 'user' | 'connected' | 'node'
 export type NotificationSeverity = 'info' | 'error' | 'warning' | 'success'
+export interface NotificationData {
+  subject: string
+  message: string
+}
 
 export interface SSEMessage {
   type: NotificationType
-  data: any
+  data: NotificationData
   severity: NotificationSeverity
   task_id?: string
   timestamp: string
@@ -70,8 +74,8 @@ export function useNotificationEvents() {
     }
   }
 
-  function handleSSEMessage(message: SSEMessage) {
-    const { type, data, severity } = message
+  function handleSSEMessage(event: SSEMessage) {
+    const { type, data, severity } = event
 
     // Handle connection confirmation
     if (type === 'connected') {
@@ -80,46 +84,47 @@ export function useNotificationEvents() {
     }
 
     // Get title and message content
-    const title = getNotificationTitle(type)
-    const messageText = getNotificationMessage(message)
+    const { subject, message } = getNotificationData(event)
 
-    // Display notification based on severity
     switch (severity) {
       case 'success':
-        notificationStore.success(title, messageText)
+        notificationStore.success(subject, message)
         break
       case 'error':
-        notificationStore.error(title, messageText)
+        notificationStore.error(subject, message)
         break
       case 'warning':
-        notificationStore.warning(title, messageText)
+        notificationStore.warning(subject, message)
         break
       case 'info':
       default:
-        notificationStore.info(title, messageText)
+        notificationStore.info(subject, message)
         break
     }
 
     // Handle specific notification types
-    handleSpecificNotificationType(type, message)
+    handleSpecificNotificationType(type, event)
   }
 
-  function getNotificationTitle(type: string): string {
-    switch (type as NotificationType) {
-      case 'deployment':
-        return 'Deployment'
-      case 'billing':
-        return 'Billing'
-      case 'user':
-        return 'Account'
-      case 'connected':
-        return 'Connection'
-      default:
-        return 'System'
+  function getNotificationData(event: SSEMessage): { subject: string; message: string } {
+    const { type, data } = event
+    let message = ''
+    let subject = ''
+    if (data?.message) {
+      message = data.message
     }
+    if (data?.subject) {
+      subject = data.subject
+    }
+
+    if (!message) message = parseNotificationMessage(event)
+    if (!subject) {
+      subject = type.charAt(0).toUpperCase() + type.slice(1);
+    }
+    return { subject, message }
   }
 
-  function getNotificationMessage(message: SSEMessage): string {
+  function parseNotificationMessage(message: SSEMessage): string {
     const { data, type } = message
 
     // Handle different data formats
