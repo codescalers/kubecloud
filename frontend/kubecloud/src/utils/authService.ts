@@ -188,13 +188,13 @@ export class AuthService {
     }
 
     const response = await api.put<ApiResponse<ChangePasswordResponse>>('/v1/user/change_password', data, {
-      requiresAuth: true,
-      customToken,
-      showNotifications: true,
-      loadingMessage: 'Updating password...',
-      successMessage: 'Password updated successfully!',
-      errorMessage: 'Failed to update password'
-    })
+        requiresAuth: true,
+        customToken,
+        showNotifications: true,
+        loadingMessage: 'Updating password...',
+        errorMessage: 'Failed to update password',
+      },
+    )
     return response.data.data
   }
 

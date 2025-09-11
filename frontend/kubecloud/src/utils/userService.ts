@@ -165,24 +165,15 @@ export class UserService {
     if(status === WorkflowStatus.StatusCompleted){
       try {
         await this.trackNodeStatus(nodeId, "rented")
-        useNotificationStore().success(
-          'Node Reserved',
-          'Node has been successfully reserved.',
-        )
+        console.log('Node Reserved', 'Node has been successfully reserved.')
       } catch (error) {
-        useNotificationStore().error(
-          'Node reservation error',
-          'Failed to reserve node',
-        )
+        console.error('Node reservation error', 'Failed to reserve node')
         throw new Error('Failed to reserve node')
       }
 
     }
     if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Node reservation error',
-        'Failed to reserve node',
-      )
+      console.error('Node reservation error', 'Failed to reserve node')
       throw new Error('Failed to reserve node')
     }
 
@@ -208,15 +199,9 @@ export class UserService {
     // if (status === WorkflowStatus.StatusCompleted) {
       try {
         await this.trackNodeStatus(response.data.data.contract_id, "rentable")
-        useNotificationStore().success(
-          'Node Unreservation Success',
-          'Node has been successfully unreserved.',
-        )
+        console.log('Node Unreservation Success', 'Node has been successfully unreserved.')
       } catch (error) {
-        useNotificationStore().error(
-          'Node unreservation error',
-          'Failed to verify node status',
-        )
+        console.error('Node unreservation error', 'Failed to verify node status')
       }
     // }
   }
@@ -227,17 +212,11 @@ export class UserService {
     const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 2000 })
     const status = await workflowChecker.status
     if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Charge Failed',
-        'Failed to charge balance',
-      )
+      console.error('Charge Failed', 'Failed to charge balance')
       throw new Error('Failed to charge balance')
     }
     if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Charge Success',
-        'Charge balance successful',
-      )
+      console.log('Charge Success', 'Charge balance successful')
     }
   }
 

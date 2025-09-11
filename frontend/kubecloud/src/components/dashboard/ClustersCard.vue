@@ -276,7 +276,7 @@ async function confirmDelete() {
   deleting.value = true
   try {
     await clusterStore.deleteCluster(clusterToDelete.value)
-    notificationStore.info('Cluster Removal Started', `Cluster is being removed in the background. You will be notified when the operation completes.`)
+    console.log('Cluster Removal Started', `Cluster is being removed in the background. You will be notified when the operation completes.`)
   } catch (error: any) {
   } finally {
     showDeleteModal.value = false
