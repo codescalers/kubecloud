@@ -26,11 +26,6 @@ type Response struct {
 	Message    string `json:"message"`
 }
 
-// // DeployVMInput represents the request body for creating a VM
-// type DeployVMInput struct {
-// 	Node VMInput `json:"node" validate:"required"`
-// }
-
 // NodeInput contains fields taken by user
 type VMInput struct {
 	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`

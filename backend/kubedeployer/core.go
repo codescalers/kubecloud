@@ -14,13 +14,38 @@ func (c *Cluster) GetLeaderNode() (Node, error) {
 	return c.Nodes[0], nil
 }
 
+func assignIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string, nodeID uint32) (string, error) {
+	ip, err := getIpForVm(ctx, gridClient, networkName, nodeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get IP for node %d in network %s: %v", nodeID, networkName, err)
+	}
+	return ip, nil
+}
+
 func (n *Node) AssignNodeIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string) error {
 	logger.GetLogger().Debug().Msgf("Assigning IP for node %s in network %s", n.Name, networkName)
-	ip, err := getIpForVm(ctx, gridClient, networkName, n.NodeID)
+
+	ip, err := assignIP(ctx, gridClient, networkName, n.NodeID)
 	if err != nil {
-		return fmt.Errorf("failed to get IP for node %s: %v", n.Name, err)
+		return fmt.Errorf("failed to assign IP for node %s: %v", n.Name, err)
 	}
+
 	n.IP = ip
+	return nil
+}
+
+func (vm *VM) AssignIP(ctx context.Context, gridClient deployer.TFPluginClient) error {
+	logger.GetLogger().Debug().
+		Str("vm_name", vm.Name).
+		Uint32("node_id", vm.NodeID).
+		Msgf("Assigning IP for VM in network %s", vm.Network.Name)
+
+	ip, err := assignIP(ctx, gridClient, vm.Network.Name, vm.NodeID)
+	if err != nil {
+		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Name, err)
+	}
+
+	vm.IP = ip
 	return nil
 }
 
@@ -305,8 +330,7 @@ func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error 
 	if err := vm.PrepareVM(); err != nil {
 		return fmt.Errorf("failed to prepare VM: %v", err)
 	}
-	//TODO:
-	if err := vm.Node.AssignNodeIP(ctx, c.GridClient, vm.Network.Name); err != nil {
+	if err := vm.AssignIP(ctx, c.GridClient); err != nil {
 		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Name, err)
 	}
 
