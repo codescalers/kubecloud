@@ -205,7 +205,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.DeployVMInput"
+                            "$ref": "#/definitions/app.VMInput"
                         }
                     }
                 ],
@@ -2508,7 +2508,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.DeployVMInput": {
+        "app.VMInput": {
             "type": "object",
             "required": [
                 "node"

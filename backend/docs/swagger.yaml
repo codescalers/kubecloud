@@ -89,7 +89,7 @@ definitions:
         example: 123e4567-e89b-12d3-a456-426614174000
         type: string
     type: object
-  app.DeployVMInput:
+  app.VMInput:
     properties:
       node:
         $ref: '#/definitions/app.NodeInput'
@@ -922,7 +922,7 @@ paths:
         name: vm
         required: true
         schema:
-          $ref: '#/definitions/app.DeployVMInput'
+          $ref: '#/definitions/app.VMInput'
       produces:
       - application/json
       responses:

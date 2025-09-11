@@ -668,7 +668,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param vm body DeployVMInput true "VM configuration"
+// @Param vm body VMInput true "VM configuration"
 // @Success 202 {object} DeployVMResponse "WorkflowID and Status"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"

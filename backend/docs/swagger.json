@@ -198,7 +198,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.DeployVMInput"
+                            "$ref": "#/definitions/app.VMInput"
                         }
                     }
                 ],
@@ -2501,7 +2501,7 @@
                 }
             }
         },
-        "app.DeployVMInput": {
+        "app.VMInput": {
             "type": "object",
             "required": [
                 "node"
