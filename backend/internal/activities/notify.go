@@ -44,6 +44,7 @@ func notifyWorkflowProgress(sse *internal.SSEManager) ewf.AfterWorkflowHook {
 				}
 			} else {
 				nodeCount := len(cluster.Nodes)
+				totalSteps := nodeCount + 2
 				message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
 					workflowDesc, cluster.Name, nodeCount)
 
@@ -54,6 +55,7 @@ func notifyWorkflowProgress(sse *internal.SSEManager) ewf.AfterWorkflowHook {
 						"name":         wf.Name,
 						"cluster_name": cluster.Name,
 						"node_count":   nodeCount,
+						"total_steps":  totalSteps,
 						"cluster":      cluster,
 						"error":        false,
 					},
@@ -85,7 +87,7 @@ func notifyStepProgress(sse *internal.SSEManager, state ewf.State, workflowName,
 	}
 
 	current := calculateCurrentStep(stepName)
-	total := nodesNum + 1 // +1 for network step
+	total := nodesNum + 2
 	progressStr := fmt.Sprintf(" (%d/%d)", current, total)
 
 	var message string

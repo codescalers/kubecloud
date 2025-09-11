@@ -1,58 +1,67 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import FeatureGlobe from '@/components/features/FeatureGlobe.vue'
-import { useUserStore } from '@/stores/user'
-import { statsService, type SystemStats } from '@/utils/statsService'
+import { onMounted, ref, computed, defineAsyncComponent } from 'vue'
+const FeatureGlobe = defineAsyncComponent(() => import('../components/features/FeatureGlobe.vue'))
+import { useUserStore } from '../stores/user'
+import { statsService } from '../utils/statsService'
+import { useGridNodes } from '../composables/useGridNodes'
+import { formatStatsForCards, type FormattedStat } from '../utils/formatUtils'
+import { processGridNodesForGlobe } from '../utils/globeUtils'
 
 const userStore = useUserStore()
-const globeSize = ref(700)
+const globeSize = ref(900)
 const isLoading = ref(true)
-const STAT_FIELDS: Array<{ label: string; key: keyof SystemStats }> = [
-  { label: 'Clusters Deployed', key: 'total_clusters' },
-  { label: 'Total Users', key: 'total_users' },
-  { label: 'Global Locations', key: 'countries' }
-]
+const { gridNodes, fetchGridNodes } = useGridNodes()
 
-const displayStats = ref(STAT_FIELDS.map(f => ({ label: f.label, value: 0, animatedValue: 0 })))
+const displayStats = ref<FormattedStat[]>([])
+const isGridStatsLoading = ref(false)
+const gridCards = computed(() => displayStats.value)
+const processedGlobeData = computed(() => {
+  try {
+    const result = processGridNodesForGlobe(gridNodes.value)
+    if (result.nodes.length > 0) {
+      return result
+    }
+    return { nodes: [], labels: [] }
+  } catch (error) {
+    console.error('Error processing globe nodes:', error)
+    return { nodes: [], labels: [] }
+  }
+})
+
+const globeNodes = computed(() => {
+  const data = processedGlobeData.value
+  return data.nodes.length > 0 ? data.nodes : undefined
+})
+
+const globeLabels = computed(() => {
+  const data = processedGlobeData.value
+  return data.labels.length > 0 ? data.labels : undefined
+})
 
 async function fetchStats() {
   try {
     const stats = await statsService.getStats()
-    STAT_FIELDS.forEach((cfg, idx) => {
-      displayStats.value[idx].value = stats[cfg.key] as number
-    })
+    displayStats.value = formatStatsForCards(stats)
   } catch (error) {
     console.error('Failed to fetch stats:', error)
   } finally {
     isLoading.value = false
-    animateStats()
   }
 }
 
 function updateGlobeSize() {
-  globeSize.value = Math.max(320, Math.min(700, Math.floor(window.innerWidth * 0.4)))
+  globeSize.value = Math.max(600, Math.min(800, Math.floor(window.innerWidth * 0.6)))
 }
 
-function animateStats() {
-  displayStats.value.forEach((stat, idx) => {
-    const end = stat.value
-    const duration = 1200 + idx * 200
-    const step = (timestamp: number, startTime: number) => {
-      const progress = Math.min((timestamp - startTime) / duration, 1)
-      stat.animatedValue = Math.floor(progress * end)
-      if (progress < 1) {
-        requestAnimationFrame((t) => step(t, startTime))
-      } else {
-        stat.animatedValue = end
-      }
-    }
-    requestAnimationFrame((t) => step(t, t))
-  })
-}
 onMounted(async () => {
   updateGlobeSize()
   window.addEventListener('resize', updateGlobeSize)
   await fetchStats()
+  try {
+    await fetchGridNodes({ healthy: true, size: 1000 })
+  } catch (error) {
+    console.error('Failed to fetch nodes for globe:', error)
+  }
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -103,16 +112,16 @@ const features = [
     <section class="hero-globe-section">
       <div class="hero-globe-content">
         <div class="hero-globe-text">
-          <h1 class="hero-title">KubeCloud</h1>
+          <h1 class="hero-title">Mycelium&nbsp;Cloud</h1>
           <p class="hero-subtitle">Revolutionary Kubernetes platform that transforms how teams deploy and manage cloud-native applications at scale</p>
         </div>
         <div class="globe-wrapper">
-          <FeatureGlobe :width="globeSize" :height="globeSize" :point-count="3000" />
+          <FeatureGlobe :width="globeSize" :height="globeSize" :nodes="globeNodes" :labels="globeLabels" />
         </div>
       </div>
       <div class="hero-stats">
-        <div class="stat-card fade-in" v-for="stat in displayStats" :key="stat.label">
-          <div v-if="isLoading" class="d-flex justify-center align-center" style="height: 2.5rem;">
+        <div class="stat-card fade-in" v-for="stat in gridCards" :key="stat.label">
+          <div v-if="isGridStatsLoading" class="d-flex justify-center align-center" style="height: 2.5rem;">
             <v-progress-circular
               indeterminate
               color="primary"
@@ -120,11 +129,12 @@ const features = [
               width="2"
             ></v-progress-circular>
           </div>
-          <div v-else class="stat-value">{{ stat.animatedValue }}</div>
+          <div v-else class="stat-value">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
       </div>
     </section>
+
     <!-- Features Section -->
     <section class="home-section section-padding fade-in">
       <div class="container-padding">
@@ -157,7 +167,7 @@ const features = [
             Ready to Transform Your Kubernetes Experience?
           </h2>
           <p class="cta-description">
-            Join thousands of developers and DevOps engineers who trust KubeCloud for their production workloads.
+            Join thousands of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
           </p>
           <v-btn
             v-if="userStore.isLoggedIn"
@@ -166,7 +176,7 @@ const features = [
             size="x-large"
             to="/deploy"
           >
-            Deploy Cluster  
+            Deploy Cluster
           </v-btn>
           <v-btn
             v-else
@@ -184,11 +194,6 @@ const features = [
 </template>
 
 <style scoped>
-/* Global scrollbar fix */
-:deep(html), :deep(body) {
-  width: 100% !important;
-}
-
 .home-view {
   position: relative;
   width: 100%;
@@ -217,7 +222,7 @@ const features = [
 }
 
 .home-section {
-  padding-top: 6rem;
+  padding-top: 3rem;
 }
 
 .cta-section {
@@ -266,7 +271,7 @@ const features = [
 }
 
 .feature-cards-row {
-  margin: 9rem;
+  margin: 4rem;
 }
 
 .feature-col {
@@ -371,15 +376,15 @@ const features = [
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 5rem;
+  gap: 3rem;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
   flex: 1;
   overflow: visible;
-  padding: 0 4vw 0 6vw;
+  padding: 0 2vw 0 4vw;
   box-sizing: border-box;
-  margin-top: 7rem;
+  margin-top: 1rem;
 }
 .hero-globe-text {
   flex: 1 1 420px;
@@ -405,15 +410,7 @@ const features = [
   font-weight: 400;
 }
 .globe-wrapper {
-  flex: 1 1 320px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  filter: drop-shadow(0 0 80px #60a5fa55) drop-shadow(0 0 40px #38bdf855);
-  position: relative;
-  z-index: 2;
-  max-width: 700px;
-  min-width: 320px;
+  filter: drop-shadow(0 0 10px #60a5fa11) drop-shadow(0 0 5px #38bdf811);
   width: 40vw;
   aspect-ratio: 1/1;
 }
@@ -446,12 +443,13 @@ const features = [
   gap: 1.5rem;
   opacity: 0.85;
   flex-wrap: wrap;
+  margin-bottom: 2rem;
 }
 .stat-card {
   background: rgba(59, 130, 246, 0.05);
   border: 1px solid rgba(96, 165, 250, 0.2);
   border-radius: 1rem;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   box-shadow: none;
   text-align: center;
   min-width: 140px;
@@ -465,7 +463,7 @@ const features = [
   opacity: 1;
 }
 .stat-value {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   color: #60a5fa;
   margin-bottom: 0.3rem;
   line-height: 1;

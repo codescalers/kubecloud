@@ -58,7 +58,7 @@
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
   "logger": {
-    "log_dir": "./logs",
+    "log_dir": "./app/logs",
     "max_size": 512,
     "max_backups": 12,
     "max_age": 30,

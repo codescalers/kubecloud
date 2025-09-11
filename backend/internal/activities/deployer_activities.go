@@ -9,16 +9,24 @@ import (
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/xmonader/ewf"
 	"kubecloud/internal/logger"
+
+	"github.com/xmonader/ewf"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	criticalRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
-	standardRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
+	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
 
 	workflowsDescriptions = map[string]string{
 		WorkflowAddNode:           "Adding Node",
@@ -278,7 +286,7 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
+func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -292,12 +300,26 @@ func CancelDeploymentStep(metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		projectName, ok := state["project_name"].(string)
-		if !ok {
-			return fmt.Errorf("missing or invalid 'project_name' in state")
+		// in a Rollaback, cluster is in state, in a delete, we need to load from db
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			projectName, ok := state["project_name"].(string)
+			if !ok {
+				return fmt.Errorf("missing or invalid 'project_name' in state")
+			}
+
+			dbCluster, err := db.GetClusterByName(config.UserID, projectName)
+			if err != nil {
+				return fmt.Errorf("failed to get cluster from database: %w", err)
+			}
+
+			cluster, err = dbCluster.GetClusterResult()
+			if err != nil {
+				return fmt.Errorf("failed to get cluster result: %w", err)
+			}
 		}
 
-		if err := kubeClient.CancelCluster(ctx, projectName); err != nil {
+		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {
 			return fmt.Errorf("failed to cancel deployment: %w", err)
 		}
 
@@ -472,6 +494,8 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
+	steps = append(steps, ewf.Step{Name: StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
+	steps = append(steps, ewf.Step{Name: StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
 	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
@@ -544,15 +568,17 @@ func createDeployerWorkflowTemplate(sse *internal.SSEManager, engine *ewf.Engine
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager, config internal.Configuration) {
 
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployNode, DeployNodeStep(metrics))
-	engine.Register(StepRemoveCluster, CancelDeploymentStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(db, metrics))
 	engine.Register(StepAddNode, AddNodeStep(metrics))
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
 	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
+	engine.Register(StepFetchKubeconfig, FetchKubeconfigStep(config.SSH.PrivateKeyPath))
+	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
@@ -635,4 +661,79 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	}
 
 	return config, nil
+}
+
+func FetchKubeconfigStep(privateKeyPath string) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		master, err := cluster.GetLeaderNode()
+		if err != nil {
+			return fmt.Errorf("failed to get leader node in cluster")
+		}
+
+		privateKeyBytes, err := os.ReadFile(privateKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read SSH private key: %w", err)
+		}
+
+		kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), &master)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve kubeconfig via SSH: %w", err)
+		}
+
+		state["kubeconfig"] = kubeconfig
+		return nil
+	}
+}
+
+func VerifyClusterReadyStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster: %w", err)
+		}
+
+		kubeconfig, ok := state["kubeconfig"].(string)
+		if !ok || kubeconfig == "" {
+			return fmt.Errorf("kubeconfig not found in workflow state")
+		}
+
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		if err != nil {
+			return fmt.Errorf("failed to parse kubeconfig: %w", err)
+		}
+
+		clientset, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create kubernetes client: %w", err)
+		}
+
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list nodes: %w", err)
+		}
+
+		for _, n := range nodes.Items {
+			ready := false
+			for _, cond := range n.Status.Conditions {
+				if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+					ready = true
+					break
+				}
+			}
+			if !ready {
+				return fmt.Errorf("node %s is not ready", n.Name)
+			}
+		}
+
+		logger.GetLogger().Info().
+			Str("cluster", cluster.Name).
+			Msg("All nodes are Ready")
+
+		return nil
+	}
 }

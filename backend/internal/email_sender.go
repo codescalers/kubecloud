@@ -48,13 +48,13 @@ func NewMailService(sendGridKey string) MailService {
 
 // SendMail sends verification mails
 func (service *MailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
-	from := mail.NewEmail("KubeCloud", sender)
+	from := mail.NewEmail("Mycelium Cloud", sender)
 
 	if !isValidEmail(receiver) {
 		return fmt.Errorf("email %v is not valid", receiver)
 	}
 
-	to := mail.NewEmail("KubeCloud User", receiver)
+	to := mail.NewEmail("Mycelium Cloud User", receiver)
 
 	message := mail.NewSingleEmail(from, subject, to, "", body)
 	message.Content = []*mail.Content{
@@ -90,7 +90,7 @@ func (service *MailService) ResetPasswordMailContent(code int, timeout int, user
 
 // WelcomeMailContent gets the email content for welcome messages
 func (service *MailService) WelcomeMailContent(username, host string) (string, string) {
-	subject := "Welcome to KubeCloud 🎉"
+	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(welcomeMail)
 
 	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
@@ -101,7 +101,7 @@ func (service *MailService) WelcomeMailContent(username, host string) (string, s
 
 // SignUpMailContent gets the email content for sign up
 func (service *MailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
-	subject := "Welcome to KubeCloud 🎉"
+	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(signUpTemplate)
 
 	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))

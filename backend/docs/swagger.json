@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API documentation for KubeCloud.",
-        "title": "KubeCloud API",
+        "description": "API documentation for Mycelium Cloud.",
+        "title": "Mycelium Cloud API",
         "contact": {},
         "version": "1.0"
     },

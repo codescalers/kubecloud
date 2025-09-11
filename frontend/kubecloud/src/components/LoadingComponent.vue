@@ -48,7 +48,7 @@ const props = withDefaults(defineProps<Props>(), {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--kubecloud-light-gray);
+  color: var(--mycelium-cloud-light-gray);
   padding: 1.5rem 0;
 }
 
@@ -73,7 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 .loading-text {
   font-size: 1.15rem;
-  color: var(--kubecloud-light-gray);
+  color: var(--mycelium-cloud-light-gray);
   opacity: 0.85;
   margin-top: 1rem;
 }

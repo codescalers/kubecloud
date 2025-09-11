@@ -5,7 +5,7 @@
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">Use Cases</h1>
-          <p class="section-subtitle">Explore how KubeCloud empowers different industries and teams.</p>
+          <p class="section-subtitle">Explore how Mycelium Cloud empowers different industries and teams.</p>
         </div>
       </div>
     </section>

@@ -27,10 +27,19 @@
               <v-icon icon="mdi-eye" class="mr-2"></v-icon>
               Show Kubeconfig
             </v-btn>
-            <v-btn variant="outlined" class="btn btn-outline" @click="openEditClusterNodesDialog">
-              <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
-              Add Node
-            </v-btn>
+
+            <v-tooltip location="top" :disabled="haveEnoughBalance">
+              <template #activator="{ props }">
+                <div v-bind="props">
+                  <v-btn variant="outlined" :disabled="!haveEnoughBalance" class="btn btn-outline" @click="openEditClusterNodesDialog">
+                    <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
+                    Add Node
+                  </v-btn>
+                </div>
+              </template>
+              <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
+            </v-tooltip>
+
             <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
               <v-icon icon="mdi-delete" class="mr-2"></v-icon>
               Delete
@@ -189,6 +198,15 @@ import { api } from '../../utils/api'
 
 import { formatDate } from '../../utils/dateUtils'
 import { userService } from '@/utils/userService'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+const haveEnoughBalance = computed(() => {
+  console.log('Balance check:', userStore.netBalance, 'Have enough:', userStore.netBalance >= 5)
+  return userStore.netBalance >= 5
+})
+
 
 // Import dialogs
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))

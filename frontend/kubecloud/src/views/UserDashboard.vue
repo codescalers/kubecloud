@@ -146,7 +146,7 @@ function handleNavigateToFund() {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: var(--kubecloud-bg);
+  background: var(--mycelium-cloud-bg);
 }
 
 .hero-title {
@@ -155,12 +155,12 @@ function handleNavigateToFund() {
   margin-bottom: 1.5rem;
   line-height: 1.1;
   letter-spacing: -1px;
-  color: var(--kubecloud-text);
+  color: var(--mycelium-cloud-text);
 }
 
 .section-subtitle {
   font-size: var(--font-size-xl);
-  color: var(--kubecloud-text-muted);
+  color: var(--mycelium-cloud-text-muted);
   line-height: 1.5;
   opacity: 0.92;
   margin-bottom: 0;
@@ -283,28 +283,28 @@ function handleNavigateToFund() {
   display: flex;
   flex-direction: column;
   width: 100%;
-  background: var(--kubecloud-surface);
-  border: 1px solid var(--kubecloud-border);
-  border-radius: var(--kubecloud-radius);
-  color: var(--kubecloud-text-secondary);
-  padding: var(--kubecloud-spacing);
+  background: var(--mycelium-cloud-surface);
+  border: 1px solid var(--mycelium-cloud-border);
+  border-radius: var(--mycelium-cloud-radius);
+  color: var(--mycelium-cloud-text-secondary);
+  padding: var(--mycelium-cloud-spacing);
   transition: border-color 0.2s;
 }
 
 .dashboard-card:hover {
-  border-color: var(--kubecloud-primary);
+  border-color: var(--mycelium-cloud-primary);
 }
 
 .dashboard-card-title {
   font-size: var(--font-size-h3);
   font-weight: var(--font-weight-bold);
-  color: var(--kubecloud-text);
+  color: var(--mycelium-cloud-text);
   margin-bottom: 0.5rem;
 }
 
 .dashboard-card-subtitle {
   font-size: 1.05rem;
-  color: var(--kubecloud-text-muted);
+  color: var(--mycelium-cloud-text-muted);
   font-weight: var(--font-weight-bold);
   opacity: 0.9;
 }

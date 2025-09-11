@@ -322,3 +322,18 @@ func (c *Cluster) Validate() error {
 
 	return nil
 }
+
+func (c *Cluster) getAllClusterContracts() ([]uint64, error) {
+	var contracts []uint64
+	for _, contractId := range c.Network.NodeDeploymentID {
+		contracts = append(contracts, contractId)
+	}
+
+	for _, contractId := range c.Nodes {
+		if contractId.ContractID != 0 {
+			contracts = append(contracts, contractId.ContractID)
+		}
+	}
+
+	return contracts, nil
+}

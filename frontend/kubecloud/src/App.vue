@@ -1,5 +1,5 @@
 <template>
-  <v-app class="kubecloud-app">
+  <v-app class="mycelium-cloud-app">
     <NavBar v-if="!isAuthPage" />
     <v-main class="app-main">
       <RouterView />
@@ -77,7 +77,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.kubecloud-app {
+.mycelium-cloud-app {
   min-height: 100vh;
   background: var(--color-bg);
   color: var(--color-text);
