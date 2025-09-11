@@ -4,6 +4,7 @@ import { authService, type LoginRequest, type RegisterRequest } from '@/utils/au
 import { api, createWorkflowStatusChecker } from '@/utils/api'
 import type { ApiResponse, VerifyCodeRequest } from '@/utils/authService'
 import { userService } from '@/utils/userService'
+import { useNotificationStore } from './notifications'
 import { WorkflowStatus } from '@/types/ewf'
 import router from '@/router'
 
