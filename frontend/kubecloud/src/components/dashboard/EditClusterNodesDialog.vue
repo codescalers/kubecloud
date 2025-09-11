@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
@@ -79,7 +79,7 @@ import { RULES, createUniqueNodeNameRule } from "../../utils/validation";
 import { useNodes } from '../../composables/useNodes';
 import { useNotificationStore } from '../../stores/notifications';
 
-const nameField = ref<any>(null)
+const nameField = useTemplateRef('nameField')
 const props = defineProps<{
   modelValue: boolean,
   cluster: any
@@ -155,11 +155,16 @@ function resetForm() {
   addFormSshKeys.value = sshKeys.value.length > 0 ? [sshKeys.value[0].ID] : []
 }
 
-watch(() => props.cluster, (val) => {
+watch(() => names.value, () => {
   if (nameField.value && addFormName.value) {
-    nameField.value.validate()
+    nameField.value.resetValidation()
+    setTimeout(() => {
+      if (nameField.value) {
+        nameField.value.validate()
+      }
+    }, 0)
   }
-}, { deep: true })
+})
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen) {
     await fetchNodes()
