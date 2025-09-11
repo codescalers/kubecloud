@@ -3,14 +3,11 @@ import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useClusterStore } from '../stores/clusters'
 import { useNodeManagement } from './useNodeManagement'
+import type { NotificationType, NotificationSeverity } from '@/types/notifications'
 
 // TypeScript interfaces matching the backend notification model
 
 /** Supported notification types for different system events */
-type NotificationType = 'deployment' | 'billing' | 'user' | 'connected' | 'node'
-
-/** Severity levels for notifications affecting UI display */
-type NotificationSeverity = 'info' | 'error' | 'warning' | 'success'
 
 /** Core notification data structure */
 interface NotificationData {
