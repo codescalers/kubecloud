@@ -44,14 +44,14 @@ interface NotificationEventsOptions {
 
 /**
  * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
- * 
+ *
  * Provides a reactive connection to the backend notification system with automatic
  * reconnection, message handling, and integration with various stores for data updates.
- * 
+ *
  * @param options Configuration options for connection behavior
  * @returns Object containing connection methods and reactive state
  */
-export function useNotificationEvents(options: NotificationEventsOptions) {
+export function useNotificationEvents(options?: NotificationEventsOptions) {
   const eventSource = ref<EventSource | null>(null)
   const notificationStore = useNotificationStore()
   const userStore = useUserStore()
@@ -60,12 +60,12 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
-  const maxReconnectAttempts = options.maxReconnectAttempts || 5
-  const reconnectDelay = options.reconnectDelay || 2000
+  const maxReconnectAttempts = options?.maxReconnectAttempts || 5
+  const reconnectDelay = options?.reconnectDelay || 2000
 
   /**
    * Establishes SSE connection to the backend notification service
-   * 
+   *
    * Creates an EventSource connection with authentication token and sets up
    * event handlers for open, message, and error events. Includes automatic
    * reconnection logic on connection failures.
@@ -114,10 +114,10 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Processes incoming SSE messages and routes them to appropriate handlers
-   * 
+   *
    * Parses the message data, displays notifications via the notification store,
    * and triggers specific actions based on the notification type.
-   * 
+   *
    * @param event The SSE message containing notification data
    */
   function handleSSEMessage(event: SSEMessage) {
@@ -151,10 +151,10 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Extracts and formats notification subject and message from event data
-   * 
+   *
    * Ensures both subject and message are present, falling back to defaults
    * based on notification type if not provided in the data.
-   * 
+   *
    * @param data The notification data from the SSE event
    * @param type The type of notification for fallback generation
    * @returns Formatted subject and message strings
@@ -178,19 +178,19 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Generates default notification messages based on notification type
-   * 
+   *
    * Provides fallback messages when the notification data doesn't include
    * a specific message, ensuring users always receive meaningful feedback.
-   * 
+   *
    * @param data The notification data (may be string or object)
    * @param type The notification type for message generation
    * @returns Default message string for the notification type
    */
-  function parseDefaultNotificationMessage(data: NotificationData,type: NotificationType): string {
+  function parseDefaultNotificationMessage(data: NotificationData, type: NotificationType): string {
     if (typeof data === 'string') {
       return data
     }
-    
+
     // Fallback based on type
     switch (type as NotificationType) {
       case 'deployment':
@@ -210,10 +210,10 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Routes notification types to their specific handler functions
-   * 
+   *
    * Triggers appropriate actions based on notification type, such as
    * refreshing data stores or updating UI state.
-   * 
+   *
    * @param type The notification type to handle
    */
   function handleSpecificNotificationType(type: NotificationType) {
@@ -237,7 +237,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Handles deployment-related notifications
-   * 
+   *
    * Refreshes cluster data to reflect deployment status changes.
    */
   function handleDeploymentNotification() {
@@ -246,7 +246,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Handles node-related notifications
-   * 
+   *
    * Fetches updated node rental information when node status changes.
    */
   function handleNodeNotification() {
@@ -255,7 +255,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Handles billing-related notifications
-   * 
+   *
    * Updates user's net balance when billing information changes.
    */
   function handleBillingNotification() {
@@ -264,7 +264,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Handles user-related notifications
-   * 
+   *
    * Currently logs the notification; can be extended for user-specific logic.
    */
   function handleUserNotification() {
@@ -274,7 +274,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Closes the SSE connection
-   * 
+   *
    * Properly terminates the EventSource connection and updates connection state.
    */
   function disconnect() {
@@ -287,7 +287,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Refreshes all cluster-related data from the backend
-   * 
+   *
    * Fetches updated cluster information and rented nodes data in parallel
    * to ensure UI reflects the latest state after deployment notifications.
    */
@@ -301,7 +301,7 @@ export function useNotificationEvents(options: NotificationEventsOptions) {
 
   /**
    * Watches for token changes to reconnect
-   * 
+   *
    * Automatically reconnects to the SSE connection when the user's authentication token changes.
    * Disconnects when the token is removed.
    */

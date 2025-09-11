@@ -275,17 +275,11 @@ export class UserService {
     })
     const workflowChecker = createWorkflowStatusChecker(res.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
     const status = await workflowChecker.status
-    if(status === WorkflowStatus.StatusCompleted){
-      useNotificationStore().success(
-        'Voucher Redemption Success',
-        'Voucher has been successfully redeemed.',
-      )
+    if (status === WorkflowStatus.StatusCompleted) {
+      console.log('Voucher redeemed successfully')
     }
     if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Voucher Redemption Failed',
-        'Failed to redeem voucher',
-      )
+      console.error('Voucher Redemption Failed', 'Failed to redeem voucher')
       throw new Error('Failed to redeem voucher')
     }
   }
@@ -324,8 +318,7 @@ export class UserService {
     const response = await api.post<ApiResponse<SshKey>>('/v1/user/ssh-keys', data, {
       requiresAuth: true,
       showNotifications: true,
-      successMessage: 'SSH key added successfully',
-      errorMessage: 'Failed to add SSH key'
+      errorMessage: 'Failed to add SSH key',
     })
     return response.data.data
   }

@@ -4,7 +4,6 @@ import { authService, type LoginRequest, type RegisterRequest } from '@/utils/au
 import { api, createWorkflowStatusChecker } from '@/utils/api'
 import type { ApiResponse, VerifyCodeRequest } from '@/utils/authService'
 import { userService } from '@/utils/userService'
-import { useNotificationStore } from './notifications'
 import { WorkflowStatus } from '@/types/ewf'
 import router from '@/router'
 
@@ -116,10 +115,10 @@ export const useUserStore = defineStore('user',
         })
         const status = await workflowChecker.status
         if (status === WorkflowStatus.StatusCompleted) {
-          useNotificationStore().success('Registration Success', 'User registered successfully')
+          console.log('Registration Success', 'User registered successfully')
         }
         if (status === WorkflowStatus.StatusFailed) {
-          useNotificationStore().error('Registration Failed', 'Failed to register user')
+          console.error('Registration Failed', 'Failed to register user')
           throw new Error('Failed to register user')
         }
         const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
