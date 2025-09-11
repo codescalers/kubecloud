@@ -14,8 +14,7 @@
           icon
           variant="text"
           color="white"
-          class="notification-btn"
-          :class="{ 'has-unread': unreadCount > 0 }"
+          class="mx-1"
           v-bind="props"
         >
           <v-badge
@@ -64,13 +63,12 @@
               <v-list-item
                 v-for="notification in displayedNotifications"
                 :key="notification.id"
-                :class="{ 
-                  'notification-unread': notification.status === 'unread',
-                  'notification-read': notification.status === 'read',
-                  'notification-clickable': true
-                }"
+                :class="[
+                  'cursor-pointer',
+                  'py-2',
+                ]"
+                :style="notification.status === 'unread' ? unreadItemStyle : readItemStyle"
                 @click="onNotificationClick(notification)"
-                class="py-2"
                 :ripple="true"
               >
                 <template v-slot:prepend>
@@ -79,9 +77,9 @@
                   </v-avatar>
                 </template>
 
-                <v-list-item-title class="notification-title">{{ notification.payload.title || notification.payload.message || 'Notification' }}</v-list-item-title>
-                <v-list-item-subtitle class="notification-message">{{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}</v-list-item-subtitle>
-                <v-list-item-subtitle class="notification-time">{{ formatNotificationTime(notification.created_at) }}</v-list-item-subtitle>
+                <v-list-item-title class="text-body-2 font-weight-medium">{{ notification.payload.title || notification.payload.message || 'Notification' }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">{{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}</v-list-item-subtitle>
+                <v-list-item-subtitle class="text-caption text-medium-emphasis">{{ formatNotificationTime(notification.created_at) }}</v-list-item-subtitle>
 
                 <template v-slot:append>
                   <v-btn
@@ -176,75 +174,18 @@ onMounted(() => {
     loadNotifications()
   }
 })
+
+// Minimal inline styles for gradient backgrounds
+const unreadItemStyle = {
+  background: 'linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-hover) 100%)',
+  borderLeft: '4px solid var(--color-primary)'
+} as const
+
+const readItemStyle = {
+  background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-elevated) 100%)',
+  borderLeft: '4px solid var(--color-border)'
+} as const
 </script>
 
 <style scoped>
-.notification-bell {
-  position: relative;
-}
-
-.notification-btn {
-  transition: all 0.2s ease;
-}
-
-.notification-btn.has-unread {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-
-.notification-clickable {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.notification-title {
-  font-weight: 500;
-  line-height: 1.2;
-  margin-bottom: 4px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.notification-message {
-  font-size: 0.875rem;
-  line-height: 1.4;
-  margin-bottom: 2px;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-  max-width: none;
-}
-
-.notification-time {
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-/* Reuse page styles for consistency */
-.notification-unread {
-  background: linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-hover) 100%) !important;
-  border-left: 4px solid var(--color-primary) !important;
-}
-
-.notification-read {
-  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-elevated) 100%) !important;
-  border-left: 4px solid var(--color-border) !important;
-}
-
-.notification-title {
-  color: var(--color-text);
-}
-
-.notification-message {
-  color: var(--color-text-secondary);
-}
-
-.notification-time {
-  color: var(--color-text-muted);
-}
 </style>

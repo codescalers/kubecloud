@@ -1,6 +1,6 @@
 <template>
-  <div class="notifications-page">
-    <div class="container mx-auto pa-6" style="margin-top: 6rem;">
+  <div>
+    <div class="container mx-auto pa-6 mt-12">
       <!-- Header -->
       <div class="d-flex align-center justify-space-between mb-6">
         <div>
@@ -82,13 +82,16 @@
               <v-list-item
                 v-for="notification in paginatedNotifications"
                 :key="notification.id"
-                :class="{ 
-                  'notification-unread': notification.status === 'unread',
-                  'notification-read': notification.status === 'read',
-                  'notification-clickable': true
-                }"
+                :class="[
+                  'cursor-pointer',
+                  'pa-4',
+                  'mb-3',
+                  'mx-2',
+                  'rounded-lg',
+                  'elevation-2',
+                ]"
+                :style="notification.status === 'unread' ? unreadItemStyle : readItemStyle"
                 @click="onNotificationClick(notification)"
-                class="pa-4 mb-3 mx-2 rounded-lg elevation-2"
                 :ripple="true"
               >
                 <template v-slot:prepend>
@@ -105,16 +108,16 @@
                   </v-avatar>
                 </template>
 
-                <v-list-item-title class="text-h6 font-weight-medium mb-2 notification-title">
+                <v-list-item-title class="text-h6 font-weight-medium mb-2">
                   {{ notification.payload.title || notification.payload.message || 'Notification' }}
                 </v-list-item-title>
 
-                <v-list-item-subtitle class="text-body-1 mb-2 notification-message">
+                <v-list-item-subtitle class="text-body-1 mb-2">
                   {{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}
                 </v-list-item-subtitle>
 
                 <div class="d-flex align-center justify-space-between">
-                  <v-list-item-subtitle class="notification-time text-caption text-medium-emphasis">
+                  <v-list-item-subtitle class="text-caption text-medium-emphasis">
                     {{ formatNotificationTime(notification.created_at) }}
                   </v-list-item-subtitle>
 
@@ -349,89 +352,18 @@ onMounted(() => {
     loadNotifications()
   }
 })
+
+// Minimal inline styles for gradient backgrounds
+const unreadItemStyle = {
+  background: 'linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-hover) 100%)',
+  borderLeft: '4px solid var(--color-primary)'
+} as const
+
+const readItemStyle = {
+  background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-elevated) 100%)',
+  borderLeft: '4px solid var(--color-border)'
+} as const
 </script>
 
 <style scoped>
-.notifications-page {
-  min-height: 100vh;
-  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .container {
-    padding: 16px;
-  }
-
-  .d-flex.align-center.justify-space-between {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-  }
-
-  .d-flex.gap-3 {
-    flex-direction: column;
-    gap: 8px;
-  }
-}
-
-.notification-clickable {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.notification-title {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-  line-height: 1.4;
-}
-
-.notification-message {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  white-space: normal;
-  line-height: 1.5;
-  max-width: none;
-}
-
-/* Enhanced notification styling using Mycelium Cloud theme */
-.notification-unread {
-  background: linear-gradient(135deg, var(--color-bg-elevated) 0%, var(--color-bg-hover) 100%) !important;
-  border-left: 4px solid var(--color-primary) !important;
-  box-shadow: var(--shadow-md) !important;
-  transition: var(--transition-normal) !important;
-}
-
-.notification-unread:hover {
-  box-shadow: var(--shadow-lg) !important;
-}
-
-.notification-read {
-  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-elevated) 100%) !important;
-  border-left: 4px solid var(--color-border) !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: var(--transition-normal) !important;
-}
-
-.notification-read:hover {
-  box-shadow: var(--shadow-md) !important;
-}
-
-.notification-title {
-  color: var(--color-text) !important;
-  font-weight: var(--font-weight-semibold) !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-}
-
-.notification-message {
-  color: var(--color-text-secondary) !important;
-  font-weight: var(--font-weight-normal) !important;
-  line-height: var(--line-height-relaxed) !important;
-}
-
-.notification-time {
-  color: var(--color-text-muted) !important;
-  font-weight: var(--font-weight-medium) !important;
-}
 </style>

@@ -1,11 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../utils/api'
+import type { NotificationType, NotificationSeverity, NotificationStatus } from '../types/notifications'
+import { useUserStore } from './user'
 
-// Backend notification types
-export type NotificationType = 'deployment' | 'billing' | 'user' | 'connected'
-export type NotificationSeverity = 'info' | 'error' | 'warning' | 'success'
-export type NotificationStatus = 'read' | 'unread'
 
 // Backend notification response interface
 export interface BackendNotification {
@@ -159,6 +157,8 @@ export const useNotificationStore = defineStore('notifications', () => {
 
   // Internal: fetch endpoint and replace
   const fetchAndReplace = async (endpoint: string) => {
+    const userStore = useUserStore()
+    if (!userStore.token) return
     if (loading.value) return
     try {
       loading.value = true
