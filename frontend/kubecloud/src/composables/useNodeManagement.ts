@@ -167,10 +167,12 @@ export function useNodeManagement() {
   }
 
   // Unreserve a node
-  async function unreserveNode(contractId: string) {
-    await userService.unreserveNode(contractId)
+  async function unreserveNode(contractId: string, nodeId: number) {
+    await userService.unreserveNode(contractId, nodeId)
     // Optimistically remove the node from the list
-    rentedNodes.value = rentedNodes.value.filter(node => node.rentContractId?.toString() !== contractId)
+    rentedNodes.value = rentedNodes.value.filter(
+      (node) => node.rentContractId?.toString() !== contractId,
+    )
   }
 
   // Add node to deployment

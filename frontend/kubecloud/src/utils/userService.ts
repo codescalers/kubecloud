@@ -194,7 +194,7 @@ export class UserService {
   }
 
   // Unreserve a node
-  async unreserveNode(contractId: string) {
+  async unreserveNode(contractId: string, nodeId: number) {
     const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(`/v1/user/nodes/unreserve/${contractId}`, { requiresAuth: true, showNotifications: true })
     // const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
     // const status = await workflowChecker.status
@@ -207,7 +207,7 @@ export class UserService {
     // }
     // if (status === WorkflowStatus.StatusCompleted) {
       try {
-        await this.trackNodeStatus(response.data.data.contract_id, "rentable")
+        await this.trackNodeStatus(nodeId, "rentable")
         useNotificationStore().success(
           'Node Unreservation Success',
           'Node has been successfully unreserved.',
