@@ -30,6 +30,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
+import { useVMStore } from '../../stores/vms'
 import StatsGrid from '../StatsGrid.vue'
 
 interface Cluster {
@@ -65,6 +66,7 @@ interface Props {
 const props = defineProps<Props>()
 const router = useRouter()
 const userStore = useUserStore()
+const vmStore = useVMStore()
 
 const uptimeHours = computed(() => {
   return props.clusters
@@ -78,6 +80,11 @@ const statsData = computed(() => [
     icon: 'mdi-server',
     value: props.clusters.length,
     label: 'Active Clusters'
+  },
+  {
+    icon: 'mdi-desktop-classic',
+    value: vmStore.vmCount,
+    label: 'Virtual Machines'
   },
   {
     icon: 'mdi-currency-usd',
@@ -100,6 +107,13 @@ const quickActions = [
     color: 'primary',
     variant: 'elevated' as const,
     handler: () => router.push('/deploy')
+  },
+  {
+    label: 'Deploy VM',
+    icon: 'mdi-desktop-classic',
+    color: 'primary',
+    variant: 'outlined' as const,
+    handler: () => emit('navigate', 'vms')
   },
   {
     label: 'Reserve Node',
