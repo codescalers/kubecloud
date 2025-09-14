@@ -72,8 +72,8 @@
                 :ripple="true"
               >
                 <template v-slot:prepend>
-                  <v-avatar size="40" :color="getNotificationColor(notification.severity)" class="notification-icon">
-                    <v-icon :icon="getNotificationIcon(notification.severity)" color="white"></v-icon>
+                  <v-avatar size="40" :color="getNotificationColor(notification.type)" class="notification-icon">
+                    <v-icon :icon="getNotificationIcon(notification.type)" color="white"></v-icon>
                   </v-avatar>
                 </template>
 
@@ -120,7 +120,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { useNotificationStore, type Notification } from '../stores/notifications'
+import { useNotificationStore } from '../stores/notifications'
+import type { Notification } from '../types/notifications'
 import { getNotificationIcon, getNotificationColor, formatNotificationTime } from '../utils/notificationUtils'
 
 const router = useRouter()

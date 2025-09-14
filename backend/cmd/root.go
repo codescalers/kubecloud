@@ -6,9 +6,9 @@ import (
 	"kubecloud/app"
 	"kubecloud/internal"
 	"kubecloud/internal/logger"
+	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -209,13 +209,34 @@ var reloadNotificationsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Reloading notification configuration...")
 
-		execCmd := exec.Command("sh", "-c", "pgrep -f 'kubecloud.*--config' | head -1 | xargs kill -HUP")
-		if err := execCmd.Run(); err != nil {
-			return fmt.Errorf("failed to send reload signal (make sure kubecloud server is running): %w", err)
+		socketPath := "/tmp/myceliumcloud.sock"
+
+		// Connect to socket
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			return fmt.Errorf("failed to connect to myceliumcloud (is it running?): %w", err)
+		}
+		defer conn.Close()
+
+		// Send command
+		_, err = conn.Write([]byte("reload-notifications"))
+		if err != nil {
+			return fmt.Errorf("failed to send command: %w", err)
 		}
 
-		fmt.Println("Notification configuration reload signal sent!")
-		fmt.Println("Check logs: tail -f backend/logs/app.log")
+		// Read response
+		buffer := make([]byte, 1024)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			return fmt.Errorf("failed to read response: %w", err)
+		}
+
+		response := string(buffer[:n])
+		if strings.HasPrefix(response, "ERROR:") {
+			return fmt.Errorf("server error: %s", strings.TrimPrefix(response, "ERROR: "))
+		}
+
+		fmt.Printf("%s\n", strings.TrimPrefix(response, "OK: "))
 
 		return nil
 	},

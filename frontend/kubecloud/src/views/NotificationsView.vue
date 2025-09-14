@@ -42,10 +42,12 @@
           mandatory
           color="primary"
           variant="outlined"
+          density="comfortable"
+          class="segmented-toggle"
         >
-          <v-btn value="all">All</v-btn>
-          <v-btn value="unread">Unread ({{ unreadCount }})</v-btn>
-          <v-btn value="read">Read</v-btn>
+          <v-btn value="all" class="left-btn">All</v-btn>
+          <v-btn value="unread" class="middle-btn">Unread ({{ unreadCount }})</v-btn>
+          <v-btn value="read" class="right-btn">Read</v-btn>
         </v-btn-toggle>
 
         <v-select
@@ -97,11 +99,11 @@
                 <template v-slot:prepend>
                   <v-avatar
                     size="48"
-                    :color="getNotificationColor(notification.severity)"
+                    :color="getNotificationColor(notification.type)"
                     class="notification-icon mr-4"
                   >
                     <v-icon
-                      :icon="getNotificationIcon(notification.severity)"
+                      :icon="getNotificationIcon(notification.type)"
                       color="white"
                       size="24"
                     ></v-icon>
@@ -123,7 +125,7 @@
 
                   <div class="d-flex gap-2 align-center">
                     <v-chip
-                      :color="getNotificationColor(notification.severity)"
+                      :color="getNotificationColor(notification.type)"
                       variant="tonal"
                       size="small"
                       class="text-caption"
@@ -234,7 +236,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useNotificationStore, type Notification } from '../stores/notifications'
+import { useNotificationStore } from '../stores/notifications'
+import type { Notification, NotificationType } from '../types/notifications'
 import { getNotificationIcon, getNotificationColor, formatNotificationTime } from '../utils/notificationUtils'
 
 const notificationStore = useNotificationStore()
@@ -258,18 +261,18 @@ const {
 
 // Filters
 const statusFilter = ref<'all' | 'read' | 'unread'>('all')
-const typeFilter = ref<'all' | 'deployment' | 'billing' | 'user' | 'connected'>('all')
+const typeFilter = ref<'all' | NotificationType>('all')
 const currentPage = ref(1)
 const pageSize = 10
 
 // Type options for filter
-const typeOptions = computed(() => [
+const typeOptions = [
   { title: 'All Types', value: 'all' },
   { title: 'Deployment', value: 'deployment' },
   { title: 'Billing', value: 'billing' },
   { title: 'User', value: 'user' },
-  { title: 'Connected', value: 'connected' }
-])
+  { title: 'Node', value: 'node' }
+]
 
 // Filtered notifications
 const filteredNotifications = computed(() => {
@@ -296,7 +299,6 @@ const paginatedNotifications = computed(() =>
   filteredNotifications.value.slice(startIndex.value, endIndex.value)
 )
 
-// Methods
 const onNotificationClick = async (notification: Notification) => {
   if (notification.status === 'unread') {
     await notificationStore.markAsRead(notification.id)
@@ -366,4 +368,21 @@ const readItemStyle = {
 </script>
 
 <style scoped>
+.segmented-toggle {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segmented-toggle .left-btn {
+  border-radius: 8px 0 0 8px !important;
+}
+
+.segmented-toggle .middle-btn {
+  border-radius: 0 !important;
+}
+
+.segmented-toggle .right-btn {
+  border-radius: 0 8px 8px 0 !important;
+}
 </style>
+

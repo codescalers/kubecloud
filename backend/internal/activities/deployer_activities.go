@@ -29,14 +29,6 @@ var (
 	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
 	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
 	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
-
-	workflowsDescriptions = map[string]string{
-		constants.WorkflowAddNode:                  "Adding Node",
-		constants.WorkflowRemoveNode:               "Removing Node",
-		constants.WorkflowDeleteCluster:            "Deleting Cluster",
-		constants.WorkflowDeleteAllClusters:        "Deleting All Clusters",
-		constants.WorkflowRollbackFailedDeployment: "Rollback Deployment",
-	}
 )
 
 func isWorkloadAlreadyDeployedError(err error) bool {
@@ -502,25 +494,6 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 	steps = append(steps, ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(notificationService, engine, metrics)
-	workflow.BeforeWorkflowHooks = append(workflow.BeforeWorkflowHooks, func(ctx context.Context, w *ewf.Workflow) {
-		cfg, err := getConfig(w.State)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("missing or invalid config in workflow state")
-			return
-		}
-		userID := cfg.UserID
-		payload := notification.CommonPayload{
-			Status:  "started",
-			Message: "Your cluster has started deploying.",
-			Subject: "Cluster deployment started",
-		}
-
-		notification := models.NewNotification(userID, models.NotificationTypeDeployment, notification.MergePayload(payload, map[string]string{}))
-		err = notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
-		}
-	})
 	workflow.Steps = steps
 	workflow.AfterStepHooks = []ewf.AfterStepHook{
 		notifyStepHook(notificationService),

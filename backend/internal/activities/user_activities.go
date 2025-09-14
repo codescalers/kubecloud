@@ -151,15 +151,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 		if !ok {
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
-		payload := notification.MergePayload(notification.CommonPayload{
-			Message: "Registering user is in progress",
-			Subject: "User Registration",
-		}, map[string]string{})
-		notification := models.NewNotification(userID, "user_registration", payload, models.WithNoPersist())
-		err := notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send notification registering user is in progress")
-		}
+
 		existingUser, err := db.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
@@ -269,15 +261,6 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 		if !ok {
 			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
-		payload := notification.MergePayload(notification.CommonPayload{
-			Message: "Account verification is in progress",
-			Subject: "Account verification",
-		}, map[string]string{})
-		notification := models.NewNotification(userID, "user_registration", payload, models.WithNoPersist())
-		err = notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send notification account verification is in progress")
-		}
 
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
@@ -368,28 +351,6 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
 		if err != nil {
 			metrics.IncrementStripePaymentFailure()
-			payload := notification.MergePayload(notification.CommonPayload{
-				Status:  "funds_failed",
-				Message: "Failed to add funds to your account",
-				Error:   err.Error(),
-				Subject: "Adding Funds Failed",
-			}, map[string]string{
-				"amount": fmt.Sprintf("%.2f", internal.FromUSDMilliCentToUSD(amount)),
-			})
-			userIDVal, ok := state["user_id"]
-			if !ok {
-				logger.GetLogger().Error().Msg("missing 'user_id' in state")
-			}
-			userID, ok := userIDVal.(int)
-			if !ok {
-				return fmt.Errorf("'user_id' in state is not an int")
-			}
-			notification := models.NewNotification(userID, models.NotificationTypeBilling, payload)
-			err = notificationService.Send(ctx, notification)
-			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to send notification billing failed")
-			}
-
 			return fmt.Errorf("error creating payment intent: %w", err)
 		}
 
@@ -410,7 +371,6 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
-		amountUSD := internal.FromUSDMilliCentToUSD(amount)
 
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -455,18 +415,6 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return err
 		}
 
-		if transferMode == models.RedeemVoucherMode {
-			notificationData := notification.MergePayload(notification.CommonPayload{
-				Message: fmt.Sprintf("Voucher redeemed successfully for %.2f$", amountUSD),
-				Subject: "Voucher Redeemed",
-			}, map[string]string{})
-			notification := models.NewNotification(userID, models.NotificationTypeBilling, notificationData, models.WithNoPersist(), models.WithSeverity(models.NotificationSeveritySuccess))
-			err = notificationService.Send(ctx, notification)
-			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to send notification voucher redeemed successfully")
-			}
-		}
-
 		return nil
 	}
 }
@@ -504,22 +452,6 @@ func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification
 		state["new_balance"] = user.CreditCardBalance
 		state["mnemonic"] = user.Mnemonic
 
-		amountUSD := internal.FromUSDMilliCentToUSD(amount)
-		newBalanceUSD := internal.FromUSDMilliCentToUSD(user.CreditCardBalance)
-		payload := notification.MergePayload(notification.CommonPayload{
-			Status:  "funds_succeeded",
-			Message: fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD),
-			Subject: "Adding Funds Succeeded",
-		}, map[string]string{
-			"balance": fmt.Sprintf("%.2f", newBalanceUSD),
-			"amount":  fmt.Sprintf("%.2f", amountUSD),
-		})
-		notification := models.NewNotification(userID, models.NotificationTypeBilling, payload)
-		err = notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send notification billing succeeded")
-		}
-
 		return nil
 	}
 }
@@ -554,34 +486,6 @@ func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.N
 			return fmt.Errorf("error updating user: %w", err)
 		}
 		state["new_balance"] = user.CreditedBalance
-
-		amountUSD := internal.FromUSDMilliCentToUSD(amount)
-		newBalanceUSD := internal.FromUSDMilliCentToUSD(user.CreditedBalance)
-		status := "voucher_redeemed"
-		var message, subject string
-		if mode, ok := state["transfer_mode"].(string); ok && mode != models.RedeemVoucherMode {
-			status = "funds_succeeded"
-			message = fmt.Sprintf("Your account has been credited with $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD)
-			subject = "Funds Added Successfully"
-		} else {
-			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD)
-			subject = "Voucher Redeemed"
-		}
-		payload := notification.MergePayload(
-			notification.CommonPayload{
-				Status:  status,
-				Message: message,
-				Subject: subject,
-			}, map[string]string{
-				"amount":  fmt.Sprintf("%.2f", amountUSD),
-				"balance": fmt.Sprintf("%.2f", newBalanceUSD),
-			})
-		notification := models.NewNotification(userID, models.NotificationTypeBilling, payload)
-		err = notificationService.Send(ctx, notification)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to send notification billing succeeded")
-		}
-
 		return nil
 	}
 }

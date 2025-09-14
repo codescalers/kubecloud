@@ -13,6 +13,21 @@ import (
 	"github.com/xmonader/ewf"
 )
 
+var workflowsDescriptions = map[string]string{
+	constants.WorkflowAddNode:                  "Adding Node",
+	constants.WorkflowRemoveNode:               "Removing Node",
+	constants.WorkflowDeleteCluster:            "Deleting Cluster",
+	constants.WorkflowDeleteAllClusters:        "Deleting All Clusters",
+	constants.WorkflowRollbackFailedDeployment: "Rollback Deployment",
+	constants.WorkflowUserRegistration:         "User Registration",
+	constants.WorkflowUserVerification:         "User Verification",
+	constants.WorkflowChargeBalance:            "Charge Balance",
+	constants.WorkflowAdminCreditBalance:       "Admin Credit Balance",
+	constants.WorkflowRedeemVoucher:            "Redeem Voucher",
+	constants.WorkflowReserveNode:              "Reserve Node",
+	constants.WorkflowUnreserveNode:            "Unreserve Node",
+}
+
 func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config internal.Configuration,
@@ -43,6 +58,9 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
+	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
+		hookNotificationWorkflowStarted,
+	}
 	registerWorkflowTemplate.Steps = []ewf.Step{
 		{Name: constants.StepCreateUser, RetryPolicy: &ewf.RetryPolicy{
 			MaxAttempts: 2,
@@ -78,7 +96,7 @@ func RegisterEWFWorkflows(
 			BackOff:     ewf.ConstantBackoff(2 * time.Second),
 		}},
 	}
-	userVerificationTemplate.AfterWorkflowHooks = append(userVerificationTemplate.AfterWorkflowHooks, hookVerificationWorkflowCompleted(notificationService))
+
 	engine.RegisterTemplate(constants.WorkflowUserVerification, &userVerificationTemplate)
 
 	chargeBalanceTemplate := newKubecloudWorkflowTemplate(notificationService)
@@ -122,6 +140,12 @@ func RegisterEWFWorkflows(
 	notificationTemplate.Steps = []ewf.Step{
 		{Name: constants.StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: constants.StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+	}
+	notificationTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
+		hookNotificationWorkflowStarted,
+	}
+	notificationTemplate.AfterWorkflowHooks = []ewf.AfterWorkflowHook{
+		hookWorkflowDone,
 	}
 	engine.RegisterTemplate(constants.WorkflowSendNotification, &notificationTemplate)
 }

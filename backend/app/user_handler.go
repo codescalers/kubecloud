@@ -312,7 +312,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			Message: "User email is verified successfully",
 			Subject: "User email verified",
 		}
-		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeverityInfo))
+		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeveritySuccess))
 		err = h.notificationService.Send(context.Background(), notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send user registration notification")

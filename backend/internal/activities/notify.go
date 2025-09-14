@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
@@ -10,7 +11,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"kubecloud/internal/logger"
 
@@ -269,13 +269,190 @@ func isDeployStep(stepName string) bool {
 }
 
 func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
-	return nil
+	config, confErr := getConfig(wf.State)
+	if confErr != nil {
+		logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
+		return nil
+	}
+
+	var payload map[string]string
+
+	// Extract amount and balance from workflow state
+	var amountUSD, newBalanceUSD float64
+	if amountVal, ok := wf.State["amount"]; ok {
+		if amount, okAmount := amountVal.(uint64); okAmount {
+			amountUSD = internal.FromUSDMilliCentToUSD(amount)
+		}
+	}
+	if balanceVal, ok := wf.State["new_balance"]; ok {
+		if balance, okBalance := balanceVal.(uint64); okBalance {
+			newBalanceUSD = internal.FromUSDMilliCentToUSD(balance)
+		}
+	}
+
+	status := "funds_failed"
+	subject := "Adding Funds Failed"
+	message := "Failed to add funds to your account"
+	if err == nil {
+		status = "funds_succeeded"
+		subject = "Adding Funds Succeeded"
+		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD)
+		if wf.Name == constants.WorkflowRedeemVoucher {
+			status = "voucher_redeemed"
+			subject = "Voucher Redeemed"
+			message = "Voucher redeemed successfully."
+		}
+	}
+	payloadData := map[string]string{
+		"name": wf.Name,
+	}
+	if amountUSD > 0 {
+		payloadData["amount"] = fmt.Sprintf("%.2f", amountUSD)
+	}
+	if newBalanceUSD > 0 {
+		payloadData["balance"] = fmt.Sprintf("%.2f", newBalanceUSD)
+	}
+
+	payload = notification.MergePayload(notification.CommonPayload{
+		Message: message,
+		Subject: subject,
+		Status:  status,
+	}, payloadData)
+
+	if err != nil {
+		payload["error"] = err.Error()
+	}
+
+	return models.NewNotification(
+		config.UserID,
+		models.NotificationTypeBilling,
+		payload,
+	)
 }
 
 func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
-	return nil
+	userID, ok := wf.State["user_id"].(int)
+	if !ok {
+		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
+		return nil
+	}
+
+	var payload map[string]string
+
+	// Extract node information from workflow state
+	var nodeID uint32
+	var contractID uint32
+
+	if nodeIDVal, ok := wf.State["node_id"]; ok {
+		if id, okID := nodeIDVal.(uint32); okID {
+			nodeID = id
+		}
+	}
+	if contractIDVal, ok := wf.State["contract_id"]; ok {
+		if id, okID := contractIDVal.(uint32); okID {
+			contractID = id
+		}
+	}
+
+	var subject, message string
+	//default workflow reserve node
+	subject = "Node Reserved Successfully"
+	message = fmt.Sprintf("Node %d has been reserved successfully", nodeID)
+	severity := models.NotificationSeveritySuccess
+	if err == nil {
+		if wf.Name == constants.WorkflowUnreserveNode {
+			subject = "Node Unreserved Successfully"
+			message = fmt.Sprintf("Node %d has been unreserved successfully", nodeID)
+		}
+	} else {
+		severity = models.NotificationSeverityError
+		subject = "Node Reservation Failed"
+		message = fmt.Sprintf("Failed to reserve node %d", nodeID)
+		if wf.Name == constants.WorkflowUnreserveNode {
+			subject = "Node Unreservation Failed"
+			message = fmt.Sprintf("Failed to unreserve node %d", nodeID)
+		}
+	}
+
+	// Build payload data
+	payloadData := map[string]string{
+		"name": wf.Name,
+	}
+	if nodeID > 0 {
+		payloadData["node_id"] = fmt.Sprintf("%d", nodeID)
+	}
+	if contractID > 0 {
+		payloadData["contract_id"] = fmt.Sprintf("%d", contractID)
+	}
+
+	payload = notification.MergePayload(notification.CommonPayload{
+		Message: message,
+		Subject: subject,
+	}, payloadData)
+
+	if err != nil {
+		payload["error"] = err.Error()
+	}
+
+	return models.NewNotification(
+		userID,
+		models.NotificationTypeNode,
+		payload,
+		models.WithChannels(notification.ChannelUI),
+		models.WithSeverity(severity),
+		models.WithNoPersist(),
+	)
 }
 
 func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
-	return nil
+	userID, ok := wf.State["user_id"].(int)
+	if !ok {
+		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
+		return nil
+	}
+
+	var payload map[string]string
+
+	var subject, message string
+	//default workflow verified
+
+	subject = "Account Verified Successfully"
+	message = "Your account has been verified successfully"
+	severity := models.NotificationSeveritySuccess
+	if err == nil {
+		if wf.Name == constants.WorkflowUserRegistration {
+
+			subject = "Registration Completed"
+			message = "Your registration has been completed successfully"
+		}
+	} else {
+		severity = models.NotificationSeverityError
+		subject = "Account Verification Failed"
+		message = "Account verification process failed"
+		if wf.Name == constants.WorkflowUserRegistration {
+			subject = "User Registration Failed"
+			message = "User registration process failed"
+		}
+	}
+
+	payloadData := map[string]string{
+		"name": wf.Name,
+	}
+
+	payload = notification.MergePayload(notification.CommonPayload{
+		Message: message,
+		Subject: subject,
+	}, payloadData)
+
+	if err != nil {
+		payload["error"] = err.Error()
+	}
+
+	return models.NewNotification(
+		userID,
+		models.NotificationTypeUser,
+		payload,
+		models.WithNoPersist(),
+		models.WithSeverity(severity),
+	)
 }

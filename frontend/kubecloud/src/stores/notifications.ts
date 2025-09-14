@@ -1,36 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '../utils/api'
-import type { NotificationType, NotificationSeverity, NotificationStatus } from '../types/notifications'
+import type { NotificationSeverity, NotificationStatus, BaseNotification, Notification } from '../types/notifications'
 import { useUserStore } from './user'
-
-
-// Backend notification response interface
-export interface BackendNotification {
-  id: string
-  task_id?: string
-  type: NotificationType
-  severity: NotificationSeverity
-  payload: Record<string, string>
-  status: NotificationStatus
-  created_at: string
-  read_at?: string
-}
-
-// Unified notification interface for frontend
-export interface Notification {
-  id: string
-  type: NotificationType
-  severity: NotificationSeverity
-  payload: Record<string, string>
-  status: NotificationStatus
-  created_at: string
-  read_at?: string
-  task_id?: string
-  // Frontend-specific fields
-  duration?: number
-  persistent?: boolean
-}
 
 export const useNotificationStore = defineStore('notifications', () => {
   // State
@@ -50,8 +22,6 @@ export const useNotificationStore = defineStore('notifications', () => {
   const persistentNotifications = computed(() => 
     notifications.value.filter(n => n.persistent)
   )
-
-  // Note: SSE toasts use the convenience methods below; no generic payload helper needed
 
   // Core functions
   const addNotification = (notification: Omit<Notification, 'id'>) => {
@@ -151,7 +121,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   }
 
   // Internal: replace persistent notifications
-  const replacePersistent = (serverNotifications: BackendNotification[]) => {
+  const replacePersistent = (serverNotifications: BaseNotification[]) => {
     notifications.value = serverNotifications.map(n => ({ ...n, persistent: true }))
   }
 
@@ -163,7 +133,7 @@ export const useNotificationStore = defineStore('notifications', () => {
     try {
       loading.value = true
       const response = await api.get(endpoint, { requiresAuth: true })
-      const list = (response as any)?.data?.data?.notifications as BackendNotification[] | undefined
+      const list = (response as any)?.data?.data?.notifications as BaseNotification[] | undefined
       if (Array.isArray(list)) replacePersistent(list)
     } catch (error) {
       console.error('Failed to load notifications:', error)

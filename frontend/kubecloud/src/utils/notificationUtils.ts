@@ -1,19 +1,18 @@
 import { formatDistanceToNow } from 'date-fns'
+import type { NotificationType, NotificationSeverity } from '../types/notifications'
 
 /**
  * Get notification icon for different types
  * @param type - Notification type
  * @returns Icon name
  */
-export function getNotificationIcon(type: string): string {
+export function getNotificationIcon(type: NotificationType): string {
   switch (type) {
-    case 'deployment_update': return 'mdi-rocket-launch'
-    case 'task_update': return 'mdi-cog'
+    case 'deployment': return 'mdi-rocket-launch'
+    case 'billing': return 'mdi-credit-card'
+    case 'user': return 'mdi-account'
     case 'connected': return 'mdi-link'
-    case 'error': return 'mdi-alert-circle'
-    case 'success': return 'mdi-check-circle'
-    case 'warning': return 'mdi-alert'
-    case 'info': return 'mdi-information'
+    case 'node': return 'mdi-server'
     default: return 'mdi-bell'
   }
 }
@@ -23,26 +22,24 @@ export function getNotificationIcon(type: string): string {
  * @param type - Notification type
  * @returns Color name
  */
-export function getNotificationColor(type: string): string {
+export function getNotificationColor(type: NotificationType): string {
   switch (type) {
-    case 'deployment_update': return 'success'
-    case 'task_update': return 'info'
+    case 'deployment': return 'success'
+    case 'billing': return 'warning'
+    case 'user': return 'info'
     case 'connected': return 'primary'
-    case 'error': return 'error'
-    case 'success': return 'success'
-    case 'warning': return 'warning'
-    case 'info': return 'info'
+    case 'node': return 'info'
     default: return 'grey'
   }
 }
 
 /**
- * Get toast notification icon for different types
- * @param type - Notification type
+ * Get toast notification icon for different severities
+ * @param severity - Notification severity
  * @returns Icon name
  */
-export function getToastIcon(type: string): string {
-  switch (type) {
+export function getToastIcon(severity: NotificationSeverity): string {
+  switch (severity) {
     case 'success': return 'mdi-check-circle'
     case 'error': return 'mdi-alert-circle'
     case 'warning': return 'mdi-alert'
@@ -52,12 +49,12 @@ export function getToastIcon(type: string): string {
 }
 
 /**
- * Get toast notification color for different types
- * @param type - Notification type
+ * Get toast notification color for different severities
+ * @param severity - Notification severity
  * @returns Color hex value
  */
-export function getToastColor(type: string): string {
-  switch (type) {
+export function getToastColor(severity: NotificationSeverity): string {
+  switch (severity) {
     case 'success': return '#10B981'
     case 'error': return '#EF4444'
     case 'warning': return '#F59E0B'

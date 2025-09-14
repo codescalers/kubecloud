@@ -9,11 +9,10 @@ import (
 	"kubecloud/internal/notification"
 	"kubecloud/middlewares"
 	"kubecloud/models"
+	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -35,18 +34,18 @@ import (
 
 // App holds all configurations for the app
 type App struct {
-	router                   *gin.Engine
-	httpServer               *http.Server
-	config                   internal.Configuration
-	handlers                 Handler
-	db                       models.DB
-	redis                    *internal.RedisClient
-	sseManager               *internal.SSEManager
-	notificationService      *notification.NotificationService
-	gridClient               deployer.TFPluginClient
-	appCancel                context.CancelFunc
-	metrics                  *metrics.Metrics
-	notificationReloaderStop func()
+	router              *gin.Engine
+	httpServer          *http.Server
+	config              internal.Configuration
+	handlers            Handler
+	db                  models.DB
+	redis               *internal.RedisClient
+	sseManager          *internal.SSEManager
+	notificationService *notification.NotificationService
+	gridClient          deployer.TFPluginClient
+	appCtx              context.Context
+	appCancel           context.CancelFunc
+	metrics             *metrics.Metrics
 }
 
 // NewApp create new instance of the app with all configs
@@ -154,8 +153,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
-	stopNotificationReloader := startNotificationReloader(notificationService)
-
 	// Create an app-level context for coordinating shutdown
 	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)
 	if err != nil {
@@ -168,7 +165,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 	sshPublicKey := strings.TrimSpace(string(sshPublicKeyBytes))
 
-	_, appCancel := context.WithCancel(ctx)
+	appCtx, appCancel := context.WithCancel(ctx)
 
 	// Derive sponsor (system) account SS58 address once
 	sponsorKeyPair, err := internal.KeyPairFromMnemonic(config.SystemAccount.Mnemonic)
@@ -205,17 +202,17 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService)
 
 	app := &App{
-		router:                   router,
-		config:                   config,
-		handlers:                 *handler,
-		redis:                    redisClient,
-		db:                       db,
-		sseManager:               sseManager,
-		notificationService:      notificationService,
-		appCancel:                appCancel,
-		gridClient:               gridClient,
-		metrics:                  metrics,
-		notificationReloaderStop: stopNotificationReloader,
+		router:              router,
+		config:              config,
+		handlers:            *handler,
+		redis:               redisClient,
+		db:                  db,
+		sseManager:          sseManager,
+		notificationService: notificationService,
+		appCtx:              appCtx,
+		appCancel:           appCancel,
+		gridClient:          gridClient,
+		metrics:             metrics,
 	}
 
 	activities.RegisterEWFWorkflows(
@@ -357,6 +354,10 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	internal.InitValidator()
 	app.StartBackgroundWorkers()
+
+	// Start command socket
+	go app.startCommandSocket()
+
 	app.handlers.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
@@ -378,10 +379,6 @@ func (app *App) Shutdown(ctx context.Context) error {
 	// First, cancel the app context to signal all components to stop
 	if app.appCancel != nil {
 		app.appCancel()
-	}
-	//stop notification reload
-	if app.notificationReloaderStop != nil {
-		app.notificationReloaderStop()
 	}
 
 	if app.httpServer != nil {
@@ -415,35 +412,115 @@ func (app *App) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-func startNotificationReloader(svc *notification.NotificationService) (stop func()) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGHUP)
+func (app *App) startCommandSocket() {
+	socketPath := "/tmp/myceliumcloud.sock"
 
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-ch:
-				cfg, err := internal.LoadConfig()
-				if err != nil {
-					logger.GetLogger().Error().Err(err).Msg("failed to load notification config")
-					continue
-				}
-				err = svc.ReloadNotificationConfig(cfg.Notification)
-				if err != nil {
-					logger.GetLogger().Error().Err(err).Msg("failed to reload notification config")
-					continue
-				}
-				logger.GetLogger().Info().Msg("notification config reloaded")
-			case <-done:
-				return
+	os.Remove(socketPath)
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to create command socket")
+		return
+	}
+	defer listener.Close()
+	defer os.Remove(socketPath)
+
+	logger.GetLogger().Info().Str("socket", socketPath).Msg("Command socket started")
+
+	for {
+		select {
+		case <-app.appCtx.Done():
+			logger.GetLogger().Info().Msg("command socket stopping")
+			return
+		default:
+		}
+
+		if unixListener, ok := listener.(*net.UnixListener); ok {
+			if err := unixListener.SetDeadline(time.Now().Add(1 * time.Second)); err != nil {
+				logger.GetLogger().Error().Err(err).Msg("failed to set deadline on listener")
 			}
 		}
-	}()
 
-	return func() {
-		signal.Stop(ch)
-		close(done)
-		close(ch)
+		conn, err := listener.Accept()
+
+		if err == nil {
+			go app.handleSocketCommand(conn)
+			continue
+		}
+
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			continue
+		}
+
+		if app.appCtx.Err() != nil {
+			return
+		}
+
+		logger.GetLogger().Error().Err(err).Msg("socket accept error")
+		continue
 	}
+}
+
+func (app *App) handleSocketCommand(conn net.Conn) {
+	defer conn.Close()
+
+	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to set read deadline")
+		return
+	}
+
+	buffer := make([]byte, 1024)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		if _, writeErr := conn.Write([]byte("ERROR: Failed to read command\n")); writeErr != nil {
+			logger.GetLogger().Error().Err(writeErr).Msg("failed to write error response")
+		}
+		return
+	}
+
+	command := strings.TrimSpace(string(buffer[:n]))
+	logger.GetLogger().Debug().Str("command", command).Msg("Received socket command")
+
+	if command == "reload-notifications" {
+		app.handleReloadNotifications(conn)
+		return
+	}
+
+	response := fmt.Sprintf("ERROR: Unknown command '%s'\n", command)
+	if _, err := conn.Write([]byte(response)); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to write error response")
+	}
+	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
+}
+
+func (app *App) handleReloadNotifications(conn net.Conn) {
+	err := app.reloadNotificationConfig()
+
+	if err != nil {
+		response := fmt.Sprintf("ERROR: %v\n", err)
+		if _, writeErr := conn.Write([]byte(response)); writeErr != nil {
+			logger.GetLogger().Error().Err(writeErr).Msg("failed to write error response")
+		}
+		logger.GetLogger().Error().Err(err).Msg("Failed to reload notification config via socket")
+		return
+	}
+
+	if _, err := conn.Write([]byte("OK: Notification config reloaded successfully\n")); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to write success response")
+		return
+	}
+	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
+}
+
+func (app *App) reloadNotificationConfig() error {
+	cfg, err := internal.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	if err = app.notificationService.ReloadNotificationConfig(cfg.Notification); err != nil {
+		return fmt.Errorf("failed to reload notification config: %w", err)
+	}
+
+	return nil
 }
