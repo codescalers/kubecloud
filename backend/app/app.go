@@ -301,8 +301,8 @@ func (app *App) registerHandlers() {
 				// vms handlers
 				vmGroup := deploymentGroup.Group("/vms")
 				{
-					vmGroup.POST("/", app.handlers.HandleDeployVM)
-					vmGroup.GET("/", app.handlers.HandleListVMs)
+					vmGroup.POST("", app.handlers.HandleDeployVM)
+					vmGroup.GET("", app.handlers.HandleListVMs)
 					vmGroup.DELETE("/:id", app.handlers.HandleDeleteVM)
 					vmGroup.GET("/:id", app.handlers.HandleListVM)
 				}
