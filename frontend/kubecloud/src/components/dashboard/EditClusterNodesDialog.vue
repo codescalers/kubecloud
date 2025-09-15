@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef, nextTick } from 'vue';
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
@@ -155,14 +155,11 @@ function resetForm() {
   addFormSshKeys.value = sshKeys.value.length > 0 ? [sshKeys.value[0].ID] : []
 }
 
-watch(() => names.value, () => {
+watch(() => names.value, async () => {
   if (nameField.value && addFormName.value) {
     nameField.value.resetValidation()
-    setTimeout(() => {
-      if (nameField.value) {
-        nameField.value.validate()
-      }
-    }, 0)
+    await nextTick()
+    nameField.value.validate()
   }
 })
 watch(() => props.modelValue, async (isOpen) => {
