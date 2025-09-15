@@ -18,17 +18,16 @@ export function getNotificationIcon(type: NotificationType): string {
 }
 
 /**
- * Get notification color for different types
- * @param type - Notification type
+ * Get notification color for different severities
+ * @param severity - Notification severity
  * @returns Color name
  */
-export function getNotificationColor(type: NotificationType): string {
-  switch (type) {
-    case 'deployment': return 'success'
-    case 'billing': return 'warning'
-    case 'user': return 'info'
-    case 'connected': return 'primary'
-    case 'node': return 'info'
+export function getNotificationColor(severity: NotificationSeverity): string {
+  switch (severity) {
+    case 'success': return 'success'
+    case 'error': return 'error'
+    case 'warning': return 'warning'
+    case 'info': return 'info'
     default: return 'grey'
   }
 }

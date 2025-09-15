@@ -72,7 +72,7 @@
                 :ripple="true"
               >
                 <template v-slot:prepend>
-                  <v-avatar size="40" :color="getNotificationColor(notification.type)" class="notification-icon">
+                  <v-avatar size="40" :color="getNotificationColor(notification.severity)" class="notification-icon">
                     <v-icon :icon="getNotificationIcon(notification.type)" color="white"></v-icon>
                   </v-avatar>
                 </template>

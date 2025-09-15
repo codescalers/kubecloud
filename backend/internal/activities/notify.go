@@ -269,9 +269,9 @@ func isDeployStep(stepName string) bool {
 }
 
 func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
-	config, confErr := getConfig(wf.State)
-	if confErr != nil {
-		logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
+	userID, ok := wf.State["user_id"].(int)
+	if !ok {
+		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -324,7 +324,7 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 	}
 
 	return models.NewNotification(
-		config.UserID,
+		userID,
 		models.NotificationTypeBilling,
 		payload,
 	)
