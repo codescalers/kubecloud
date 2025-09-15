@@ -67,7 +67,7 @@ func (c *Client) Register(name, email, password, confirmPassword string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -259,7 +259,7 @@ func (c *Client) DeleteCluster(name string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("delete deployment failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -274,7 +274,7 @@ func (c *Client) DeleteAllDeployments() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("delete all deployments failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -321,7 +321,7 @@ func (c *Client) RemoveNode(deploymentName, nodeName string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("remove node request failed with status %d: %s", resp.StatusCode, string(body))
 	}

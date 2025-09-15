@@ -275,7 +275,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 // @Produce json
 // @Param user_id path string true "User ID"
 // @Param body body CreditRequestInput true "Credit Request Input"
-// @Success 201 {object} CreditUserResponse
+// @Success 202 {object} CreditUserResponse
 // @Failure 400 {object} APIResponse "Invalid request format or user ID"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
@@ -347,7 +347,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,

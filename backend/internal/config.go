@@ -2,6 +2,9 @@ package internal
 
 import (
 	"fmt"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -133,6 +136,26 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
+	config.Database.File, err = expandPath(config.Database.File)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand database file path: %w", err)
+	}
+
+	config.SSH.PrivateKeyPath, err = expandPath(config.SSH.PrivateKeyPath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand SSH private key path: %w", err)
+	}
+
+	config.SSH.PublicKeyPath, err = expandPath(config.SSH.PublicKeyPath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand SSH public key path: %w", err)
+	}
+
+	config.Logger.LogDir, err = expandPath(config.Logger.LogDir)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
+	}
+
 	validate := validator.New()
 	if err := validate.Struct(config); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
@@ -144,4 +167,54 @@ func LoadConfig() (Configuration, error) {
 	}
 
 	return config, nil
+}
+
+func expandPath(path string) (string, error) {
+	if path == "" {
+		return os.Getwd()
+	}
+
+	path = os.ExpandEnv(path)
+	var err error
+	if strings.HasPrefix(path, "~") {
+		path, err = expandTilde(path)
+		if err != nil {
+			return "", fmt.Errorf("failed to expand tilde: %w", err)
+		}
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	return filepath.Clean(absPath), nil
+}
+
+func expandTilde(path string) (string, error) {
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	if path == "~" {
+		return homeDir, nil
+	}
+	if strings.HasPrefix(path, "~/") {
+		return filepath.Join(homeDir, path[2:]), nil
+	}
+	parts := strings.SplitN(path, "/", 2)
+	username := parts[0][1:]
+
+	user, err := user.Lookup(username)
+	if err != nil {
+		return "", fmt.Errorf("user %s not found: %w", username, err)
+	}
+
+	if len(parts) == 1 {
+		return user.HomeDir, nil
+	}
+	return filepath.Join(user.HomeDir, parts[1]), nil
+
 }
