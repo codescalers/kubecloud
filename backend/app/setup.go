@@ -184,11 +184,8 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
-		require.NoError(t, err)
-		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
-		require.NoError(t, err)
-		sponseeAddress, err = internal.AccountAddressFromKeypair(sponseeKeyPair)
+		var err error
+		mnemonic, sponseeAddress, _, err = internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
 		require.NoError(t, err)
 	}
 	user := &models.User{

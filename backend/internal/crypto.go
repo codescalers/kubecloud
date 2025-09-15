@@ -41,8 +41,6 @@ func (cm *CryptoManager) deriveKey(passphrase string, userIdentifier string) ([]
 		return nil, errors.New("mnemonic encryption salt is not configured - set MNEMONIC_ENCRYPTION_SALT environment variable")
 	}
 
-	// Create deterministic salt using master salt + user identifier
-	// This separates salt from passphrase for better security
 	saltBase := fmt.Sprintf("%s_user_%s", cm.config.MnemonicEncryptionSalt, userIdentifier)
 	salt := sha256.Sum256([]byte(saltBase))
 
@@ -118,12 +116,16 @@ func (cm *CryptoManager) decrypt(encryptedText string, key []byte) (string, erro
 	return string(plaintext), nil
 }
 
-func (cm *CryptoManager) EncryptMnemonic(plainText string, userAddress string) (string, error) {
+func (cm *CryptoManager) getMnemonicKey(userAddress string) ([]byte, error) {
 	if cm.config.MnemonicEncryptionPassphrase == "" {
-		return "", errors.New("mnemonic encryption passphrase is not configured - set MNEMONIC_ENCRYPTION_PASSPHRASE environment variable")
+		return nil, errors.New("mnemonic encryption passphrase is not configured - set MNEMONIC_ENCRYPTION_PASSPHRASE environment variable")
 	}
 
-	key, err := cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
+	return cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
+}
+
+func (cm *CryptoManager) EncryptMnemonic(plainText string, userAddress string) (string, error) {
+	key, err := cm.getMnemonicKey(userAddress)
 	if err != nil {
 		return "", err
 	}
@@ -131,11 +133,7 @@ func (cm *CryptoManager) EncryptMnemonic(plainText string, userAddress string) (
 }
 
 func (cm *CryptoManager) DecryptMnemonic(encryptedText string, userAddress string) (string, error) {
-	if cm.config.MnemonicEncryptionPassphrase == "" {
-		return "", errors.New("mnemonic encryption passphrase is not configured - set MNEMONIC_ENCRYPTION_PASSPHRASE environment variable")
-	}
-
-	key, err := cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
+	key, err := cm.getMnemonicKey(userAddress)
 	if err != nil {
 		return "", err
 	}

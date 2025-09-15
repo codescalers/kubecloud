@@ -141,7 +141,7 @@ func UpdateCodeStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB) ewf.StepFn {
+func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB, crypto *internal.CryptoManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -158,18 +158,28 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 		}
 
 		if len(strings.TrimSpace(existingUser.Mnemonic)) > 0 {
-			state["mnemonic"] = existingUser.Mnemonic
+
+			decryptedMnemonic, err := crypto.DecryptMnemonic(existingUser.Mnemonic, existingUser.AccountAddress)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt existing mnemonic: %w", err)
+			}
+			state["mnemonic"] = decryptedMnemonic
 			return nil
 		}
 
-		mnemonic, _, err := internal.SetupUserOnTFChain(client, config)
+		mnemonic, address, _, err := internal.SetupUserOnTFChain(client, config)
 		if err != nil {
 			return err
 		}
 
+		encryptedMnemonic, err := crypto.EncryptMnemonic(mnemonic, address)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt mnemonic: %w", err)
+		}
+
 		if err := db.UpdateUserByID(&models.User{
 			ID:       userID,
-			Mnemonic: mnemonic,
+			Mnemonic: encryptedMnemonic,
 		}); err != nil {
 			return fmt.Errorf("failed to update user mnemonic: %w", err)
 		}

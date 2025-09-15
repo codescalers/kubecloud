@@ -47,7 +47,7 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))
 	engine.Register(constants.StepUpdateCode, UpdateCodeStep(db))
-	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, db))
+	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, db, cryptoMgr))
 	engine.Register(constants.StepCreateStripeCustomer, CreateStripeCustomerStep(db))
 	engine.Register(constants.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(constants.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
