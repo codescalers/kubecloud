@@ -42,6 +42,7 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationService *notification.NotificationService,
 	proxyClient proxy.Client,
+	cryptoMgr *internal.CryptoManager,
 ) {
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))

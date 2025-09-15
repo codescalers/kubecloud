@@ -53,6 +53,7 @@ type Handler struct {
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
+	cryptoMgr       *internal.CryptoManager
 }
 
 // NewHandler create new handler
@@ -63,7 +64,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient, cryptoMgr *internal.CryptoManager) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
@@ -86,6 +87,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
+		cryptoMgr:       cryptoMgr,
 	}
 }
 

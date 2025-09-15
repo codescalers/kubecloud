@@ -50,6 +50,9 @@ type App struct {
 
 // NewApp create new instance of the app with all configs
 func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
+
+	cryptoMgr := internal.NewCryptoManager(config)
+
 	// Disable gin's default logging since we're using zerolog
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
@@ -207,7 +210,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient, cryptoMgr)
 
 	app := &App{
 		router:              router,
@@ -235,6 +238,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		app.metrics,
 		app.notificationService,
 		gridProxy,
+		cryptoMgr,
 	)
 
 	app.registerHandlers()
