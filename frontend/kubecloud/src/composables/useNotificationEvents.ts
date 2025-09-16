@@ -294,6 +294,7 @@ export function useNotificationEvents() {
    * Currently logs the notification; can be extended for user-specific logic.
    */
   async function handleUserNotification() {
+    console.log('User notification received')
     await userStore.loadUser()
     router.push('/dashboard')
   }

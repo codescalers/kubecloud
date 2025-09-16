@@ -109,8 +109,6 @@ export const useUserStore = defineStore('user',
         const response = await authService.verifyCode(data)
         authService.storeTokens(response.access_token, response.refresh_token)
         token.value = response.access_token
-        await loadUser()
-        router.push('/dashboard')
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Verification failed'
         throw err

@@ -135,6 +135,7 @@ export class AuthService {
       showNotifications: true,
       loadingMessage: 'Resending verification code...',
       errorMessage: 'Failed to resend verification code',
+      successMessage: 'Verification code sent to your email',
       timeout: 60000,
     })
   }
