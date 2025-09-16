@@ -5,10 +5,6 @@ import { useClusterStore } from '../stores/clusters'
 import { useNodeManagement } from './useNodeManagement'
 import type { NotificationType, NotificationSeverity } from '@/types/notifications'
 
-// TypeScript interfaces matching the backend notification model
-
-/** Supported notification types for different system events */
-
 /** Core notification data structure */
 interface NotificationData {
   /** Notification title/subject */
@@ -53,7 +49,7 @@ export function useNotificationEvents() {
   const reconnectDelay = 2000
 
   // Notification delay system
-  const notificationDelay = ref(2000) // Default 1sec between notifications
+  const notificationDelay = ref(2000)
 
   /**
    * Establishes SSE connection to the backend notification service
