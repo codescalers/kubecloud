@@ -27,6 +27,8 @@ interface SSEMessage {
   timestamp: string
 }
 
+
+
 /**
  * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
  *
@@ -47,9 +49,11 @@ export function useNotificationEvents() {
   const reconnectAttempts = ref(0)
   const maxReconnectAttempts = 5
   const reconnectDelay = 2000
-
-  // Notification delay system
   const notificationDelay = ref(2000)
+  const isOnline = ref(navigator.onLine)
+  const isPageVisible = ref(true)
+  const shouldReconnectOnVisibility = ref(false)
+  setupNetworkAndVisibilityListeners()
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -59,7 +63,8 @@ export function useNotificationEvents() {
    * reconnection logic on connection failures.
    */
   function connect() {
-    if (eventSource.value || isConnected.value || !userStore.token) return
+    console.log('[SSE Debug] Attempting to connect to SSE')
+    if (eventSource.value || isConnected.value || !userStore.token || !isOnline.value) return
 
     const backendBaseUrl =
       (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
@@ -73,7 +78,8 @@ export function useNotificationEvents() {
     eventSource.value.onopen = () => {
       isConnected.value = true
       reconnectAttempts.value = 0
-      console.log('Notification SSE connection established')
+      shouldReconnectOnVisibility.value = false
+      console.log('[SSE] Notification SSE connection established successfully')
     }
 
     eventSource.value.onmessage = (event) => {
@@ -81,24 +87,26 @@ export function useNotificationEvents() {
         const eventData = JSON.parse(event.data) as SSEMessage
         notificationQueue.value.push(eventData)
       } catch (error) {
-        console.error('Error parsing SSE message:', error)
+        console.error('[SSE] Error parsing SSE message:', error, 'Raw data:', event.data)
       }
     }
 
     eventSource.value.onerror = (err) => {
       isConnected.value = false
-      console.error('Notification SSE connection error:', err)
+      console.error('[SSE Debug] Notification SSE connection error:', err)
 
-      // Attempt to reconnect
-      if (reconnectAttempts.value < maxReconnectAttempts) {
-        setTimeout(
-          () => {
-            reconnectAttempts.value++
-            disconnect()
-            connect()
-          },
-          reconnectDelay * 2 ** reconnectAttempts.value,
-        )
+      // Only attempt reconnection if we're online and the page is visible
+      if (isOnline.value && isPageVisible.value && reconnectAttempts.value < maxReconnectAttempts) {
+        const delay = reconnectDelay * 2 ** reconnectAttempts.value
+        setTimeout(() => {
+          reconnectAttempts.value++
+          disconnect()
+          connect()
+        }, delay)
+      } else if (!isPageVisible.value) {
+        shouldReconnectOnVisibility.value = true
+      } else if (!isOnline.value) {
+        console.log('[SSE] Device offline, will reconnect when network is restored')
       }
     }
   }
@@ -119,7 +127,9 @@ export function useNotificationEvents() {
       processNotificationQueue()
     }
   })
-
+  onMounted(() => {
+    console.log('mounted')
+  })
   /**
    * Processes incoming SSE messages and routes them to appropriate handlers
    *
@@ -166,7 +176,10 @@ export function useNotificationEvents() {
    * @param type The type of notification for fallback generation
    * @returns Formatted subject and message strings
    */
-  function getNotificationData(data: NotificationData, type: NotificationType): { subject: string; message: string } {
+  function getNotificationData(
+    data: NotificationData,
+    type: NotificationType,
+  ): { subject: string; message: string } {
     let message = ''
     let subject = ''
     if (data?.message) {
@@ -178,7 +191,7 @@ export function useNotificationEvents() {
 
     if (!message) message = parseDefaultNotificationMessage(data, type)
     if (!subject) {
-      subject = type.charAt(0).toUpperCase() + type.slice(1);
+      subject = type.charAt(0).toUpperCase() + type.slice(1)
     }
     return { subject, message }
   }
@@ -307,6 +320,63 @@ export function useNotificationEvents() {
   }
 
   /**
+   * Handles network status changes
+   */
+  function handleOnlineStatusChange() {
+    isOnline.value = navigator.onLine
+    if (isOnline.value && userStore.token && !isConnected.value) {
+      reconnectAttempts.value = 0
+      connect()
+    }
+  }
+
+  /**
+   * Handles page visibility changes
+   */
+  function handleVisibilityChange() {
+    isPageVisible.value = document.visibilityState === 'visible'
+    if (
+      isPageVisible.value &&
+      shouldReconnectOnVisibility.value &&
+      userStore.token &&
+      !isConnected.value
+    ) {
+      shouldReconnectOnVisibility.value = false
+      reconnectAttempts.value = 0
+      connect()
+    } else if (!isPageVisible.value && isConnected.value) {
+      // Mark that we should reconnect when page becomes visible again
+      shouldReconnectOnVisibility.value = true
+    }
+  }
+
+  /**
+   * Sets up event listeners for network and visibility changes
+   */
+  function setupNetworkAndVisibilityListeners() {
+    window.addEventListener('online', handleOnlineStatusChange)
+    window.addEventListener('offline', handleOnlineStatusChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
+
+  /**
+   * Removes event listeners for network and visibility changes
+   */
+  function removeNetworkAndVisibilityListeners() {
+    window.removeEventListener('online', handleOnlineStatusChange)
+    window.removeEventListener('offline', handleOnlineStatusChange)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+
+  function destroy() {
+    disconnect()
+    removeNetworkAndVisibilityListeners()
+    notificationQueue.value = []
+    processingQueue.value = false
+    shouldReconnectOnVisibility.value = false
+  }
+
+  /**
    * Watches for token changes to reconnect
    *
    * Automatically reconnects to the SSE connection when the user's authentication token changes.
@@ -324,22 +394,9 @@ export function useNotificationEvents() {
     { immediate: true },
   )
 
-  onMounted(() => {
-    // Simple fallback: if token exists but not connected after a short delay, connect
-    setTimeout(() => {
-      if (userStore.token && !isConnected.value) {
-        connect()
-      }
-    }, 100)
-  })
-
-  onUnmounted(() => {
-    disconnect()
-  })
-
   return {
     connect,
-    disconnect,
+    destroy,
     isConnected,
   }
 }
