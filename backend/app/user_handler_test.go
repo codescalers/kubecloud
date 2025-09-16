@@ -51,7 +51,7 @@ func TestRegisterHandler(t *testing.T) {
 
 	t.Run("Register Existing Verified User", func(t *testing.T) {
 		user := CreateTestUser(t, app, "dupe@example.com", "Test User", []byte("securepassword"), true, false, false, 0, time.Now())
-		user.Mnemonic = "mnemonic"
+		user.Mnemonic = []byte("mnemonic")
 		user.AccountAddress = "sponseeAddress"
 		user.Sponsored = true
 		user.StripeCustomerID = "stripeCustomerID"
@@ -132,7 +132,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 	})
 	t.Run("Test Verify Register Code with registered user", func(t *testing.T) {
 		registeredUser := CreateTestUser(t, app, "registered@example.com", "Registered User", []byte("securepassword"), true, false, false, 123, time.Now())
-		registeredUser.Mnemonic = "mnemonic"
+		registeredUser.Mnemonic = []byte("mnemonic")
 		registeredUser.AccountAddress = "sponseeAddress"
 		registeredUser.Sponsored = true
 		registeredUser.StripeCustomerID = "stripeCustomerID"
@@ -518,7 +518,7 @@ func TestChargeBalanceHandler(t *testing.T) {
 	t.Run("Test ChargeBalance with Invalid Request format", func(t *testing.T) {
 
 		user := CreateTestUser(t, app, "chargeuser@example.com", "Charge User", []byte("securepassword"), true, false, true, 0, time.Now())
-		user.Mnemonic = "test-menmonic"
+		user.Mnemonic = []byte("test-menmonic")
 		err = app.handlers.db.UpdateUserByID(user)
 		assert.NoError(t, err)
 		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)

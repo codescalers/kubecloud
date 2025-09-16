@@ -51,7 +51,7 @@ func (m *MoneyCollector) CollectMoney() {
 			balanceConcurrencyLimiter <- struct{}{}
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
-			if user.Mnemonic == "" {
+			if len(user.Mnemonic) == 0 || len(user.AccountAddress) == 0 {
 				return
 			}
 
@@ -75,11 +75,10 @@ func (m *MoneyCollector) CollectMoney() {
 				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
 				if err := m.substrateClient.Transfer(userIdentity, balance-MinBalanceThreshold, substrate.AccountID(system.PublicKey())); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
+					return
 				}
-				return
 			}
 		}(user)
-
 	}
 	wg.Wait()
 	log.Info().Msg("MoneyCollector: finished")

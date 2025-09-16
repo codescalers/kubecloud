@@ -181,16 +181,16 @@ func GetAuthToken(t *testing.T, app *App, id int, email, username string, isAdmi
 func CreateTestUser(t *testing.T, app *App, email, username string, hashedPassword []byte, verified, admin bool, mnemonicRequired bool, code int, updatedAt time.Time) *models.User {
 	mnemonic := ""
 	sponseeAddress := ""
+	var encryptedBytes []byte
 	if !mnemonicRequired {
-		mnemonic = ""
+		// no mnemonic needed in tests; leave encryptedBytes nil
 	} else {
 		var err error
 		mnemonic, sponseeAddress, _, err = internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
 		require.NoError(t, err)
 
-		encryptedMnemonic, err := app.handlers.cryptoManager.EncryptMnemonic(mnemonic, sponseeAddress)
+		encryptedBytes, err = app.handlers.cryptoManager.EncryptMnemonic(mnemonic, sponseeAddress)
 		require.NoError(t, err)
-		mnemonic = encryptedMnemonic
 	}
 	user := &models.User{
 		Username:       username,
@@ -200,7 +200,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		Admin:          admin,
 		Code:           code,
 		UpdatedAt:      updatedAt,
-		Mnemonic:       mnemonic,
+		Mnemonic:       encryptedBytes,
 		AccountAddress: sponseeAddress,
 	}
 	err := app.handlers.db.RegisterUser(user)

@@ -157,7 +157,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
-		if len(strings.TrimSpace(existingUser.Mnemonic)) > 0 {
+		if len(existingUser.Mnemonic) > 0 {
 
 			decryptedMnemonic, err := crypto.DecryptMnemonic(existingUser.Mnemonic, existingUser.AccountAddress)
 			if err != nil {

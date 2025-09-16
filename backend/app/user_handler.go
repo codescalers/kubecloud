@@ -1150,5 +1150,5 @@ func isUserRegistered(user models.User) bool {
 		user.Verified &&
 		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
 		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
-		len(strings.TrimSpace(user.Mnemonic)) > 0
+		len(user.Mnemonic) > 0
 }

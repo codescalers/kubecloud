@@ -108,24 +108,11 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
-			if len(user.Mnemonic) == 0 {
+			if len(user.Mnemonic) == 0 || len(user.AccountAddress) == 0 {
 				mu.Lock()
 				usersWithBalance = append(usersWithBalance, UserResponse{User: user, Balance: 0})
 				mu.Unlock()
 				return
-			}
-
-			if len(user.AccountAddress) == 0 {
-				addr, err := internal.AccountFromMnemonic(user.Mnemonic)
-				if err != nil {
-					logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to derive account address from mnemonic")
-					mu.Lock()
-					multiErr = multierror.Append(multiErr, fmt.Errorf("failed to derive account address from mnemonic for user %d: %w", user.ID, err))
-					mu.Unlock()
-					return
-				}
-
-				user.AccountAddress = addr
 			}
 
 			decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)

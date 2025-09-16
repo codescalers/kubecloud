@@ -15,7 +15,7 @@ type User struct {
 	Admin             bool      `json:"admin"`
 	CreditCardBalance uint64    `json:"credit_card_balance" gorm:"default:0"` // millicent, money from credit card
 	CreditedBalance   uint64    `json:"credited_balance" gorm:"default:0"`    // millicent, manually added by admin or from vouchers
-	Mnemonic          string    `json:"-" gorm:"column:mnemonic"`
+	Mnemonic          []byte    `json:"-" gorm:"column:mnemonic"`
 	SSHKey            string    `json:"ssh_key"`
 	Debt              uint64    `json:"debt"` // millicent
 	Sponsored         bool      `json:"sponsored"`
