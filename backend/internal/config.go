@@ -195,9 +195,9 @@ func loadNotificationConfig(configPath string) (NotificationConfig, error) {
 
 // Argon2Config holds the configuration for Argon2 key derivation
 type Argon2Config struct {
-	Time    uint32 `json:"time" default:"1"`
-	Memory  uint32 `json:"memory" default:"65536"` // 64 * 1024 = 64MB
-	Threads uint8  `json:"threads" default:"4"`
+	Time    uint32 `json:"time" validate:"required,gt=0"`
+	Memory  uint32 `json:"memory" validate:"required,gt=8"`
+	Threads uint8  `json:"threads" validate:"required,gt=0"`
 }
 
 // LoadConfig load configurations

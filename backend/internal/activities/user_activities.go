@@ -178,8 +178,9 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 		}
 
 		if err := db.UpdateUserByID(&models.User{
-			ID:       userID,
-			Mnemonic: encryptedMnemonic,
+			ID:             userID,
+			Mnemonic:       encryptedMnemonic,
+			AccountAddress: address,
 		}); err != nil {
 			return fmt.Errorf("failed to update user mnemonic: %w", err)
 		}
