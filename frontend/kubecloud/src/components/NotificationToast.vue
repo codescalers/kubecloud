@@ -54,6 +54,7 @@ const removeNotification = (id: string) => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   padding: 1rem 1.5rem;
+  margin-bottom: 0.25rem;
   min-width: 320px;
   max-width: 450px;
   font-weight: 500;
