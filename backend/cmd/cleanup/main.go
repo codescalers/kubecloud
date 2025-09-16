@@ -34,9 +34,26 @@ func loadConfig(configPath string) {
 		MailSender: internal.MailSender{
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
+
+		MnemonicEncryptionPassphrase: viper.GetString("mnemonic_encryption_passphrase"),
+		MnemonicEncryptionSalt:       viper.GetString("mnemonic_encryption_salt"),
+		Argon2: internal.Argon2Config{
+			Time:    uint32(viper.GetInt("argon2.time")),
+			Memory:  uint32(viper.GetInt("argon2.memory")),
+			Threads: uint8(viper.GetInt("argon2.threads")),
+		},
 	}
 	if config.MailSender.MaxConcurrentSends == 0 {
 		config.MailSender.MaxConcurrentSends = 10
+	}
+	if config.Argon2.Time < 1 {
+		config.Argon2.Time = 1
+	}
+	if config.Argon2.Memory < 8192 {
+		config.Argon2.Memory = 65536
+	}
+	if config.Argon2.Threads < 1 {
+		config.Argon2.Threads = 4
 	}
 }
 

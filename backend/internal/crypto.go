@@ -35,7 +35,7 @@ func NewCryptoManager(config Configuration) *CryptoManager {
 
 func (cm *CryptoManager) deriveKey(passphrase string, userIdentifier string) ([]byte, error) {
 	if passphrase == "" {
-		return nil, errors.New("passphrase cannot be empty")
+		return nil, errors.New("mnemonic encryption passphrase is not configured in config")
 	}
 
 	if userIdentifier == "" {
@@ -43,7 +43,7 @@ func (cm *CryptoManager) deriveKey(passphrase string, userIdentifier string) ([]
 	}
 
 	if cm.config.MnemonicEncryptionSalt == "" {
-		return nil, errors.New("mnemonic encryption salt is not configured - set MNEMONIC_ENCRYPTION_SALT environment variable")
+		return nil, errors.New("mnemonic encryption salt is not configured in config")
 	}
 
 	saltBase := fmt.Sprintf("%s_user_%s", cm.config.MnemonicEncryptionSalt, userIdentifier)
@@ -118,7 +118,7 @@ func (cm *CryptoManager) decrypt(encryptedBytes []byte, key []byte) (string, err
 
 func (cm *CryptoManager) getMnemonicKey(userAddress string) ([]byte, error) {
 	if cm.config.MnemonicEncryptionPassphrase == "" {
-		return nil, errors.New("mnemonic encryption passphrase is not configured - set MNEMONIC_ENCRYPTION_PASSPHRASE environment variable")
+		return nil, errors.New("mnemonic encryption passphrase is not configured in config")
 	}
 
 	return cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
