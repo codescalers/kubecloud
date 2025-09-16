@@ -55,6 +55,11 @@ export function useNotificationEvents() {
   const shouldReconnectOnVisibility = ref(false)
   const eventListenersInitialized = ref(false)
 
+
+  if (!eventListenersInitialized.value) {
+    setupNetworkAndVisibilityListeners()
+  }
+
   /**
    * Establishes SSE connection to the backend notification service
    *
@@ -65,7 +70,6 @@ export function useNotificationEvents() {
   function connect() {
     console.log('[SSE Debug] Attempting to connect to SSE')
     if (eventSource.value || isConnected.value || !userStore.token || !isOnline.value) return
-    setupNetworkAndVisibilityListeners()
 
     const backendBaseUrl =
       (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
@@ -107,9 +111,9 @@ export function useNotificationEvents() {
         reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS
       ) {
         const delay = RECONNECT_DELAY * 2 ** reconnectAttempts.value
-        setTimeout(() => {
+        setTimeout(async () => {
           reconnectAttempts.value++
-          disconnect()
+          await disconnect()
           connect()
         }, delay)
       } else if (!isPageVisible.value) {
@@ -304,12 +308,15 @@ export function useNotificationEvents() {
    *
    * Properly terminates the EventSource connection and updates connection state.
    */
-  function disconnect() {
-    if (eventSource.value) {
-      eventSource.value.close()
-      eventSource.value = null
-    }
-    isConnected.value = false
+  function disconnect(): Promise<void> {
+    return new Promise((resolve) => {
+      if (eventSource.value) {
+        eventSource.value.close()
+        eventSource.value = null
+      }
+      isConnected.value = false
+      resolve()
+    })
   }
 
   /**
@@ -320,7 +327,7 @@ export function useNotificationEvents() {
    */
   async function refreshClusterData() {
     try {
-      await Promise.all([clusterStore.fetchClusters(), fetchRentedNodes()])
+      await clusterStore.fetchClusters()
     } catch (error) {
       console.error('Error refreshing cluster data:', error)
     }
@@ -379,8 +386,8 @@ export function useNotificationEvents() {
     eventListenersInitialized.value = false
   }
 
-  function destroy() {
-    disconnect()
+  async function destroy() {
+    await disconnect()
     removeNetworkAndVisibilityListeners()
     notificationQueue.value = []
     processingQueue.value = false
@@ -395,12 +402,9 @@ export function useNotificationEvents() {
    */
   watch(
     () => userStore.token,
-    (newToken) => {
-      if (newToken) {
-        connect()
-      } else if (isConnected.value) {
-        disconnect()
-      }
+    async (newToken) => {
+      await disconnect()
+      if (newToken) connect()
     },
     { immediate: true },
   )
