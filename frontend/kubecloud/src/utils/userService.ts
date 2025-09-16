@@ -165,7 +165,6 @@ export class UserService {
     if(status === WorkflowStatus.StatusCompleted){
       try {
         await this.trackNodeStatus(nodeId, "rented")
-        console.log('Node Reserved', 'Node has been successfully reserved.')
       } catch (error) {
         console.error('Node reservation error', 'Failed to reserve node')
         throw new Error('Failed to reserve node')

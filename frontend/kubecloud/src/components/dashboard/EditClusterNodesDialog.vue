@@ -132,7 +132,6 @@ async function handleAddNode(payload: any) {
   }
   try {
     await addNodeToDeployment(payload.name, payload)
-    console.log('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.')
     emit('update:modelValue', false) // Close dialog on success
   } catch (e: any) {
     console.error(e)

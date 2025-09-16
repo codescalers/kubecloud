@@ -203,7 +203,6 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 
 const haveEnoughBalance = computed(() => {
-  console.log('Balance check:', userStore.netBalance, 'Have enough:', userStore.netBalance >= 5)
   return userStore.netBalance >= 5
 })
 
@@ -304,7 +303,6 @@ async function confirmDelete() {
   if (cluster.value) {
     try {
       await clusterStore.deleteCluster(cluster.value.cluster.name)
-      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.')
       goBack()
     } catch (e: any) {
       notificationStore.error('Delete Cluster Failed', e?.message || 'Failed to delete cluster')
@@ -365,7 +363,6 @@ function confirmDeleteNode() {
 async function handleRemoveNode(nodeName: string) {
   try {
     await removeNodeFromDeployment(cluster.value?.cluster?.name || '', nodeName)
-    notificationStore.info('Node Removal Started', 'Node is being removed from the cluster in the background. You will be notified when the operation completes.')
   } catch (e: any) {
     const errorMessage = e?.message || 'Failed to remove node'
     notificationStore.error('Remove Node Failed', errorMessage)
