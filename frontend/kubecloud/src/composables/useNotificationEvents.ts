@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch, readonly, computed } from 'vue'
+import { ref, onMounted, onUnmounted, watch, readonly, computed, watchEffect } from 'vue'
 import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useClusterStore } from '../stores/clusters'
@@ -53,7 +53,7 @@ export function useNotificationEvents() {
   const reconnectDelay = 2000
 
   // Notification delay system
-  const notificationDelay = ref(1000) // Default 1sec between notifications
+  const notificationDelay = ref(2000) // Default 1sec between notifications
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -118,7 +118,7 @@ export function useNotificationEvents() {
     processingQueue.value = false
   }
 
-  watch(notificationQueue, () => {
+  watchEffect(() => {
     if (notificationQueue.value.length > 0) {
       processNotificationQueue()
     }
