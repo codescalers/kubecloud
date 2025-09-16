@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, readonly, computed } from 'vue'
 import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useClusterStore } from '../stores/clusters'
@@ -31,34 +31,29 @@ interface SSEMessage {
   timestamp: string
 }
 
-/** Configuration options for notification event handling */
-interface NotificationEventsOptions {
-  /** Maximum number of reconnection attempts (default: 5) */
-  maxReconnectAttempts?: number
-  /** Delay between reconnection attempts in milliseconds (default: 2000) */
-  reconnectDelay?: number
-}
-
 /**
  * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
  *
  * Provides a reactive connection to the backend notification system with automatic
  * reconnection, message handling, and integration with various stores for data updates.
  *
- * @param options Configuration options for connection behavior
  * @returns Object containing connection methods and reactive state
  */
-export function useNotificationEvents(options?: NotificationEventsOptions) {
+export function useNotificationEvents() {
   const eventSource = ref<EventSource | null>(null)
   const notificationStore = useNotificationStore()
   const userStore = useUserStore()
   const clusterStore = useClusterStore()
   const { fetchRentedNodes } = useNodeManagement()
-
+  const notificationQueue = ref<SSEMessage[]>([])
+  const processingQueue = ref(false)
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
-  const maxReconnectAttempts = options?.maxReconnectAttempts || 5
-  const reconnectDelay = options?.reconnectDelay || 2000
+  const maxReconnectAttempts = 5
+  const reconnectDelay = 2000
+
+  // Notification delay system
+  const notificationDelay = ref(1000) // Default 1sec between notifications
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -68,13 +63,13 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
    * reconnection logic on connection failures.
    */
   function connect() {
-    if (eventSource.value || isConnected.value) return
+    if (eventSource.value || isConnected.value || !userStore.token) return
 
     const backendBaseUrl =
       (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
       import.meta.env.VITE_API_BASE_URL ||
       'http://localhost:8080/api'
-    const token = userStore.token || ''
+    const token = userStore.token
     const url = backendBaseUrl + '/v1/events?token=' + encodeURIComponent(token)
 
     eventSource.value = new EventSource(url, { withCredentials: true })
@@ -88,7 +83,7 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
     eventSource.value.onmessage = (event) => {
       try {
         const eventData = JSON.parse(event.data) as SSEMessage
-        handleSSEMessage(eventData)
+        notificationQueue.value.push(eventData)
       } catch (error) {
         console.error('Error parsing SSE message:', error)
       }
@@ -100,14 +95,34 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
 
       // Attempt to reconnect
       if (reconnectAttempts.value < maxReconnectAttempts) {
-        setTimeout(() => {
-          reconnectAttempts.value++
-          disconnect()
-          connect()
-        }, reconnectDelay * reconnectAttempts.value)
+        setTimeout(
+          () => {
+            reconnectAttempts.value++
+            disconnect()
+            connect()
+          },
+          reconnectDelay * 2 ** reconnectAttempts.value,
+        )
       }
     }
   }
+
+  async function processNotificationQueue() {
+    if (processingQueue.value) return
+    processingQueue.value = true
+    while (notificationQueue.value.length > 0) {
+      const event = notificationQueue.value.shift()!
+      handleSSEMessage(event)
+      await new Promise((resolve) => setTimeout(resolve, notificationDelay.value))
+    }
+    processingQueue.value = false
+  }
+
+  watch(notificationQueue, () => {
+    if (notificationQueue.value.length > 0) {
+      processNotificationQueue()
+    }
+  })
 
   /**
    * Processes incoming SSE messages and routes them to appropriate handlers
@@ -130,6 +145,7 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
     switch (severity) {
       case 'success':
         notificationStore.success(subject, message)
+        handleSpecificNotificationType(type)
         break
       case 'error':
         notificationStore.error(subject, message)
@@ -142,8 +158,6 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
         notificationStore.info(subject, message)
         break
     }
-
-    handleSpecificNotificationType(type)
   }
 
   /**
@@ -191,15 +205,15 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
     // Fallback based on type
     switch (type as NotificationType) {
       case 'deployment':
-        return 'Deployment status updated'
+        return 'Deployment status update'
       case 'billing':
-        return 'Billing information updated'
+        return 'Billing information update'
       case 'user':
-        return 'Account information updated'
+        return 'Account information update'
       case 'connected':
         return 'Connected to notification service'
       case 'node':
-        return 'Node status updated'
+        return 'Node status update'
       default:
         return 'System notification'
     }
@@ -256,7 +270,7 @@ export function useNotificationEvents(options?: NotificationEventsOptions) {
    * Updates user's net balance when billing information changes.
    */
   function handleBillingNotification() {
-    userStore.updateNetBalance();
+    userStore.updateNetBalance()
   }
 
   /**
