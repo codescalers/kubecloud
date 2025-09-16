@@ -13,17 +13,19 @@ type MoneyCollector struct {
 	db              models.DB
 	config          internal.Configuration
 	substrateClient *substrate.Substrate
+	cryptoManager   *internal.CryptoManager
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate, cryptoManager *internal.CryptoManager) *MoneyCollector {
 	return &MoneyCollector{
 		db:              db,
 		config:          config,
 		substrateClient: substrateClient,
+		cryptoManager:   cryptoManager,
 	}
 }
 
@@ -52,13 +54,20 @@ func (m *MoneyCollector) CollectMoney() {
 			if user.Mnemonic == "" {
 				return
 			}
-			balance, err := internal.GetUserTFTBalance(m.substrateClient, user.Mnemonic)
+
+			decryptedMnemonic, err := m.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+			if err != nil {
+				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to decrypt user mnemonic")
+				return
+			}
+
+			balance, err := internal.GetUserTFTBalance(m.substrateClient, decryptedMnemonic)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return
 			}
 			if balance > MinBalanceThreshold {
-				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(decryptedMnemonic)
 				if err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to load user identity")
 					return

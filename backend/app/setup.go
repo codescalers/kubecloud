@@ -187,6 +187,10 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		var err error
 		mnemonic, sponseeAddress, _, err = internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
 		require.NoError(t, err)
+
+		encryptedMnemonic, err := app.handlers.cryptoManager.EncryptMnemonic(mnemonic, sponseeAddress)
+		require.NoError(t, err)
+		mnemonic = encryptedMnemonic
 	}
 	user := &models.User{
 		Username:       username,

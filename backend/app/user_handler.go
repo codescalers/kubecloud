@@ -50,6 +50,7 @@ type Handler struct {
 	kycClient           *internal.KYCClient
 	sponsorKeyPair      subkey.KeyPair
 	sponsorAddress      string
+	cryptoManager   *internal.CryptoManager
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
@@ -64,7 +65,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient, cryptoMgr *internal.CryptoManager) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient, cryptoManager *internal.CryptoManager) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
@@ -84,10 +85,11 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		kycClient:           kycClient,
 		sponsorKeyPair:      sponsorKeyPair,
 		sponsorAddress:      sponsorAddress,
+		cryptoManager:   cryptoManager,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
-		cryptoMgr:       cryptoMgr,
+		cryptoMgr:       cryptoManager,
 	}
 }
 
@@ -778,7 +780,14 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, decryptedMnemonic)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -870,10 +879,18 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
+
+	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = map[string]interface{}{
 		"user_id":       user.ID,
 		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic":      user.Mnemonic,
+		"mnemonic":      decryptedMnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.RedeemVoucherMode,
 	}

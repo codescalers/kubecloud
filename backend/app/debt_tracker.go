@@ -4,10 +4,11 @@ import (
 	"kubecloud/internal"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"kubecloud/internal/logger"
 )
 
 func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
@@ -33,8 +34,15 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
+
+		decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Send()
+			continue
+		}
+
 		// Create identity from mnemonic
-		identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+		identity, err := substrate.NewIdentityFromSr25519Phrase(decryptedMnemonic)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			continue

@@ -274,9 +274,14 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to get user: %v", err)
 	}
 
+	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		return statemanager.ClientConfig{}, fmt.Errorf("failed to decrypt user mnemonic: %w", err)
+	}
+
 	return statemanager.ClientConfig{
 		SSHPublicKey: h.sshPublicKey,
-		Mnemonic:     user.Mnemonic,
+		Mnemonic:     decryptedMnemonic,
 		UserID:       userID,
 		Network:      h.config.SystemAccount.Network,
 		Debug:        h.config.Debug,

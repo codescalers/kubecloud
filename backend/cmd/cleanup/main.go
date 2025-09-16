@@ -70,7 +70,8 @@ func main() {
 	}
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
+	cryptoManager := internal.NewCryptoManager(config)
+	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient, cryptoManager)
 	moneyCollector.CollectMoney()
 
 }
