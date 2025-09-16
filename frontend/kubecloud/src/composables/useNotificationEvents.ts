@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted, watch, readonly, computed, watchEffect } from 'vue'
+import { ref, onMounted, onUnmounted, watch, watchEffect } from 'vue'
 import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useClusterStore } from '../stores/clusters'
@@ -51,14 +51,9 @@ export function useNotificationEvents() {
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
   const isOnline = ref(navigator.onLine)
-  const isPageVisible = ref(true)
+  const isPageVisible = ref(document.visibilityState === 'visible')
   const shouldReconnectOnVisibility = ref(false)
   const eventListenersInitialized = ref(false)
-
-
-  if (!eventListenersInitialized.value) {
-    setupNetworkAndVisibilityListeners()
-  }
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -113,8 +108,7 @@ export function useNotificationEvents() {
         const delay = RECONNECT_DELAY * 2 ** reconnectAttempts.value
         setTimeout(async () => {
           reconnectAttempts.value++
-          await disconnect()
-          connect()
+          disconnect().then(connect)
         }, delay)
       } else if (!isPageVisible.value) {
         shouldReconnectOnVisibility.value = true
@@ -369,6 +363,7 @@ export function useNotificationEvents() {
    */
   function setupNetworkAndVisibilityListeners() {
     if (eventListenersInitialized.value) return
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
     window.addEventListener('online', handleOnlineStatusChange)
     window.addEventListener('offline', handleOnlineStatusChange)
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -386,13 +381,23 @@ export function useNotificationEvents() {
     eventListenersInitialized.value = false
   }
 
-  async function destroy() {
+  async function cleanup() {
     await disconnect()
     removeNetworkAndVisibilityListeners()
     notificationQueue.value = []
     processingQueue.value = false
     shouldReconnectOnVisibility.value = false
+    reconnectAttempts.value = 0
+    isConnected.value = false
   }
+  
+  onMounted(() => {
+    setupNetworkAndVisibilityListeners()
+  })
+
+  onUnmounted(() => {
+    cleanup()
+  })
 
   /**
    * Watches for token changes to reconnect
@@ -411,7 +416,7 @@ export function useNotificationEvents() {
 
   return {
     connect,
-    destroy,
+    cleanup,
     isConnected,
   }
 }
