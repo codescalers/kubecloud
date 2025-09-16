@@ -27,7 +27,10 @@ interface SSEMessage {
   timestamp: string
 }
 
-
+const MAX_RECONNECT_ATTEMPTS = 5
+const RECONNECT_DELAY = 2000
+const NOTIFICATION_DELAY = 2000
+const MAX_NOTIFICATIONS_QUEUE = 10
 
 /**
  * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
@@ -47,9 +50,6 @@ export function useNotificationEvents() {
   const processingQueue = ref(false)
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
-  const maxReconnectAttempts = 5
-  const reconnectDelay = 2000
-  const notificationDelay = ref(2000)
   const isOnline = ref(navigator.onLine)
   const isPageVisible = ref(true)
   const shouldReconnectOnVisibility = ref(false)
@@ -86,6 +86,10 @@ export function useNotificationEvents() {
     eventSource.value.onmessage = (event) => {
       try {
         const eventData = JSON.parse(event.data) as SSEMessage
+        // Remove the oldest notification if the queue is full to prevent memory overflow
+        if (notificationQueue.value.length >= MAX_NOTIFICATIONS_QUEUE) {
+          notificationQueue.value.shift()
+        }
         notificationQueue.value.push(eventData)
       } catch (error) {
         console.error('[SSE] Error parsing SSE message:', error, 'Raw data:', event.data)
@@ -97,8 +101,12 @@ export function useNotificationEvents() {
       console.error('[SSE Debug] Notification SSE connection error:', err)
 
       // Only attempt reconnection if we're online and the page is visible
-      if (isOnline.value && isPageVisible.value && reconnectAttempts.value < maxReconnectAttempts) {
-        const delay = reconnectDelay * 2 ** reconnectAttempts.value
+      if (
+        isOnline.value &&
+        isPageVisible.value &&
+        reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS
+      ) {
+        const delay = RECONNECT_DELAY * 2 ** reconnectAttempts.value
         setTimeout(() => {
           reconnectAttempts.value++
           disconnect()
@@ -118,7 +126,7 @@ export function useNotificationEvents() {
     while (notificationQueue.value.length > 0) {
       const event = notificationQueue.value.shift()!
       handleSSEMessage(event)
-      await new Promise((resolve) => setTimeout(resolve, notificationDelay.value))
+      await new Promise((resolve) => setTimeout(resolve, NOTIFICATION_DELAY))
     }
     processingQueue.value = false
   }
