@@ -135,8 +135,7 @@ export class AuthService {
       showNotifications: true,
       loadingMessage: 'Resending verification code...',
       errorMessage: 'Failed to resend verification code',
-      successMessage: 'Verification code sent to your email!',
-      timeout: 60000
+      timeout: 60000,
     })
   }
 
@@ -160,12 +159,15 @@ export class AuthService {
 
   // Forgot password
   async forgotPassword(data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
-    const response = await api.post<ApiResponse<ForgotPasswordResponse>>('/v1/user/forgot_password', data, {
-      showNotifications: true,
-      loadingMessage: 'Sending reset code...',
-      successMessage: 'Reset code sent to your email!',
-      errorMessage: 'Failed to send reset code'
-    })
+    const response = await api.post<ApiResponse<ForgotPasswordResponse>>(
+      '/v1/user/forgot_password',
+      data,
+      {
+        showNotifications: true,
+        loadingMessage: 'Sending reset code...',
+        errorMessage: 'Failed to send reset code',
+      },
+    )
     return response.data.data
   }
 

@@ -4,6 +4,7 @@ import { useUserStore } from '../stores/user'
 import { useClusterStore } from '../stores/clusters'
 import { useNodeManagement } from './useNodeManagement'
 import type { NotificationType, NotificationSeverity } from '@/types/notifications'
+import router from '@/router'
 
 /** Core notification data structure */
 interface NotificationData {
@@ -292,9 +293,9 @@ export function useNotificationEvents() {
    *
    * Currently logs the notification; can be extended for user-specific logic.
    */
-  function handleUserNotification() {
-    // TODO: Handle user-specific logic if needed
-    console.log('User notification received')
+  async function handleUserNotification() {
+    await userStore.loadUser()
+    router.push('/dashboard')
   }
 
   /**
@@ -390,7 +391,7 @@ export function useNotificationEvents() {
     reconnectAttempts.value = 0
     isConnected.value = false
   }
-  
+
   onMounted(() => {
     setupNetworkAndVisibilityListeners()
   })
