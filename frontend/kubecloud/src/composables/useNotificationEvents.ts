@@ -53,7 +53,7 @@ export function useNotificationEvents() {
   const isOnline = ref(navigator.onLine)
   const isPageVisible = ref(true)
   const shouldReconnectOnVisibility = ref(false)
-  setupNetworkAndVisibilityListeners()
+  const eventListenersInitialized = ref(false)
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -65,6 +65,7 @@ export function useNotificationEvents() {
   function connect() {
     console.log('[SSE Debug] Attempting to connect to SSE')
     if (eventSource.value || isConnected.value || !userStore.token || !isOnline.value) return
+    setupNetworkAndVisibilityListeners()
 
     const backendBaseUrl =
       (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
@@ -127,9 +128,7 @@ export function useNotificationEvents() {
       processNotificationQueue()
     }
   })
-  onMounted(() => {
-    console.log('mounted')
-  })
+
   /**
    * Processes incoming SSE messages and routes them to appropriate handlers
    *
@@ -354,18 +353,22 @@ export function useNotificationEvents() {
    * Sets up event listeners for network and visibility changes
    */
   function setupNetworkAndVisibilityListeners() {
+    if (eventListenersInitialized.value) return
     window.addEventListener('online', handleOnlineStatusChange)
     window.addEventListener('offline', handleOnlineStatusChange)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    eventListenersInitialized.value = true
   }
 
   /**
    * Removes event listeners for network and visibility changes
    */
   function removeNetworkAndVisibilityListeners() {
+    if (!eventListenersInitialized.value) return
     window.removeEventListener('online', handleOnlineStatusChange)
     window.removeEventListener('offline', handleOnlineStatusChange)
     document.removeEventListener('visibilitychange', handleVisibilityChange)
+    eventListenersInitialized.value = false
   }
 
   function destroy() {
