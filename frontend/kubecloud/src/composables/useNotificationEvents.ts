@@ -315,10 +315,9 @@ export function useNotificationEvents() {
   watch(
     () => userStore.token,
     (newToken) => {
-      if (newToken && !isConnected.value) {
+      if (newToken) {
         connect()
-      }
-      if (!newToken && isConnected.value) {
+      } else if (isConnected.value) {
         disconnect()
       }
     },
