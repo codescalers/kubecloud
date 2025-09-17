@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8.svg)](https://golang.org/)
-[![Node.js Version](https://img.shields.io/badge/Node.js-18+-339933.svg)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/Node.js-20+-339933.svg)](https://nodejs.org/)
 
 Mycelium Cloud is a comprehensive cloud-native platform designed for deploying, managing, and monitoring Kubernetes clusters on the decentralized TFGrid infrastructure. It provides a complete solution with backend APIs, frontend UI, custom resource definitions (CRDs), monitoring dashboards, and networking components to streamline cloud operations in a decentralized environment.
 
@@ -58,7 +58,7 @@ Mycelium Cloud is a comprehensive cloud-native platform designed for deploying, 
 Before getting started, ensure you have the following installed:
 
 - **Go**: Version 1.19 or later ([Download](https://golang.org/dl/))
-- **Node.js**: Version 18 or later ([Download](https://nodejs.org/))
+- **Node.js**: Version 20 or later ([Download](https://nodejs.org/))
 - **Docker**: Latest stable version ([Download](https://docker.com/))
 - **Docker Compose**: Latest version ([Install](https://docs.docker.com/compose/install/))
 - **Git**: For cloning the repository
