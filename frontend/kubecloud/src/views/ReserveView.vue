@@ -237,8 +237,7 @@ const reserveNode = async (node: NormalizedNode) => {
     if (balance < dailyPrice) {
       useNotificationStore().error(
         'Insufficient Balance',
-        `Your current balance is not enough to reserve this node. You need to have at least $${dailyPrice.toFixed(2)}. Please add funds to continue.`,
-        { duration: 15000 }
+        `Your current balance is not enough to reserve this node. You need to have at least $${dailyPrice.toFixed(2)}. Please add funds to continue.`
       )
       // Redirect to add funds card in dashboard
       localStorage.setItem('dashboard-section', 'add-funds')

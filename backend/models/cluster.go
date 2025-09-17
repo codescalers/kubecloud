@@ -12,6 +12,7 @@ type Cluster struct {
 	UserID      int       `gorm:"user_id;index" json:"user_id" binding:"required"`
 	ProjectName string    `gorm:"project_name;uniqueIndex:idx_user_project" json:"project_name" binding:"required"`
 	Result      string    `gorm:"type:text" json:"result"` // JSON serialized kubedeployer.Cluster
+	Kubeconfig  string    `gorm:"type:text" json:"kubeconfig"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }

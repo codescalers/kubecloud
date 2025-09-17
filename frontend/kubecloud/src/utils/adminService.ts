@@ -104,7 +104,6 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Deleting user...',
-      successMessage: 'User deleted successfully',
       errorMessage: 'Failed to delete user'
     })
     return response.data
@@ -116,7 +115,6 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Crediting user...',
-      successMessage: 'User credited successfully',
       errorMessage: 'Failed to credit user'
     })
     return response.data
@@ -128,7 +126,6 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Generating vouchers...',
-      successMessage: 'Vouchers generated successfully',
       errorMessage: 'Failed to generate vouchers'
     })
     return response.data
@@ -170,7 +167,6 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Sending email to all users',
-      successMessage: 'Email sent to all users',
       errorMessage: 'Failed to send email',
       contentType: '',
       timeout: 60000,

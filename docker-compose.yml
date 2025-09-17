@@ -9,7 +9,7 @@ services:
       - app-network
 
   mycelium:
-    build: 
+    build:
       context: ./mycelium-peer
       dockerfile: Dockerfile
     container_name: mycelium
@@ -19,7 +19,7 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
-      - "8080:8080" # exposes the backend API 
+      - "8080:8080" # exposes the backend API
     networks:
       - app-network # connect to redis with network
     volumes:
@@ -37,12 +37,16 @@ services:
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
+      - ./backend/notification-config.json:/opt/project/notification-config.json
       - ./backend/logs:/opt/project/logs
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
       - REDIS_HOST=redis-db
       - REDIS_PORT=6379
+      - APP_ENV=dev
+      - HOSTNAME=backend-1 
+      - TEMPLATE_DIR=/app/internal/templates/notifications
     command: ["/myceliumcloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
 
@@ -55,7 +59,7 @@ services:
       context: frontend/kubecloud/.
       dockerfile: Dockerfile
     ports:
-       - "8000:80"
+      - "8000:80"
 
   prometheus:
     image: prom/prometheus:latest
@@ -86,7 +90,7 @@ services:
       - app-network
 
   grafana-gen:
-    build: ./grafana-gen  
+    build: ./grafana-gen
     depends_on:
       - grafana
     environment:
@@ -95,6 +99,30 @@ services:
       - GRAFANA_PASSWORD=admin
     networks:
       - app-network
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki-data:/loki
+    networks:
+      - app-network
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./loki/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+      - /var/log:/var/log
+      - ./backend/logs:/app/logs
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    depends_on:
+      - loki
+    networks:
+      - app-network
+
 
 networks:
   app-network:
@@ -103,3 +131,4 @@ networks:
 volumes:
   mycelium-data: 
   prometheus-data:
+  loki-data:

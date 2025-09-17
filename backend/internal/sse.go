@@ -3,15 +3,15 @@ package internal
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"kubecloud/models"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Notification types
@@ -27,25 +27,24 @@ type SSEManager struct {
 	mu      sync.RWMutex
 	ctx     context.Context
 	cancel  context.CancelFunc
-	db      models.DB
 }
 
 // SSEMessage represents a server-sent event message
 type SSEMessage struct {
-	Type      string    `json:"type"`
-	Data      any       `json:"data"`
-	TaskID    string    `json:"task_id,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Type      string            `json:"type"`
+	Data      map[string]string `json:"data"`
+	Severity  string            `json:"severity"`
+	TaskID    string            `json:"task_id,omitempty"`
+	Timestamp time.Time         `json:"timestamp"`
 }
 
 // NewSSEManager creates a new SSE manager
-func NewSSEManager(db models.DB) *SSEManager {
+func NewSSEManager() *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
 		clients: make(map[int][]chan SSEMessage),
 		ctx:     ctx,
 		cancel:  cancel,
-		db:      db,
 	}
 
 	return manager
@@ -99,20 +98,19 @@ func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
 }
 
 // Notify sends a message to all clients of a specific user
-func (s *SSEManager) Notify(userID int, msgType string, data any, taskID ...string) {
+func (s *SSEManager) Notify(userID int, msgType string, severity models.NotificationSeverity, data map[string]string, taskID ...string) {
 	message := SSEMessage{
-		Type:      msgType,
-		Data:      data,
+		Type:     msgType,
+		Severity: string(severity),
+		Data: map[string]string{
+			"message": data["message"],
+			"status":  data["status"],
+		},
 		Timestamp: time.Now(),
 	}
 
 	if len(taskID) > 0 {
 		message.TaskID = taskID[0]
-	}
-
-	// Persist notification to database (except connection messages)
-	if msgType != "connected" {
-		s.persistNotification(userID, message)
 	}
 
 	s.mu.RLock()
@@ -153,7 +151,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	defer s.RemoveClient(userID, clientChan)
 
 	// Send initial connection message
-	s.Notify(userID, "connected", map[string]string{"status": "connected"})
+	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"})
 
 	// Stream messages to client
 	c.Stream(func(w io.Writer) bool {
@@ -180,44 +178,4 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 			return false
 		}
 	})
-}
-
-// persistNotification saves notification to database
-func (s *SSEManager) persistNotification(userID int, message SSEMessage) {
-	if s.db == nil {
-		return
-	}
-
-	// Extract meaningful title and message
-	title := "Notification"
-	messageText := "New notification"
-
-	if data, ok := message.Data.(map[string]interface{}); ok {
-		if msg, exists := data["message"]; exists {
-			if msgStr, ok := msg.(string); ok {
-				messageText = msgStr
-			}
-		}
-		if status, exists := data["status"]; exists {
-			if statusStr, ok := status.(string); ok {
-				title = fmt.Sprintf("Task %s", statusStr)
-			}
-		}
-	}
-
-	dataJSON, _ := json.Marshal(message.Data)
-
-	notification := &models.Notification{
-		UserID:  userID,
-		Type:    models.NotificationTypeTaskUpdate,
-		Title:   title,
-		Message: messageText,
-		Data:    string(dataJSON),
-		TaskID:  message.TaskID,
-		Status:  models.NotificationStatusUnread,
-	}
-
-	if err := s.db.CreateNotification(notification); err != nil {
-		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to persist notification")
-	}
 }

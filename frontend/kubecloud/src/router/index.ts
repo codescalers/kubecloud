@@ -95,6 +95,12 @@ const router = createRouter({
       name: 'maintenance',
       component: () => import('../components/MaintenanceView.vue')
     },
+    {
+      path: '/notifications',
+      name: 'notifications',
+      component: () => import('../views/NotificationsView.vue'),
+      meta: { requiresAuth: true }
+    },
   ],
   scrollBehavior() {
     // Always scroll to top on route change

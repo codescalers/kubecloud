@@ -67,7 +67,7 @@ func (c *Client) Register(name, email, password, confirmPassword string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("registration failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -259,7 +259,7 @@ func (c *Client) DeleteCluster(name string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("delete deployment failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -274,7 +274,7 @@ func (c *Client) DeleteAllDeployments() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("delete all deployments failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -321,7 +321,7 @@ func (c *Client) RemoveNode(deploymentName, nodeName string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusAccepted {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("remove node request failed with status %d: %s", resp.StatusCode, string(body))
 	}
@@ -335,6 +335,13 @@ type NotificationsResponse struct {
 	Limit         int                        `json:"limit"`
 	Offset        int                        `json:"offset"`
 	Count         int                        `json:"count"`
+}
+
+// APIResponseWrapper represents the standard API response structure
+type APIResponseWrapper struct {
+	Status  int                   `json:"status"`
+	Message string                `json:"message"`
+	Data    NotificationsResponse `json:"data"`
 }
 
 // GetAllNotifications retrieves all notifications with optional pagination
@@ -355,12 +362,14 @@ func (c *Client) GetAllNotifications(limit, offset int) (*NotificationsResponse,
 		return nil, fmt.Errorf("get all notifications failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var notificationResp NotificationsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&notificationResp); err != nil {
-		return nil, fmt.Errorf("failed to decode notifications response: %w", err)
+	// Decode the API response wrapper first
+	var apiResp APIResponseWrapper
+
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("failed to decode API response: %w", err)
 	}
 
-	return &notificationResp, nil
+	return &apiResp.Data, nil
 }
 
 // GetUnreadNotifications retrieves only unread notifications with optional pagination
@@ -377,17 +386,19 @@ func (c *Client) GetUnreadNotifications(limit, offset int) (*NotificationsRespon
 		return nil, fmt.Errorf("get unread notifications failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var notificationResp NotificationsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&notificationResp); err != nil {
-		return nil, fmt.Errorf("failed to decode unread notifications response: %w", err)
+	// Decode the API response wrapper first
+	var apiResp APIResponseWrapper
+
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, fmt.Errorf("failed to decode API response: %w", err)
 	}
 
-	return &notificationResp, nil
+	return &apiResp.Data, nil
 }
 
 // MarkNotificationRead marks a specific notification as read
-func (c *Client) MarkNotificationRead(notificationID uint) error {
-	endpoint := fmt.Sprintf("/notifications/%d/read", notificationID)
+func (c *Client) MarkNotificationRead(notificationID string) error {
+	endpoint := fmt.Sprintf("/notifications/%s/read", notificationID)
 
 	resp, err := c.makeRequest("PUT", endpoint, nil, true)
 	if err != nil {
@@ -404,8 +415,8 @@ func (c *Client) MarkNotificationRead(notificationID uint) error {
 }
 
 // MarkNotificationUnread marks a specific notification as unread
-func (c *Client) MarkNotificationUnread(notificationID uint) error {
-	endpoint := fmt.Sprintf("/notifications/%d/unread", notificationID)
+func (c *Client) MarkNotificationUnread(notificationID string) error {
+	endpoint := fmt.Sprintf("/notifications/%s/unread", notificationID)
 
 	resp, err := c.makeRequest("PUT", endpoint, nil, true)
 	if err != nil {
@@ -438,8 +449,8 @@ func (c *Client) MarkAllNotificationsRead() error {
 }
 
 // DeleteNotification deletes a specific notification
-func (c *Client) DeleteNotification(notificationID uint) error {
-	endpoint := fmt.Sprintf("/notifications/%d", notificationID)
+func (c *Client) DeleteNotification(notificationID string) error {
+	endpoint := fmt.Sprintf("/notifications/%s", notificationID)
 
 	resp, err := c.makeRequest("DELETE", endpoint, nil, true)
 	if err != nil {
@@ -457,7 +468,7 @@ func (c *Client) DeleteNotification(notificationID uint) error {
 
 // DeleteAllNotifications deletes all notifications for the authenticated user
 func (c *Client) DeleteAllNotifications() error {
-	resp, err := c.makeRequest("PUT", "/notifications", nil, true)
+	resp, err := c.makeRequest("DELETE", "/notifications", nil, true)
 	if err != nil {
 		return err
 	}

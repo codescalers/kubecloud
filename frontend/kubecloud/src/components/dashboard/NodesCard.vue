@@ -191,7 +191,7 @@ const handleUnreserve = async () => {
   if (!selectedNode.value?.rentContractId) return
   unreservingNode.value = selectedNode.value.rentContractId.toString()
   try {
-    await unreserveNode(selectedNode.value.rentContractId.toString())
+    await unreserveNode(selectedNode.value.rentContractId.toString(), selectedNode.value.nodeId)
     showUnreserveDialog.value = false
     selectedNode.value = null
   } catch (err) {

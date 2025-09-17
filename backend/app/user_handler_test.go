@@ -33,11 +33,7 @@ func TestRegisterHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		if resp.Code != http.StatusCreated {
-			t.Logf("Expected status %d, got %d", http.StatusCreated, resp.Code)
-			t.Logf("Response body: %s", resp.Body.String())
-		}
-		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equalf(t, http.StatusAccepted, resp.Code, "Expected status %d, got %d. Body: %s", http.StatusAccepted, resp.Code, resp.Body.String())
 
 	})
 
@@ -93,7 +89,7 @@ func TestRegisterHandler(t *testing.T) {
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equal(t, http.StatusAccepted, resp.Code)
 	})
 }
 
@@ -113,7 +109,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equal(t, http.StatusAccepted, resp.Code)
 
 	})
 
@@ -131,7 +127,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["message"], "Validation failed")
+		assert.Contains(t, result["message"], "Invalid request format")
 
 	})
 	t.Run("Test Verify Register Code with registered user", func(t *testing.T) {
@@ -678,7 +674,7 @@ func TestRedeemVoucherHandler(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, http.StatusAccepted, resp.Code)
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)

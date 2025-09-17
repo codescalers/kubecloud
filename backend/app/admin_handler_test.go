@@ -328,7 +328,7 @@ func TestCreditUserHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equal(t, http.StatusAccepted, resp.Code)
 		var result map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)

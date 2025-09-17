@@ -1,5 +1,5 @@
 <template>
-    <v-dialog v-model="props.modelValue" max-width="900">
+    <v-dialog v-model="props.modelValue" max-width="900" @click:outside="emit('update:modelValue', false)">
       <BaseDialogCard>
         <template #title>
           Add Node
@@ -9,6 +9,7 @@
             <v-form ref="form"  v-model="formValid">
               <div class="add-form-wrapper">
                 <v-text-field
+                  ref="nameField"
                   :rules="nameRules"
                   v-model="addFormName"
                   label="Name"
@@ -67,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef, nextTick } from 'vue';
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
@@ -78,6 +79,7 @@ import { RULES, createUniqueNodeNameRule } from "../../utils/validation";
 import { useNodes } from '../../composables/useNodes';
 import { useNotificationStore } from '../../stores/notifications';
 
+const nameField = useTemplateRef('nameField')
 const props = defineProps<{
   modelValue: boolean,
   cluster: any
@@ -113,9 +115,9 @@ const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
 const form = ref<any>(null)
-const names = clusterNodes.value.map((node: any) => node.original_name);
+const names = computed(() => clusterNodes.value.map((node: any) => node.original_name));
 const nameRules = computed(() => [
-  createUniqueNodeNameRule(names, addFormName.value)
+  createUniqueNodeNameRule(names.value, addFormName.value)
 ]);
 
 
@@ -132,7 +134,6 @@ async function handleAddNode(payload: any) {
   }
   try {
     await addNodeToDeployment(payload.name, payload)
-    notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.')
     emit('update:modelValue', false) // Close dialog on success
   } catch (e: any) {
     console.error(e)
@@ -153,6 +154,12 @@ function resetForm() {
   addFormSshKeys.value = sshKeys.value.length > 0 ? [sshKeys.value[0].ID] : []
 }
 
+watch(() => names.value, async () => {
+  if (nameField.value && addFormName.value) {
+    await nextTick()
+    nameField.value.validate()
+  }
+})
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen) {
     await fetchNodes()
