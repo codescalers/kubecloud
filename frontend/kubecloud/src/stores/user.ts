@@ -56,6 +56,7 @@ export const useUserStore = defineStore('user',
         const response = await authService.login(loginData)
         authService.storeTokens(response.access_token, response.refresh_token)
         token.value = response.access_token
+        await loadUser()
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Login failed'
         throw err
