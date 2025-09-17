@@ -80,12 +80,10 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
-	// Initialize: ensure any plaintext mnemonics get encrypted (idempotent)
 	if err := cryptoMgr.EnsureMnemonicsEncrypted(ctx, db); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("mnemonic encryption initializer failed")
+		return nil, fmt.Errorf("mnemonic encryption initializer failed: %w", err)
 	}
-
-
 
 	gridProxy := proxy.NewRetryingClient(proxy.NewClient(config.GridProxyURL))
 

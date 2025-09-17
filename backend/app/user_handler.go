@@ -50,7 +50,7 @@ type Handler struct {
 	kycClient           *internal.KYCClient
 	sponsorKeyPair      subkey.KeyPair
 	sponsorAddress      string
-	cryptoManager   *internal.CryptoManager
+	cryptoManager       *internal.CryptoManager
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
@@ -85,7 +85,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		kycClient:           kycClient,
 		sponsorKeyPair:      sponsorKeyPair,
 		sponsorAddress:      sponsorAddress,
-		cryptoManager:   cryptoManager,
+		cryptoManager:       cryptoManager,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
@@ -693,12 +693,19 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
+	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to decrypt user mnemonic")
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = ewf.State{
 		"user_id":            userID,
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
 		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
-		"mnemonic":           user.Mnemonic,
+		"mnemonic":           decryptedMnemonic,
 		"username":           user.Username,
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
