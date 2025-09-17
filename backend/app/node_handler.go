@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"net/http"
 	"net/url"
@@ -274,7 +275,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	rentedNodes = append(rentedNodes, node)
 
 	// calculate resources usage in USD applying discount
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, user.Mnemonic, rentedNodes, discount(h.config.AppliedDiscount))
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, discount(h.config.AppliedDiscount))
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -282,7 +283,8 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 
 	// fund user to fulfill discount
-	if dailyUsageInUSDMillicent > 0 {
+	// TODO: what if many requests done in the same time? would it trigger many transfers?
+	if dailyUsageInUSDMillicent > 0 && user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()

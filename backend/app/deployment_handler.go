@@ -7,17 +7,20 @@ import (
 	"kubecloud/internal/activities"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
+	"kubecloud/models"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	"github.com/gin-gonic/gin"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 	"golang.org/x/crypto/ssh"
 	"gorm.io/gorm"
-	"kubecloud/internal/logger"
 )
 
 // Response represents the response structure for deployment requests
@@ -407,6 +410,44 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	if err := cluster.Validate(); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
+	}
+
+	user, err := h.db.GetUserByID(config.UserID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// TODO: would us consider history of nodes?
+	// calculate resources usage in USD applying discount
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(user.ID, user.Mnemonic, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount))
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// fund user to fulfill discount
+	// TODO: what if many requests done in the same time? would it trigger many transfers?
+	if dailyUsageInUSDMillicent > 0 && user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
+		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Send()
+			InternalServerError(c)
+			return
+		}
+
+		if err := h.db.CreateTransferRecord(&models.TransferRecord{
+			UserID:    user.ID,
+			Username:  user.Username,
+			TFTAmount: tftAmount,
+			Operation: models.DepositOperation,
+		}); err != nil {
+			logger.GetLogger().Error().Err(err).Send()
+			InternalServerError(c)
+			return
+		}
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)

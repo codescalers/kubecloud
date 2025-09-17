@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"kubecloud/internal"
+	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"time"
 
@@ -65,7 +66,9 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 		case <-zeroTFTBalanceTicker.C:
 			for _, user := range users {
-				if user.CreditedBalance+user.CreditCardBalance > zeroTFTBalanceValue {
+
+				// TODO: if user has workloads deployed, skip
+				if user.CreditedBalance+user.CreditCardBalance-user.Debt > zeroTFTBalanceValue {
 					continue
 				}
 
@@ -91,7 +94,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 	for _, user := range users {
-		if user.CreditedBalance+user.CreditCardBalance == 0 {
+		if user.CreditedBalance+user.CreditCardBalance-user.Debt <= 0 {
 			log.Info().Msgf("User %d has no USD balance, withdrawing all TFTs except for %d", user.ID, h.config.MinimumTFTAmountInWallet)
 
 			userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
@@ -204,7 +207,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, userID int, User
 		return err
 	}
 
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, userMnemonic, rentedNodes, configuredDiscount)
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, userMnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", userID)
 		return err
@@ -235,6 +238,7 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 	userID int,
 	userMnemonic string,
 	rentedNodes []types.Node,
+	sharedNodes []kubedeployer.Node,
 	configuredDiscount discount,
 ) (uint64, error) {
 	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
@@ -253,6 +257,23 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 			uint64(node.TotalResources.SRU),
 			len(node.PublicConfig.Ipv4) > 0,
 			len(node.CertificationType) > 0,
+		)
+		if err != nil {
+			return 0, err
+		}
+
+		// resources cost per month
+		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost)
+	}
+
+	for _, node := range sharedNodes {
+		resourcesCost, err := calculator.CalculateCost(
+			uint64(node.CPU),
+			uint64(node.Memory),
+			0,
+			uint64(node.DiskSize+node.RootSize),
+			false,
+			false,
 		)
 		if err != nil {
 			return 0, err
