@@ -4,10 +4,15 @@ import (
 	"kubecloud/internal"
 	"math"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 )
+
+// Map to store the last calculation time for each user
+var lastCalculationTimeByUser = make(map[int]time.Time)
+var lastCalculationTimeByUserMutex = sync.RWMutex{}
 
 type discount string
 
@@ -54,17 +59,23 @@ func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
 	}
 
 	now := time.Now()
-
-	// Define the start of the day at 00:00
-	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	// Define the end of the day (next day at 00:00)
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.Local)
+
+	// Get the last calculation time for this user, or use a default if not available
+	lastCalculationTimeByUserMutex.RLock()
+	lastCalcTime, exists := lastCalculationTimeByUser[userID]
+	lastCalculationTimeByUserMutex.RUnlock()
+	if !exists {
+		// If this is the first time, use the start of the day as default
+		lastCalcTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	}
 
 	var totalDailyUsageInUSDMillicent uint64
 
 	for _, record := range records {
-		// get bill reports for the day
-		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, startOfDay, endOfDay)
+		// Get bill reports from the last calculation time to the end of day
+		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, lastCalcTime, endOfDay)
 		if err != nil {
 			return 0, err
 		}
@@ -76,6 +87,11 @@ func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
 
 		totalDailyUsageInUSDMillicent += totalAmountBilledInUSDMillicent
 	}
+
+	// Update the last calculation time for this user
+	lastCalculationTimeByUserMutex.Lock()
+	lastCalculationTimeByUser[userID] = now
+	lastCalculationTimeByUserMutex.Unlock()
 
 	return totalDailyUsageInUSDMillicent, nil
 }
