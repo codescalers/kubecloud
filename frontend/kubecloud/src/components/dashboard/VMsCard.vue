@@ -1,5 +1,10 @@
 <template>
   <div>
-    <h3>Virtual Machines</h3>
+    
   </div>
 </template>
+<script setup lang="ts">
+import useVMs from '@/composables/vms'
+
+const { vmCount, isLoading, fetchVMs } = useVMs()
+</script>
