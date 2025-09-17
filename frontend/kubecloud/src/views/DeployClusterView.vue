@@ -235,8 +235,7 @@ async function onDeployCluster() {
     });
     navigateToDashboard();
   } catch (err: any) {
-    console.error('Error', err?.message || 'Failed to deploy cluster');
-    console.error(err);
+    notificationStore.error('Error', err?.message || 'Failed to deploy cluster');
   } finally {
     deploying.value = false;
   }

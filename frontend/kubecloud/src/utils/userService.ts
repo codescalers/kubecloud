@@ -167,7 +167,7 @@ export class UserService {
     try {
       await this.trackNodeStatus(nodeId, 'rented')
     } catch (error) {
-      console.error('Node reservation error', 'Failed to reserve node')
+      useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw new Error('Failed to reserve node')
     }
   }
@@ -185,9 +185,8 @@ export class UserService {
     )
     try {
       await this.trackNodeStatus(response.data.data.contract_id, 'rentable')
-      console.log('Node Unreservation Success', 'Node has been successfully unreserved.')
     } catch (error) {
-      console.error('Node unreservation error', 'Failed to verify node status')
+      useNotificationStore().error('Node unreservation error', 'Failed to verify node status')
     }
   }
 
