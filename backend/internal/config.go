@@ -36,6 +36,7 @@ type Configuration struct {
 	Debug                                bool               `json:"debug"`
 	MonitorBalanceIntervalInMinutes      int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	ClusterHealthCheckIntervalInHours    int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"6"`
 
 	// KYC Verifier config
 	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`

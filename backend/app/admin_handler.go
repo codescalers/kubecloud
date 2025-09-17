@@ -30,15 +30,15 @@ type UserResponse struct {
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
-	Count       int     `json:"count" validate:"required,gt=0"`
-	Value       float64 `json:"value" validate:"required,gt=0"`
-	ExpireAfter int     `json:"expire_after_days" validate:"required,gt=0"`
+	Count       int     `json:"count" binding:"required,gt=0"`
+	Value       float64 `json:"value" binding:"required,gt=0"`
+	ExpireAfter int     `json:"expire_after_days" binding:"required,gt=0"`
 }
 
 // CreditRequestInput represents a request to credit a user's balance
 type CreditRequestInput struct {
-	AmountUSD float64 `json:"amount" validate:"required,gt=0"`
-	Memo      string  `json:"memo" validate:"required,min=3,max=255"`
+	AmountUSD float64 `json:"amount" binding:"required,gt=0"`
+	Memo      string  `json:"memo" binding:"required,min=3,max=255"`
 }
 
 // CreditUserResponse holds the response data after crediting a user
@@ -212,11 +212,6 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		return
 	}
 
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
-		return
-	}
-
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
 		voucherCode := internal.GenerateRandomVoucher(h.config.VoucherNameLength)
@@ -276,7 +271,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 // @Produce json
 // @Param user_id path string true "User ID"
 // @Param body body CreditRequestInput true "Credit Request Input"
-// @Success 201 {object} CreditUserResponse
+// @Success 202 {object} CreditUserResponse
 // @Failure 400 {object} APIResponse "Invalid request format or user ID"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
@@ -293,11 +288,6 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
-
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 
@@ -348,7 +338,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusCreated, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
@@ -584,11 +574,6 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
-
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 

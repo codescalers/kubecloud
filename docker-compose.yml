@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
+      - ./backend/notification-config.json:/opt/project/notification-config.json
       - ./backend/logs:/opt/project/logs
       - /root/.ssh:/root/.ssh:ro
     environment:

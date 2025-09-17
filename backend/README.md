@@ -58,7 +58,8 @@ The configuration file should be in JSON format. Example:
   "max_backups": 12,
   "max_age": 30,
   "compress": true
-  }
+  },
+  "cluster_health_check_interval_hours":6
 }
 ```
 

@@ -178,13 +178,13 @@ export class UserService {
   }
 
   // Unreserve a node
-  async unreserveNode(contractId: string) {
+  async unreserveNode(contractId: string, nodeId: number) {
     const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(
       `/v1/user/nodes/unreserve/${contractId}`,
       { requiresAuth: true, showNotifications: true },
     )
     try {
-      await this.trackNodeStatus(response.data.data.contract_id, 'rentable')
+      await this.trackNodeStatus(nodeId, 'rentable')
     } catch (error) {
       useNotificationStore().error('Node unreservation error', 'Failed to verify node status')
     }

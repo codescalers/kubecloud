@@ -686,6 +686,7 @@ func FetchKubeconfigStep(privateKeyPath string) ewf.StepFn {
 
 func VerifyClusterReadyStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
 			return fmt.Errorf("failed to get cluster: %w", err)

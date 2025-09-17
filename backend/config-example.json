@@ -52,6 +52,7 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
+  "cluster_health_check_interval_hours": 6,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
   "logger": {

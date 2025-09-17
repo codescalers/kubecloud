@@ -348,11 +348,11 @@ func (app *App) StartBackgroundWorkers() {
 	go app.handlers.MonthlyInvoicesHandler()
 	go app.handlers.TrackUserDebt(app.gridClient)
 	go app.handlers.MonitorSystemBalanceAndHandleSettlement()
+	go app.handlers.TrackClusterHealth()
 }
 
 // Run starts the server
 func (app *App) Run() error {
-	internal.InitValidator()
 	app.StartBackgroundWorkers()
 
 	// Start command socket

@@ -15,6 +15,7 @@ const (
 	WorkflowDeleteAllClusters        = "delete-all-clusters"
 	WorkflowSendNotification         = "send-notification"
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
+	WorkflowTrackClusterHealth       = "track-cluster-health"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"

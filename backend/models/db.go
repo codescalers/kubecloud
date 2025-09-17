@@ -62,4 +62,5 @@ type DB interface {
 	// stats methods
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
+	ListAllClusters() ([]Cluster, error)
 }
