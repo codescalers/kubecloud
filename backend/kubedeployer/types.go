@@ -20,9 +20,9 @@ const (
 )
 
 type Cluster struct {
-	Name  string `json:"name" validate:"required,min=3,max=20,alphanum"`
+	Name  string `json:"name" binding:"required,min=3,max=20,alphanum"`
 	Token string `json:"token"`
-	Nodes []Node `json:"nodes" validate:"required,min=1,dive"`
+	Nodes []Node `json:"nodes" binding:"required,min=1,dive"`
 
 	// Computed
 	Network     workloads.ZNet `json:"network,omitempty"`
@@ -30,15 +30,15 @@ type Cluster struct {
 }
 
 type Node struct {
-	Name   string   `json:"name" validate:"required,min=3,max=20,alphanum"`
-	Type   NodeType `json:"type" validate:"required,oneof=worker master leader"`
-	NodeID uint32   `json:"node_id" validate:"required"`
+	Name   string   `json:"name" binding:"required,min=3,max=20,alphanum"`
+	Type   NodeType `json:"type" binding:"required,oneof=worker master leader"`
+	NodeID uint32   `json:"node_id" binding:"required"`
 
-	CPU      uint8             `json:"cpu" validate:"required,min=1"`
-	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // Memory in MB
-	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // Storage in MB
-	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // Storage in MB
-	GPUIDs   []string          `json:"gpu_ids,omitempty"`                       // List of GPU IDs
+	CPU      uint8             `json:"cpu" binding:"required,min=1"`
+	Memory   uint64            `json:"memory" binding:"required,min=2048"`     // Memory in MB
+	RootSize uint64            `json:"root_size" binding:"required,min=5120"`  // Storage in MB
+	DiskSize uint64            `json:"disk_size" binding:"required,min=10240"` // Storage in MB
+	GPUIDs   []string          `json:"gpu_ids,omitempty"`                      // List of GPU IDs
 	EnvVars  map[string]string `json:"env_vars"`
 
 	// Optional fields

@@ -10,12 +10,12 @@ import (
 )
 
 type Stats struct {
-	TotalUsers    uint32 `json:"total_users"`
-	TotalClusters uint32 `json:"total_clusters"`
-	UpNodes       uint32 `json:"up_nodes"`
-	Countries     uint32 `json:"countries"`
-	Cores         uint32 `json:"cores"`
-	SSD           uint32 `json:"ssd"`
+	TotalUsers    uint32  `json:"total_users"`
+	TotalClusters uint32  `json:"total_clusters"`
+	UpNodes       uint32  `json:"up_nodes"`
+	Countries     uint32  `json:"countries"`
+	Cores         uint32  `json:"cores"`
+	SSD           float64 `json:"ssd"`
 }
 
 // @Summary Get system statistics
@@ -44,7 +44,7 @@ func (h *Handler) GetStatsHandler(c *gin.Context) {
 		return
 	}
 
-	stats, err := h.proxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up"}})
+	stats, err := h.proxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)
@@ -57,6 +57,6 @@ func (h *Handler) GetStatsHandler(c *gin.Context) {
 		UpNodes:       uint32(stats.Nodes),
 		Countries:     uint32(stats.Countries),
 		Cores:         uint32(stats.TotalCRU),
-		SSD:           uint32(stats.TotalSRU),
+		SSD:           float64(stats.TotalSRU) / (1024 * 1024 * 1024),
 	})
 }

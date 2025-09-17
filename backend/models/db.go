@@ -43,10 +43,10 @@ type DB interface {
 	CreateNotification(notification *Notification) error
 	GetUserNotifications(userID int, limit, offset int) ([]Notification, error)
 	GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error)
-	MarkNotificationAsRead(notificationID uint, userID int) error
-	MarkNotificationAsUnread(notificationID uint, userID int) error
+	MarkNotificationAsRead(notificationID string, userID int) error
+	MarkNotificationAsUnread(notificationID string, userID int) error
 	MarkAllNotificationsAsRead(userID int) error
-	DeleteNotification(notificationID uint, userID int) error
+	DeleteNotification(notificationID string, userID int) error
 	DeleteAllNotifications(userID int) error
 	// Cluster methods
 	CreateCluster(userID int, cluster *Cluster) error
@@ -64,4 +64,5 @@ type DB interface {
 	// stats methods
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
+	ListAllClusters() ([]Cluster, error)
 }

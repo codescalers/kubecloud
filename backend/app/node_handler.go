@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/activities"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
@@ -304,7 +304,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowReserveNode)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowReserveNode)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -438,7 +438,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	}
 	contractID := uint32(contractID64)
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowUnreserveNode)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUnreserveNode)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

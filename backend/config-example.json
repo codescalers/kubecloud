@@ -8,13 +8,10 @@
   },
   "jwt_token": {
     "secret": "your-jwt-secret-key-here-make-it-long-and-secure",
-    "access_token_expiry_minutes": 15,
-    "refresh_token_expiry_hours": 25
+    "access_expiry_minutes": 15,
+    "refresh_expiry_hours": 25
   },
-  "admins": [
-    "admin@example.com",
-    "admin2@example.com"
-  ],
+  "admins": ["admin@example.com", "admin2@example.com"],
   "mailSender": {
     "email": "noreply@example.com",
     "sendgrid_key": "your-sendgrid-api-key-here",
@@ -35,7 +32,7 @@
   "graphql_url": "https://graphql.grid.tf/graphql",
   "firesquid_url": "https://squid.grid.tf/graphql",
   "system_account": {
-    "mnemonics": "your system account 12-word mnemonic phrase goes here for blockchain operations",
+    "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
     "network": "dev"
   },
   "redis": {
@@ -55,13 +52,24 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
+  "monitor_balance_interval_in_minutes": 120,
+  "notify_admins_for_pending_records_in_hours": 24,
+  "cluster_health_check_interval_in_hours": 6,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
   "logger": {
-    "log_dir": "./logs",
+    "log_dir": "./app/logs",
     "max_size": 512,
     "max_backups": 12,
     "max_age": 30,
     "compress": true
-  }
+  },
+  "loki": {
+    "labels": {
+      "app": "myceliumCloud",
+      "env": "dev",
+      "host": ""
+    }
+  },
+  "notification_config_path": "./notification-config-example.json"
 }

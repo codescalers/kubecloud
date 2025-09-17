@@ -269,9 +269,9 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 	for _, node := range sharedNodes {
 		resourcesCost, err := calculator.CalculateCost(
 			uint64(node.CPU),
-			uint64(node.Memory),
+			node.Memory,
 			0,
-			uint64(node.DiskSize+node.RootSize),
+			node.DiskSize+node.RootSize,
 			false,
 			false,
 		)

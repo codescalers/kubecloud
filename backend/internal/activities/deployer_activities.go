@@ -3,30 +3,34 @@ package activities
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/constants"
 	"kubecloud/internal/metrics"
+	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
+	"os"
 	"strings"
 	"time"
 
 	"kubecloud/internal/logger"
 
 	"github.com/xmonader/ewf"
+	"gorm.io/gorm"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var (
-	criticalRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
-	standardRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
-
-	workflowsDescriptions = map[string]string{
-		WorkflowAddNode:           "Adding Node",
-		WorkflowRemoveNode:        "Removing Node",
-		WorkflowDeleteCluster:     "Deleting Cluster",
-		WorkflowDeleteAllClusters: "Deleting All Clusters",
-	}
+	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
+	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
+	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
 )
 
 func isWorkloadAlreadyDeployedError(err error) bool {
@@ -253,8 +257,14 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
+		kubeconfig, ok := state["kubeconfig"].(string)
+		if !ok || kubeconfig == "" {
+			return fmt.Errorf("kubeconfig not found in state")
+		}
+
 		dbCluster := &models.Cluster{
 			ProjectName: cluster.ProjectName,
+			Kubeconfig:  kubeconfig,
 		}
 
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
@@ -268,6 +278,7 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			}
 		} else { // cluster exists, update it
 			existingCluster.Result = dbCluster.Result
+			existingCluster.Kubeconfig = dbCluster.Kubeconfig
 			if err := db.UpdateCluster(&existingCluster); err != nil {
 				return fmt.Errorf("failed to update cluster in database: %w", err)
 			}
@@ -475,9 +486,9 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
-func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, wfName string, nodesNum int, sseManager *internal.SSEManager) {
+func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, notificationService *notification.NotificationService, wfName string, nodesNum int) {
 	steps := []ewf.Step{
-		{Name: StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
@@ -487,12 +498,14 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
-	steps = append(steps, ewf.Step{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy})
+	steps = append(steps, ewf.Step{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
+	steps = append(steps, ewf.Step{Name: constants.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
+	steps = append(steps, ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
-	workflow := createDeployerWorkflowTemplate(sseManager, engine, metrics)
+	workflow := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	workflow.Steps = steps
 	workflow.AfterStepHooks = []ewf.AfterStepHook{
-		notifyStepHook(sseManager),
+		notifyStepHook(notificationService),
 	}
 
 	engine.RegisterTemplate(wfName, &workflow)
@@ -522,7 +535,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
 
-			rollbackWf, rollbackErr := engine.NewWorkflow("rollback-failed-deployment")
+			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
 			if rollbackErr != nil {
 				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
 				return
@@ -547,11 +560,10 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 	}
 }
 
-func createDeployerWorkflowTemplate(sse *internal.SSEManager, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
-	template := newKubecloudWorkflowTemplate()
+func createDeployerWorkflowTemplate(notificationService *notification.NotificationService, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+	template := newKubecloudWorkflowTemplate(notificationService)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		[]ewf.AfterWorkflowHook{
-			notifyWorkflowProgress(sse),
 			deploymentFailureHook(engine, metrics),
 			CloseClient,
 		}...)
@@ -559,55 +571,57 @@ func createDeployerWorkflowTemplate(sse *internal.SSEManager, engine *ewf.Engine
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, sse *internal.SSEManager) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration) {
 
-	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
-	engine.Register(StepDeployNode, DeployNodeStep(metrics))
-	engine.Register(StepRemoveCluster, CancelDeploymentStep(db, metrics))
-	engine.Register(StepAddNode, AddNodeStep(metrics))
-	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
-	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(StepStoreDeployment, StoreDeploymentStep(db, metrics))
-	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
-	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(db))
-	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
+	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
+	engine.Register(constants.StepDeployNode, DeployNodeStep(metrics))
+	engine.Register(constants.StepRemoveCluster, CancelDeploymentStep(db, metrics))
+	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
+	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
+	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
+	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics))
+	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
+	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
+	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
+	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
+	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
 
-	deleteWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	deleteWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deleteWFTemplate.Steps = []ewf.Step{
-		{Name: StepRemoveCluster, RetryPolicy: standardRetryPolicy},
-		{Name: StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowDeleteCluster, &deleteWFTemplate)
+	engine.RegisterTemplate(constants.WorkflowDeleteCluster, &deleteWFTemplate)
 
-	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
-		{Name: StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
-		{Name: StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
-		{Name: StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
+	engine.RegisterTemplate(constants.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
-	addNodeWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	addNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	addNodeWFTemplate.Steps = []ewf.Step{
-		{Name: StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
-		{Name: StepAddNode, RetryPolicy: standardRetryPolicy},
-		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowAddNode, &addNodeWFTemplate)
+	engine.RegisterTemplate(constants.WorkflowAddNode, &addNodeWFTemplate)
 
-	removeNodeWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
-		{Name: StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowRemoveNode, &removeNodeWFTemplate)
+	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
 
-	rollbackWFTemplate := createDeployerWorkflowTemplate(sse, engine, metrics)
+	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	rollbackWFTemplate.Steps = []ewf.Step{
-		{Name: StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
+	engine.RegisterTemplate(constants.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
 }
 
 func getFromState[T any](state ewf.State, key string) (T, error) {
@@ -650,4 +664,114 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	}
 
 	return config, nil
+}
+
+func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		if kubeconfig, ok := state["kubeconfig"].(string); ok && kubeconfig != "" {
+			return nil
+		}
+
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		// when updating existing cluster
+		existingCluster, err := db.GetClusterByName(config.UserID, cluster.Name)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to query cluster from database: %w", err)
+		}
+
+		if existingCluster.ID != 0 && existingCluster.Kubeconfig != "" {
+			state["kubeconfig"] = existingCluster.Kubeconfig
+			return nil
+		}
+
+		var master kubedeployer.Node
+		if existingCluster.ID != 0 {
+			existingClusterResult, err := existingCluster.GetClusterResult()
+			if err != nil {
+				return fmt.Errorf("failed to get cluster result from existing cluster: %w", err)
+			}
+			master, err = existingClusterResult.GetLeaderNode()
+			if err != nil {
+				return fmt.Errorf("failed to get leader node from existing cluster: %w", err)
+			}
+
+		} else {
+			master, err = cluster.GetLeaderNode()
+			if err != nil {
+				return fmt.Errorf("failed to get leader node from existing cluster: %w", err)
+			}
+
+		}
+
+		privateKeyBytes, err := os.ReadFile(privateKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read SSH private key: %w", err)
+		}
+
+		kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), &master)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve kubeconfig via SSH: %w", err)
+		}
+
+		state["kubeconfig"] = kubeconfig
+		return nil
+	}
+}
+
+func VerifyClusterReadyStep() ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster: %w", err)
+		}
+
+		kubeconfig, ok := state["kubeconfig"].(string)
+		if !ok || kubeconfig == "" {
+			return fmt.Errorf("kubeconfig not found in workflow state")
+		}
+
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		if err != nil {
+			return fmt.Errorf("failed to parse kubeconfig: %w", err)
+		}
+
+		clientset, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create kubernetes client: %w", err)
+		}
+
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list nodes: %w", err)
+		}
+
+		for _, n := range nodes.Items {
+			ready := false
+			for _, cond := range n.Status.Conditions {
+				if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
+					ready = true
+					break
+				}
+			}
+			if !ready {
+				return fmt.Errorf("node %s is not ready", n.Name)
+			}
+		}
+
+		logger.GetLogger().Info().
+			Str("cluster", cluster.Name).
+			Msg("All nodes are Ready")
+
+		return nil
+	}
 }

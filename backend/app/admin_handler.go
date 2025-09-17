@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"kubecloud/internal/logger"
+	"kubecloud/internal/notification"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
@@ -29,15 +30,15 @@ type UserResponse struct {
 
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
-	Count       int     `json:"count" validate:"required,gt=0"`
-	Value       float64 `json:"value" validate:"required,gt=0"`
-	ExpireAfter int     `json:"expire_after_days" validate:"required,gt=0"`
+	Count       int     `json:"count" binding:"required,gt=0"`
+	Value       float64 `json:"value" binding:"required,gt=0"`
+	ExpireAfter int     `json:"expire_after_days" binding:"required,gt=0"`
 }
 
 // CreditRequestInput represents a request to credit a user's balance
 type CreditRequestInput struct {
-	AmountUSD float64 `json:"amount" validate:"required,gt=0"`
-	Memo      string  `json:"memo" validate:"required,min=3,max=255"`
+	AmountUSD float64 `json:"amount" binding:"required,gt=0"`
+	Memo      string  `json:"memo" binding:"required,min=3,max=255"`
 }
 
 // CreditUserResponse holds the response data after crediting a user
@@ -205,11 +206,6 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		return
 	}
 
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
-		return
-	}
-
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
 		voucherCode := internal.GenerateRandomVoucher(h.config.VoucherNameLength)
@@ -230,6 +226,27 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		}
 
 		vouchers = append(vouchers, voucher)
+	}
+
+	adminID := c.GetInt("user_id")
+	if h.notificationService != nil && adminID > 0 {
+
+		payload := notification.MergePayload(notification.CommonPayload{
+			Message: fmt.Sprintf("%d vouchers generated successfully.", request.Count),
+			Subject: "Vouchers Generated",
+			Status:  "succeeded",
+		}, map[string]string{})
+		notif := models.NewNotification(
+			adminID,
+			models.NotificationTypeBilling,
+			payload,
+			models.WithChannels(notification.ChannelUI),
+			models.WithSeverity(models.NotificationSeveritySuccess),
+			models.WithNoPersist(),
+		)
+		if err := h.notificationService.Send(c.Request.Context(), notif); err != nil {
+			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
+		}
 	}
 
 	Success(c, http.StatusCreated, "Vouchers are generated successfully", map[string]interface{}{
@@ -269,7 +286,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 // @Produce json
 // @Param user_id path string true "User ID"
 // @Param body body CreditRequestInput true "Credit Request Input"
-// @Success 201 {object} CreditUserResponse
+// @Success 202 {object} CreditUserResponse
 // @Failure 400 {object} APIResponse "Invalid request format or user ID"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
@@ -286,11 +303,6 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
-
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 
@@ -564,11 +576,6 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
-		return
-	}
-
-	if err := internal.ValidateStruct(request); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
 	}
 

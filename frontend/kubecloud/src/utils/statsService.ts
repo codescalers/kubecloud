@@ -5,6 +5,8 @@ export interface SystemStats {
   total_clusters: number
   up_nodes: number
   countries: number
+  cores: number
+  ssd: number
 }
 
 export class StatsService {

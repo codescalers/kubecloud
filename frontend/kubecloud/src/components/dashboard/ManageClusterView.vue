@@ -27,10 +27,19 @@
               <v-icon icon="mdi-eye" class="mr-2"></v-icon>
               Show Kubeconfig
             </v-btn>
-            <v-btn variant="outlined" class="btn btn-outline" @click="openEditClusterNodesDialog">
-              <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
-              Add Node
-            </v-btn>
+
+            <v-tooltip location="top" :disabled="haveEnoughBalance">
+              <template #activator="{ props }">
+                <div v-bind="props">
+                  <v-btn variant="outlined" :disabled="!haveEnoughBalance" class="btn btn-outline" @click="openEditClusterNodesDialog">
+                    <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
+                    Add Node
+                  </v-btn>
+                </div>
+              </template>
+              <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
+            </v-tooltip>
+
             <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
               <v-icon icon="mdi-delete" class="mr-2"></v-icon>
               Delete
@@ -189,6 +198,14 @@ import { api } from '../../utils/api'
 
 import { formatDate } from '../../utils/dateUtils'
 import { userService } from '@/utils/userService'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+const haveEnoughBalance = computed(() => {
+  return userStore.netBalance >= 5
+})
+
 
 // Import dialogs
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
@@ -286,7 +303,6 @@ async function confirmDelete() {
   if (cluster.value) {
     try {
       await clusterStore.deleteCluster(cluster.value.cluster.name)
-      notificationStore.info('Cluster Removal Started', 'Cluster is being removed in the background. You will be notified when the operation completes.')
       goBack()
     } catch (e: any) {
       notificationStore.error('Delete Cluster Failed', e?.message || 'Failed to delete cluster')
@@ -347,7 +363,6 @@ function confirmDeleteNode() {
 async function handleRemoveNode(nodeName: string) {
   try {
     await removeNodeFromDeployment(cluster.value?.cluster?.name || '', nodeName)
-    notificationStore.info('Node Removal Started', 'Node is being removed from the cluster in the background. You will be notified when the operation completes.')
   } catch (e: any) {
     const errorMessage = e?.message || 'Failed to remove node'
     notificationStore.error('Remove Node Failed', errorMessage)

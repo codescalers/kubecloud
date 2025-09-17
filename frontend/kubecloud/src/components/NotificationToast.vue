@@ -2,18 +2,18 @@
   <div class="notification-container">
     <transition-group name="toast-fade-slide" tag="div">
       <div 
-        v-for="notification in notifications" 
+        v-for="notification in toastNotifications" 
         :key="notification.id" 
-        :class="['toast', notification.type]"
+        :class="['toast', notification.severity]"
       >
-        <v-icon class="toast-icon" :color="getIconColor(notification.type)" left>
-          {{ getIcon(notification.type) }}
+        <v-icon class="toast-icon" :color="getToastColor(notification.severity)" left>
+          {{ getToastIcon(notification.severity) }}
         </v-icon>
         <div class="toast-content">
-          <div class="toast-title">{{ notification.title }}</div>
-          <div class="toast-message">{{ notification.message }}</div>
+          <div class="toast-title">{{ notification.payload.title || notification.payload.message || 'Notification' }}</div>
+          <div class="toast-message">{{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}</div>
         </div>
-        <v-btn icon class="toast-close" @click="removeNotification(notification.id)">
+        <v-btn icon class="toast-close" @click="removeNotification(String(notification.id))">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </div>
@@ -24,29 +24,10 @@
 <script setup lang="ts">
 import { useNotificationStore } from '../stores/notifications'
 import { storeToRefs } from 'pinia'
+import { getToastIcon, getToastColor } from '../utils/notificationUtils'
 
 const notificationStore = useNotificationStore()
-const { notifications } = storeToRefs(notificationStore)
-
-const getIcon = (type: string) => {
-  switch (type) {
-    case 'success': return 'mdi-check-circle'
-    case 'error': return 'mdi-alert-circle'
-    case 'warning': return 'mdi-alert'
-    case 'info': return 'mdi-information'
-    default: return 'mdi-information'
-  }
-}
-
-const getIconColor = (type: string) => {
-  switch (type) {
-    case 'success': return '#10B981'
-    case 'error': return '#EF4444'
-    case 'warning': return '#F59E0B'
-    case 'info': return '#60a5fa'
-    default: return '#60a5fa'
-  }
-}
+const { toastNotifications } = storeToRefs(notificationStore)
 
 const removeNotification = (id: string) => {
   notificationStore.removeNotification(id)
@@ -73,6 +54,7 @@ const removeNotification = (id: string) => {
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   padding: 1rem 1.5rem;
+  margin-bottom: 0.25rem;
   min-width: 320px;
   max-width: 450px;
   font-weight: 500;

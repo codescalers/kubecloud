@@ -1,5 +1,5 @@
 <template>
-    <v-dialog v-model="props.modelValue" max-width="900">
+    <v-dialog v-model="props.modelValue" max-width="900" @click:outside="emit('update:modelValue', false)">
       <BaseDialogCard>
         <template #title>
           Add Node
@@ -132,7 +132,6 @@ async function handleAddNode(payload: any) {
   }
   try {
     await addNodeToDeployment(payload.name, payload)
-    notificationStore.info('Deployment is being updated', 'Your node is being added in the background. You will be notified when it is ready.')
     emit('update:modelValue', false) // Close dialog on success
   } catch (e: any) {
     console.error(e)

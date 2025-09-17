@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"kubecloud/internal/metrics"
 	"mime"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,8 @@ var systemAnnouncementMail []byte
 
 // MailService struct hods all functionalities of mail service
 type MailService struct {
-	client *sendgrid.Client
+	client  *sendgrid.Client
+	metrics *metrics.Metrics
 }
 
 type Attachment struct {
@@ -40,21 +42,22 @@ type Attachment struct {
 }
 
 // NewMailService creates new instance of mail service
-func NewMailService(sendGridKey string) MailService {
+func NewMailService(sendGridKey string, metrics *metrics.Metrics) MailService {
 	return MailService{
-		client: sendgrid.NewSendClient(sendGridKey),
+		client:  sendgrid.NewSendClient(sendGridKey),
+		metrics: metrics,
 	}
 }
 
 // SendMail sends verification mails
 func (service *MailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
-	from := mail.NewEmail("KubeCloud", sender)
+	from := mail.NewEmail("Mycelium Cloud", sender)
 
-	if !isValidEmail(receiver) {
+	if !IsValidEmail(receiver) {
 		return fmt.Errorf("email %v is not valid", receiver)
 	}
 
-	to := mail.NewEmail("KubeCloud User", receiver)
+	to := mail.NewEmail("Mycelium Cloud User", receiver)
 
 	message := mail.NewSingleEmail(from, subject, to, "", body)
 	message.Content = []*mail.Content{
@@ -72,7 +75,12 @@ func (service *MailService) SendMail(sender, receiver, subject, body string, att
 
 	_, err := service.client.Send(message)
 
-	return err
+	if err != nil {
+		service.metrics.IncrementEmailFailed()
+		return err
+	}
+	service.metrics.IncrementEmailSent()
+	return nil
 }
 
 // ResetPasswordMailContent gets the email content for reset password
@@ -90,7 +98,7 @@ func (service *MailService) ResetPasswordMailContent(code int, timeout int, user
 
 // WelcomeMailContent gets the email content for welcome messages
 func (service *MailService) WelcomeMailContent(username, host string) (string, string) {
-	subject := "Welcome to KubeCloud 🎉"
+	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(welcomeMail)
 
 	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
@@ -101,7 +109,7 @@ func (service *MailService) WelcomeMailContent(username, host string) (string, s
 
 // SignUpMailContent gets the email content for sign up
 func (service *MailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
-	subject := "Welcome to KubeCloud 🎉"
+	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(signUpTemplate)
 
 	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))

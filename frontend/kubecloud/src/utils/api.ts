@@ -81,7 +81,7 @@ class ApiClient {
       // Show loading notification after a minimum delay (500ms) to avoid flashing for quick requests
       if (showNotifications && loadingMessage) {
         loadingTimeoutId = setTimeout(() => {
-          loadingNotificationId = notificationStore.info('Loading', loadingMessage, { duration: 0 })
+          loadingNotificationId = String(notificationStore.info('Loading', loadingMessage))
         }, 500)
       }
 
@@ -186,8 +186,7 @@ class ApiClient {
       if (showNotifications && !isSilentError) {
         notificationStore.error(
           'Error',
-          errorMessage,
-          { duration: 8000 }
+          errorMessage
         )
       }
 

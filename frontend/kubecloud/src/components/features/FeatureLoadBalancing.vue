@@ -4,7 +4,7 @@
       <div class="feature-content feature-content-overlay">
         <h2 class="feature-title">Effortless Load Balancing & Scaling</h2>
         <p class="feature-description">
-          KubeCloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
+          Mycelium Cloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
         </p>
         <div class="feature-benefits">
           <v-chip class="ma-1" color="white" variant="outlined" size="small">Auto-scaling</v-chip>
@@ -206,7 +206,7 @@ onMounted(() => {
       client.mesh.position.z = client.basePos.z + Math.sin(t * 0.5 + client.phase + idx * 0.2) * 0.04
       client.glow.position.copy(client.mesh.position)
       clientLines[idx].geometry.setFromPoints([client.mesh.position, loadBalancer!.mesh.position])
-      
+
       // Rotate around center like globe
       client.mesh.rotation.y = rotationY * 0.3 + idx * 0.2
     })
@@ -217,7 +217,7 @@ onMounted(() => {
       loadBalancer.mesh.position.y = loadBalancer.basePos.y + Math.cos(t * 0.8) * 0.04
       loadBalancer.mesh.position.z = loadBalancer.basePos.z + Math.sin(t * 0.5) * 0.03
       loadBalancer.glow.position.copy(loadBalancer.mesh.position)
-      
+
       // Rotate around center
       loadBalancer.mesh.rotation.y = rotationY * 0.5
     }
@@ -283,16 +283,16 @@ onMounted(() => {
       if (service.scale > 1) service.scale = 1
       service.mesh.scale.set(service.scale, service.scale, service.scale)
       service.glow.scale.set(service.scale, service.scale, service.scale)
-      
+
       // Animate position with globe-like motion
       service.mesh.position.x = service.basePos.x + Math.sin(t2 * 0.7 + idx * 0.2) * 0.05
       service.mesh.position.y = service.basePos.y + Math.cos(t2 * 0.9 + idx * 0.3) * 0.05
       service.mesh.position.z = service.basePos.z + Math.sin(t2 * 0.5 + idx * 0.1) * 0.03
       service.glow.position.copy(service.mesh.position)
-      
+
       // Rotate around center
       service.mesh.rotation.y = rotationY * 0.4 + idx * 0.6
-      
+
       // Update material opacity with enhanced effects
       let mat = service.mesh.material
       if (Array.isArray(mat)) mat = mat[0]
@@ -302,7 +302,7 @@ onMounted(() => {
       if (glowMat && 'opacity' in glowMat) {
         glowMat.opacity = (0.18 + 0.05 * Math.sin(t * 2 + idx)) * service.opacity
       }
-      
+
       // Update service connection line with enhanced opacity
       serviceLines[idx].geometry.setFromPoints([loadBalancer!.mesh.position, service.mesh.position])
       let lineMat = serviceLines[idx].material
@@ -519,4 +519,4 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -120%);
   user-select: none;
 }
-</style> 
+</style>

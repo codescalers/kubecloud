@@ -135,8 +135,8 @@ export class AuthService {
       showNotifications: true,
       loadingMessage: 'Resending verification code...',
       errorMessage: 'Failed to resend verification code',
-      successMessage: 'Verification code sent to your email!',
-      timeout: 60000
+      successMessage: 'Verification code sent to your email',
+      timeout: 60000,
     })
   }
 
@@ -160,12 +160,15 @@ export class AuthService {
 
   // Forgot password
   async forgotPassword(data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
-    const response = await api.post<ApiResponse<ForgotPasswordResponse>>('/v1/user/forgot_password', data, {
-      showNotifications: true,
-      loadingMessage: 'Sending reset code...',
-      successMessage: 'Reset code sent to your email!',
-      errorMessage: 'Failed to send reset code'
-    })
+    const response = await api.post<ApiResponse<ForgotPasswordResponse>>(
+      '/v1/user/forgot_password',
+      data,
+      {
+        showNotifications: true,
+        loadingMessage: 'Sending reset code...',
+        errorMessage: 'Failed to send reset code',
+      },
+    )
     return response.data.data
   }
 
@@ -188,13 +191,13 @@ export class AuthService {
     }
 
     const response = await api.put<ApiResponse<ChangePasswordResponse>>('/v1/user/change_password', data, {
-      requiresAuth: true,
-      customToken,
-      showNotifications: true,
-      loadingMessage: 'Updating password...',
-      successMessage: 'Password updated successfully!',
-      errorMessage: 'Failed to update password'
-    })
+        requiresAuth: true,
+        customToken,
+        showNotifications: true,
+        loadingMessage: 'Updating password...',
+        errorMessage: 'Failed to update password',
+      },
+    )
     return response.data.data
   }
 
