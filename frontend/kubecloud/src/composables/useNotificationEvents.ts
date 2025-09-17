@@ -111,9 +111,11 @@ export function useNotificationEvents() {
           reconnectAttempts.value++
           disconnect().then(connect)
         }, delay)
-      } else if (!isPageVisible.value) {
+      }
+      if (!isPageVisible.value) {
         shouldReconnectOnVisibility.value = true
-      } else if (!isOnline.value) {
+      }
+      if (!isOnline.value) {
         console.log('[SSE] Device offline, will reconnect when network is restored')
       }
     }
@@ -384,7 +386,6 @@ export function useNotificationEvents() {
   }
 
   async function cleanup() {
-    await disconnect()
     removeNetworkAndVisibilityListeners()
     notificationQueue.value = []
     processingQueue.value = false
@@ -397,7 +398,8 @@ export function useNotificationEvents() {
     setupNetworkAndVisibilityListeners()
   })
 
-  onUnmounted(() => {
+  onUnmounted(async () => {
+    await disconnect()
     cleanup()
   })
 
@@ -417,8 +419,6 @@ export function useNotificationEvents() {
   )
 
   return {
-    connect,
-    cleanup,
     isConnected,
   }
 }
