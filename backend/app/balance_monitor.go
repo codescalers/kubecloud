@@ -15,17 +15,26 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
+const zeroTFTBalanceValue = 0.05 * 1e7 // 0.05 TFT
+
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 	settleTransfersTicker := time.NewTicker(time.Duration(h.config.SettleTransferRecordsIntervalInMinutes) * time.Minute)
 	adminNotifyTicker := time.NewTicker(time.Duration(h.config.NotifyAdminsForPendingRecordsInHours) * time.Hour)
 	zeroUSDBalanceTicker := time.NewTicker(time.Minute)
+	zeroTFTBalanceTicker := time.NewTicker(time.Minute)
 	fundUserTFTBalanceTicker := time.NewTicker(24 * time.Hour)
 	defer settleTransfersTicker.Stop()
 	defer adminNotifyTicker.Stop()
 	defer zeroUSDBalanceTicker.Stop()
+	defer zeroTFTBalanceTicker.Stop()
 	defer fundUserTFTBalanceTicker.Stop()
 
 	for {
+		users, err := h.db.ListAllUsers()
+		if err != nil {
+			continue
+		}
+
 		select {
 		case <-settleTransfersTicker.C:
 			records, err := h.db.ListPendingTransferRecords()
@@ -50,21 +59,27 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 			}
 
 		case <-zeroUSDBalanceTicker.C:
-			users, err := h.db.ListAllUsers()
-			if err != nil {
-				continue
-			}
-
 			if err := h.resetUsersTFTsWithNoUSDBalance(users); err != nil {
 				log.Error().Err(err).Send()
 			}
 
-		case <-fundUserTFTBalanceTicker.C:
-			users, err := h.db.ListAllUsers()
-			if err != nil {
-				continue
+		case <-zeroTFTBalanceTicker.C:
+			for _, user := range users {
+				if user.CreditedBalance+user.CreditCardBalance > zeroTFTBalanceValue {
+					continue
+				}
+
+				if err := h.db.CreateTransferRecord(&models.TransferRecord{
+					UserID:    user.ID,
+					Username:  user.Username,
+					TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
+					Operation: models.DepositOperation,
+				}); err != nil {
+					log.Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
+				}
 			}
 
+		case <-fundUserTFTBalanceTicker.C:
 			for _, user := range users {
 				if err = h.fundUsersToClaimDiscount(ctx, user.ID, user.Username, user.Mnemonic, discount(h.config.AppliedDiscount)); err != nil {
 					log.Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
@@ -77,11 +92,15 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 	for _, user := range users {
 		if user.CreditedBalance+user.CreditCardBalance == 0 {
-			log.Info().Msgf("User %d has no USD balance, withdrawing all TFTs", user.ID)
+			log.Info().Msgf("User %d has no USD balance, withdrawing all TFTs except for %d", user.ID, h.config.MinimumTFTAmountInWallet)
 
 			userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
 			if err != nil {
 				log.Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
+				continue
+			}
+
+			if userTFTBalance <= uint64(h.config.MinimumTFTAmountInWallet)*1e7 {
 				continue
 			}
 
@@ -185,7 +204,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, userID int, User
 		return err
 	}
 
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, userID, userMnemonic, rentedNodes, configuredDiscount)
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, userMnemonic, rentedNodes, configuredDiscount)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", userID)
 		return err
@@ -213,7 +232,6 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, userID int, User
 }
 
 func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
-	ctx context.Context,
 	userID int,
 	userMnemonic string,
 	rentedNodes []types.Node,

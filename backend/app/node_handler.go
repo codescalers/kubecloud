@@ -274,7 +274,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	rentedNodes = append(rentedNodes, node)
 
 	// calculate resources usage in USD applying discount
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(c.Request.Context(), userID, user.Mnemonic, rentedNodes, discount(h.config.AppliedDiscount))
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, user.Mnemonic, rentedNodes, discount(h.config.AppliedDiscount))
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

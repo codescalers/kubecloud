@@ -679,24 +679,23 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	tftAmount, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
+	millicentAmount := internal.FromUSDToUSDMillicent(request.Amount)
+	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
 	if err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	if tftAmount == 0 {
-		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    userID,
-			Username:  user.Username,
-			TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			log.Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
+	if err := h.db.CreateTransferRecord(&models.TransferRecord{
+		UserID:    userID,
+		Username:  user.Username,
+		TFTAmount: tftAmount,
+		Operation: models.DepositOperation,
+	}); err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowChargeBalance)
@@ -710,7 +709,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"user_id":            userID,
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
-		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
+		"amount":             millicentAmount,
 	}
 
 	h.ewfEngine.RunAsync(context.Background(), wf)
@@ -799,31 +798,31 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	user.CreditedBalance += internal.FromUSDToUSDMillicent(voucher.Value)
+	millicentAmount := internal.FromUSDToUSDMillicent(voucher.Value)
+	user.CreditedBalance += millicentAmount
 	if err := h.db.UpdateUserByID(&user); err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	tftAmount, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
+	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	if tftAmount == 0 {
-		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    userID,
-			Username:  user.Username,
-			TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			log.Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
+	if err := h.db.CreateTransferRecord(&models.TransferRecord{
+		UserID:    userID,
+		Username:  user.Username,
+		TFTAmount: tftAmount,
+		Operation: models.DepositOperation,
+	}); err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
+
 	}
 
 	Success(c, http.StatusOK, fmt.Sprintf("Voucher with value %v$ is redeemed successfully.", voucher.Value), RedeemVoucherResponse{

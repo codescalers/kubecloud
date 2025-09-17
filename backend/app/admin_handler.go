@@ -325,31 +325,30 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	user.CreditedBalance += internal.FromUSDToUSDMillicent(request.AmountUSD)
+	millicentAmount := internal.FromUSDToUSDMillicent(request.AmountUSD)
+	user.CreditedBalance += millicentAmount
 	if err := h.db.UpdateUserByID(&user); err != nil {
 		log.Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	tftAmount, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
+	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
 	if err != nil {
-		log.Error().Err(err).Send()
+		log.Error().Err(err).Msg("Failed to convert USD millicent to TFT")
 		InternalServerError(c)
 		return
 	}
 
-	if tftAmount == 0 {
-		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    id,
-			Username:  user.Username,
-			TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			log.Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
+	if err := h.db.CreateTransferRecord(&models.TransferRecord{
+		UserID:    id,
+		Username:  user.Username,
+		TFTAmount: tftAmount,
+		Operation: models.DepositOperation,
+	}); err != nil {
+		log.Error().Err(err).Send()
+		InternalServerError(c)
+		return
 	}
 
 	Success(c, http.StatusCreated, fmt.Sprintf("User is credited with %v$ successfully", request.AmountUSD), CreditUserResponse{
