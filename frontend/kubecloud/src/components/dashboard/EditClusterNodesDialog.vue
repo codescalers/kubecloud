@@ -157,7 +157,6 @@ function resetForm() {
 
 watch(() => names.value, async () => {
   if (nameField.value && addFormName.value) {
-    nameField.value.resetValidation()
     await nextTick()
     nameField.value.validate()
   }
