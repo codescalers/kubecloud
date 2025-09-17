@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"net/http"
@@ -206,6 +207,11 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
+	if cluster.Kubeconfig != "" {
+		c.JSON(http.StatusOK, gin.H{"kubeconfig": cluster.Kubeconfig})
+		return
+	}
+
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
@@ -247,6 +253,11 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		logger.GetLogger().Error().Err(err).Str("node_name", targetNode.Name).Msg("Failed to retrieve kubeconfig via SSH")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})
 		return
+	}
+
+	cluster.Kubeconfig = kubeconfig
+	if err := h.db.UpdateCluster(&cluster); err != nil {
+		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"kubeconfig": kubeconfig})
@@ -297,11 +308,6 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	if err := internal.ValidateStruct(cluster); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
-		return
-	}
-
 	if err := cluster.Validate(); err != nil {
 		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
 		return
@@ -319,7 +325,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	wfName := fmt.Sprintf("deploy-%d-nodes", len(cluster.Nodes))
-	activities.NewDynamicDeployWorkflowTemplate(h.ewfEngine, h.metrics, wfName, len(cluster.Nodes), h.sseManager)
+	activities.NewDynamicDeployWorkflowTemplate(h.ewfEngine, h.metrics, h.notificationService, wfName, len(cluster.Nodes))
 
 	// Get the workflow
 	wf, err := h.ewfEngine.NewWorkflow(wfName)
@@ -378,7 +384,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteCluster)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -425,7 +431,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowDeleteAllClusters)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -470,11 +476,6 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		return
 	}
 
-	if err := internal.ValidateStruct(cluster); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
-		return
-	}
-
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
 	existingCluster, err := h.db.GetClusterByName(config.UserID, projectName)
 	if err != nil {
@@ -504,7 +505,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowAddNode)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -590,7 +591,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(activities.WorkflowRemoveNode)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return

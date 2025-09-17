@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,10 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&PendingRecord{},
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := migrateNotifications(db); err != nil {
 		return nil, err
 	}
 
@@ -405,4 +410,73 @@ func (s *GormDB) CountAllClusters() (int64, error) {
 	var count int64
 	err := s.db.Model(&Cluster{}).Count(&count).Error
 	return count, err
+}
+
+func (s *GormDB) ListAllClusters() ([]Cluster, error) {
+	var clusters []Cluster
+	return clusters, s.db.Find(&clusters).Error
+}
+
+func migrateNotifications(db *gorm.DB) error {
+	m := db.Migrator()
+	if !m.HasTable(&Notification{}) {
+		return nil
+	}
+
+	if m.HasColumn(&Notification{}, "data") {
+		if err := db.Exec("UPDATE notifications SET payload = data").Error; err != nil {
+			return err
+		}
+		_ = m.DropColumn(&Notification{}, "data")
+	}
+
+	if m.HasColumn(&Notification{}, "message") {
+		_ = m.DropColumn(&Notification{}, "message")
+	}
+	if m.HasColumn(&Notification{}, "title") {
+		_ = m.DropColumn(&Notification{}, "title")
+	}
+
+	testNotification := &Notification{
+		ID:        "test-migration-id",
+		UserID:    1,
+		Type:      NotificationTypeDeployment,
+		Severity:  NotificationSeverityInfo,
+		Channels:  []string{"ui"},
+		Payload:   map[string]string{"test": "value"},
+		Status:    NotificationStatusUnread,
+		CreatedAt: time.Now(),
+	}
+
+	err := db.Create(testNotification).Error
+	if err == nil {
+		db.Delete(testNotification, "id = ?", "test-migration-id")
+		return nil
+	}
+
+	if !strings.Contains(err.Error(), "datatype mismatch") {
+		return fmt.Errorf("failed to create test notification during migration: %w", err)
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DROP INDEX IF EXISTS idx_notifications_task_id").Error; err != nil {
+			return err
+		}
+		if err := tx.Exec("DROP INDEX IF EXISTS idx_notifications_user_id").Error; err != nil {
+			return err
+		}
+		if err := tx.Exec("ALTER TABLE notifications RENAME TO notifications_old").Error; err != nil {
+			return err
+		}
+
+		if err := tx.AutoMigrate(&Notification{}); err != nil {
+			return err
+		}
+
+		if err := tx.Exec("DROP TABLE notifications_old").Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }

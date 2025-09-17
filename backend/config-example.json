@@ -11,10 +11,7 @@
     "access_token_expiry_minutes": 15,
     "refresh_token_expiry_hours": 25
   },
-  "admins": [
-    "admin@example.com",
-    "admin2@example.com"
-  ],
+  "admins": ["admin@example.com", "admin2@example.com"],
   "mailSender": {
     "email": "noreply@example.com",
     "sendgrid_key": "your-sendgrid-api-key-here",
@@ -55,6 +52,7 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
+  "cluster_health_check_interval_hours": 6,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
   "logger": {
@@ -63,5 +61,6 @@
     "max_backups": 12,
     "max_age": 30,
     "compress": true
-  }
+  },
+  "notification_config_path": "./notification-config-example.json"
 }

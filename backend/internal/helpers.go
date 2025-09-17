@@ -34,8 +34,8 @@ func GenerateRandomCode() int {
 	return rand.Intn(max-min) + min
 }
 
-// isValidEmail validates an email address using the standard library
-func isValidEmail(email string) bool {
+// IsValidEmail validates an email address using the standard library
+func IsValidEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 	return err == nil
 }

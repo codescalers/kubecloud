@@ -170,6 +170,15 @@ definitions:
       kubeconfig:
         type: string
     type: object
+  app.ListNodesResponse:
+    properties:
+      nodes:
+        items:
+          $ref: '#/definitions/types.Node'
+        type: array
+      total:
+        type: integer
+    type: object
   app.ListNodesWithDiscountResponse:
     properties:
       nodes:
@@ -243,9 +252,106 @@ definitions:
     type: object
   app.NodesWithDiscount:
     properties:
+      certificationType:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      cpu_benchmark:
+        $ref: '#/definitions/types.CpuBenchmark'
+      created:
+        type: integer
+      dedicated:
+        type: boolean
       discount_price:
         type: number
-      node: {}
+      dmi:
+        $ref: '#/definitions/types.Dmi'
+      extraFee:
+        type: integer
+      farm_free_ips:
+        type: integer
+      farmId:
+        type: integer
+      farmName:
+        type: string
+      farmingPolicyId:
+        type: integer
+      features:
+        items:
+          type: string
+        type: array
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
+      gridVersion:
+        type: integer
+      healthy:
+        type: boolean
+      id:
+        type: string
+      inDedicatedFarm:
+        type: boolean
+      location:
+        $ref: '#/definitions/types.Location'
+      nodeId:
+        type: integer
+      num_gpu:
+        type: integer
+      power:
+        $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
+      publicConfig:
+        $ref: '#/definitions/types.PublicConfig'
+      rentContractId:
+        type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
+      rentedByTwinId:
+        type: integer
+      serialNumber:
+        type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
+      status:
+        type: string
+      total_resources:
+        $ref: '#/definitions/types.Capacity'
+      twinId:
+        type: integer
+      updatedAt:
+        type: integer
+      uptime:
+        type: integer
+      used_resources:
+        $ref: '#/definitions/types.Capacity'
+    type: object
+  app.NotificationResponse:
+    description: A notification response
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      payload:
+        additionalProperties:
+          type: string
+        type: object
+      read_at:
+        type: string
+      severity:
+        $ref: '#/definitions/models.NotificationSeverity'
+      status:
+        $ref: '#/definitions/models.NotificationStatus'
+      task_id:
+        type: string
+      type:
+        $ref: '#/definitions/models.NotificationType'
     type: object
   app.PendingRecordsResponse:
     properties:
@@ -371,8 +477,12 @@ definitions:
     type: object
   app.Stats:
     properties:
+      cores:
+        type: integer
       countries:
         type: integer
+      ssd:
+        type: number
       total_clusters:
         type: integer
       total_users:
@@ -475,6 +585,19 @@ definitions:
       workflow_id:
         type: string
     type: object
+  gridtypes.Unit:
+    enum:
+    - 1024
+    - 1048576
+    - 1073741824
+    - 1099511627776
+    format: int64
+    type: integer
+    x-enum-varnames:
+    - Kilobyte
+    - Megabyte
+    - Gigabyte
+    - Terabyte
   internal.TokenPair:
     properties:
       access_token:
@@ -519,6 +642,38 @@ definitions:
       rent_created_at:
         type: string
     type: object
+  models.NotificationSeverity:
+    enum:
+    - info
+    - error
+    - warning
+    - success
+    type: string
+    x-enum-varnames:
+    - NotificationSeverityInfo
+    - NotificationSeverityError
+    - NotificationSeverityWarning
+    - NotificationSeveritySuccess
+  models.NotificationStatus:
+    enum:
+    - unread
+    - read
+    type: string
+    x-enum-varnames:
+    - NotificationStatusUnread
+    - NotificationStatusRead
+  models.NotificationType:
+    enum:
+    - deployment
+    - billing
+    - user
+    - connected
+    type: string
+    x-enum-varnames:
+    - NotificationTypeDeployment
+    - NotificationTypeBilling
+    - NotificationTypeUser
+    - NotificationTypeConnected
   models.SSHKey:
     properties:
       created_at:
@@ -562,6 +717,237 @@ definitions:
     - expires_at
     - value
     type: object
+  types.BIOS:
+    properties:
+      vendor:
+        type: string
+      version:
+        type: string
+    type: object
+  types.Baseboard:
+    properties:
+      manufacturer:
+        type: string
+      product_name:
+        type: string
+    type: object
+  types.Capacity:
+    properties:
+      cru:
+        type: integer
+      hru:
+        $ref: '#/definitions/gridtypes.Unit'
+      mru:
+        $ref: '#/definitions/gridtypes.Unit'
+      sru:
+        $ref: '#/definitions/gridtypes.Unit'
+    type: object
+  types.CpuBenchmark:
+    properties:
+      multi:
+        type: number
+      node_twin_id:
+        type: integer
+      single:
+        type: number
+      threads:
+        type: integer
+      updated_at:
+        type: integer
+      workloads:
+        type: integer
+    type: object
+  types.Dmi:
+    properties:
+      baseboard:
+        $ref: '#/definitions/types.Baseboard'
+      bios:
+        $ref: '#/definitions/types.BIOS'
+      memory:
+        items:
+          $ref: '#/definitions/types.Memory'
+        type: array
+      node_twin_id:
+        type: integer
+      processor:
+        items:
+          $ref: '#/definitions/types.Processor'
+        type: array
+      updated_at:
+        type: integer
+    type: object
+  types.Location:
+    properties:
+      city:
+        type: string
+      country:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      region:
+        type: string
+    type: object
+  types.Memory:
+    properties:
+      manufacturer:
+        type: string
+      type:
+        type: string
+    type: object
+  types.Node:
+    properties:
+      certificationType:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      cpu_benchmark:
+        $ref: '#/definitions/types.CpuBenchmark'
+      created:
+        type: integer
+      dedicated:
+        type: boolean
+      dmi:
+        $ref: '#/definitions/types.Dmi'
+      extraFee:
+        type: integer
+      farm_free_ips:
+        type: integer
+      farmId:
+        type: integer
+      farmName:
+        type: string
+      farmingPolicyId:
+        type: integer
+      features:
+        items:
+          type: string
+        type: array
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
+      gridVersion:
+        type: integer
+      healthy:
+        type: boolean
+      id:
+        type: string
+      inDedicatedFarm:
+        type: boolean
+      location:
+        $ref: '#/definitions/types.Location'
+      nodeId:
+        type: integer
+      num_gpu:
+        type: integer
+      power:
+        $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
+      publicConfig:
+        $ref: '#/definitions/types.PublicConfig'
+      rentContractId:
+        type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
+      rentedByTwinId:
+        type: integer
+      serialNumber:
+        type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
+      status:
+        type: string
+      total_resources:
+        $ref: '#/definitions/types.Capacity'
+      twinId:
+        type: integer
+      updatedAt:
+        type: integer
+      uptime:
+        type: integer
+      used_resources:
+        $ref: '#/definitions/types.Capacity'
+    type: object
+  types.NodeGPU:
+    properties:
+      contract:
+        type: integer
+      device:
+        type: string
+      id:
+        type: string
+      node_twin_id:
+        type: integer
+      updated_at:
+        type: integer
+      vendor:
+        type: string
+    type: object
+  types.NodePower:
+    properties:
+      state:
+        type: string
+      target:
+        type: string
+    type: object
+  types.Processor:
+    properties:
+      thread_count:
+        type: string
+      version:
+        type: string
+    type: object
+  types.PublicConfig:
+    properties:
+      domain:
+        type: string
+      gw4:
+        type: string
+      gw6:
+        type: string
+      ipv4:
+        type: string
+      ipv6:
+        type: string
+    type: object
+  types.Speed:
+    properties:
+      download:
+        description: in bit/sec
+        type: number
+      node_twin_id:
+        type: integer
+      tcp_download_ipv6:
+        description: in bit/sec
+        type: number
+      tcp_upload_ipv6:
+        description: in bit/sec
+        type: number
+      udp_download_ipv4:
+        description: in bit/sec
+        type: number
+      udp_download_ipv6:
+        description: in bit/sec
+        type: number
+      udp_upload_ipv4:
+        description: in bit/sec
+        type: number
+      udp_upload_ipv6:
+        description: in bit/sec
+        type: number
+      updated_at:
+        type: integer
+      upload:
+        description: in bit/sec let's suppose default is ipv4/tcp
+        type: number
+    type: object
 info:
   contact: {}
   description: API documentation for Mycelium Cloud.
@@ -575,7 +961,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "202":
           description: Delete all deployments workflow started successfully
           schema:
             $ref: '#/definitions/app.Response'
@@ -662,7 +1048,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "202":
           description: Deployment deletion workflow started successfully
           schema:
             $ref: '#/definitions/app.Response'
@@ -817,7 +1203,7 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
+        "202":
           description: Node removal workflow started successfully
           schema:
             $ref: '#/definitions/app.Response'
@@ -866,6 +1252,330 @@ paths:
       summary: Get all invoices
       tags:
       - admin
+  /notifications:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes all notifications for a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All notifications deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to delete notifications
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Delete all notifications
+      tags:
+      - notifications
+    get:
+      consumes:
+      - application/json
+      description: Retrieves all user notifications with pagination
+      parameters:
+      - description: 'Maximum number of notifications to return (default: 20, max:
+          100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Number of notifications to skip (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notifications retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    notifications:
+                      items:
+                        $ref: '#/definitions/app.NotificationResponse'
+                      type: array
+                    offset:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Invalid pagination parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to retrieve notifications
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Get all notifications
+      tags:
+      - notifications
+  /notifications/{notification_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific notification for a user
+      parameters:
+      - description: Notification ID
+        in: path
+        name: notification_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Invalid notification ID
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Notification not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to delete notification
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Delete a specific notification
+      tags:
+      - notifications
+  /notifications/{notification_id}/read:
+    patch:
+      consumes:
+      - application/json
+      description: Marks a specific notification as read for a user
+      parameters:
+      - description: Notification ID
+        in: path
+        name: notification_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification marked as read successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Invalid notification ID
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Notification not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to mark notification as read
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Mark a specific notification as read
+      tags:
+      - notifications
+  /notifications/{notification_id}/unread:
+    patch:
+      consumes:
+      - application/json
+      description: Marks a specific notification as unread for a user
+      parameters:
+      - description: Notification ID
+        in: path
+        name: notification_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification marked as unread successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Invalid notification ID
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Notification not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to mark notification as unread
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Mark a specific notification as unread
+      tags:
+      - notifications
+  /notifications/read-all:
+    patch:
+      consumes:
+      - application/json
+      description: Marks all notifications as read for a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All notifications marked as read successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: Invalid notification ID
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to mark notifications as read
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /notifications/unread:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves only unread notifications for a user
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Unread notifications retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    notifications:
+                      items:
+                        $ref: '#/definitions/app.NotificationResponse'
+                      type: array
+                    offset:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Invalid pagination parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Failed to retrieve unread notifications
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Get unread notifications
+      tags:
+      - notifications
+  /nodes:
+    get:
+      consumes:
+      - application/json
+      description: List all nodes from the grid proxy (no user-specific filtering)
+      operationId: list-all-grid-nodes
+      parameters:
+      - description: 'Filter by healthy nodes (default: false)'
+        in: query
+        name: healthy
+        type: boolean
+      - description: 'Limit the number of nodes returned (default: 50)'
+        in: query
+        name: size
+        type: integer
+      - description: 'page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All grid nodes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesResponse'
+              type: object
+        "400":
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: List all grid nodes
+      tags:
+      - nodes
   /pending-records:
     get:
       consumes:
@@ -1556,7 +2266,7 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
+        "202":
           description: 'workflow_id: string, email: string'
           schema:
             $ref: '#/definitions/app.RegisterUserResponse'
@@ -1591,8 +2301,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "202":
+          description: Accepted
           schema:
             $ref: '#/definitions/app.VerifyRegisterUserResponse'
         "400":
@@ -1795,8 +2505,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "202":
+          description: Accepted
           schema:
             $ref: '#/definitions/app.CreditUserResponse'
         "400":

@@ -90,16 +90,21 @@ func main() {
 		graphPanel("Stripe Payment Successes", "increase(stripe_payment_successes[$__range])", "stat", id+11, y+26, 8, 8, 6, false),
 		graphPanel("Stripe Payment Failures", "increase(stripe_payment_failures[$__range])", "stat", id+12, y+26, 16, 8, 6, true),
 
+		// Email Metrics
+		rowPanel("Email Metrics", id+13, y+33),
+		graphPanel("Emails Sent (rate)", "rate(email_sent[5m])", "graph", id+14, y+34, 0, 12, 8, false),
+		graphPanel("Emails Failed (rate)", "rate(email_failed[5m])", "graph", id+15, y+34, 12, 12, 8, true),
+
 		// GORM
-		rowPanel("Database (GORM)", id+13, y+33),
-		graphPanel("GORM Open Connections", "gorm_open_connections", "stat", id+14, y+34, 0, 12, 6, false),
-		graphPanel("GORM Idle Connections", "gorm_idle_connections", "stat", id+15, y+34, 12, 12, 6, false),
+		rowPanel("Database (GORM)", id+16, y+41),
+		graphPanel("GORM Open Connections", "gorm_open_connections", "stat", id+17, y+42, 0, 12, 6, false),
+		graphPanel("GORM Idle Connections", "gorm_idle_connections", "stat", id+18, y+42, 12, 12, 6, false),
 
 		// Go Runtime
-		rowPanel("Go Runtime", id+16, y+41),
-		graphPanel("Go Goroutines", "go_goroutines", "graph", id+17, y+42, 0, 12, 8, false),
-		graphPanel("Go Memory Usage", "go_memstats_alloc_bytes", "graph", id+18, y+42, 12, 12, 8, false),
-		graphPanel("Go GC Cycles", "go_gc_duration_seconds_count", "graph", id+19, y+50, 0, 12, 8, false),
+		rowPanel("Go Runtime", id+19, y+49),
+		graphPanel("Go Goroutines", "go_goroutines", "graph", id+20, y+50, 0, 12, 8, false),
+		graphPanel("Go Memory Usage", "go_memstats_alloc_bytes", "graph", id+21, y+50, 12, 12, 8, false),
+		graphPanel("Go GC Cycles", "go_gc_duration_seconds_count", "graph", id+22, y+58, 0, 12, 8, false),
 	}
 
 	dashboard := map[string]interface{}{

@@ -16,42 +16,45 @@
         </template>
       </div>
       <div class="navbar-auth">
-        <!-- Show user menu when logged in -->
-        <div v-if="isLoggedIn" class="user-menu">
-          <v-menu>
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                variant="text"
-                color="white"
-                class="user-menu-btn"
-              >
-                <span class="user-name">{{ userName }}</span>
-                <v-icon icon="mdi-chevron-down" class="ml-1"></v-icon>
-              </v-btn>
-            </template>
-            <v-list>
-              <v-list-item v-if="isAdmin" @click="goToAdmin">
-                <v-list-item-title>
-                  <v-icon icon="mdi-shield-crown" class="mr-2"></v-icon>
-                  Admin Panel
-                </v-list-item-title>
-              </v-list-item>
-              <v-list-item @click="goToDashboard">
-                <v-list-item-title>
-                  <v-icon icon="mdi-view-dashboard" class="mr-2"></v-icon>
-                  Dashboard
-                </v-list-item-title>
-              </v-list-item>
-              <v-divider></v-divider>
-              <v-list-item @click="handleLogout">
-                <v-list-item-title>
-                  <v-icon icon="mdi-logout" class="mr-2"></v-icon>
-                  Sign Out
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-menu>
+        <!-- Show notification bell and user menu when logged in -->
+        <div v-if="isLoggedIn" class="user-section">
+          <NotificationBell />
+          <div class="user-menu">
+            <v-menu>
+              <template v-slot:activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  variant="text"
+                  color="white"
+                  class="user-menu-btn"
+                >
+                  <span class="user-name">{{ userName }}</span>
+                  <v-icon icon="mdi-chevron-down" class="ml-1"></v-icon>
+                </v-btn>
+              </template>
+              <v-list>
+                <v-list-item v-if="isAdmin" @click="goToAdmin">
+                  <v-list-item-title>
+                    <v-icon icon="mdi-shield-crown" class="mr-2"></v-icon>
+                    Admin Panel
+                  </v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="goToDashboard">
+                  <v-list-item-title>
+                    <v-icon icon="mdi-view-dashboard" class="mr-2"></v-icon>
+                    Dashboard
+                  </v-list-item-title>
+                </v-list-item>
+                <v-divider></v-divider>
+                <v-list-item @click="handleLogout">
+                  <v-list-item-title>
+                    <v-icon icon="mdi-logout" class="mr-2"></v-icon>
+                    Sign Out
+                  </v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
         </div>
         <!-- Show sign in and sign up buttons when not logged in -->
         <div v-else>
@@ -83,10 +86,11 @@
 </template>
 
 <script setup lang="ts">
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
 import { computed, nextTick } from 'vue'
-import logo from '@/assets/logo.png'
+import logo from '../assets/logo.png'
+import NotificationBell from './NotificationBell.vue'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -143,20 +147,37 @@ const handleLogout = async () => {
   top: 0;
   left: 0;
   z-index: 100;
-  background: rgba(10, 25, 47, 0.65); /* semi-transparent, blends with gradient */
-  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.10); /* soft shadow for readability */
-  border: none;
+  background: rgba(10, 25, 47, 0.65);
+  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.10);
   backdrop-filter: blur(8px);
   transition: background 0.3s;
 }
+
 .navbar-content {
   max-width: 1300px;
   margin: 0 auto;
+  padding: 1.2rem 2.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.2rem 2.5rem;
 }
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.navbar-logo:hover {
+  transform: scale(1.05);
+}
+
+.logo {
+  height: auto;
+  max-height: 40px;
+}
+
 .navbar-main-links {
   display: flex;
   gap: 1.2rem;
@@ -165,6 +186,7 @@ const handleLogout = async () => {
   margin-left: 6rem;
   align-items: center;
 }
+
 .navbar-link {
   color: #e0e7ef;
   font-size: 1.05rem;
@@ -175,10 +197,12 @@ const handleLogout = async () => {
   transition: color 0.2s;
   min-width: 0;
 }
+
 .navbar-link:hover,
 .navbar-link.active-link {
   color: #60a5fa;
 }
+
 .navbar-link::after {
   content: '';
   display: block;
@@ -190,38 +214,47 @@ const handleLogout = async () => {
   left: 0;
   bottom: -2px;
 }
+
 .navbar-link:hover::after,
 .navbar-link.active-link::after {
   width: 100%;
 }
+
 .navbar-auth {
   margin-left: auto;
   display: flex;
   align-items: center;
 }
-.user-menu {
+
+.user-section {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
+
 .user-menu-btn {
   color: #e0e7ef !important;
   font-weight: 500;
   text-transform: none;
   letter-spacing: normal;
 }
+
 .user-menu-btn:hover {
   color: #60a5fa !important;
 }
+
+.user-name {
+  font-weight: 500;
+}
+
 @media (max-width: 900px) {
   .navbar-content {
     padding: 1rem 1.2rem;
   }
+
   .navbar-main-links {
     gap: 0.7rem;
     margin-left: 1.2rem;
   }
-}
-.user-name {
-  font-weight: 500;
 }
 </style>

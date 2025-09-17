@@ -58,9 +58,115 @@ The configuration file should be in JSON format. Example:
   "max_backups": 12,
   "max_age": 30,
   "compress": true
+  },
+  "cluster_health_check_interval_hours":6
+}
+```
+
+### Notification Configuration
+
+KubeCloud supports a separate notification configuration file to define how different types of notifications are handled. This allows you to customize which channels (UI, email) and severity levels are used for different notification types.
+
+#### Notification Config File
+
+By default, KubeCloud looks for a `notification-config.json` file in the current directory. You can specify a custom notification configuration file path using the `--notification_config_path` flag:
+
+```bash
+kubecloud --notification_config_path /path/to/notification-config.json
+```
+
+You can also set it via environment variable:
+
+```bash
+export KUBECLOUD_NOTIFICATION_CONFIG_PATH=/path/to/notification-config.json
+```
+
+Or include it in your main configuration file:
+
+```json
+{
+  "notification_config_path": "./notification-config.json"
+  // ... other config
+}
+```
+
+#### Default Behavior
+
+If no notification configuration file is provided, KubeCloud will use default settings:
+
+- **All channels**: `["ui"]` (UI notifications only)
+- **All severity levels**: `"info"`
+- **All notification types**: Use the default settings unless specifically overridden
+
+#### Notification Config Structure
+
+The notification configuration file should follow this structure:
+
+```json
+{
+  "template_types": {
+    "deployment": {
+      "default": {
+        "channels": ["ui"],
+        "severity": "info"
+      },
+      "by_status": {
+        "started": {
+          "channels": ["ui"],
+          "severity": "info"
+        },
+        "succeeded": {
+          "channels": ["ui", "email"],
+          "severity": "success"
+        },
+        "failed": {
+          "channels": ["ui", "email"],
+          "severity": "error"
+        },
+        "deleted": {
+          "channels": ["ui"],
+          "severity": "warning"
+        }
+      }
+    },
+    "billing": {
+      "default": {
+        "channels": ["ui"],
+        "severity": "info"
+      },
+      "by_status": {
+        "funds_succeeded": {
+          "channels": ["ui", "email"],
+          "severity": "success"
+        },
+        "funds_failed": {
+          "channels": ["ui", "email"],
+          "severity": "error"
+        }
+      }
+    },
+    "user": {
+      "default": {
+        "channels": ["ui"],
+        "severity": "info"
+      },
+      "by_status": {
+        "password_changed": {
+          "channels": ["ui", "email"],
+          "severity": "success"
+        }
+      }
+    }
   }
 }
 ```
+
+#### Configuration Options
+
+- **Channels**: Available channels are `["ui", "email"]`
+- **Severity Levels**: Available severities are `"info"`, `"success"`, `"warning"`, `"error"`
+- **Template Types**: Currently supported types are `deployment`, `billing`, and `user`
+- **Status Overrides**: You can override the default behavior for specific statuses within each template type
 
 ### Environment Variables
 

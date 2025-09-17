@@ -276,8 +276,8 @@ async function confirmDelete() {
   deleting.value = true
   try {
     await clusterStore.deleteCluster(clusterToDelete.value)
-    notificationStore.info('Cluster Removal Started', `Cluster is being removed in the background. You will be notified when the operation completes.`)
   } catch (error: any) {
+    notificationStore.error('Delete Cluster Failed', error?.message || 'Failed to delete cluster')
   } finally {
     showDeleteModal.value = false
     deleting.value = false
@@ -291,7 +291,6 @@ async function confirmDeleteAll() {
   deletingAll.value = true
   try {
     await clusterStore.deleteAllDeployments()
-    notificationStore.info('Delete All Started', `All your deployments are being deleted. The table will update automatically as deletions complete.`)
   } catch (error: any) {
     notificationStore.error('Delete All Failed', error?.message || 'Failed to delete all deployments')
     deletingAll.value = false // Reset on error

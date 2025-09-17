@@ -159,33 +159,17 @@ export class UserService {
 
   // Reserve a node
   async reserveNode(nodeId: number, data: ReserveNodeRequest = {}) {
-    const response = await api.post<ApiResponse<ReserveNodeResponse>>(`/v1/user/nodes/${nodeId}`, data, { requiresAuth: true, showNotifications: true })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
-    const status = await workflowChecker.status
-    if(status === WorkflowStatus.StatusCompleted){
-      try {
-        await this.trackNodeStatus(nodeId, "rented")
-        useNotificationStore().success(
-          'Node Reserved',
-          'Node has been successfully reserved.',
-        )
-      } catch (error) {
-        useNotificationStore().error(
-          'Node reservation error',
-          'Failed to reserve node',
-        )
-        throw new Error('Failed to reserve node')
-      }
-
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Node reservation error',
-        'Failed to reserve node',
-      )
+    const response = await api.post<ApiResponse<ReserveNodeResponse>>(
+      `/v1/user/nodes/${nodeId}`,
+      data,
+      { requiresAuth: true, showNotifications: true },
+    )
+    try {
+      await this.trackNodeStatus(nodeId, 'rented')
+    } catch (error) {
+      useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw new Error('Failed to reserve node')
     }
-
   }
 
   // List reserved nodes
@@ -195,50 +179,23 @@ export class UserService {
 
   // Unreserve a node
   async unreserveNode(contractId: string, nodeId: number) {
-    const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(`/v1/user/nodes/unreserve/${contractId}`, { requiresAuth: true, showNotifications: true })
-    // const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
-    // const status = await workflowChecker.status
-    // if (status === WorkflowStatus.StatusFailed) {
-    //   useNotificationStore().error(
-    //     'Node unreservation error',
-    //     'Failed to unreserve node',
-    //   )
-    //   throw new Error('Failed to unreserve node')
-    // }
-    // if (status === WorkflowStatus.StatusCompleted) {
-      try {
-        await this.trackNodeStatus(nodeId, "rentable")
-        useNotificationStore().success(
-          'Node Unreservation Success',
-          'Node has been successfully unreserved.',
-        )
-      } catch (error) {
-        useNotificationStore().error(
-          'Node unreservation error',
-          'Failed to verify node status',
-        )
-      }
-    // }
+    const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(
+      `/v1/user/nodes/unreserve/${contractId}`,
+      { requiresAuth: true, showNotifications: true },
+    )
+    try {
+      await this.trackNodeStatus(nodeId, 'rentable')
+    } catch (error) {
+      useNotificationStore().error('Node unreservation error', 'Failed to verify node status')
+    }
   }
 
   // Charge balance
   async chargeBalance(data: ChargeBalanceRequest) {
-    const response = await api.post<ApiResponse<ChargeBalanceResponse>>('/v1/user/balance/charge', data, { requiresAuth: true, showNotifications: true })
-    const workflowChecker = createWorkflowStatusChecker(response.data.data.workflow_id, { initialDelay: 3000, interval: 2000 })
-    const status = await workflowChecker.status
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Charge Failed',
-        'Failed to charge balance',
-      )
-      throw new Error('Failed to charge balance')
-    }
-    if (status === WorkflowStatus.StatusCompleted) {
-      useNotificationStore().success(
-        'Charge Success',
-        'Charge balance successful',
-      )
-    }
+   await api.post<ApiResponse<ChargeBalanceResponse>>('/v1/user/balance/charge', data, {
+     requiresAuth: true,
+     showNotifications: true,
+   })
   }
 
   // Create a PaymentIntent (to be implemented)
@@ -268,26 +225,15 @@ export class UserService {
 
   // Redeem a voucher
   async redeemVoucher(voucherCode: string) {
-    const res = await api.put<ApiResponse<RedeemVoucherResponse>>(`/v1/user/redeem/${voucherCode}`, {}, {
-      requiresAuth: true,
-      showNotifications: true,
-      errorMessage: 'Failed to redeem voucher'
-    })
-    const workflowChecker = createWorkflowStatusChecker(res.data.data.workflow_id, { initialDelay: 3000, interval: 1000 })
-    const status = await workflowChecker.status
-    if(status === WorkflowStatus.StatusCompleted){
-      useNotificationStore().success(
-        'Voucher Redemption Success',
-        'Voucher has been successfully redeemed.',
-      )
-    }
-    if (status === WorkflowStatus.StatusFailed) {
-      useNotificationStore().error(
-        'Voucher Redemption Failed',
-        'Failed to redeem voucher',
-      )
-      throw new Error('Failed to redeem voucher')
-    }
+    await api.put<ApiResponse<RedeemVoucherResponse>>(
+      `/v1/user/redeem/${voucherCode}`,
+      {},
+      {
+        requiresAuth: true,
+        showNotifications: true,
+        errorMessage: 'Failed to redeem voucher',
+      },
+    )
   }
 
   // Fetch the user's current balance
@@ -324,8 +270,7 @@ export class UserService {
     const response = await api.post<ApiResponse<SshKey>>('/v1/user/ssh-keys', data, {
       requiresAuth: true,
       showNotifications: true,
-      successMessage: 'SSH key added successfully',
-      errorMessage: 'Failed to add SSH key'
+      errorMessage: 'Failed to add SSH key',
     })
     return response.data.data
   }
@@ -335,8 +280,7 @@ export class UserService {
     await api.delete(`/v1/user/ssh-keys/${id}`, {
       requiresAuth: true,
       showNotifications: true,
-      successMessage: 'SSH key deleted successfully',
-      errorMessage: 'Failed to delete SSH key'
+      errorMessage: 'Failed to delete SSH key',
     })
   }
   // Add node to deployment

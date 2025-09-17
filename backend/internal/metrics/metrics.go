@@ -38,6 +38,10 @@ type Metrics struct {
 	gormOpenConnections prometheus.Gauge
 	gormIdleConnections prometheus.Gauge
 
+	//Email metrics
+	emailSent   prometheus.Counter
+	emailFailed prometheus.Counter
+
 	// Registry for all metrics
 	registry *prometheus.Registry
 }
@@ -120,6 +124,20 @@ func NewMetrics() *Metrics {
 			},
 		),
 
+		// Email metrics
+		emailSent: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "email_sent",
+				Help: "Number of emails sent",
+			},
+		),
+		emailFailed: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "email_failed",
+				Help: "Number of email failures",
+			},
+		),
+
 		// GORM metrics
 		gormOpenConnections: prometheus.NewGauge(
 			prometheus.GaugeOpts{
@@ -150,7 +168,8 @@ func NewMetrics() *Metrics {
 		m.stripePaymentFailures,
 		m.gormOpenConnections,
 		m.gormIdleConnections,
-
+		m.emailSent,
+		m.emailFailed,
 		// Register Go runtime metrics
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
@@ -238,6 +257,16 @@ func (m *Metrics) IncrementStripePaymentSuccess() {
 // IncrementStripePaymentFailure increments the failed Stripe payment counter
 func (m *Metrics) IncrementStripePaymentFailure() {
 	m.stripePaymentFailures.Inc()
+}
+
+// IncrementEmailSent increments the successful email sent counter
+func (m *Metrics) IncrementEmailSent() {
+	m.emailSent.Inc()
+}
+
+// IncrementEmailFailed increments the failed email counter
+func (m *Metrics) IncrementEmailFailed() {
+	m.emailFailed.Inc()
 }
 
 // StartGORMMetricsCollector starts a goroutine that periodically updates GORM metrics
