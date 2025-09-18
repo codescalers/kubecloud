@@ -261,6 +261,7 @@ const notificationStore = useNotificationStore()
 const detailsDialog = ref(false)
 function showDetailsDialog(target: Notification) {
   detailsDialog.value = true
+  if(target.status == "unread") markAsRead(target.id)
   notification.value = target
 }
 const notification = ref<Notification | null>(null)
