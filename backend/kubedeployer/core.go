@@ -14,13 +14,38 @@ func (c *Cluster) GetLeaderNode() (Node, error) {
 	return c.Nodes[0], nil
 }
 
+func assignIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string, nodeID uint32) (string, error) {
+	ip, err := getIpForVm(ctx, gridClient, networkName, nodeID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get IP for node %d in network %s: %v", nodeID, networkName, err)
+	}
+	return ip, nil
+}
+
 func (n *Node) AssignNodeIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string) error {
 	logger.GetLogger().Debug().Msgf("Assigning IP for node %s in network %s", n.Name, networkName)
-	ip, err := getIpForVm(ctx, gridClient, networkName, n.NodeID)
+
+	ip, err := assignIP(ctx, gridClient, networkName, n.NodeID)
 	if err != nil {
-		return fmt.Errorf("failed to get IP for node %s: %v", n.Name, err)
+		return fmt.Errorf("failed to assign IP for node %s: %v", n.Name, err)
 	}
+
 	n.IP = ip
+	return nil
+}
+
+func (vm *VM) AssignIP(ctx context.Context, gridClient deployer.TFPluginClient) error {
+	logger.GetLogger().Debug().
+		Str("vm_name", vm.Name).
+		Uint32("node_id", vm.NodeID).
+		Msgf("Assigning IP for VM in network %s", vm.Network.Name)
+
+	ip, err := assignIP(ctx, gridClient, vm.Network.Name, vm.NodeID)
+	if err != nil {
+		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Name, err)
+	}
+
+	vm.IP = ip
 	return nil
 }
 
@@ -270,6 +295,73 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 
 	}
 
+	return nil
+}
+
+func (c *Client) DeployVMNetwork(ctx context.Context, vm *VM) error {
+	logger.GetLogger().Debug().
+		Str("vm_name", vm.Name).
+		Str("network_name", vm.Network.Name).
+		Msg("Deploying network for VM")
+
+	net, err := createNetworkWorkload(vm.Network.Name, vm.ProjectName, []uint32{vm.NodeID})
+	if err != nil {
+		return fmt.Errorf("failed to create network workload: %v", err)
+	}
+	net.AddWGAccess = vm.Network.AddWGAccess
+
+	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
+		return fmt.Errorf("failed to deploy network: %v", err)
+	}
+
+	vm.Network = net
+
+	logger.GetLogger().Debug().
+		Str("vm_name", vm.Name).
+		Str("network_name", vm.Network.Name).
+		Msg("Successfully deployed network for VM")
+
+	return nil
+}
+
+func (c *Client) DeployVM(ctx context.Context, vm *VM, userSSHKey string) error {
+	logger.GetLogger().Info().Str("Deploying VM %s", vm.Name)
+
+	if err := vm.PrepareVM(); err != nil {
+		return fmt.Errorf("failed to prepare VM: %v", err)
+	}
+	if err := vm.AssignIP(ctx, c.GridClient); err != nil {
+		return fmt.Errorf("failed to assign IP for VM %s: %v", vm.Name, err)
+	}
+
+	depl, err := deploymentFromVM(vm, vm.ProjectName, vm.Network.Name, userSSHKey)
+	if err != nil {
+		return fmt.Errorf("failed to create VM for node: %v", err)
+	}
+
+	logger.GetLogger().Debug().Str("vm_name", vm.Name).Msg("Starting deployment to grid")
+	if err = c.GridClient.DeploymentDeployer.Deploy(ctx, &depl); err != nil {
+		logger.GetLogger().Error().Err(err).Str("vm_name", vm.Name).Msg("Failed to deploy node to grid")
+		return fmt.Errorf("failed to deploy vm %s: %v", vm.Name, err)
+	}
+
+	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, vm.NodeID, vm.Name)
+	if err != nil {
+		return fmt.Errorf("failed to load VM deployment state: %v", err)
+	}
+
+	if err := vm.LoadFromDeployment(result); err != nil {
+		return fmt.Errorf("failed to load VM state from deployment: %v", err)
+	}
+
+	logger.GetLogger().Debug().Str("vm_name", vm.Name).Msg("VM deployment successful")
+	return nil
+}
+
+func (c *Client) RemoveVM(ctx context.Context, projectName string) error {
+	if err := c.GridClient.CancelByProjectName(projectName); err != nil {
+		return fmt.Errorf("failed to cancel deployment contracts by project name: %v", err)
+	}
 	return nil
 }
 

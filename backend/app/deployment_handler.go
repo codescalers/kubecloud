@@ -10,6 +10,8 @@ import (
 	"kubecloud/kubedeployer"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	"kubecloud/internal/logger"
 
@@ -23,6 +25,55 @@ type Response struct {
 	WorkflowID string `json:"task_id"`
 	Status     string `json:"status"`
 	Message    string `json:"message"`
+}
+
+// NodeInput contains fields taken by user
+type VMInput struct {
+	Name     string            `json:"name" validate:"required,min=3,max=20,alphanum"`
+	NodeID   uint32            `json:"node_id" validate:"required"`
+	CPU      uint8             `json:"cpu" validate:"required,min=1"`
+	Memory   uint64            `json:"memory" validate:"required,min=2048"`     // MB
+	RootSize uint64            `json:"root_size" validate:"required,min=5120"`  // MB
+	DiskSize uint64            `json:"disk_size" validate:"required,min=10240"` // MB
+	EnvVars  map[string]string `json:"env_vars,omitempty"`
+
+	// Optional fields
+	Flist      string `json:"flist,omitempty"`
+	Entrypoint string `json:"entrypoint,omitempty"`
+}
+
+// VMItem represents a single VM
+type VMItem struct {
+	ID          int             `json:"id"`
+	ProjectName string          `json:"project_name"`
+	VM          kubedeployer.VM `json:"vm" swaggerignore:"true"`
+	CreatedAt   time.Time       `json:"created_at"`
+}
+
+// ListVMsResponse represents the full response for listing VMs
+type ListVMsResponse struct {
+	VMs        []VMItem `json:"vms"`
+	Count      int      `json:"count"`
+	TotalCount int64    `json:"total_count"`
+	Page       int      `json:"page"`
+	PageSize   int      `json:"page_size"`
+}
+
+// DeployVMResponse represents the response after deploying a vm
+type DeployVMResponse struct {
+	WorkflowID string `json:"workflow_id" example:"123e4567-e89b-12d3-a456-426614174000"`
+	Status     string `json:"status" example:"running"`
+}
+
+// ListVMResponse represents a response with a single VM
+type ListVMResponse struct {
+	VM VMItem `json:"vm" swaggerignore:"true"`
+}
+
+// DeleteVMResponse represents the response when deleting a vm
+type DeleteVMResponse struct {
+	WorkflowID string `json:"workflow_id" example:"123e4567-e89b-12d3-a456-426614174000"`
+	Status     string `json:"status" example:"running"`
 }
 
 // DeploymentResponse represents the response for deployment operations
@@ -610,4 +661,273 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		Status:     string(wf.Status),
 		Message:    "Node removal workflow started successfully",
 	})
+}
+
+// @Summary Deploy a VM
+// @Description Creates and deploy a virtual machine
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param vm body VMInput true "VM configuration"
+// @Success 202 {object} DeployVMResponse "WorkflowID and Status"
+// @Failure 400 {object} APIResponse "Invalid request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/vms [post]
+func (h *Handler) HandleDeployVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+	var input VMInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		Error(c, http.StatusBadRequest, "Invalid request json format", err.Error())
+		return
+	}
+
+	// Map to internal kubedeployer.VM
+	vm := kubedeployer.VM{
+		Name:         input.Name,
+		NodeID:       input.NodeID,
+		CPU:          input.CPU,
+		Memory:       input.Memory,
+		RootSize:     input.RootSize,
+		DiskSize:     input.DiskSize,
+		EnvVars:      input.EnvVars,
+		Flist:        input.Flist,
+		Entrypoint:   input.Entrypoint,
+		OriginalName: input.Name,
+	}
+	vm.ProjectName = kubedeployer.GetVMProjectName(config.UserID, vm.Name)
+
+	if vm.Name == "" {
+		vm.Name = vm.ProjectName
+	}
+
+	if vm.EnvVars == nil {
+		vm.EnvVars = map[string]string{}
+	}
+
+	if vm.Network.Name == "" {
+		vm.Network.Name = vm.ProjectName + "net"
+	}
+
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployVM)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	wf.State = ewf.State{
+		"config": config,
+		"vm":     vm,
+	}
+
+	h.ewfEngine.RunAsync(c, wf)
+
+	Success(c, http.StatusAccepted, "VM deployment in progress", DeployVMResponse{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
+	})
+
+}
+
+// @Summary List VMs
+// @Description Get all virtual machines for the authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Success 200 {object} ListVMsResponse "Vms are listed successfully"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/vms [get]
+func (h *Handler) HandleListVMs(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	page := c.DefaultQuery("page", "1")
+	size := c.DefaultQuery("size", "10")
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+	projectNameFilter := c.Query("project_name")
+
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
+		return
+	}
+
+	sizeInt, err := strconv.Atoi(size)
+	if err != nil || sizeInt < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
+		return
+	}
+
+	validSortBy := map[string]bool{"created_at": true, "project_name": true}
+	if !validSortBy[sortBy] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_by field"})
+		return
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid sort_order, must be 'asc' or 'desc'"})
+		return
+	}
+
+	vms, totalCount, err := h.db.ListUserVMSWithParams(userID, pageInt, sizeInt, sortBy, sortOrder, projectNameFilter)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user VMs with parameters")
+		InternalServerError(c)
+		return
+	}
+
+	vmList := make([]VMItem, 0, len(vms))
+	for _, vm := range vms {
+		vmResult, err := vm.GetVMResult()
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Int("vm_id", vm.ID).Msg("Failed to deserialize VM result")
+			continue
+		}
+
+		vmList = append(vmList, VMItem{
+			ID:          vm.ID,
+			ProjectName: vm.ProjectName,
+			VM:          vmResult,
+			CreatedAt:   vm.CreatedAt,
+		})
+	}
+
+	// 3. Return the paginated response
+	Success(c, http.StatusOK, "Vms are listed successfully", ListVMsResponse{
+		VMs:        vmList,
+		Count:      len(vmList),
+		TotalCount: totalCount,
+		Page:       pageInt,
+		PageSize:   sizeInt,
+	})
+}
+
+// @Summary List VM
+// @Description Get specific VM for authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "VM ID"
+// @Success 200 {object} ListVMResponse
+// @Failure 400 {object} APIResponse "Bad Request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "VM not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/vms/{id} [get]
+func (h *Handler) HandleListVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	vmID := c.Param("id")
+	if vmID == "" {
+		Error(c, http.StatusBadRequest, "Vm id is required", "")
+		return
+	}
+
+	vm, err := h.db.GetVMByID(config.UserID, vmID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.GetLogger().Error().Err(err).
+				Int("user_id", config.UserID).
+				Str("vm_id", vmID).
+				Msg("Failed to find VM")
+			Error(c, http.StatusNotFound, "Vm is not found", err.Error())
+			return
+		} else {
+			logger.GetLogger().Error().Err(err).
+				Int("user_id", config.UserID).
+				Str("vm_id", vmID).
+				Msg("Database error while fetching VM")
+			InternalServerError(c)
+			return
+		}
+
+	}
+
+	vmResult, err := vm.GetVMResult()
+	if err != nil {
+		logger.GetLogger().Error().Err(err).
+			Int("vm_id", vm.ID).
+			Msg("Failed to deserialize VM result")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Vm is listed successfully", ListVMResponse{VM: VMItem{
+		ID:          vm.ID,
+		ProjectName: vm.ProjectName,
+		VM:          vmResult,
+		CreatedAt:   vm.CreatedAt,
+	}})
+}
+
+// @Summary Delete VM
+// @Description Delete a VM for authenticated user
+// @Tags vms
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "VM ID"
+// @Success 200 {object} DeleteVMResponse "Deletion workflow started"
+// @Failure 400 {object} APIResponse "Bad Request"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 404 {object} APIResponse "VM not found"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/vms/{id} [delete]
+func (h *Handler) HandleDeleteVM(c *gin.Context) {
+	config, err := h.getClientConfig(c)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	vmID := c.Param("id")
+	if vmID == "" {
+		Error(c, http.StatusBadRequest, "vm id is required", "")
+		return
+	}
+	vm, err := h.db.GetVMByID(config.UserID, vmID)
+	if err != nil {
+		Error(c, http.StatusNotFound, "vm not found", err.Error())
+		return
+	}
+	vmResult, err := vm.GetVMResult()
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Int("vm_id", vm.ID).Msg("Failed to deserialize VM result")
+		InternalServerError(c)
+		return
+	}
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteVM)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	wf.State = ewf.State{
+		"config":       config,
+		"project_name": vmResult.ProjectName,
+		"vm":           vmResult,
+	}
+
+	h.ewfEngine.RunAsync(c, wf)
+
+	Success(c, http.StatusOK, "VM deletion in progress", DeleteVMResponse{
+		WorkflowID: wf.UUID,
+		Status:     string(wf.Status),
+	})
+
 }

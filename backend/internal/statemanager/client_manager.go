@@ -102,3 +102,21 @@ func CloseClient(state ewf.State, kubeClient *kubedeployer.Client) error {
 	logger.GetLogger().Debug().Msg("Closed kubeclient and cleaned up state")
 	return nil
 }
+
+func GetVM(state ewf.State) (kubedeployer.VM, error) {
+	value, ok := state["vm"]
+	if !ok {
+		return kubedeployer.VM{}, fmt.Errorf("missing 'vm' in state")
+	}
+
+	vm, ok := value.(kubedeployer.VM)
+	if !ok {
+		return kubedeployer.VM{}, fmt.Errorf("invalid 'vm' in state")
+	}
+
+	return vm, nil
+}
+
+func StoreVM(state ewf.State, vm kubedeployer.VM) {
+	state["vm"] = vm
+}

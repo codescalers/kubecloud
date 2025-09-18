@@ -34,6 +34,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&Notification{},
 		&SSHKey{},
 		&Cluster{},
+		&VM{},
 		&PendingRecord{},
 	)
 	if err != nil {
@@ -396,6 +397,75 @@ func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) err
 		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
 		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
 		Error
+}
+
+// CreateVM creates a new vm in the database
+func (s *GormDB) CreateVM(userID int, vm *VM) error {
+	vm.CreatedAt = time.Now()
+	vm.UserID = userID
+	return s.db.Create(vm).Error
+}
+
+// GetVMByProjectName returns a vm by name for a specific user
+func (s *GormDB) GetVMByProjectName(userID int, projectName string) (VM, error) {
+	var vm VM
+	query := s.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&vm)
+	return vm, query.Error
+}
+
+// GetVMByID returns a vm by id for a specific user
+func (s *GormDB) GetVMByID(userID int, vmID string) (VM, error) {
+	var vm VM
+	query := s.db.Where("user_id = ? AND id = ?", userID, vmID).First(&vm)
+	return vm, query.Error
+}
+
+// UpdateVM updates an existing vm
+func (s *GormDB) UpdateVM(vm *VM) error {
+	return s.db.Model(&VM{}).
+		Where("user_id = ? AND project_name = ?", vm.UserID, vm.ProjectName).
+		Updates(vm).Error
+}
+
+func (s *GormDB) ListUserVMS(userID int) ([]VM, error) {
+	var vms []VM
+	query := s.db.Where("user_id = ?", userID).Find(&vms)
+	return vms, query.Error
+
+}
+
+func (s *GormDB) ListUserVMSWithParams(userID int, page, size int, sortBy, sortOrder, projectNameFilter string) ([]VM, int64, error) {
+	var vms []VM
+	var totalCount int64
+
+	query := s.db.Model(&VM{}).Where("user_id = ?", userID)
+
+	if projectNameFilter != "" {
+		query = query.Where("project_name ILIKE ?", "%"+projectNameFilter+"%")
+	}
+
+	if err := query.Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	sortColumn := "created_at"
+	if sortBy == "project_name" {
+		sortColumn = "project_name"
+	}
+	query = query.Order(sortColumn + " " + sortOrder)
+
+	offset := (page - 1) * size
+	query = query.Limit(size).Offset(offset)
+
+	if err := query.Find(&vms).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return vms, totalCount, nil
+}
+
+func (s *GormDB) DeleteVM(userID int, projectName string) error {
+	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&VM{}).Error
 }
 
 // CountAllUsers returns the total number of users in the system

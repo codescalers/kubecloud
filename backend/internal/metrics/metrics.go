@@ -27,6 +27,11 @@ type Metrics struct {
 	clusterDeploymentFailures  prometheus.Counter
 	activeClusterCount         prometheus.Gauge
 
+	// VM metrics
+	vmDeploymentSuccesses prometheus.Counter
+	vmDeploymentFailures  prometheus.Counter
+	activeVMCount         prometheus.Gauge
+
 	// User metrics
 	userRegistrations prometheus.Counter
 
@@ -102,6 +107,26 @@ func NewMetrics() *Metrics {
 			},
 		),
 
+		// VM metrics
+		vmDeploymentSuccesses: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "vm_deployment_successes",
+				Help: "Number of successful vm deployments",
+			},
+		),
+		vmDeploymentFailures: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Name: "vm_deployment_failures",
+				Help: "Number of failed vm deployments",
+			},
+		),
+		activeVMCount: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "active_vms",
+				Help: "Number of active vms",
+			},
+		),
+
 		// User metrics
 		userRegistrations: prometheus.NewCounter(
 			prometheus.CounterOpts{
@@ -163,6 +188,9 @@ func NewMetrics() *Metrics {
 		m.clusterDeploymentSuccesses,
 		m.clusterDeploymentFailures,
 		m.activeClusterCount,
+		m.vmDeploymentSuccesses,
+		m.vmDeploymentFailures,
+		m.activeVMCount,
 		m.userRegistrations,
 		m.stripePaymentSuccesses,
 		m.stripePaymentFailures,
@@ -242,6 +270,26 @@ func (m *Metrics) IncActiveClusterCount() {
 // DecActiveClusterCount decrements the active cluster count gauge
 func (m *Metrics) DecActiveClusterCount() {
 	m.activeClusterCount.Dec()
+}
+
+// IncrementVMDeploymentSuccess increments the successful cluster deployment counter
+func (m *Metrics) IncrementVMDeploymentSuccess() {
+	m.vmDeploymentSuccesses.Inc()
+}
+
+// IncrementVMDeploymentFailure increments the failed cluster deployment counter
+func (m *Metrics) IncrementVMDeploymentFailure() {
+	m.vmDeploymentFailures.Inc()
+}
+
+// IncActiveVMCount increments the active cluster count gauge
+func (m *Metrics) IncActiveVMCount() {
+	m.activeVMCount.Inc()
+}
+
+// DecActiveVMCount decrements the active cluster count gauge
+func (m *Metrics) DecActiveVMCount() {
+	m.activeVMCount.Dec()
 }
 
 // IncrementUserRegistration increments the user registration counter

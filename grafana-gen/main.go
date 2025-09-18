@@ -84,6 +84,12 @@ func main() {
 		graphPanel("Cluster Deployment Failures", "increase(cluster_deployment_failures[$__range])", "stat", id+7, y+18, 8, 8, 6, true),
 		graphPanel("Active Clusters", "increase(active_clusters[$__range])", "stat", id+8, y+18, 16, 8, 6, false),
 
+		// VM Metrics
+		rowPanel("VM Metrics", id+9, y+25),
+		graphPanel("VM Deployment Successes", "vm_deployment_successes", "stat", id+20, y+26, 0, 8, 6, false),
+		graphPanel("VM Deployment Failures", "vm_deployment_failures", "stat", id+21, y+26, 8, 8, 6, true),
+		graphPanel("Active VMs", "active_vms", "stat", id+22, y+26, 16, 8, 6, false),
+
 		// Users & Payments
 		rowPanel("Users & Payments", id+9, y+25),
 		graphPanel("User Registrations", "increase(user_registrations[$__range])", "stat", id+10, y+26, 0, 8, 6, false),

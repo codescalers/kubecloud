@@ -319,6 +319,14 @@ func (app *App) registerHandlers() {
 
 			deploymentGroup := deployerGroup.Group("/deployments")
 			{
+				// vms handlers
+				vmGroup := deploymentGroup.Group("/vms")
+				{
+					vmGroup.POST("", app.handlers.HandleDeployVM)
+					vmGroup.GET("", app.handlers.HandleListVMs)
+					vmGroup.DELETE("/:id", app.handlers.HandleDeleteVM)
+					vmGroup.GET("/:id", app.handlers.HandleListVM)
+				}
 				deploymentGroup.POST("", app.handlers.HandleDeployCluster)
 				deploymentGroup.GET("", app.handlers.HandleListDeployments)
 				deploymentGroup.DELETE("", app.handlers.HandleDeleteAllDeployments)

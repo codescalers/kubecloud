@@ -245,6 +245,37 @@ func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
+func StoreVMDeploymentStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			return err
+		}
+
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		dbVM := &models.VM{
+			ProjectName: vm.ProjectName,
+		}
+		//TODO:
+		if err := dbVM.SetVMResult(vm); err != nil {
+			return fmt.Errorf("failed to set VM result: %w", err)
+		}
+
+		_, err = db.GetVMByProjectName(config.UserID, vm.ProjectName)
+		if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+			if err := db.CreateVM(config.UserID, dbVM); err != nil {
+				return fmt.Errorf("failed to create VM in database: %w", err)
+			}
+		}
+
+		return nil
+	}
+}
+
 func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
@@ -486,6 +517,128 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 	}
 }
 
+func DeployVMNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		config, err := getConfig(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		if err := kubeClient.DeployVMNetwork(ctx, &vm); err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to deploy VM network: %w", err)
+		}
+		state["vm"] = vm
+		return nil
+	}
+}
+
+func DeployVMStep(metrics *metrics.Metrics) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			metrics.IncrementVMDeploymentFailure()
+			return err
+		}
+
+		if err := kubeClient.DeployVM(ctx, &vm, config.SSHPublicKey); err != nil {
+			if isWorkloadAlreadyDeployedError(err) {
+				metrics.IncrementVMDeploymentFailure()
+				return fmt.Errorf("VM already deployed: %s %w", vm.Name, ewf.ErrFailWorkflowNow)
+			}
+			if isWorkloadInvalid(err) {
+				metrics.IncrementVMDeploymentFailure()
+				return fmt.Errorf("VM invalid:%s %w", vm.Name, ewf.ErrFailWorkflowNow)
+			}
+			metrics.IncrementVMDeploymentFailure()
+			return fmt.Errorf("failed to deploy VM %s: %w", vm.Name, err)
+		}
+
+		metrics.IncrementVMDeploymentSuccess()
+		statemanager.SaveGridClientState(state, kubeClient)
+		statemanager.StoreVM(state, vm)
+		return nil
+	}
+}
+
+func DeleteVMStep(metrics *metrics.Metrics) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		ensureClient(state)
+
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
+		}
+
+		kubeClient, err := statemanager.GetKubeClient(state, config)
+		if err != nil {
+			return err
+		}
+
+		vm, err := statemanager.GetVM(state)
+		if err != nil {
+			return err
+		}
+
+		projectName := kubedeployer.GetVMProjectName(config.UserID, vm.Name)
+
+		if err := kubeClient.RemoveVM(ctx, projectName); err != nil {
+			return fmt.Errorf("failed to remove VM %s: %w", vm.Name, err)
+		}
+
+		statemanager.SaveGridClientState(state, kubeClient)
+		metrics.DecActiveVMCount()
+		return nil
+	}
+}
+
+func DeleteVMFromDBStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		projectName, ok := state["project_name"].(string)
+		if !ok {
+			return fmt.Errorf("missing or invalid 'project_name' in state")
+		}
+
+		if err := db.DeleteVM(config.UserID, projectName); err != nil {
+			return fmt.Errorf("failed to delete VM from database: %w", err)
+		}
+
+		return nil
+	}
+}
+
 func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, notificationService *notification.NotificationService, wfName string, nodesNum int) {
 	steps := []ewf.Step{
 		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
@@ -526,36 +679,66 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 
 func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		if err != nil && isDeployWorkflow(wf.Name) {
-			cluster, clusterErr := statemanager.GetCluster(wf.State)
-			if clusterErr != nil || cluster.ProjectName == "" {
-				logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
-				return
+		if err != nil {
+			if wf.Name == constants.WorkflowDeployVM {
+				vm, vmErr := statemanager.GetVM(wf.State)
+				if vmErr != nil || vm.ProjectName == "" {
+					logger.GetLogger().Error().Err(vmErr).Str("workflow_name", wf.Name).Msg("nothing to rollback for VM")
+					return
+				}
+
+				logger.GetLogger().Info().Str("project_name", vm.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering delete workflow for failed VM deployment")
+
+				deleteWf, deleteErr := engine.NewWorkflow(constants.WorkflowDeleteVM)
+				if deleteErr != nil {
+					logger.GetLogger().Error().Err(deleteErr).Str("project_name", vm.ProjectName).Msg("Failed to create delete VM workflow")
+					return
+				}
+
+				deleteWf.State["config"] = wf.State["config"]
+				deleteWf.State["vm"] = wf.State["vm"]
+				deleteWf.State["project_name"] = vm.ProjectName
+
+				deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+
+				if err := engine.RunSync(deleteCtx, deleteWf); err != nil {
+					logger.GetLogger().Error().Err(err).Str("project_name", vm.ProjectName).Msg("Failed to run delete VM workflow")
+					return
+				}
+
+				metrics.DecActiveVMCount()
+			} else if isDeployWorkflow(wf.Name) {
+				cluster, clusterErr := statemanager.GetCluster(wf.State)
+				if clusterErr != nil || cluster.ProjectName == "" {
+					logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
+					return
+				}
+
+				logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
+
+				rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
+				if rollbackErr != nil {
+					logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+					return
+				}
+
+				rollbackWf.State["config"] = wf.State["config"]
+				rollbackWf.State["cluster"] = wf.State["cluster"]
+				rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
+				rollbackWf.State["project_name"] = cluster.ProjectName
+
+				rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+				defer cancel()
+
+				// wait the rollback workflow to finish before closing the client
+				if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+					logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+					return
+				}
+
+				metrics.DecActiveClusterCount()
 			}
-
-			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
-
-			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
-			if rollbackErr != nil {
-				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
-				return
-			}
-
-			rollbackWf.State["config"] = wf.State["config"]
-			rollbackWf.State["cluster"] = wf.State["cluster"]
-			rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
-			rollbackWf.State["project_name"] = cluster.ProjectName
-
-			rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-			defer cancel()
-
-			// wait the rollback workflow to finish before closing the client
-			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
-				return
-			}
-
-			metrics.DecActiveClusterCount()
 		}
 	}
 }
@@ -583,6 +766,11 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
+	engine.Register(constants.StepDeployVMNetwork, DeployVMNetworkStep(metrics))
+	engine.Register(constants.StepDeployVM, DeployVMStep(metrics))
+	engine.Register(constants.StepStoreVMDeployment, StoreVMDeploymentStep(db))
+	engine.Register(constants.StepDeleteVM, DeleteVMStep(metrics))
+	engine.Register(constants.StepDeleteDB, DeleteVMFromDBStep(db))
 	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
 	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
@@ -616,6 +804,24 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
+
+	deployVMWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	deployVMWFTemplate.Steps = []ewf.Step{
+		{Name: constants.StepDeployVMNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepDeployVM, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepStoreVMDeployment, RetryPolicy: standardRetryPolicy},
+	}
+	deployVMWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		notifyStepHook(notificationService),
+	}
+	engine.RegisterTemplate(constants.WorkflowDeployVM, &deployVMWFTemplate)
+
+	deleteVMTemple := newKubecloudWorkflowTemplate(notificationService)
+	deleteVMTemple.Steps = []ewf.Step{
+		{Name: constants.StepDeleteVM, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepDeleteDB, RetryPolicy: standardRetryPolicy},
+	}
+	engine.RegisterTemplate(constants.WorkflowDeleteVM, &deleteVMTemple)
 
 	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	rollbackWFTemplate.Steps = []ewf.Step{
