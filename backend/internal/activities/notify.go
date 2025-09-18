@@ -383,7 +383,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	if err == nil {
 		if wf.Name == constants.WorkflowUnreserveNode {
 			subject = "Node Unreserved Successfully"
-			message = fmt.Sprintf("Node %d has been unreserved successfully", nodeID)
+			message = "Node has been unreserved successfully"
 		}
 	} else {
 		severity = models.NotificationSeverityError
@@ -391,7 +391,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 		message = fmt.Sprintf("Failed to reserve node %d", nodeID)
 		if wf.Name == constants.WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
-			message = fmt.Sprintf("Failed to unreserve node %d", nodeID)
+			message = "Failed to unreserve node"
 		}
 	}
 
