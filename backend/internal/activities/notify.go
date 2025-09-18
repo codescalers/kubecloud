@@ -74,7 +74,9 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 
 	if err != nil {
 		message := fmt.Sprintf("%s failed", workflowDesc)
-		if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
+		if vm, vmErr := statemanager.GetVM(wf.State); vmErr == nil {
+			message = fmt.Sprintf("%s for VM '%s' failed", workflowDesc, vm.Name)
+		} else if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
 			message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
 		}
 
@@ -90,33 +92,47 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)
 		return notification
 	}
-	cluster, clusterErr := statemanager.GetCluster(wf.State)
-	if clusterErr != nil {
+
+	// Success case
+	vm, vmErr := statemanager.GetVM(wf.State)
+	if vmErr == nil {
+		message := fmt.Sprintf("%s completed successfully for VM '%s'", workflowDesc, vm.Name)
 		notificationPayload = notification.MergePayload(notification.CommonPayload{
-			Message: fmt.Sprintf("%s completed successfully", workflowDesc),
+			Message: message,
 			Subject: fmt.Sprintf("%s completed successfully", workflowDesc),
 			Status:  "succeeded",
 		}, map[string]string{
-			"name": wf.Name,
+			"name":    wf.Name,
+			"vm_name": vm.Name,
 		})
-
 	} else {
-		nodeCount := len(cluster.Nodes)
-		totalSteps := nodeCount + 2
-		message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
-			workflowDesc, cluster.Name, nodeCount)
+		cluster, clusterErr := statemanager.GetCluster(wf.State)
+		if clusterErr != nil {
+			notificationPayload = notification.MergePayload(notification.CommonPayload{
+				Message: fmt.Sprintf("%s completed successfully", workflowDesc),
+				Subject: fmt.Sprintf("%s completed successfully", workflowDesc),
+				Status:  "succeeded",
+			}, map[string]string{
+				"name": wf.Name,
+			})
+		} else {
+			nodeCount := len(cluster.Nodes)
+			totalSteps := nodeCount + 2
+			message := fmt.Sprintf("%s completed successfully for cluster '%s' with %d nodes",
+				workflowDesc, cluster.Name, nodeCount)
 
-		notificationPayload = notification.MergePayload(notification.CommonPayload{
-			Message: message,
-			Subject: fmt.Sprintf("%s completed successfully ",
-				workflowDesc),
-			Status: "succeeded",
-		}, map[string]string{
-			"name":         wf.Name,
-			"cluster_name": cluster.Name,
-			"node_count":   fmt.Sprintf("%d", nodeCount),
-			"total_steps":  fmt.Sprintf("%d", totalSteps),
-		})
+			notificationPayload = notification.MergePayload(notification.CommonPayload{
+				Message: message,
+				Subject: fmt.Sprintf("%s completed successfully",
+					workflowDesc),
+				Status: "succeeded",
+			}, map[string]string{
+				"name":         wf.Name,
+				"cluster_name": cluster.Name,
+				"node_count":   fmt.Sprintf("%d", nodeCount),
+				"total_steps":  fmt.Sprintf("%d", totalSteps),
+			})
+		}
 	}
 
 	notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)

@@ -679,36 +679,66 @@ func CloseClient(ctx context.Context, wf *ewf.Workflow, err error) {
 
 func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		if err != nil && isDeployWorkflow(wf.Name) {
-			cluster, clusterErr := statemanager.GetCluster(wf.State)
-			if clusterErr != nil || cluster.ProjectName == "" {
-				logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
-				return
+		if err != nil {
+			if wf.Name == constants.WorkflowDeployVM {
+				vm, vmErr := statemanager.GetVM(wf.State)
+				if vmErr != nil || vm.ProjectName == "" {
+					logger.GetLogger().Error().Err(vmErr).Str("workflow_name", wf.Name).Msg("nothing to rollback for VM")
+					return
+				}
+
+				logger.GetLogger().Info().Str("project_name", vm.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering delete workflow for failed VM deployment")
+
+				deleteWf, deleteErr := engine.NewWorkflow(constants.WorkflowDeleteVM)
+				if deleteErr != nil {
+					logger.GetLogger().Error().Err(deleteErr).Str("project_name", vm.ProjectName).Msg("Failed to create delete VM workflow")
+					return
+				}
+
+				deleteWf.State["config"] = wf.State["config"]
+				deleteWf.State["vm"] = wf.State["vm"]
+				deleteWf.State["project_name"] = vm.ProjectName
+
+				deleteCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+
+				if err := engine.RunSync(deleteCtx, deleteWf); err != nil {
+					logger.GetLogger().Error().Err(err).Str("project_name", vm.ProjectName).Msg("Failed to run delete VM workflow")
+					return
+				}
+
+				metrics.DecActiveVMCount()
+			} else if isDeployWorkflow(wf.Name) {
+				cluster, clusterErr := statemanager.GetCluster(wf.State)
+				if clusterErr != nil || cluster.ProjectName == "" {
+					logger.GetLogger().Error().Err(clusterErr).Str("workflow_name", wf.Name).Msg("nothing to rollback")
+					return
+				}
+
+				logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
+
+				rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
+				if rollbackErr != nil {
+					logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+					return
+				}
+
+				rollbackWf.State["config"] = wf.State["config"]
+				rollbackWf.State["cluster"] = wf.State["cluster"]
+				rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
+				rollbackWf.State["project_name"] = cluster.ProjectName
+
+				rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+				defer cancel()
+
+				// wait the rollback workflow to finish before closing the client
+				if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+					logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+					return
+				}
+
+				metrics.DecActiveClusterCount()
 			}
-
-			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
-
-			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
-			if rollbackErr != nil {
-				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
-				return
-			}
-
-			rollbackWf.State["config"] = wf.State["config"]
-			rollbackWf.State["cluster"] = wf.State["cluster"]
-			rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
-			rollbackWf.State["project_name"] = cluster.ProjectName
-
-			rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-			defer cancel()
-
-			// wait the rollback workflow to finish before closing the client
-			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
-				return
-			}
-
-			metrics.DecActiveClusterCount()
 		}
 	}
 }
@@ -775,11 +805,14 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
 
-	deployVMWFTemplate := newKubecloudWorkflowTemplate(notificationService)
+	deployVMWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deployVMWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepDeployVMNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: constants.StepDeployVM, RetryPolicy: criticalRetryPolicy},
 		{Name: constants.StepStoreVMDeployment, RetryPolicy: standardRetryPolicy},
+	}
+	deployVMWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		notifyStepHook(notificationService),
 	}
 	engine.RegisterTemplate(constants.WorkflowDeployVM, &deployVMWFTemplate)
 
