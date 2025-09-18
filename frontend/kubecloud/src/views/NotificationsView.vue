@@ -251,7 +251,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, capitalize } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useNotificationStore } from '../stores/notifications'
 import type { Notification, NotificationType } from '../types/notifications'
