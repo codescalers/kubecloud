@@ -35,7 +35,7 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 			continue
 		}
 
-		decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+		decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			continue

@@ -124,7 +124,7 @@ func (cm *CryptoManager) getMnemonicKey(userAddress string) ([]byte, error) {
 	return cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
 }
 
-func (cm *CryptoManager) EncryptMnemonic(plainText string, userAddress string) ([]byte, error) {
+func (cm *CryptoManager) Encrypt(plainText string, userAddress string) ([]byte, error) {
 	key, err := cm.getMnemonicKey(userAddress)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,7 @@ func (cm *CryptoManager) EncryptMnemonic(plainText string, userAddress string) (
 	return cm.encrypt(plainText, key)
 }
 
-func (cm *CryptoManager) DecryptMnemonic(encryptedBytes []byte, userAddress string) (string, error) {
+func (cm *CryptoManager) Decrypt(encryptedBytes []byte, userAddress string) (string, error) {
 	key, err := cm.getMnemonicKey(userAddress)
 	if err != nil {
 		return "", err
@@ -178,11 +178,11 @@ func (cm *CryptoManager) EnsureMnemonicsEncrypted(ctx context.Context, db models
 				u.AccountAddress = addr
 			}
 
-			if _, err := cm.DecryptMnemonic(u.Mnemonic, u.AccountAddress); err == nil {
+			if _, err := cm.Decrypt(u.Mnemonic, u.AccountAddress); err == nil {
 				return
 			}
 
-			encryptedMnemonic, err := cm.EncryptMnemonic(string(u.Mnemonic), u.AccountAddress)
+			encryptedMnemonic, err := cm.Encrypt(string(u.Mnemonic), u.AccountAddress)
 			if err != nil {
 				return
 			}

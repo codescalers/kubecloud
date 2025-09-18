@@ -207,8 +207,23 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	if cluster.Kubeconfig != "" {
-		c.JSON(http.StatusOK, gin.H{"kubeconfig": cluster.Kubeconfig})
+	if len(cluster.Kubeconfig) > 0 {
+
+		user, err := h.db.GetUserByID(userID)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to get user for kubeconfig decryption")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user information"})
+			return
+		}
+
+		decryptedKubeconfig, err := h.cryptoManager.Decrypt(cluster.Kubeconfig, user.AccountAddress)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to decrypt kubeconfig")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decrypt kubeconfig"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"kubeconfig": decryptedKubeconfig})
 		return
 	}
 
@@ -255,7 +270,20 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	cluster.Kubeconfig = kubeconfig
+	user, err := h.db.GetUserByID(cluster.UserID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Int("user_id", cluster.UserID).Msg("Failed to get user for kubeconfig encryption")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user for kubeconfig encryption"})
+		return
+	}
+	encryptedKubeconfig, err := h.cryptoManager.Encrypt(kubeconfig, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("Failed to encrypt kubeconfig")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to encrypt kubeconfig"})
+		return
+	}
+
+	cluster.Kubeconfig = encryptedKubeconfig
 	if err := h.db.UpdateCluster(&cluster); err != nil {
 		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
 	}
@@ -274,7 +302,7 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to get user: %v", err)
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to decrypt user mnemonic: %w", err)
 	}

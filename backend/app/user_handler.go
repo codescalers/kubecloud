@@ -693,7 +693,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to decrypt user mnemonic")
 		InternalServerError(c)
@@ -787,7 +787,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -887,7 +887,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

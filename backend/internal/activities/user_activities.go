@@ -159,7 +159,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 
 		if len(existingUser.Mnemonic) > 0 {
 
-			decryptedMnemonic, err := crypto.DecryptMnemonic(existingUser.Mnemonic, existingUser.AccountAddress)
+			decryptedMnemonic, err := crypto.Decrypt(existingUser.Mnemonic, existingUser.AccountAddress)
 			if err != nil {
 				return fmt.Errorf("failed to decrypt existing mnemonic: %w", err)
 			}
@@ -172,7 +172,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return err
 		}
 
-		encryptedMnemonic, err := crypto.EncryptMnemonic(mnemonic, address)
+		encryptedMnemonic, err := crypto.Encrypt(mnemonic, address)
 		if err != nil {
 			return fmt.Errorf("failed to encrypt mnemonic: %w", err)
 		}
@@ -460,7 +460,7 @@ func UpdateCreditCardBalanceStep(db models.DB, crypto *internal.CryptoManager) e
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
-		decryptedMnemonic, err := crypto.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+		decryptedMnemonic, err := crypto.Decrypt(user.Mnemonic, user.AccountAddress)
 		if err != nil {
 			return fmt.Errorf("failed to decrypt user mnemonic: %w", err)
 		}

@@ -267,7 +267,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 	// validate user has enough balance for reserving node
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -439,7 +439,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -552,7 +552,7 @@ func (h *Handler) getTwinIDFromUserID(userID int) (uint64, error) {
 		return 0, err
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		return 0, fmt.Errorf("failed to decrypt user mnemonic: %w", err)
 	}

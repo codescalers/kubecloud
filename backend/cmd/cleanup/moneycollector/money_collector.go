@@ -55,7 +55,7 @@ func (m *MoneyCollector) CollectMoney() {
 				return
 			}
 
-			decryptedMnemonic, err := m.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+			decryptedMnemonic, err := m.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to decrypt user mnemonic")
 				return

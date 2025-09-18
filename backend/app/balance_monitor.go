@@ -78,7 +78,7 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 		return errors.Wrapf(err, "failed to get user for pending record ID %d", recordID)
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		return errors.Wrapf(err, "failed to decrypt user mnemonic for pending record ID %d", recordID)
 	}

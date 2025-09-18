@@ -115,7 +115,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 				return
 			}
 
-			decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+			decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to decrypt user mnemonic")
 				mu.Lock()
@@ -366,7 +366,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	decryptedMnemonic, err := h.cryptoManager.DecryptMnemonic(user.Mnemonic, user.AccountAddress)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

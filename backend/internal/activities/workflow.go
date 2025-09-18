@@ -150,7 +150,7 @@ func RegisterEWFWorkflows(
 	trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(constants.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, notificationService, config)
+	registerDeploymentActivities(engine, metrics, db, notificationService, config, cryptoMgr)
 
 	notificationTemplate := newKubecloudWorkflowTemplate(notificationService)
 	notificationTemplate.Steps = []ewf.Step{

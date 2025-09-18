@@ -37,11 +37,11 @@ func TestEncryptDecrypt_Property(t *testing.T) {
 	prop := func(p nonEmptyASCII, a nonEmptyASCII) bool {
 		plain := string(p)
 		addr := string(a)
-		ct, err := cm.EncryptMnemonic(plain, addr)
+		ct, err := cm.Encrypt(plain, addr)
 		if !assert.NoError(t, err, "encrypt failed: plain=%q addr=%q", plain, addr) {
 			return false
 		}
-		pt, err := cm.DecryptMnemonic(ct, addr)
+		pt, err := cm.Decrypt(ct, addr)
 		if !assert.NoError(t, err, "decrypt failed: addr=%q", addr) {
 			return false
 		}
