@@ -99,11 +99,11 @@
               </v-tooltip>
               <v-tooltip location="top">
                 <template #activator="{ props }">
-                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll">
+                  <v-btn icon size="small" class="mr-1" v-bind="props" @click="openAddNodeDialog(cluster)" :disabled="deletingAll || !haveEnoughBalance">
                     <v-icon icon="mdi-plus" />
                   </v-btn>
                 </template>
-                <span>Add node</span>
+                <span v-text="haveEnoughBalance ? 'Add node' : 'Insufficient balance'"></span>
               </v-tooltip>
               <v-tooltip location="top">
                 <template #activator="{ props }">
