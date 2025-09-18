@@ -24,7 +24,7 @@ export const useNotificationStore = defineStore('notifications', () => {
   )
 
   // Core functions
-  const addNotification = (notification: Notification | Omit<Notification, 'id'>) => {
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
     const id = notification.persistent ? `temp-${Date.now()}` : `toast-${Date.now()}-${Math.random()}`
     const newNotification: Notification = {
       ...notification,

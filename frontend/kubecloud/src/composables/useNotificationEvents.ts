@@ -158,13 +158,14 @@ export function useNotificationEvents() {
 
     const { subject, message } = getNotificationData(data, type)
     if (id) {
-      notificationStore.addNotification({
-        ...event,
+      notificationStore.notifications.unshift({
+        id,
+        type,
         severity,
-        payload: { ...data },
+        payload: { ...data, subject, message },
         status: 'unread',
         created_at: event.timestamp,
-        persistent: true,
+        persistent: !!id,
       })
     }
     switch (severity) {
@@ -178,7 +179,6 @@ export function useNotificationEvents() {
       case 'warning':
         notificationStore.warning(subject, message)
         break
-      case 'info':
       default:
         notificationStore.info(subject, message)
         break
