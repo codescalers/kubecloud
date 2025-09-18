@@ -23,7 +23,7 @@
 
         <v-btn
           variant="outlined"
-          color="secondary"
+          color="error"
           @click="openClearAllDialog"
           :loading="loading"
           :disabled="persistentNotifications.length === 0 || loading"
