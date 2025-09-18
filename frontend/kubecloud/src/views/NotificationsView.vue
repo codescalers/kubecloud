@@ -142,6 +142,11 @@
                     UNREAD
                   </v-chip>
 
+                  <v-btn v-if="notification.payload.error" icon size="small" variant="text"
+                    @click.stop="showDetailsDialog(notification)" color="info" class="ml-2">
+                    <v-icon icon="mdi-information-outline" size="16"></v-icon>
+                  </v-btn>
+
                   <v-btn
                     v-if="notification.status === 'unread'"
                     icon
@@ -229,6 +234,20 @@
       </v-card>
     </v-dialog>
   </div>
+  <v-dialog v-model="detailsDialog" max-width="600">
+    <v-card class="pa-3 ">
+      <v-card-title class="text-h4 text-error">{{ notification?.payload.subject }}</v-card-title>
+      <v-card-subtitle class="text-body-1">{{ notification?.payload.message }}</v-card-subtitle>
+      <v-card-text class="overflow-wrap-break-word">
+        <code class="pa-3 d-block rounded font-weight-medium text-error"
+          style="background-color: rgba(0, 0, 0, 0.4); white-space: pre-wrap;">{{ notification?.payload.error }}</code>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer />
+        <v-btn variant="text" color="grey" @click="detailsDialog = false">Close</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
@@ -239,7 +258,12 @@ import type { Notification, NotificationType } from '../types/notifications'
 import { getNotificationIcon, getNotificationColor, formatNotificationTime } from '../utils/notificationUtils'
 
 const notificationStore = useNotificationStore()
-
+const detailsDialog = ref(false)
+function showDetailsDialog(target: Notification) {
+  detailsDialog.value = true
+  notification.value = target
+}
+const notification = ref<Notification | null>(null)
 // Use storeToRefs to maintain reactivity
 const {
   persistentNotifications,
