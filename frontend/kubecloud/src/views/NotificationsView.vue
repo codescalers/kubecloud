@@ -261,7 +261,7 @@ const notificationStore = useNotificationStore()
 const detailsDialog = ref(false)
 function showDetailsDialog(target: Notification) {
   detailsDialog.value = true
-  if(target.status == "unread") markAsRead(target.id)
+  onNotificationClick(target)
   notification.value = target
 }
 const notification = ref<Notification | null>(null)
@@ -341,7 +341,6 @@ const openClearAllDialog = () => {
 
 const openDeleteDialog = (notification: Notification) => {
   notificationToDelete.value = notification
-  markAsRead(notification.id)
   showDeleteDialog.value = true
 }
 
