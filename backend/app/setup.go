@@ -110,6 +110,14 @@ func SetUp(t testing.TB) (*App, error) {
   "reserved_node_health_check_interval_in_hours": 1,
   "reserved_node_health_check_timeout_in_minutes": 1,
   "reserved_node_health_check_workers_num": 10
+  "cluster_health_check_interval_in_hours": 2,
+  "encryption_passphrase": "test-encryption-passphrase-for-testing-only",
+  "encryption_salt": "test-salt-for-testing-environment",
+  "argon2": {
+    "time": 1,
+    "memory": 1024,
+    "threads": 1
+  }
 }
 `, dbPath, mnemonic, redisHost, workflowPath, privateKeyPath, publicKeyPath, notificationConfigPath)
 

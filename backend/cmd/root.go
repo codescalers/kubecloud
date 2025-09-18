@@ -224,11 +224,11 @@ func addFlags() error {
 	}
 
 	// === Crypto Manager ===
-	if err := bindStringFlag(rootCmd, "mnemonic_encryption_passphrase", "", "Passphrase used to encrypt mnemonics"); err != nil {
-		return fmt.Errorf("failed to bind mnemonic_encryption_passphrase flag: %w", err)
+	if err := bindStringFlag(rootCmd, "encryption_passphrase", "", "Passphrase used to encrypt secrets"); err != nil {
+		return fmt.Errorf("failed to bind encryption_passphrase flag: %w", err)
 	}
-	if err := bindStringFlag(rootCmd, "mnemonic_encryption_salt", "", "Salt used for mnemonic encryption"); err != nil {
-		return fmt.Errorf("failed to bind mnemonic_encryption_salt flag: %w", err)
+	if err := bindStringFlag(rootCmd, "encryption_salt", "", "Salt used for encryption"); err != nil {
+		return fmt.Errorf("failed to bind encryption_salt flag: %w", err)
 	}
 	if err := bindIntFlag(rootCmd, "argon2.time", 1, "Argon2 time cost (iterations)"); err != nil {
 		return fmt.Errorf("failed to bind argon2.time flag: %w", err)

@@ -60,8 +60,8 @@
   "reserved_node_health_check_workers_num": 10,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
-  "mnemonic_encryption_passphrase": "${MNEMONIC_ENCRYPTION_PASSPHRASE}",
-  "mnemonic_encryption_salt": "${MNEMONIC_ENCRYPTION_SALT}",
+  "encryption_passphrase": "${ENCRYPTION_PASSPHRASE}",
+  "encryption_salt": "${ENCRYPTION_SALT}",
   "argon2": {
     "time": 1,
     "memory": 65536,

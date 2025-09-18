@@ -35,8 +35,8 @@ func loadConfig(configPath string) {
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
 
-		MnemonicEncryptionPassphrase: viper.GetString("mnemonic_encryption_passphrase"),
-		MnemonicEncryptionSalt:       viper.GetString("mnemonic_encryption_salt"),
+		EncryptionPassphrase: viper.GetString("encryption_passphrase"),
+		EncryptionSalt:       viper.GetString("encryption_salt"),
 		Argon2: internal.Argon2Config{
 			Time:    uint32(viper.GetInt("argon2.time")),
 			Memory:  uint32(viper.GetInt("argon2.memory")),

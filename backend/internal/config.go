@@ -46,9 +46,9 @@ type Configuration struct {
 	KYCChallengeDomain string `json:"kyc_challenge_domain" validate:"required"`
 
 	// Encryption config
-	MnemonicEncryptionPassphrase string       `json:"mnemonic_encryption_passphrase" validate:"required"`
-	MnemonicEncryptionSalt       string       `json:"mnemonic_encryption_salt" validate:"required"`
-	Argon2                       Argon2Config `json:"argon2"`
+	EncryptionPassphrase string       `json:"encryption_passphrase" validate:"required"`
+	EncryptionSalt       string       `json:"encryption_salt" validate:"required"`
+	Argon2               Argon2Config `json:"argon2"`
 
 	Logger LoggerConfig `json:"logger"`
 	Loki   LokiConfig   `json:"loki"`

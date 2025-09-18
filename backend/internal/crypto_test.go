@@ -13,9 +13,9 @@ import (
 
 func newTestCM() *CryptoManager {
 	return NewCryptoManager(Configuration{
-		MnemonicEncryptionPassphrase: "test-passphrase",
-		MnemonicEncryptionSalt:       "test-salt",
-		Argon2:                       Argon2Config{Time: 1, Memory: 65536, Threads: 2},
+		EncryptionPassphrase: "test-passphrase",
+		EncryptionSalt:       "test-salt",
+		Argon2:               Argon2Config{Time: 1, Memory: 65536, Threads: 2},
 	})
 }
 

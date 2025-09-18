@@ -42,11 +42,11 @@ func (cm *CryptoManager) deriveKey(passphrase string, userIdentifier string) ([]
 		return nil, errors.New("user identifier cannot be empty")
 	}
 
-	if cm.config.MnemonicEncryptionSalt == "" {
-		return nil, errors.New("mnemonic encryption salt is not configured in config")
+	if cm.config.EncryptionSalt == "" {
+		return nil, errors.New("encryption salt is not configured in config")
 	}
 
-	saltBase := fmt.Sprintf("%s_user_%s", cm.config.MnemonicEncryptionSalt, userIdentifier)
+	saltBase := fmt.Sprintf("%s_user_%s", cm.config.EncryptionSalt, userIdentifier)
 	salt := sha256.Sum256([]byte(saltBase))
 
 	key := argon2.IDKey(
@@ -116,16 +116,16 @@ func (cm *CryptoManager) decrypt(encryptedBytes []byte, key []byte) (string, err
 	return string(plaintext), nil
 }
 
-func (cm *CryptoManager) getMnemonicKey(userAddress string) ([]byte, error) {
-	if cm.config.MnemonicEncryptionPassphrase == "" {
-		return nil, errors.New("mnemonic encryption passphrase is not configured in config")
+func (cm *CryptoManager) getKey(userAddress string) ([]byte, error) {
+	if cm.config.EncryptionPassphrase == "" {
+		return nil, errors.New("encryption passphrase is not configured in config")
 	}
 
-	return cm.deriveKey(cm.config.MnemonicEncryptionPassphrase, userAddress)
+	return cm.deriveKey(cm.config.EncryptionPassphrase, userAddress)
 }
 
 func (cm *CryptoManager) Encrypt(plainText string, userAddress string) ([]byte, error) {
-	key, err := cm.getMnemonicKey(userAddress)
+	key, err := cm.getKey(userAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (cm *CryptoManager) Encrypt(plainText string, userAddress string) ([]byte, 
 }
 
 func (cm *CryptoManager) Decrypt(encryptedBytes []byte, userAddress string) (string, error) {
-	key, err := cm.getMnemonicKey(userAddress)
+	key, err := cm.getKey(userAddress)
 	if err != nil {
 		return "", err
 	}
