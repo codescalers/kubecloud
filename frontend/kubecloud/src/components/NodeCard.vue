@@ -1,15 +1,38 @@
 <template>
   <v-card class="node-card mb-4" elevation="0">
     <div class="price-area px-4 pt-4 pb-2 mb-3">
-      <div class="d-flex align-center mb-1">
-        <span :style="`color:${priceColor}; font-size:1.5rem; font-weight:700; letter-spacing:0.01em;`">${{ monthlyPrice }}</span>
-        <span class="text-caption ml-2" :style="`color:${priceLabelColor}; font-size:1.1rem; font-weight:500;`">/month</span>
+      <!-- Monthly Price -->
+      <div class="d-flex align-center flex-wrap mb-1">
+        <div class="d-flex align-center justify-space-between flex-wrap price-container">
+          <div>
+            <span :style="`color:${priceColor}; font-size:1.5rem; font-weight:700; letter-spacing:0.01em;`">${{
+              monthlyPrice }}</span>
+            <span class="text-caption ml-2"
+              :style="`color:${priceLabelColor}; font-size:1.1rem; font-weight:500;`">/month</span>
+          </div>
+          <div v-if="hasDiscount">
+            <span class="text-grey text-body-1 font-weight-medium mr-2 original-price-text">
+              ${{ originalMonthlyPrice }}
+            </span>
+          </div>
+        </div>
       </div>
-      <div class="d-flex align-center">
-        <span :style="`color:${priceColor}; font-size:1.1rem; font-weight:600;`">${{ hourlyPrice }}</span>
-        <span class="text-caption ml-1" :style="`color:${priceLabelColor}; font-size:1.05rem; font-weight:500;`">/hr</span>
+      <div class="d-flex align-center justify-space-between flex-wrap">
+        <div>
+          <span :style="`color:${priceColor}; font-size:1.1rem; font-weight:600;`">${{ hourlyPrice }}</span>
+          <span class="text-caption ml-1"
+            :style="`color:${priceLabelColor}; font-size:1.05rem; font-weight:500;`">/hr</span>
+        </div>
+        <div v-if="hasDiscount">
+          <v-chip color="success" variant="outlined" size="small" 
+                  class="text-caption font-weight-bold pulse-chip">
+            {{ discountPercentage }}% OFF
+          </v-chip>
+        </div>
       </div>
+
     </div>
+
     <div class="d-flex align-center justify-space-between px-4 pb-1 mb-3">
       <span class="text-h6 font-weight-bold text-white">Node {{ node.nodeId }}</span>
       <v-chip v-if="node.gpu" color="#0ea5e9" variant="outlined" size="small" class="ml-2">GPU</v-chip>
@@ -65,14 +88,41 @@ function handleAction() {
   emit('action', { nodeId: props.node.nodeId, action: actionType.value });
 }
 
-const baseNodePrice = computed(() => {
+const originalNodePrice = computed(() => {
   const base = Number(props.node.price_usd ?? 0);
   const extra = Number(props.node.extraFee ?? 0) / 1000;
   const price = base + extra;
   return isNaN(price) ? null : price;
 });
+
+/*
+* Current price (with discount if available)
+*/
+  const baseNodePrice = computed(() => {
+  const base = Number(props.node.discount_price ?? props.node.price_usd ?? 0);
+  const extra = Number(props.node.extraFee ?? 0) / 1000;
+  const price = base + extra;
+  return isNaN(price) ? null : price;
+});
+
+// Check if there's a discount
+const hasDiscount = computed(() => {
+  return props.node.discount_price != null &&
+    props.node.price_usd != null &&
+    Number(props.node.discount_price) < Number(props.node.price_usd);
+});
+
+// Calculate discount percentage
+const discountPercentage = computed(() => {
+  if (!hasDiscount.value || !originalNodePrice.value || !baseNodePrice.value) return 0;
+  const originalBase = Number(props.node.price_usd);
+  const discountBase = Number(props.node.discount_price);
+  return Math.round(((originalBase - discountBase) / originalBase) * 100);
+});
+
 const monthlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2));
 const hourlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2));
+const originalMonthlyPrice = computed(() => originalNodePrice.value == null ? 'N/A' : originalNodePrice.value.toFixed(2));
 const resources = [
   { icon: 'mdi-cpu-64-bit', color: '#0ea5e9', label: 'CPU:', value: () => `${props.node.cpu} vCPU` },
   { icon: 'mdi-memory', color: '#10B981', label: 'RAM:', value: () => `${props.node.ram} GB` },
@@ -127,7 +177,66 @@ const priceLabelColor = '#a3a3a3';
   transform: translateY(-3px) scale(1.015);
 }
 .price-area {
-  background: rgba(16,185,129,0.07);
+  background: rgba(16, 185, 129, 0.07);
+  }
+
+  /* Price styling - minimal CSS, using Vuetify classes in template */
+  .price-container {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pulse-chip {
+    animation: pulse-success 2s infinite;
+  }
+
+  .original-price-text {
+    text-decoration: line-through;
+    text-decoration-color: #ef4444;
+    text-decoration-thickness: 2px;
+  }
+
+  @keyframes pulse-success {
+
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+
+    50% {
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+    }
+  }
+
+  /* Responsive design */
+  @media (max-width: 600px) {
+    .price-area {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+
+    .original-price {
+      font-size: 1rem;
+    }
+
+    .discount-chip {
+      margin-left: 0.5rem !important;
+      margin-top: 0.25rem;
+    }
+
+    /* Stack price elements on very small screens */
+    @media (max-width: 400px) {
+      .d-flex.align-center.flex-wrap {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+
+      .discount-chip {
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+        align-self: flex-start;
+      }
+    }
 }
 .v-card-text {
   padding-top: 0.5rem !important;

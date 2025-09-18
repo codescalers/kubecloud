@@ -6,6 +6,7 @@ export interface NormalizedNode {
   available_ram?: number; // GB
   available_storage?: number; // GB
   price_usd: number | null;
+  discount_price: number | null;
   gpu: boolean;
   locationString: string;
   country: string;
