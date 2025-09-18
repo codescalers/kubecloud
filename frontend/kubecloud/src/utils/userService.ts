@@ -327,7 +327,7 @@ export class UserService {
       const intervalId = setInterval(async () => {
         const nodes = await this.listReservedNodes()
 
-        const node =(nodes?.data as {data: {nodes: {nodeId: number}[]}}).data.nodes.find((n) => n.nodeId === nodeId)
+        const node =(nodes?.data as {data: {nodes: {nodeId: number}[]}}).data.nodes?.find((n) => n.nodeId === nodeId)
         if((targetStatus === "rented" && node) || (targetStatus === "rentable" && !node)){
           clearInterval(intervalId)
           resolve(true)
