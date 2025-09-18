@@ -68,6 +68,12 @@ const router = createRouter({
       component: () => import('../views/DocsView.vue'),
     },
     {
+      path: '/docs/:page',
+      name: 'docs-page',
+      component: () => import('../views/MarkdownDocView.vue'),
+      props: true
+    },
+    {
       path: '/admin',
       name: 'admin-dashboard',
       component: () => import('../views/AdminDashboard.vue'),

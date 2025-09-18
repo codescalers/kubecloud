@@ -14,14 +14,30 @@
     <section class="docs-content section-padding">
       <div class="container-padding">
         <v-row class="docs-cards d-flex justify-center" :gap="10">
-          <v-col cols="12" md="6" lg="3" v-for="doc in docs" :key="doc.title" class="doc-col">
+          <v-col cols="12" md="6" lg="4" v-for="doc in docs" :key="doc.title" class="doc-col">
             <div class="doc-card card-enhanced fade-in">
               <div class="doc-icon">
                 <v-icon :icon="doc.icon" size="48" color="primary"></v-icon>
               </div>
               <h2 class="card-title">{{ doc.title }}</h2>
               <p class="body-text">{{ doc.description }}</p>
-              <v-btn color="white" variant="outlined" :href="doc.link" target="_blank" class="doc-link">
+              <v-btn
+                v-if="doc.link && doc.link.startsWith('http')"
+                color="white"
+                variant="outlined"
+                :href="doc.link"
+                target="_blank"
+                class="doc-link"
+              >
+                Read More
+              </v-btn>
+              <v-btn
+                v-else
+                color="white"
+                variant="outlined"
+                :to="doc.link"
+                class="doc-link"
+              >
                 Read More
               </v-btn>
             </div>
@@ -37,22 +53,40 @@ import { onMounted } from 'vue'
 
 const docs = [
   {
+    icon: 'mdi-rocket-launch',
+    title: 'Getting Started',
+    description: 'Quick start guide to deploy your first Kubernetes cluster on Mycelium Cloud.',
+    link: '/docs/getting-started'
+  },
+  {
+    icon: 'mdi-book-open-page-variant',
+    title: 'Platform Tutorial',
+    description: 'Comprehensive step-by-step tutorial for deploying and managing clusters.',
+    link: '/docs/tutorial'
+  },
+  {
     icon: 'mdi-api',
     title: 'API Reference',
-    description: 'Complete API documentation with examples and authentication details.',
-    link: '#'
+    description: 'Complete REST API documentation with examples and authentication details.',
+    link: '/docs/api-reference'
   },
   {
     icon: 'mdi-help-circle',
-    title: 'Platform FAQ',
+    title: 'FAQ',
     description: 'Frequently asked questions and troubleshooting guides.',
-    link: '#'
+    link: '/docs/faq'
   },
   {
-    icon: 'mdi-book-open',
-    title: 'Tutorials',
-    description: 'Step-by-step tutorials for common use cases and scenarios.',
-    link: '#'
+    icon: 'mdi-sitemap',
+    title: 'Architecture',
+    description: 'Deep dive into platform architecture, components, and design principles.',
+    link: '/docs/architecture'
+  },
+  {
+    icon: 'mdi-github',
+    title: 'Source Code',
+    description: 'Explore the open-source codebase and contribute to the project.',
+    link: 'https://github.com/codescalers/kubecloud'
   }
 ]
 
