@@ -110,7 +110,7 @@
               </template>
 
               <v-list-item-title class="text-h6 font-weight-medium mb-2">
-                {{ notification.payload.title || notification.payload.message || 'Notification' }}
+                {{ notification.payload.subject|| capitalize(notification.type) || 'Notification' }}
               </v-list-item-title>
 
               <v-list-item-subtitle class="text-body-1 mb-2">
