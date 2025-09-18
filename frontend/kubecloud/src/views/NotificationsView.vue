@@ -341,6 +341,7 @@ const openClearAllDialog = () => {
 
 const openDeleteDialog = (notification: Notification) => {
   notificationToDelete.value = notification
+  markAsRead(notification.id)
   showDeleteDialog.value = true
 }
 
