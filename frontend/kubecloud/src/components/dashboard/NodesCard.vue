@@ -256,6 +256,7 @@ const normalizedNodes = computed(() =>
     rented: true,
     dedicated: false,
     certificationType: '',
+    discount_price: node.discount_price
   }))
 );
 </script>

@@ -92,6 +92,7 @@ export interface RentedNode {
     upload: number;
     download: number;
   };
+  discount_price: number;
 }
 
 export function useNodeManagement() {
