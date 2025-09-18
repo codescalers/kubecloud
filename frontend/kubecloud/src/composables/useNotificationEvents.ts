@@ -16,6 +16,8 @@ interface NotificationData {
 
 /** Server-Sent Event message structure from backend */
 interface SSEMessage {
+  /** Notification ID */
+  id: string
   /** Type of notification event */
   type: NotificationType
   /** Notification content data */
@@ -147,7 +149,7 @@ export function useNotificationEvents() {
    * @param event The SSE message containing notification data
    */
   function handleSSEMessage(event: SSEMessage) {
-    const { type, data, severity } = event
+    const { type, data, severity, id } = event
 
     if (type === 'connected') {
       isConnected.value = true
@@ -155,7 +157,16 @@ export function useNotificationEvents() {
     }
 
     const { subject, message } = getNotificationData(data, type)
-
+    if (id) {
+      notificationStore.addNotification({
+        ...event,
+        severity,
+        payload: { ...data },
+        status: 'unread',
+        created_at: event.timestamp,
+        persistent: true,
+      })
+    }
     switch (severity) {
       case 'success':
         notificationStore.success(subject, message)
