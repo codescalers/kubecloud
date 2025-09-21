@@ -129,14 +129,14 @@ func RegisterEWFWorkflows(
 	reserveNodeTemplate.Steps = []ewf.Step{
 		{Name: constants.StepCreateIdentity, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: constants.StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 1*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(constants.WorkflowReserveNode, &reserveNodeTemplate)
 
 	unreserveNodeTemplate := newKubecloudWorkflowTemplate(notificationService)
 	unreserveNodeTemplate.Steps = []ewf.Step{
 		{Name: constants.StepUnreserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 1*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(constants.WorkflowUnreserveNode, &unreserveNodeTemplate)
 
