@@ -199,10 +199,13 @@ import { api } from '../../utils/api'
 import { formatDate } from '../../utils/dateUtils'
 import { userService } from '@/utils/userService'
 import { useUserStore } from '@/stores/user'
+import { useConfig } from '@/composables/useConfig'
 
 const userStore = useUserStore()
+const { isBalanceCheckDisabled } = useConfig()
 
 const haveEnoughBalance = computed(() => {
+  if (isBalanceCheckDisabled()) return true
   return userStore.netBalance >= 5
 })
 

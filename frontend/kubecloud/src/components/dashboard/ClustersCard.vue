@@ -176,6 +176,7 @@ import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
 import { useUserStore } from '@/stores/user'
+import { useConfig } from '@/composables/useConfig'
 
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
 
@@ -211,8 +212,10 @@ const sortOptions = [
 ]
 
   const userStore = useUserStore()
+  const { isBalanceCheckDisabled } = useConfig()
 
   const haveEnoughBalance = computed(() => {
+    if (isBalanceCheckDisabled()) return true
     return userStore.netBalance >= 5
   })
 
