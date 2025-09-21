@@ -257,10 +257,6 @@ func StoreDeploymentStep(db models.DB, crypto *internal.CryptoManager, metrics *
 			return err
 		}
 
-		dbCluster := &models.Cluster{
-			ProjectName: cluster.ProjectName,
-		}
-
 		kubeconfig, ok := state["kubeconfig"].(string)
 		if !ok || kubeconfig == "" {
 			return fmt.Errorf("kubeconfig not found in state")
