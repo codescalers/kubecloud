@@ -1,12 +1,19 @@
 package deployment
 
 import (
+	"errors"
 	"fmt"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 
 	"github.com/xmonader/ewf"
+)
+
+var (
+	ErrConfig     = errors.New("config error")
+	ErrKubeClient = errors.New("kube client error")
+	ErrCluster    = errors.New("cluster error")
 )
 
 // StepContext encapsulates all common dependencies for workflow steps
@@ -21,17 +28,17 @@ type StepContext struct {
 func NewStepContext(state ewf.State, metrics *metrics.Metrics) (*StepContext, error) {
 	config, err := GetFromState[statemanager.ClientConfig](state, "config")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get config from state: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrConfig, err)
 	}
 
 	kubeClient, err := statemanager.GetKubeClient(state, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get kube client: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrKubeClient, err)
 	}
 
 	cluster, err := statemanager.GetCluster(state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster from state: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrCluster, err)
 	}
 
 	return &StepContext{
@@ -48,6 +55,7 @@ func (ctx *StepContext) SaveState() {
 	statemanager.StoreCluster(ctx.State, ctx.Cluster)
 }
 
+// Used for other state key retrievals with type safety
 func GetFromState[T any](state ewf.State, key string) (T, error) {
 	var zero T
 
