@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUserStore } from '../stores/user'
 import ClustersCard from '../components/dashboard/ClustersCard.vue'
 import BillingCard from '../components/dashboard/BillingCard.vue'
@@ -42,6 +42,23 @@ const STORAGE_KEY_DASHBOARD_SECTION = 'dashboard-section'
 
 // Note: Cluster events are handled globally by the useDeploymentEvents composable
 
+// Periodic balance refresh
+let balanceInterval: ReturnType<typeof setInterval> | null = null
+
+const startBalanceRefresh = () => {
+  if (balanceInterval) return
+  balanceInterval = setInterval(() => {
+    userStore.updateNetBalance()
+  }, 30000) // Refresh every 30 seconds
+}
+
+const stopBalanceRefresh = () => {
+  if (balanceInterval) {
+    clearInterval(balanceInterval)
+    balanceInterval = null
+  }
+}
+
 onMounted(async () => {
   try {
     // Restore selected section from localStorage
@@ -63,9 +80,17 @@ onMounted(async () => {
       description: `Invoice ${inv.id}`,
       amount: inv.total
     }))
+
+    // Start periodic balance refresh
+    startBalanceRefresh()
   } catch (error) {
     console.error(error);
   }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  stopBalanceRefresh()
 })
 
 interface Bill {
@@ -101,6 +126,7 @@ function handleNavigateToFund() {
   selected.value = 'add-funds'
   localStorage.setItem('dashboard-section', 'add-funds')
 }
+
 </script>
 
 <template>
@@ -122,7 +148,6 @@ function handleNavigateToFund() {
                 :clusters="clustersArray"
                 :sshKeys="sshKeys"
                 :totalSpent="totalSpent"
-                :balance="userStore.netBalance"
                 @navigate="handleNavigate"
               />
               <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" @navigateToFund="handleNavigateToFund" />
