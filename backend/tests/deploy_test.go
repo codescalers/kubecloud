@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	testEmail    = "abdulazizo@incubaid.com"
-	testPassword = "Pa$$w0rd"
+	testEmail    = "elsolys@incubaid.com"
+	testPassword = "Kubecloud@123"
 )
 
 func TestClient_DeployCluster(t *testing.T) {

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -10,10 +11,11 @@ import (
 type NotificationType string
 
 const (
-	NotificationTypeDeploymentUpdate NotificationType = "deployment_update"
-	NotificationTypeTaskUpdate       NotificationType = "task_update"
-	NotificationTypeConnected        NotificationType = "connected"
-	NotificationTypeError            NotificationType = "error"
+	NotificationTypeDeployment NotificationType = "deployment"
+	NotificationTypeBilling    NotificationType = "billing"
+	NotificationTypeUser       NotificationType = "user"
+	NotificationTypeConnected  NotificationType = "connected"
+	NotificationTypeNode       NotificationType = "node"
 )
 
 // NotificationStatus represents the status of a notification
@@ -24,18 +26,88 @@ const (
 	NotificationStatusRead   NotificationStatus = "read"
 )
 
+type NotificationSeverity string
+
+const (
+	NotificationSeverityInfo    NotificationSeverity = "info"
+	NotificationSeverityError   NotificationSeverity = "error"
+	NotificationSeverityWarning NotificationSeverity = "warning"
+	NotificationSeveritySuccess NotificationSeverity = "success"
+)
+
 // Notification represents a persistent notification
 type Notification struct {
-	ID        uint               `json:"id" gorm:"primaryKey"`
-	UserID    int                `json:"user_id" gorm:"not null;index"`
-	Type      NotificationType   `json:"type" gorm:"not null"`
-	Title     string             `json:"title" gorm:"not null"`
-	Message   string             `json:"message" gorm:"not null"`
-	Data      string             `json:"data,omitempty" gorm:"type:text"` // JSON string for additional data
-	TaskID    string             `json:"task_id,omitempty" gorm:"index"`
-	Status    NotificationStatus `json:"status" gorm:"default:'unread'"`
-	CreatedAt time.Time          `json:"created_at" gorm:"autoCreateTime"`
-	ReadAt    *time.Time         `json:"read_at,omitempty"`
+	ID        string               `json:"id" gorm:"primaryKey"`
+	UserID    int                  `json:"user_id" gorm:"not null;index"`
+	TaskID    string               `json:"task_id,omitempty" gorm:"index"`
+	Type      NotificationType     `json:"type" gorm:"not null"`
+	Severity  NotificationSeverity `json:"severity" gorm:"not null;default:'info'"`
+	Channels  []string             `json:"channels" gorm:"serializer:json;default:'[\"ui\"]'"`
+	Payload   map[string]string    `json:"payload" gorm:"serializer:json"`
+	Status    NotificationStatus   `json:"status" gorm:"default:'unread'"`
+	CreatedAt time.Time            `json:"created_at" gorm:"autoCreateTime"`
+	ReadAt    *time.Time           `json:"read_at,omitempty"`
+
+	// Non-persisted fields
+	Persist bool `json:"-" gorm:"-"`
+}
+
+// NotificationOption is a functional option for configuring notifications
+type NotificationOption func(*Notification)
+
+// NewNotification creates a new notification with the given options
+func NewNotification(userID int, notifType NotificationType, payload map[string]string, options ...NotificationOption) *Notification {
+	n := &Notification{
+		ID:       uuid.NewString(),
+		UserID:   userID,
+		Type:     notifType,
+		Severity: "",
+		Channels: []string{},
+		Payload:  payload,
+		Status:   NotificationStatusUnread,
+		Persist:  true,
+	}
+
+	for _, option := range options {
+		option(n)
+	}
+
+	return n
+}
+
+// WithTaskID associates the notification with a task
+func WithTaskID(taskID string) NotificationOption {
+	return func(n *Notification) {
+		n.TaskID = taskID
+	}
+}
+
+// WithSeverity sets the notification severity
+func WithSeverity(severity NotificationSeverity) NotificationOption {
+	return func(n *Notification) {
+		n.Severity = severity
+	}
+}
+
+// WithChannels sets the notification channels
+func WithChannels(channels ...string) NotificationOption {
+	return func(n *Notification) {
+		n.Channels = channels
+	}
+}
+
+// WithNoPersist controls whether to save the notification to database
+func WithNoPersist() NotificationOption {
+	return func(n *Notification) {
+		n.Persist = false
+	}
+}
+
+// WithPayload sets the notification payload
+func WithPayload(payload map[string]string) NotificationOption {
+	return func(n *Notification) {
+		n.Payload = payload
+	}
 }
 
 // CreateNotification creates a new notification
@@ -57,7 +129,7 @@ func (s *GormDB) GetUserNotifications(userID int, limit, offset int) ([]Notifica
 }
 
 // MarkNotificationAsRead marks a specific notification as read
-func (s *GormDB) MarkNotificationAsRead(notificationID uint, userID int) error {
+func (s *GormDB) MarkNotificationAsRead(notificationID string, userID int) error {
 	now := time.Now()
 	result := s.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
@@ -89,7 +161,7 @@ func (s *GormDB) MarkAllNotificationsAsRead(userID int) error {
 }
 
 // DeleteNotification deletes a notification for a user
-func (s *GormDB) DeleteNotification(notificationID uint, userID int) error {
+func (s *GormDB) DeleteNotification(notificationID string, userID int) error {
 	result := s.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
 
 	if result.Error != nil {
@@ -119,7 +191,7 @@ func (s *GormDB) DeleteAllNotifications(userID int) error {
 }
 
 // MarkNotificationAsUnread marks a specific notification as unread
-func (s *GormDB) MarkNotificationAsUnread(notificationID uint, userID int) error {
+func (s *GormDB) MarkNotificationAsUnread(notificationID string, userID int) error {
 	result := s.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{

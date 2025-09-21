@@ -233,11 +233,9 @@ async function onDeployCluster() {
       requiresAuth: true
 
     });
-    notificationStore.info('Deployment started', 'Your cluster is being deployed in the background. You will be notified when it is ready.');
     navigateToDashboard();
   } catch (err: any) {
     notificationStore.error('Error', err?.message || 'Failed to deploy cluster');
-    console.error(err);
   } finally {
     deploying.value = false;
   }

@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { userService } from '@/utils/userService'
+import { useNotificationStore } from '@/stores/notifications'
 
 // Interface for rented nodes (matches the grid proxy structure)
 export interface RentedNode {
@@ -159,7 +160,7 @@ export function useNodeManagement() {
       // Refresh the rented nodes list after successful reservation
       await fetchRentedNodes()
     } catch (err: any) {
-      console.error('Failed to reserve node:', err)
+      useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw err
     } finally {
       reserveNodeLoading.value = false
@@ -167,10 +168,12 @@ export function useNodeManagement() {
   }
 
   // Unreserve a node
-  async function unreserveNode(contractId: string) {
-    await userService.unreserveNode(contractId)
+  async function unreserveNode(contractId: string, nodeId: number) {
+    await userService.unreserveNode(contractId, nodeId)
     // Optimistically remove the node from the list
-    rentedNodes.value = rentedNodes.value.filter(node => node.rentContractId?.toString() !== contractId)
+    rentedNodes.value = rentedNodes.value.filter(
+      (node) => node.rentContractId?.toString() !== contractId,
+    )
   }
 
   // Add node to deployment
@@ -180,7 +183,7 @@ export function useNodeManagement() {
       // Optionally refresh data or handle response
       return response
     } catch (err: any) {
-      console.error('Failed to add node to deployment:', err)
+      useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw err
     }
   }

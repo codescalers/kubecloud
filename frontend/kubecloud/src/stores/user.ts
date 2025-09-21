@@ -42,6 +42,11 @@ export const useUserStore = defineStore('user',
     const isLoggedIn = computed(() => !!token.value)
 
     // Actions
+    const loadUser = async () => {
+      const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
+      user.value = userRes.data.data.user
+    }
+
     const login = async (email: string, password: string) => {
       isLoading.value = true
       error.value = null
@@ -49,14 +54,9 @@ export const useUserStore = defineStore('user',
       try {
         const loginData: LoginRequest = { email, password }
         const response = await authService.login(loginData)
-
-        // Store tokens
         authService.storeTokens(response.access_token, response.refresh_token)
-
-        // Set token in store
         token.value = response.access_token
-        const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
-        user.value = userRes.data.data.user
+        await loadUser()
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Login failed'
         throw err
@@ -71,6 +71,8 @@ export const useUserStore = defineStore('user',
       error.value = null
       // Clear localStorage
       authService.clearTokens()
+      // Clear notifications and related ephemeral state
+      useNotificationStore().reset()
     }
 
     interface RegisterFormData {
@@ -89,7 +91,7 @@ export const useUserStore = defineStore('user',
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          confirm_password: formData.confirmPassword
+          confirm_password: formData.confirmPassword,
         }
         const response = await authService.register(registerData)
         return response
@@ -108,21 +110,6 @@ export const useUserStore = defineStore('user',
         const response = await authService.verifyCode(data)
         authService.storeTokens(response.access_token, response.refresh_token)
         token.value = response.access_token
-        const workflowChecker = createWorkflowStatusChecker(response.workflow_id, {
-          initialDelay: 3000,
-          interval: 2000,
-        })
-        const status = await workflowChecker.status
-        if (status === WorkflowStatus.StatusCompleted) {
-          useNotificationStore().success('Registration Success', 'User registered successfully')
-        }
-        if (status === WorkflowStatus.StatusFailed) {
-          useNotificationStore().error('Registration Failed', 'Failed to register user')
-          throw new Error('Failed to register user')
-        }
-        const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
-        user.value = userRes.data.data.user
-        router.push('/dashboard')
       } catch (err) {
         error.value = err instanceof Error ? err.message : 'Verification failed'
         throw err
@@ -202,6 +189,7 @@ export const useUserStore = defineStore('user',
       refreshToken,
       initializeAuth,
       updateNetBalance,
+      loadUser,
     }
   },
   // Persisted state options

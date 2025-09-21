@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
+	"kubecloud/internal/notification"
 	"kubecloud/models"
 	"strings"
+
+	"kubecloud/internal/logger"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
-	"kubecloud/internal/logger"
 )
 
 func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
@@ -139,7 +141,7 @@ func UpdateCodeStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, sse *internal.SSEManager, db models.DB) ewf.StepFn {
+func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -149,8 +151,6 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 		if !ok {
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
-
-		sse.Notify(userID, "user_registration", "Registering user is in progress")
 
 		existingUser, err := db.GetUserByID(userID)
 		if err != nil {
@@ -233,7 +233,7 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManager, sponsorAddress string, sponsorKeyPair subkey.KeyPair, db models.DB) ewf.StepFn {
+func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -261,8 +261,6 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, sse *internal.SSEManage
 		if !ok {
 			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
-
-		sse.Notify(userID, "user_registration", "Account verification is in progress")
 
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
@@ -323,7 +321,7 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 	}
 }
 
-func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.StepFn {
+func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		customerIDVal, ok := state["stripe_customer_id"]
 		if !ok {
@@ -362,7 +360,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.Step
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, sse *internal.SSEManager) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -373,7 +371,6 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if !ok {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
-		amountUSD := internal.FromUSDMilliCentToUSD(amount)
 
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -418,18 +415,11 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return err
 		}
 
-		if transferMode == models.RedeemVoucherMode && sse != nil {
-			notificationData := map[string]interface{}{
-				"message": fmt.Sprintf("Voucher redeemed successfully for %.2f$", amountUSD),
-			}
-			sse.Notify(userID, internal.Success, notificationData)
-		}
-
 		return nil
 	}
 }
 
-func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -461,11 +451,12 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 
 		state["new_balance"] = user.CreditCardBalance
 		state["mnemonic"] = user.Mnemonic
+
 		return nil
 	}
 }
 
-func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {

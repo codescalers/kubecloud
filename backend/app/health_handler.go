@@ -159,6 +159,14 @@ func (h *Handler) checkFiresquid(ctx context.Context) HealthStatus {
 	return checkGraphQLClient(&h.firesquidClient)
 }
 
+// @Summary Health check endpoint
+// @Description Returns the health status of various system components
+// @Tags health
+// @Produce json
+// @Success 200 {object} map[string]HealthStatus "All systems healthy"
+// @Failure 503 {object} map[string]HealthStatus "One or more systems unhealthy"
+// @Router /health [get]
+
 func (h *Handler) HealthHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	checks := map[string]HealthChecker{

@@ -80,7 +80,6 @@ const handleVerify = async () => {
   try {
     loading.value = true
     await useUserStore().verifyCode({ email: form.email, code: Number(form.code) })
-    loading.value = false
   } catch (error) {
     loading.value = false
     console.error(error)

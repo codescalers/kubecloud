@@ -6,6 +6,7 @@ import (
 	"kubecloud/app"
 	"kubecloud/internal"
 	"kubecloud/internal/logger"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -192,7 +193,64 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind logger.compress flag: %w", err)
 	}
 
+	// === Loki ===
+	if err := bindStringFlag(rootCmd, "loki.url", "http://loki:3100/loki/api/v1/push", "Loki URL"); err != nil {
+		return fmt.Errorf("failed to bind loki.url flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "loki.flush_interval_second", 2, "Loki flush interval (seconds)"); err != nil {
+		return fmt.Errorf("failed to bind loki.flush_interval_second flag: %w", err)
+	}
+	if err := bindStringFlag(rootCmd, "loki.labels", "app=myceliumCloud,env=,host=", "Loki labels (key=value,key2=value2)"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels flag: %w", err)
+	}
+
+	// === Notification Config ===
+	if err := bindStringFlag(rootCmd, "notification_config_path", "./notification-config.json", "Path to notification configuration file"); err != nil {
+		return fmt.Errorf("failed to bind notification_config_path flag: %w", err)
+	}
+
 	return nil
+}
+
+// reloadNotificationsCmd represents the reload-notifications command
+var reloadNotificationsCmd = &cobra.Command{
+	Use:   "reload-notifications",
+	Short: "Reload notification configuration",
+	Long:  `Send a SIGHUP signal to reload notification configuration without restarting the server.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("Reloading notification configuration...")
+
+		socketPath := "/tmp/myceliumcloud.sock"
+
+		// Connect to socket
+		conn, err := net.Dial("unix", socketPath)
+		if err != nil {
+			return fmt.Errorf("failed to connect to myceliumcloud (is it running?): %w", err)
+		}
+		defer conn.Close()
+
+		// Send command
+		_, err = conn.Write([]byte("reload-notifications"))
+		if err != nil {
+			return fmt.Errorf("failed to send command: %w", err)
+		}
+
+		// Read response
+		buffer := make([]byte, 1024)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			return fmt.Errorf("failed to read response: %w", err)
+		}
+
+		response := string(buffer[:n])
+		if strings.HasPrefix(response, "ERROR:") {
+			return fmt.Errorf("server error: %s", strings.TrimPrefix(response, "ERROR: "))
+		}
+
+		fmt.Printf("%s\n", strings.TrimPrefix(response, "OK: "))
+
+		return nil
+	},
 }
 
 func init() {
@@ -203,6 +261,9 @@ func init() {
 
 	// Map environment variables to their corresponding keys
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Add subcommands
+	rootCmd.AddCommand(reloadNotificationsCmd)
 
 	if err := addFlags(); err != nil {
 		logger.GetLogger().Fatal().Err(err).Msg("Failed to add flags")
@@ -256,7 +317,12 @@ It supports:
 			loggerConfig.LogDir = "./logs"
 		}
 		fmt.Printf("Setting up logging to: %s/app.log\n", loggerConfig.LogDir)
-		if err := logger.InitLogger(loggerConfig, config.Debug); err != nil {
+		lokiConfig := &logger.LokiConfig{
+			URL:           config.Loki.URL,
+			FlushInterval: time.Duration(config.Loki.FlushIntervalSecond) * time.Second,
+			Labels:        config.Loki.Labels,
+		}
+		if err := logger.InitLogger(loggerConfig, lokiConfig, config.Debug); err != nil {
 			return fmt.Errorf("failed to initialize logger: %w", err)
 		}
 
