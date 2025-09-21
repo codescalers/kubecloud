@@ -75,12 +75,12 @@ func (tr *TemplateRegistry) RegisterAll() {
 	}
 
 	templates := map[string]ewf.WorkflowTemplate{
-		constants.WorkflowAddNode:                  buildAddNodeTemplate(),
-		constants.WorkflowDeleteCluster:            buildDeleteClusterTemplate(),
-		constants.WorkflowDeleteAllClusters:        buildDeleteAllClustersTemplate(),
-		constants.WorkflowRemoveNode:               buildRemoveNodeTemplate(),
-		constants.WorkflowRollbackFailedDeployment: buildRollbackFailedDeploymentTemplate(),
-		constants.WorkflowRollbackAddNode:          buildRollbackAddNodeTemplate(),
+		constants.WorkflowAddNode:                  buildAddNodeTemplate(tr.ns),
+		constants.WorkflowDeleteCluster:            buildDeleteClusterTemplate(tr.ns),
+		constants.WorkflowDeleteAllClusters:        buildDeleteAllClustersTemplate(tr.ns),
+		constants.WorkflowRemoveNode:               buildRemoveNodeTemplate(tr.ns),
+		constants.WorkflowRollbackFailedDeployment: buildRollbackFailedDeploymentTemplate(tr.ns),
+		constants.WorkflowRollbackAddNode:          buildRollbackAddNodeTemplate(tr.ns),
 	}
 
 	for templateName, template := range templates {
@@ -108,11 +108,24 @@ func (tr *TemplateRegistry) RegisterDynamicDeployWorkflow(wfName string, nodesNu
 	)
 
 	template := ewf.WorkflowTemplate{
-		Steps:               steps,
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{},
-		AfterWorkflowHooks:  []ewf.AfterWorkflowHook{},
-		BeforeStepHooks:     []ewf.BeforeStepHook{},
-		AfterStepHooks:      []ewf.AfterStepHook{},
+		Steps: steps,
+		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
+			notifyWorkflowStartedHook(tr.ns),
+			logWorkflowStartedHook(),
+		},
+		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
+			notifyWorkflowProgressHook(tr.ns),
+			deployFailureHook(*tr.engine, tr.metrics),
+			closeClientHook(),
+			logWorkflowDoneHook(),
+		},
+		BeforeStepHooks: []ewf.BeforeStepHook{
+			logStepStartedHook(),
+		},
+		AfterStepHooks: []ewf.AfterStepHook{
+			notifyStepProgressHook(tr.ns),
+			logStepDoneHook(),
+		},
 	}
 
 	tr.engine.RegisterTemplate(wfName, &template)
