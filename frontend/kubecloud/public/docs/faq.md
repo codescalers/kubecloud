@@ -19,6 +19,7 @@ Mycelium Cloud is a comprehensive platform for deploying and managing Kubernetes
 ### Is Mycelium Cloud suitable for production workloads?
 
 Yes, Mycelium Cloud supports production workloads with:
+
 - High availability cluster configurations
 - Multi-master setups
 - Persistent storage options
@@ -37,6 +38,7 @@ Yes, Mycelium Cloud supports production workloads with:
 ### What payment methods are accepted?
 
 We accept:
+
 - Credit cards (Visa, MasterCard, American Express)
 - Stripe payment processing
 - Account credits and vouchers
@@ -44,6 +46,7 @@ We accept:
 ### How is billing calculated?
 
 Billing is based on:
+
 - **Compute Resources**: CPU cores and memory usage
 - **Storage**: Disk space allocated
 - **Network**: Data transfer (minimal charges)
@@ -58,6 +61,7 @@ Refunds are handled case-by-case. Contact our support team with your request and
 ### What Kubernetes versions are supported?
 
 We currently support K3s v1.26.0, which provides:
+
 - Full Kubernetes API compatibility
 - Lightweight resource usage
 - High availability features
@@ -66,6 +70,7 @@ We currently support K3s v1.26.0, which provides:
 ### How many clusters can I deploy?
 
 There's no hard limit on the number of clusters. Limits depend on:
+
 - Your account credits
 - Available ThreeFold Grid capacity
 - Resource quotas (if any)
@@ -73,6 +78,7 @@ There's no hard limit on the number of clusters. Limits depend on:
 ### Can I scale my cluster after deployment?
 
 Yes, you can:
+
 - Add or remove worker nodes
 - Resize existing nodes (with redeployment)
 - Scale applications independently
@@ -87,6 +93,7 @@ Yes, you can:
 ### How do I backup my cluster?
 
 Backup strategies include:
+
 - **etcd Snapshots**: Automated cluster state backups
 - **Persistent Volume Backups**: Application data backups
 - **Configuration Backups**: YAML manifests and configurations
@@ -96,6 +103,7 @@ Backup strategies include:
 ### What networking is used?
 
 Mycelium Cloud uses:
+
 - **Mycelium CNI**: IPv6 peer-to-peer networking
 - **Dual Stack**: Support for both IPv4 and IPv6
 - **Secure Tunnels**: Encrypted communication between nodes
@@ -104,6 +112,7 @@ Mycelium Cloud uses:
 ### How do I expose applications to the internet?
 
 Options include:
+
 - **NodePort Services**: Direct node access
 - **LoadBalancer Services**: Automatic load balancer creation
 - **Ingress Controllers**: HTTP/HTTPS routing
@@ -112,6 +121,7 @@ Options include:
 ### Can I use custom domains?
 
 Yes, you can:
+
 - Configure custom domains through ingress controllers
 - Use ThreeFold Gateway for domain routing
 - Set up DNS records pointing to your cluster
@@ -122,6 +132,7 @@ Yes, you can:
 ### How secure is Mycelium Cloud?
 
 Security features include:
+
 - **Encrypted Communication**: All traffic encrypted in transit
 - **Network Isolation**: Secure pod-to-pod communication
 - **RBAC**: Role-based access control
@@ -131,6 +142,7 @@ Security features include:
 ### Can I use my own SSH keys?
 
 Yes, SSH key management includes:
+
 - Upload multiple SSH keys
 - Assign keys to specific nodes
 - Rotate keys as needed
@@ -139,6 +151,7 @@ Yes, SSH key management includes:
 ### How is data protected?
 
 Data protection measures:
+
 - **Encryption at Rest**: Storage encryption
 - **Encryption in Transit**: Network encryption
 - **Access Controls**: User and application permissions
@@ -149,6 +162,7 @@ Data protection measures:
 ### What support is available?
 
 Support options include:
+
 - **Documentation**: Comprehensive guides and tutorials
 - **Community**: Community forums and discussions
 - **Email Support**: Direct support for technical issues
@@ -157,6 +171,7 @@ Support options include:
 ### How do I report a bug?
 
 To report bugs:
+
 1. Check existing [GitHub Issues](https://github.com/codescalers/kubecloud/issues)
 2. Create a new issue with detailed information
 3. Include logs, error messages, and reproduction steps
@@ -165,6 +180,7 @@ To report bugs:
 ### What information should I include in support requests?
 
 Include:
+
 - **Account Information**: Username/email (not password)
 - **Cluster Details**: Cluster ID, name, configuration
 - **Error Messages**: Full error text and logs
@@ -176,6 +192,7 @@ Include:
 ### Are there any resource limits?
 
 Current limitations:
+
 - **Node Resources**: Depends on available ThreeFold Grid nodes
 - **Storage**: Limited by node storage capacity
 - **Network**: Bandwidth depends on node connectivity
@@ -184,6 +201,7 @@ Current limitations:
 ### What regions are available?
 
 ThreeFold Grid nodes are available globally, including:
+
 - North America
 - Europe
 - Asia Pacific
@@ -195,6 +213,7 @@ Specific availability depends on active farms and nodes.
 ### Can I deploy in specific countries?
 
 Yes, you can:
+
 - Filter nodes by country during deployment
 - Choose specific farms or regions
 - Consider data sovereignty requirements
@@ -205,6 +224,7 @@ Yes, you can:
 ### My cluster deployment failed. What should I do?
 
 Troubleshooting steps:
+
 1. **Check Logs**: Review deployment logs in the dashboard
 2. **Verify Resources**: Ensure sufficient account credits
 3. **Node Availability**: Confirm selected nodes are available
@@ -214,6 +234,7 @@ Troubleshooting steps:
 ### I can't connect to my cluster. How do I fix this?
 
 Connection troubleshooting:
+
 1. **Kubeconfig**: Ensure you've downloaded the correct kubeconfig
 2. **kubectl**: Verify kubectl is installed and configured
 3. **Network**: Check your internet connection
@@ -223,6 +244,7 @@ Connection troubleshooting:
 ### My application pods are not starting. What's wrong?
 
 Pod troubleshooting:
+
 ```bash
 # Check pod status
 kubectl get pods
@@ -238,6 +260,7 @@ kubectl top nodes
 ```
 
 Common issues:
+
 - **Resource Limits**: Insufficient CPU/memory
 - **Image Issues**: Cannot pull container images
 - **Configuration**: Invalid pod specifications
@@ -246,6 +269,7 @@ Common issues:
 ### How do I check cluster health?
 
 Health monitoring:
+
 ```bash
 # Check node status
 kubectl get nodes
@@ -261,6 +285,7 @@ kubectl get events --sort-by=.metadata.creationTimestamp
 ```
 
 Dashboard monitoring:
+
 - Cluster status indicators
 - Resource usage metrics
 - Alert notifications
@@ -271,6 +296,7 @@ Dashboard monitoring:
 ### Can I use custom CNI plugins?
 
 Currently, Mycelium Cloud uses the Mycelium CNI plugin for IPv6 networking. Custom CNI plugins are not supported, but the Mycelium CNI provides:
+
 - Peer-to-peer connectivity
 - IPv6 addressing
 - Secure tunneling
@@ -279,6 +305,7 @@ Currently, Mycelium Cloud uses the Mycelium CNI plugin for IPv6 networking. Cust
 ### How do I integrate with CI/CD pipelines?
 
 Integration options:
+
 - **API Access**: Use REST APIs for automation
 - **kubectl**: Direct cluster access from pipelines
 - **Webhooks**: Receive deployment notifications
@@ -291,6 +318,7 @@ Currently, Mycelium Cloud focuses on Linux containers and nodes. Windows contain
 ### How do I implement disaster recovery?
 
 Disaster recovery strategies:
+
 - **Multi-Region Deployment**: Deploy across multiple regions
 - **Regular Backups**: Automated etcd and data backups
 - **Infrastructure as Code**: Version-controlled configurations
@@ -302,23 +330,28 @@ Disaster recovery strategies:
 Still have questions? Here's how to get additional help:
 
 ### Documentation
+
 - [Getting Started Guide](./getting-started.md)
 - [Platform Tutorial](./tutorial.md)
 - [API Reference](./api-reference.md)
 - [Architecture Overview](./architecture.md)
 
 ### Community
+
 - GitHub Discussions
 - Community Forums
 - Discord/Slack Channels
 
 ### Direct Support
-- Email: support@myceliumcloud.com
+
+- Email: [support@myceliumcloud.com](mailto:support@myceliumcloud.com)
 - GitHub Issues: [Report Issues](https://github.com/codescalers/kubecloud/issues)
 - In-app Support: Use the help widget in your dashboard
 
 ### Emergency Support
+
 For critical production issues:
+
 - Mark support requests as "Critical"
 - Include "URGENT" in subject lines
 - Provide detailed impact assessment

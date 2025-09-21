@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type NavigationGuardNext, type RouteLocationNormalized, type RouteLocationNormalizedGeneric } from 'vue-router'
+import { createRouter, createWebHistory, type NavigationGuardNext, type RouteLocationNormalizedGeneric } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useUserStore } from '../stores/user'
 import { useMaintenanceStore } from '../stores/maintenance'
@@ -66,12 +66,6 @@ const router = createRouter({
       path: '/docs',
       name: 'docs',
       component: () => import('../views/DocsView.vue'),
-    },
-    {
-      path: '/docs/:page',
-      name: 'docs-page',
-      component: () => import('../views/MarkdownDocView.vue'),
-      props: true
     },
     {
       path: '/admin',

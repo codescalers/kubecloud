@@ -18,11 +18,13 @@ Regions: Multiple regions for disaster recovery
 ### Resource Planning
 
 **CPU and Memory:**
+
 - Reserve 20% capacity for system overhead
 - Use resource requests and limits for all pods
 - Monitor actual usage vs. allocated resources
 
 **Storage:**
+
 - Plan for data growth (3x current usage)
 - Use appropriate storage classes
 - Implement backup strategies
@@ -30,11 +32,13 @@ Regions: Multiple regions for disaster recovery
 ### Network Design
 
 **Security:**
+
 - Implement network policies
 - Use service mesh for complex applications
 - Secure ingress with TLS certificates
 
 **Performance:**
+
 - Co-locate related services
 - Use node affinity for latency-sensitive workloads
 - Implement proper load balancing
@@ -44,6 +48,7 @@ Regions: Multiple regions for disaster recovery
 ### Access Control
 
 **RBAC Implementation:**
+
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -56,6 +61,7 @@ rules:
 ```
 
 **Service Accounts:**
+
 - Create dedicated service accounts for applications
 - Use least privilege principle
 - Rotate service account tokens regularly
@@ -63,12 +69,14 @@ rules:
 ### Secrets Management
 
 **Best Practices:**
+
 - Never store secrets in container images
 - Use Kubernetes secrets or external secret management
 - Encrypt secrets at rest
 - Implement secret rotation
 
 **Example Secret Usage:**
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -98,6 +106,7 @@ spec:
 ### Pod Security
 
 **Security Contexts:**
+
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -121,6 +130,7 @@ spec:
 ### Resource Requests and Limits
 
 **CPU and Memory:**
+
 ```yaml
 resources:
   requests:
@@ -132,6 +142,7 @@ resources:
 ```
 
 **Guidelines:**
+
 - Set requests based on actual usage
 - Set limits to prevent resource starvation
 - Use vertical pod autoscaler for optimization
@@ -139,6 +150,7 @@ resources:
 ### Quality of Service Classes
 
 **Guaranteed (highest priority):**
+
 ```yaml
 resources:
   requests:
@@ -150,6 +162,7 @@ resources:
 ```
 
 **Burstable (medium priority):**
+
 ```yaml
 resources:
   requests:
@@ -188,6 +201,7 @@ spec:
 ### Deployment Strategies
 
 **Rolling Updates:**
+
 ```yaml
 spec:
   strategy:
@@ -198,6 +212,7 @@ spec:
 ```
 
 **Blue-Green Deployment:**
+
 - Deploy new version alongside old
 - Switch traffic after validation
 - Keep old version for quick rollback
@@ -205,6 +220,7 @@ spec:
 ### Health Checks
 
 **Liveness Probe:**
+
 ```yaml
 livenessProbe:
   httpGet:
@@ -217,6 +233,7 @@ livenessProbe:
 ```
 
 **Readiness Probe:**
+
 ```yaml
 readinessProbe:
   httpGet:
@@ -231,6 +248,7 @@ readinessProbe:
 ### Configuration Management
 
 **ConfigMaps:**
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -242,6 +260,7 @@ data:
 ```
 
 **Environment-specific Configurations:**
+
 - Use separate ConfigMaps per environment
 - Implement configuration validation
 - Version control all configurations
@@ -251,11 +270,13 @@ data:
 ### Metrics Collection
 
 **Application Metrics:**
+
 - Expose metrics in Prometheus format
 - Include business metrics
 - Monitor SLIs (Service Level Indicators)
 
 **Custom Metrics Example:**
+
 ```go
 // Go application metrics
 var (
@@ -272,6 +293,7 @@ var (
 ### Logging Best Practices
 
 **Structured Logging:**
+
 ```json
 {
   "timestamp": "2023-12-01T10:00:00Z",
@@ -284,6 +306,7 @@ var (
 ```
 
 **Log Levels:**
+
 - ERROR: System errors requiring attention
 - WARN: Potential issues or degraded performance
 - INFO: General application flow
@@ -292,11 +315,13 @@ var (
 ### Alerting Strategy
 
 **SLO-based Alerting:**
+
 - Define Service Level Objectives (SLOs)
 - Alert on SLO violations
 - Implement error budgets
 
 **Alert Examples:**
+
 ```yaml
 # High error rate
 - alert: HighErrorRate
@@ -318,6 +343,7 @@ var (
 ### Persistent Volumes
 
 **Storage Classes:**
+
 ```yaml
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -330,6 +356,7 @@ parameters:
 ```
 
 **Volume Claims:**
+
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -347,12 +374,14 @@ spec:
 ### Backup Strategies
 
 **Database Backups:**
+
 - Automated daily backups
 - Point-in-time recovery capability
 - Cross-region backup replication
 - Regular restore testing
 
 **Application Data:**
+
 - Volume snapshots
 - Application-consistent backups
 - Backup retention policies
@@ -362,7 +391,8 @@ spec:
 ### GitOps Workflow
 
 **Repository Structure:**
-```
+
+```text
 ├── applications/
 │   ├── staging/
 │   └── production/
@@ -375,6 +405,7 @@ spec:
 ```
 
 **Deployment Pipeline:**
+
 1. Code commit triggers pipeline
 2. Build and test application
 3. Build container image
@@ -386,16 +417,19 @@ spec:
 ### Testing Strategies
 
 **Unit Tests:**
+
 - Test individual components
 - Mock external dependencies
 - Achieve high code coverage
 
 **Integration Tests:**
+
 - Test service interactions
 - Use test databases/services
 - Validate API contracts
 
 **End-to-End Tests:**
+
 - Test complete user workflows
 - Run against staging environment
 - Automate critical user paths
@@ -405,12 +439,14 @@ spec:
 ### Application Performance
 
 **Resource Optimization:**
+
 - Profile CPU and memory usage
 - Optimize database queries
 - Implement caching strategies
 - Use connection pooling
 
 **Scaling Strategies:**
+
 - Horizontal scaling for stateless services
 - Vertical scaling for resource-intensive tasks
 - Implement circuit breakers
@@ -419,12 +455,14 @@ spec:
 ### Network Performance
 
 **Service Mesh:**
+
 - Implement Istio or Linkerd
 - Use traffic splitting for deployments
 - Monitor service-to-service latency
 - Implement retry and timeout policies
 
 **Load Balancing:**
+
 - Use appropriate load balancing algorithms
 - Implement health checks
 - Configure session affinity when needed
@@ -434,12 +472,14 @@ spec:
 ### Backup and Recovery
 
 **Cluster Backup:**
+
 - Regular etcd backups
 - Backup all custom resources
 - Document recovery procedures
 - Test recovery processes regularly
 
 **Data Recovery:**
+
 - Implement point-in-time recovery
 - Cross-region data replication
 - Automated failover mechanisms
@@ -448,12 +488,14 @@ spec:
 ### Multi-Region Deployment
 
 **Active-Active Setup:**
+
 - Deploy across multiple regions
 - Implement global load balancing
 - Synchronize data between regions
 - Handle split-brain scenarios
 
 **Active-Passive Setup:**
+
 - Primary region for active traffic
 - Standby region for disaster recovery
 - Automated failover triggers
@@ -464,12 +506,14 @@ spec:
 ### Resource Right-Sizing
 
 **Monitoring Usage:**
+
 - Track actual vs. requested resources
 - Identify over-provisioned workloads
 - Use cluster autoscaler
 - Implement resource quotas
 
 **Cost Analysis:**
+
 - Monitor spending by namespace/team
 - Implement chargeback mechanisms
 - Use spot instances for batch workloads
@@ -478,6 +522,7 @@ spec:
 ### Efficiency Improvements
 
 **Pod Density:**
+
 - Optimize node utilization
 - Use smaller container images
 - Implement resource sharing
@@ -488,6 +533,7 @@ spec:
 ### Policy Management
 
 **Pod Security Policies:**
+
 ```yaml
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
@@ -503,6 +549,7 @@ spec:
 ```
 
 **Network Policies:**
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -518,12 +565,14 @@ spec:
 ### Audit and Compliance
 
 **Audit Logging:**
+
 - Enable Kubernetes audit logging
 - Monitor privileged operations
 - Track resource access patterns
 - Implement log retention policies
 
 **Compliance Frameworks:**
+
 - Implement SOC 2 controls
 - Follow CIS Kubernetes benchmarks
 - Ensure GDPR compliance for data handling
@@ -534,6 +583,7 @@ spec:
 ### Common Issues
 
 **Pod Startup Problems:**
+
 ```bash
 # Check pod events
 kubectl describe pod <pod-name>
@@ -547,6 +597,7 @@ kubectl describe node <node-name>
 ```
 
 **Network Issues:**
+
 ```bash
 # Test connectivity
 kubectl exec -it <pod-name> -- nslookup <service-name>
@@ -561,6 +612,7 @@ kubectl describe networkpolicy
 ### Performance Debugging
 
 **Resource Analysis:**
+
 ```bash
 # Node resource usage
 kubectl top nodes
@@ -573,6 +625,7 @@ kubectl describe node <node-name>
 ```
 
 **Application Debugging:**
+
 ```bash
 # Port forwarding for local access
 kubectl port-forward pod/<pod-name> 8080:80
@@ -595,6 +648,7 @@ Following these best practices will help ensure your Mycelium Cloud deployments 
 - Continuously optimize
 
 For more specific guidance, refer to:
+
 - [Architecture Overview](./architecture.md)
 - [API Reference](./api-reference.md)
 - [FAQ](./faq.md)

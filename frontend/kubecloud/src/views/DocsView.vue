@@ -22,20 +22,10 @@
               <h2 class="card-title">{{ doc.title }}</h2>
               <p class="body-text">{{ doc.description }}</p>
               <v-btn
-                v-if="doc.link && doc.link.startsWith('http')"
                 color="white"
                 variant="outlined"
                 :href="doc.link"
                 target="_blank"
-                class="doc-link"
-              >
-                Read More
-              </v-btn>
-              <v-btn
-                v-else
-                color="white"
-                variant="outlined"
-                :to="doc.link"
                 class="doc-link"
               >
                 Read More
@@ -56,31 +46,31 @@ const docs = [
     icon: 'mdi-rocket-launch',
     title: 'Getting Started',
     description: 'Quick start guide to deploy your first Kubernetes cluster on Mycelium Cloud.',
-    link: '/docs/getting-started'
+    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/getting-started.md'
   },
   {
     icon: 'mdi-book-open-page-variant',
     title: 'Platform Tutorial',
     description: 'Comprehensive step-by-step tutorial for deploying and managing clusters.',
-    link: '/docs/tutorial'
+    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md'
   },
   {
     icon: 'mdi-api',
     title: 'API Reference',
     description: 'Complete REST API documentation with examples and authentication details.',
-    link: '/docs/api-reference'
+    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md'
   },
   {
     icon: 'mdi-help-circle',
     title: 'FAQ',
     description: 'Frequently asked questions and troubleshooting guides.',
-    link: '/docs/faq'
+    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md'
   },
   {
     icon: 'mdi-sitemap',
     title: 'Architecture',
     description: 'Deep dive into platform architecture, components, and design principles.',
-    link: '/docs/architecture'
+    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md'
   },
   {
     icon: 'mdi-github',
@@ -149,13 +139,6 @@ onMounted(() => {
   color: #fff;
 }
 
-.hero-description {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
-  color: #60a5fa;
-  line-height: 1.7;
-  opacity: 0.92;
-  font-weight: 400;
-}
 
 .docs-content {
   position: relative;
@@ -196,24 +179,7 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.doc-description {
-  font-size: 1.1rem;
-  color: #60a5fa;
-  opacity: 0.85;
-  max-width: 700px;
-  margin: 0 auto 2rem auto;
-  line-height: 1.6;
-  font-weight: 400;
-}
 
-.section-title {
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
-  font-weight: 500;
-  margin-bottom: 2rem;
-  line-height: 1.2;
-  color: #fff;
-  letter-spacing: -0.5px;
-}
 
 .section-subtitle {
   font-size: clamp(1.2rem, 2vw, 1.6rem);
