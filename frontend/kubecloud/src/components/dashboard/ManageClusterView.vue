@@ -282,9 +282,14 @@ function openKubeconfigModal() {
   }
 }
 
-function copyKubeconfig() {
+async function copyKubeconfig() {
   if (kubeconfigContent.value) {
-    navigator.clipboard.writeText(kubeconfigContent.value)
+    try {
+      await navigator.clipboard.writeText(kubeconfigContent.value)
+      notificationStore.success('Copied!', 'Kubeconfig copied to clipboard')
+    } catch (err) {
+      notificationStore.error('Copy Failed', 'Failed to copy kubeconfig to clipboard')
+    }
   }
 }
 
