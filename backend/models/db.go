@@ -32,6 +32,7 @@ type DB interface {
 	UpdateInvoicePDF(id int, data []byte) error
 	CreateUserNode(userNode *UserNodes) error
 	ListUserNodes(userID int) ([]UserNodes, error)
+	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)

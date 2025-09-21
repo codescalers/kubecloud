@@ -417,6 +417,11 @@ func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 	return clusters, s.db.Find(&clusters).Error
 }
 
+func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
+	var userNode UserNodes
+	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
+}
+
 func migrateNotifications(db *gorm.DB) error {
 	m := db.Migrator()
 	if !m.HasTable(&Notification{}) {

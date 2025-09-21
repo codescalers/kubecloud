@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"gorm.io/gorm"
 )
 
 var (
@@ -394,10 +396,20 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 	contractID := uint32(contractID64)
+	userNode, err := h.db.GetUserNodeByContractID(contractID64)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
+			return
+		}
+		logger.GetLogger().Error().Err(err)
+		InternalServerError(c)
+		return
+	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUnreserveNode)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err)
 		InternalServerError(c)
 		return
 	}
@@ -406,6 +418,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"user_id":     userID,
 		"mnemonic":    user.Mnemonic,
 		"contract_id": contractID,
+		"node_id":     userNode.NodeID,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)
