@@ -107,26 +107,12 @@ func (tr *TemplateRegistry) RegisterDynamicDeployWorkflow(wfName string, nodesNu
 		ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	)
 
-	template := ewf.WorkflowTemplate{
-		Steps: steps,
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(tr.ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(tr.ns),
-			deployFailureHook(*tr.engine, tr.metrics),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(tr.ns),
-			logStepDoneHook(),
-		},
-	}
+	template := extendBaseTemplate(tr.ns, steps,
+		[]ewf.AfterWorkflowHook{deployFailureHook(*tr.engine, tr.metrics)},
+		nil,
+		nil,
+		nil,
+	)
 
 	tr.engine.RegisterTemplate(wfName, &template)
 }

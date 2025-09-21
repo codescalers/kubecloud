@@ -7,155 +7,87 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func buildAddNodeTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
+func extendBaseTemplate(
+	ns *notification.NotificationService,
+	steps []ewf.Step,
+	afterWorkflow []ewf.AfterWorkflowHook,
+	beforeWorkflow []ewf.BeforeWorkflowHook,
+	afterStep []ewf.AfterStepHook,
+	beforeStep []ewf.BeforeStepHook,
+) ewf.WorkflowTemplate {
+	// passed steps and hooks should be prioritized
 	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
-			{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
-			{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
-			{Name: constants.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
-			{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
+		Steps: steps,
+		BeforeWorkflowHooks: append(beforeWorkflow,
 			notifyWorkflowStartedHook(ns),
 			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
+		),
+		AfterWorkflowHooks: append(afterWorkflow,
 			notifyWorkflowProgressHook(ns),
-			addNodeFailureHook(),
 			closeClientHook(),
 			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
+		),
+		BeforeStepHooks: append(beforeStep,
 			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
+		),
+		AfterStepHooks: append(afterStep,
 			notifyStepProgressHook(ns),
 			logStepDoneHook(),
-		},
+		),
 	}
+}
+
+func buildAddNodeTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
+	steps := []ewf.Step{
+		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
+		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+	}
+	return extendBaseTemplate(ns, steps,
+		[]ewf.AfterWorkflowHook{addNodeFailureHook()},
+		nil,
+		nil,
+		nil,
+	)
 }
 
 func buildRemoveNodeTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-			{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(ns),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(ns),
-			logStepDoneHook(),
-		},
+	steps := []ewf.Step{
+		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
+	return extendBaseTemplate(ns, steps, nil, nil, nil, nil)
 }
 
 func buildDeleteClusterTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
-			{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(ns),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(ns),
-			logStepDoneHook(),
-		},
+	steps := []ewf.Step{
+		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
+	return extendBaseTemplate(ns, steps, nil, nil, nil, nil)
 }
 
 func buildDeleteAllClustersTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
-			{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
-			{Name: constants.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(ns),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(ns),
-			logStepDoneHook(),
-		},
+	steps := []ewf.Step{
+		{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
+		{Name: constants.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
+	return extendBaseTemplate(ns, steps, nil, nil, nil, nil)
 }
 
 func buildRollbackFailedDeploymentTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(ns),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(ns),
-			logStepDoneHook(),
-		},
+	steps := []ewf.Step{
+		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 	}
+	return extendBaseTemplate(ns, steps, nil, nil, nil, nil)
 }
 
 func buildRollbackAddNodeTemplate(ns *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		Steps: []ewf.Step{
-			{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		},
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			notifyWorkflowStartedHook(ns),
-			logWorkflowStartedHook(),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			notifyWorkflowProgressHook(ns),
-			closeClientHook(),
-			logWorkflowDoneHook(),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			logStepStartedHook(),
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			notifyStepProgressHook(ns),
-			logStepDoneHook(),
-		},
+	steps := []ewf.Step{
+		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
 	}
+	return extendBaseTemplate(ns, steps, nil, nil, nil, nil)
 }
