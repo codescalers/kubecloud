@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '../stores/user'
 import ClustersCard from '../components/dashboard/ClustersCard.vue'
+import VMsCard from '../components/dashboard/VMsCard.vue'
 import BillingCard from '../components/dashboard/BillingCard.vue'
 import PaymentCard from '../components/dashboard/PaymentCard.vue'
 import SshKeysCard from '../components/dashboard/SshKeysCard.vue'
@@ -126,6 +127,7 @@ function handleNavigateToFund() {
                 @navigate="handleNavigate"
               />
               <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" @navigateToFund="handleNavigateToFund" />
+              <VMsCard v-if="selected === 'vms'" @navigateToFund="handleNavigateToFund" />
               <BillingCard v-if="selected === 'billing'" :billingHistory="billingHistory" />
               <PaymentCard v-if="selected === 'add-funds'" />
               <SshKeysCard v-if="selected === 'ssh'" :sshKeys="sshKeys" />

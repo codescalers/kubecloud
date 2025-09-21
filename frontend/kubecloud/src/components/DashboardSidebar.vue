@@ -39,6 +39,11 @@ const navigationItems = [
     icon: 'mdi-server'
   },
   {
+    key: 'vms',
+    title: 'Virtual Machines',
+    icon: 'mdi-desktop-classic'
+  },
+  {
     key: 'nodes',
     title: 'My Nodes',
     icon: 'mdi-server-network'
