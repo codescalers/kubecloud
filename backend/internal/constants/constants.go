@@ -47,4 +47,5 @@ const (
 	StepVerifyClusterReady      = "verify-cluster-ready"
 	StepSendEmailNotification   = "send-email-notification"
 	StepSendUINotification      = "send-ui-notification"
+	StepVerifyNodeState         = "verify-node-state"
 )
