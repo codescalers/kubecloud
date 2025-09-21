@@ -15,6 +15,7 @@ const (
 	WorkflowDeleteAllClusters        = "delete-all-clusters"
 	WorkflowSendNotification         = "send-notification"
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
+	WorkflowRollbackAddNode          = "rollback-add-node"
 	WorkflowTrackClusterHealth       = "track-cluster-health"
 
 	// Step names
