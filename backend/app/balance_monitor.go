@@ -84,7 +84,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 		case <-fundUserTFTBalanceTicker.C:
 			for _, user := range users {
-				if err = h.fundUsersToClaimDiscount(ctx, user.ID, user.Username, user.Mnemonic, discount(h.config.AppliedDiscount)); err != nil {
+				if err = h.fundUsersToClaimDiscount(ctx, user, discount(h.config.AppliedDiscount)); err != nil {
 					log.Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
 				}
 			}
@@ -201,32 +201,47 @@ func (h *Handler) withdrawTFTsFromUser(userID int, userMnemonic string, amountTo
 	return nil
 }
 
-func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, userID int, Username, userMnemonic string, configuredDiscount discount) error {
-	rentedNodes, _, err := h.getRentedNodesForUser(ctx, userID, true)
+func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User, configuredDiscount discount) error {
+	rentedNodes, _, err := h.getRentedNodesForUser(ctx, user.ID, true)
 	if err != nil {
 		return err
 	}
 
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(userID, userMnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(user.ID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", userID)
+		logger.GetLogger().Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", user.ID)
 		return err
 	}
 
-	if dailyUsageInUSDMillicent > 0 {
+	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		return err
+	}
+
+	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		return err
+	}
+
+	// make sure no old payments will fund more than needed
+	if totalPendingTFTAmount < dailyUsageInTFT &&
+		dailyUsageInUSDMillicent > 0 &&
+		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to convert USD to TFTs for user %d", userID)
+			log.Error().Err(err).Msgf("Failed to convert USD to TFTs for user %d", user.ID)
 			return err
 		}
 
 		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    userID,
-			Username:  Username,
+			UserID:    user.ID,
+			Username:  user.Username,
 			TFTAmount: tftAmount,
 			Operation: models.DepositOperation,
 		}); err != nil {
-			log.Error().Err(err).Msgf("Failed to create transfer record for user %d", userID)
+			log.Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 			return err
 		}
 	}

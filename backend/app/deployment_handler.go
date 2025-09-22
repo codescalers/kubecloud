@@ -322,7 +322,6 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	// TODO: would us consider history of nodes?
 	// calculate resources usage in USD applying discount
 	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(user.ID, user.Mnemonic, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount))
 	if err != nil {
@@ -331,20 +330,29 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	// fund user to fulfill discount
-	// TODO: what if many requests done in the same time? would it trigger many transfers?
-	if dailyUsageInUSDMillicent > 0 && user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
-		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
+	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
 
+	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	// fund user to fulfill discount
+	// make sure no old payments will fund more than needed
+	if totalPendingTFTAmount < dailyUsageInTFT &&
+		dailyUsageInUSDMillicent > 0 &&
+		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		if err := h.db.CreateTransferRecord(&models.TransferRecord{
 			UserID:    user.ID,
 			Username:  user.Username,
-			TFTAmount: tftAmount,
+			TFTAmount: dailyUsageInTFT,
 			Operation: models.DepositOperation,
 		}); err != nil {
 			logger.GetLogger().Error().Err(err).Send()

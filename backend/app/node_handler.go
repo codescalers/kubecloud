@@ -284,9 +284,25 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	// fund user to fulfill discount
-	// TODO: what if many requests done in the same time? would it trigger many transfers?
-	if dailyUsageInUSDMillicent > 0 && user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
+	// make sure no old payments will fund more than needed
+	if totalPendingTFTAmount < dailyUsageInTFT &&
+		dailyUsageInUSDMillicent > 0 &&
+		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()

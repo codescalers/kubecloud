@@ -62,6 +62,7 @@ type DB interface {
 	ListUserTransferRecords(userID int) ([]TransferRecord, error)
 	ListPendingTransferRecords() ([]TransferRecord, error)
 	UpdateTransferRecordState(recordID int, state state, failure string) error
+	CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error)
 	// stats methods
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)

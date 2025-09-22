@@ -391,6 +391,18 @@ func (s *GormDB) ListTransferRecords() ([]TransferRecord, error) {
 	return TransferRecords, s.db.Find(&TransferRecords).Error
 }
 
+func (s *GormDB) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error) {
+	var totalAmount uint64
+	err := s.db.Model(&TransferRecord{}).
+		Select("SUM(tft_amount)").
+		Where("user_id = ? AND state = ? AND state = ?", userID, PendingState, PendingState).
+		Scan(&totalAmount).Error
+	if err != nil {
+		return 0, err
+	}
+	return totalAmount, nil
+}
+
 func (s *GormDB) ListUserTransferRecords(userID int) ([]TransferRecord, error) {
 	var TransferRecords []TransferRecord
 	return TransferRecords, s.db.Where("user_id = ?", userID).Find(&TransferRecords).Error
