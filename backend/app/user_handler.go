@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/mattn/go-sqlite3"
-	"github.com/rs/zerolog/log"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -674,7 +673,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		TFTAmount: tftAmount,
 		Operation: models.DepositOperation,
 	}); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -782,7 +781,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	millicentAmount := internal.FromUSDToUSDMillicent(voucher.Value)
 	user.CreditedBalance += millicentAmount
 	if err := h.db.UpdateUserByID(&user); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -800,7 +799,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		TFTAmount: tftAmount,
 		Operation: models.DepositOperation,
 	}); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 

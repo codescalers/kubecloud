@@ -633,7 +633,7 @@ func TestRedeemVoucherHandler(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusAccepted, resp.Code)
+		assert.Equal(t, http.StatusOK, resp.Code)
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)

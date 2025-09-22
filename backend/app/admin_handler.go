@@ -19,7 +19,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
-	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
 
@@ -340,14 +339,14 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	millicentAmount := internal.FromUSDToUSDMillicent(request.AmountUSD)
 	user.CreditedBalance += millicentAmount
 	if err := h.db.UpdateUserByID(&user); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
 	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to convert USD millicent to TFT")
+		logger.GetLogger().Error().Err(err).Msg("Failed to convert USD millicent to TFT")
 		InternalServerError(c)
 		return
 	}
@@ -358,7 +357,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		TFTAmount: tftAmount,
 		Operation: models.DepositOperation,
 	}); err != nil {
-		log.Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
@@ -384,7 +383,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 func (h *Handler) ListTransferRecordsHandler(c *gin.Context) {
 	transferRecords, err := h.db.ListTransferRecords()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to list all transfer records")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all transfer records")
 		InternalServerError(c)
 		return
 	}

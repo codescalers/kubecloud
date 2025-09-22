@@ -2,12 +2,11 @@ package app
 
 import (
 	"kubecloud/internal"
+	"kubecloud/internal/logger"
 	"math"
 	"strconv"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // Map to store the last calculation time for each user
@@ -30,19 +29,19 @@ func (h *Handler) DeductBalanceBasedOnUsage() {
 	for range usageDeductionTicker.C {
 		users, err := h.db.ListAllUsers()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to list users")
+			logger.GetLogger().Error().Err(err).Msg("Failed to list users")
 			continue
 		}
 
 		for _, user := range users {
 			usageInUSDMillicent, err := h.getUserDailyUsageInUSD(user.ID)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get usage for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msgf("Failed to get usage for user %d", user.ID)
 				continue
 			}
 
 			if err := h.db.DeductUserBalance(&user, usageInUSDMillicent); err != nil {
-				log.Error().Err(err).Msgf("Failed to deduct balance for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msgf("Failed to deduct balance for user %d", user.ID)
 			}
 		}
 	}

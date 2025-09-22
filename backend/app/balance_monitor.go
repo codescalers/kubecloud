@@ -10,7 +10,6 @@ import (
 	"kubecloud/internal/logger"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -61,14 +60,14 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 		case <-zeroUSDBalanceTicker.C:
 			if err := h.resetUsersTFTsWithNoUSDBalance(users); err != nil {
-				log.Error().Err(err).Send()
+				logger.GetLogger().Error().Err(err).Send()
 			}
 
 		case <-zeroTFTBalanceTicker.C:
 			for _, user := range users {
 				clusters, err := h.db.ListUserClusters(user.ID)
 				if err != nil {
-					log.Error().Err(err).Msgf("Failed to list user clusters")
+					logger.GetLogger().Error().Err(err).Msgf("Failed to list user clusters")
 					continue
 				}
 
@@ -87,14 +86,14 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 					TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
 					Operation: models.DepositOperation,
 				}); err != nil {
-					log.Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
+					logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 				}
 			}
 
 		case <-fundUserTFTBalanceTicker.C:
 			for _, user := range users {
 				if err = h.fundUsersToClaimDiscount(ctx, user, discount(h.config.AppliedDiscount)); err != nil {
-					log.Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
+					logger.GetLogger().Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
 				}
 			}
 		}
@@ -104,11 +103,11 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 	for _, user := range users {
 		if user.CreditedBalance+user.CreditCardBalance-user.Debt <= 0 {
-			log.Info().Msgf("User %d has no USD balance, withdrawing all TFTs except for %d", user.ID, h.config.MinimumTFTAmountInWallet)
+			logger.GetLogger().Info().Msgf("User %d has no USD balance, withdrawing all TFTs except for %d", user.ID, h.config.MinimumTFTAmountInWallet)
 
 			userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
 			if err != nil {
-				log.Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
 				continue
 			}
 
@@ -125,7 +124,7 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 			}
 
 			if err = h.withdrawTFTsFromUser(user.ID, user.Mnemonic, userTFTBalance); err != nil {
-				log.Error().Err(err).Msgf("Failed to withdraw all TFTs for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msgf("Failed to withdraw all TFTs for user %d", user.ID)
 
 				// TODO: handle retries
 				transferRecord.State = models.FailedState
@@ -133,7 +132,7 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 			}
 
 			if err := h.db.CreateTransferRecord(&transferRecord); err != nil {
-				log.Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 			}
 		}
 	}
@@ -163,19 +162,19 @@ func (h *Handler) settlePendingPayments(records []models.TransferRecord) error {
 		}
 
 		if systemTFTBalance < record.TFTAmount {
-			log.Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
+			logger.GetLogger().Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
 			continue
 		}
 
 		if err = h.transferTFTsToUser(record.UserID, record.TFTAmount); err != nil {
-			log.Error().Err(err).Msgf("Failed to settle pending record ID %d", record.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to settle pending record ID %d", record.ID)
 
 			transferState = models.FailedState
 			transferFailure = err.Error()
 		}
 
 		if err := h.db.UpdateTransferRecordState(record.ID, transferState, transferFailure); err != nil {
-			log.Error().Err(err).Msgf("Failed to update pending record ID %d state", record.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to update pending record ID %d state", record.ID)
 		}
 	}
 
@@ -240,7 +239,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User
 		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to convert USD to TFTs for user %d", user.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to convert USD to TFTs for user %d", user.ID)
 			return err
 		}
 
@@ -250,7 +249,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User
 			TFTAmount: tftAmount,
 			Operation: models.DepositOperation,
 		}); err != nil {
-			log.Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
+			logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 			return err
 		}
 	}
