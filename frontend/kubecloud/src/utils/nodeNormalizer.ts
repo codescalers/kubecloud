@@ -13,6 +13,7 @@ export function normalizeNode(node: RawNode): NormalizedNode {
     available_storage: getAvailableStorage(node),
     storage: node.total_resources?.sru ? Math.round(node.total_resources.sru / (1024 * 1024 * 1024)) : 0,
     price_usd: typeof node.price_usd === 'number' ? node.price_usd : null,
+    discount_price: typeof node.discount_price === 'number' ? node.discount_price : null,
     gpu: (node.num_gpu && node.num_gpu > 0) || (node.gpus && node.gpus.length > 0),
     locationString: node.country + (node.city ? ', ' + node.city : ''),
     country: node.country,

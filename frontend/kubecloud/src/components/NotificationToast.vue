@@ -10,7 +10,7 @@
           {{ getToastIcon(notification.severity) }}
         </v-icon>
         <div class="toast-content">
-          <div class="toast-title">{{ notification.payload.title || notification.payload.message || 'Notification' }}</div>
+          <div class="toast-title">{{ notification.payload.title || notification.payload.subject || notification.payload.message || 'Notification' }}</div>
           <div class="toast-message">{{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}</div>
         </div>
         <v-btn icon class="toast-close" @click="removeNotification(String(notification.id))">

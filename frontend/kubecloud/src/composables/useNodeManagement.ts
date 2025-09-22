@@ -92,6 +92,7 @@ export interface RentedNode {
     upload: number;
     download: number;
   };
+  discount_price: number;
 }
 
 export function useNodeManagement() {
@@ -136,6 +137,7 @@ export function useNodeManagement() {
           status: node.status,
           healthy: node.healthy,
           rentContractId: node.rentContractId,
+          discount_price: node.discount_price,
         }))
         total.value = responseData.data.total || 0
       } else {

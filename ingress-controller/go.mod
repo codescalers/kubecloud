@@ -3,9 +3,9 @@ module github.com/Omarabdul3ziz/tfgw-ingress-controller
 go 1.24.2
 
 require (
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.8
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.8
-	github.com/threefoldtech/zosbase v0.1.7
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
+	github.com/threefoldtech/zosbase v0.1.10
 	k8s.io/api v0.33.2
 	k8s.io/apimachinery v0.33.2
 	k8s.io/client-go v0.33.2
@@ -60,18 +60,18 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/cors v1.10.1 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20241127100051-77e684bcb1b2 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.16.1-0.20241229121208-76ac3fea5e67 // indirect
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect

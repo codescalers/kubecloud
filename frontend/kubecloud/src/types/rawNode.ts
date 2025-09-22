@@ -76,6 +76,7 @@ export interface RawNode {
   };
   gpus: any[];
   price_usd: number;
+  discount_price: number;
   farm_free_ips: number;
   features: string[];
 } 

@@ -77,7 +77,9 @@
                   </v-avatar>
                 </template>
 
-                <v-list-item-title class="text-body-2 font-weight-medium">{{ notification.payload.title || notification.payload.message || 'Notification' }}</v-list-item-title>
+                <v-list-item-title class="text-body-2 font-weight-medium">{{ notification.payload.subject ||
+                  capitalize(notification.type) || 'Notification'
+                  }}</v-list-item-title>
                 <v-list-item-subtitle class="text-caption">{{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}</v-list-item-subtitle>
                 <v-list-item-subtitle class="text-caption text-medium-emphasis">{{ formatNotificationTime(notification.created_at) }}</v-list-item-subtitle>
 
@@ -117,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, capitalize } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useNotificationStore } from '../stores/notifications'

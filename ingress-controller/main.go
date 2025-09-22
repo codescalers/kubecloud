@@ -265,6 +265,7 @@ func (c *Controller) deployGateway(config Config) error {
 	pluginClient, err := deployer.NewTFPluginClient(
 		c.mnemonic,
 		deployer.WithNetwork(c.network),
+		deployer.WithDisableSentry(),
 		// deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
 	)
 	if err != nil {
