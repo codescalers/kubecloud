@@ -66,8 +66,17 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 		case <-zeroTFTBalanceTicker.C:
 			for _, user := range users {
+				clusters, err := h.db.ListUserClusters(user.ID)
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to list user clusters")
+					continue
+				}
 
-				// TODO: if user has workloads deployed, skip
+				if len(clusters) > 0 {
+					// user has deployed workloads, skip
+					continue
+				}
+
 				if user.CreditedBalance+user.CreditCardBalance-user.Debt > zeroTFTBalanceValue {
 					continue
 				}
