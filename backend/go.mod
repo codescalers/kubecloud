@@ -22,7 +22,7 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.16.11
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.0
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.16.11-0.20250903103031-f18cbfb6964f
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
