@@ -274,7 +274,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"user_id":       userID,
 		"mnemonic":      user.Mnemonic,
 		"node_id":       nodeID,
-		"target_status": "rented",
+		"target_status": constants.NodeRented,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)
@@ -420,7 +420,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"mnemonic":      user.Mnemonic,
 		"contract_id":   contractID,
 		"node_id":       userNode.NodeID,
-		"target_status": "rentable",
+		"target_status": constants.NodeRentable,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)

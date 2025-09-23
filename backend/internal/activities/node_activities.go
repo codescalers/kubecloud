@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"kubecloud/internal/constants"
 	"kubecloud/models"
 	"time"
 
@@ -95,6 +96,7 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 // VerifyNodeStateStep checks if node has reached the desired state
 func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+
 		targetStatus, ok := state["target_status"].(string)
 		if !ok {
 			return fmt.Errorf("missing or invalid 'target_status' in state")
@@ -115,7 +117,7 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 			return fmt.Errorf("failed to get node: %w", err)
 		}
 
-		reached := targetStatus == "rentable" && node.Rentable || targetStatus == "rented" && !node.Rentable
+		reached := targetStatus == constants.NodeRentable && node.Rentable || targetStatus == constants.NodeRented && !node.Rentable
 
 		if !reached {
 			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeIDUint32, targetStatus, node.Rentable)
