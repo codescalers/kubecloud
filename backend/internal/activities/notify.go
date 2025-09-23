@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
+	"kubecloud/internal/workflow"
 	"kubecloud/models"
 	"slices"
 	"strconv"
@@ -18,10 +18,10 @@ import (
 )
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{constants.WorkflowChargeBalance, constants.WorkflowAdminCreditBalance, constants.WorkflowRedeemVoucher}
-	deployWf := []string{constants.WorkflowDeleteAllClusters, constants.WorkflowDeleteCluster, constants.WorkflowRemoveNode, constants.WorkflowAddNode, constants.WorkflowRollbackFailedDeployment}
-	nodesWf := []string{constants.WorkflowReserveNode, constants.WorkflowUnreserveNode}
-	userWf := []string{constants.WorkflowUserVerification, constants.WorkflowUserRegistration}
+	billingWf := []string{workflow.WorkflowChargeBalance, workflow.WorkflowAdminCreditBalance, workflow.WorkflowRedeemVoucher}
+	deployWf := []string{workflow.WorkflowDeleteAllClusters, workflow.WorkflowDeleteCluster, workflow.WorkflowRemoveNode, workflow.WorkflowAddNode, workflow.WorkflowRollbackFailedDeployment}
+	nodesWf := []string{workflow.WorkflowReserveNode, workflow.WorkflowUnreserveNode}
+	userWf := []string{workflow.WorkflowUserVerification, workflow.WorkflowUserRegistration}
 
 	switch {
 	case slices.Contains(billingWf, workflowName):
@@ -125,7 +125,7 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 
 // notifyStepProgress sends step progress notifications
 func notifyStepProgress(notificationService *notification.NotificationService, state ewf.State, workflowName, stepName string, status string, err error, retryCount, maxRetries int) {
-	if stepName != constants.StepDeployNetwork && !isDeployStep(stepName) {
+	if stepName != workflow.StepDeployNetwork && !isDeployStep(stepName) {
 		return
 	}
 
@@ -224,7 +224,7 @@ func notifyStepHook(notificationService *notification.NotificationService) ewf.A
 }
 
 func calculateCurrentStep(stepName string) int {
-	if stepName == constants.StepDeployNetwork {
+	if stepName == workflow.StepDeployNetwork {
 		return 1
 	}
 
@@ -275,7 +275,7 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 		return nil
 	}
 
-	if wf.Name == constants.WorkflowAdminCreditBalance {
+	if wf.Name == workflow.WorkflowAdminCreditBalance {
 		adminID, ok := wf.State["admin_id"].(int)
 		if !ok {
 			logger.GetLogger().Error().Msg("Missing or invalid 'admin_id' in workflow state")
@@ -318,7 +318,7 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
 		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD)
-		if wf.Name == constants.WorkflowRedeemVoucher {
+		if wf.Name == workflow.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
 			message = "Voucher redeemed successfully."
@@ -381,7 +381,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	message = fmt.Sprintf("Node %d has been reserved successfully", nodeID)
 	severity := models.NotificationSeveritySuccess
 	if err == nil {
-		if wf.Name == constants.WorkflowUnreserveNode {
+		if wf.Name == workflow.WorkflowUnreserveNode {
 			subject = "Node Unreserved Successfully"
 			message = fmt.Sprintf("Node %d has been unreserved successfully", nodeID)
 		}
@@ -389,7 +389,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 		severity = models.NotificationSeverityError
 		subject = "Node Reservation Failed"
 		message = fmt.Sprintf("Failed to reserve node %d", nodeID)
-		if wf.Name == constants.WorkflowUnreserveNode {
+		if wf.Name == workflow.WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
 			message = fmt.Sprintf("Failed to unreserve node %d", nodeID)
 		}
@@ -441,7 +441,7 @@ func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	message = "Your account has been verified successfully"
 	severity := models.NotificationSeveritySuccess
 	if err == nil {
-		if wf.Name == constants.WorkflowUserRegistration {
+		if wf.Name == workflow.WorkflowUserRegistration {
 
 			subject = "Registration Completed"
 			message = "Your registration has been completed successfully"
@@ -450,7 +450,7 @@ func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 		severity = models.NotificationSeverityError
 		subject = "Account Verification Failed"
 		message = "Account verification process failed"
-		if wf.Name == constants.WorkflowUserRegistration {
+		if wf.Name == workflow.WorkflowUserRegistration {
 			subject = "User Registration Failed"
 			message = "User registration process failed"
 		}

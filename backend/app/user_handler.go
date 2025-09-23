@@ -21,8 +21,8 @@ import (
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	"kubecloud/internal/workflow"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -222,7 +222,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUserRegistration)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowUserRegistration)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to start registration workflow")
 		InternalServerError(c)
@@ -309,7 +309,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUserVerification)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowUserVerification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to start user verification workflow")
 		InternalServerError(c)
@@ -668,7 +668,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowChargeBalance)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowChargeBalance)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -848,7 +848,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRedeemVoucher)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowRedeemVoucher)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

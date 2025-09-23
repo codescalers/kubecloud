@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/workflow"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
@@ -338,7 +338,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAdminCreditBalance)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowAdminCreditBalance)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

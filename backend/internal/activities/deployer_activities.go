@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
+	"kubecloud/internal/workflow"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"os"
@@ -488,7 +488,7 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 
 func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metrics, notificationService *notification.NotificationService, wfName string, nodesNum int) {
 	steps := []ewf.Step{
-		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: workflow.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
@@ -498,9 +498,9 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
-	steps = append(steps, ewf.Step{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
-	steps = append(steps, ewf.Step{Name: constants.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
-	steps = append(steps, ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy})
+	steps = append(steps, ewf.Step{Name: workflow.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
+	steps = append(steps, ewf.Step{Name: workflow.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
+	steps = append(steps, ewf.Step{Name: workflow.StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
 	workflow := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	workflow.Steps = steps
@@ -535,7 +535,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			logger.GetLogger().Info().Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Triggering rollback workflow for failed deployment")
 
-			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
+			rollbackWf, rollbackErr := engine.NewWorkflow(workflow.WorkflowRollbackFailedDeployment)
 			if rollbackErr != nil {
 				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
 				return
@@ -582,43 +582,43 @@ func createAddNodeWorkflowTemplate(notificationService *notification.Notificatio
 
 func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration) {
 
-	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
-	engine.Register(constants.StepDeployNode, DeployNodeStep(metrics))
-	engine.Register(constants.StepRemoveCluster, CancelDeploymentStep(db, metrics))
-	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
-	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
-	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics))
-	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
-	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
-	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
-	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
+	engine.Register(workflow.StepDeployNetwork, DeployNetworkStep(metrics))
+	engine.Register(workflow.StepDeployNode, DeployNodeStep(metrics))
+	engine.Register(workflow.StepRemoveCluster, CancelDeploymentStep(db, metrics))
+	engine.Register(workflow.StepAddNode, AddNodeStep(metrics))
+	engine.Register(workflow.StepUpdateNetwork, UpdateNetworkStep(metrics))
+	engine.Register(workflow.StepRemoveNode, RemoveDeploymentNodeStep())
+	engine.Register(workflow.StepStoreDeployment, StoreDeploymentStep(db, metrics))
+	engine.Register(workflow.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(workflow.StepVerifyClusterReady, VerifyClusterReadyStep())
+	engine.Register(workflow.StepVerifyNewNodes, VerifyAddedNodeStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(workflow.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
+	engine.Register(workflow.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
+	engine.Register(workflow.StepBatchCancelContracts, BatchCancelContractsStep())
+	engine.Register(workflow.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
 
 	deleteWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deleteWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowDeleteCluster, &deleteWFTemplate)
+	engine.RegisterTemplate(workflow.WorkflowDeleteCluster, &deleteWFTemplate)
 
 	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
+	engine.RegisterTemplate(workflow.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
 	addNodeWFTemplate := createAddNodeWorkflowTemplate(notificationService, engine, metrics)
 	addNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: workflow.StepAddNode, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		{Name: workflow.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
+		{Name: workflow.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	addNodeWFTemplate.AfterWorkflowHooks = append(
 		addNodeWFTemplate.AfterWorkflowHooks,
@@ -628,26 +628,26 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	)
 	addNodeWFTemplate.AfterWorkflowHooks = append(addNodeWFTemplate.AfterWorkflowHooks, CloseClient)
 
-	engine.RegisterTemplate(constants.WorkflowAddNode, &addNodeWFTemplate)
+	engine.RegisterTemplate(workflow.WorkflowAddNode, &addNodeWFTemplate)
 
 	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		{Name: workflow.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
+	engine.RegisterTemplate(workflow.WorkflowRemoveNode, &removeNodeWFTemplate)
 
 	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	rollbackWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
+	engine.RegisterTemplate(workflow.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
 
 	rollbackAddNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	rollbackAddNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: workflow.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate("rollback-add-node", &rollbackAddNodeWFTemplate)
 }
@@ -855,7 +855,7 @@ func VerifyClusterReadyStep() ewf.StepFn {
 }
 
 func handleAddNodeWorkflowFailure(ctx context.Context, wf *ewf.Workflow, err error) {
-	if err == nil || wf.Name != constants.WorkflowAddNode {
+	if err == nil || wf.Name != workflow.WorkflowAddNode {
 		return
 	}
 

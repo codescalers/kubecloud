@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
+	"kubecloud/internal/workflow"
 	"kubecloud/kubedeployer"
 	"net/http"
 	"os"
@@ -384,7 +384,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowDeleteCluster)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -431,7 +431,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowDeleteAllClusters)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -505,7 +505,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowAddNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -591,7 +591,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowRemoveNode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return

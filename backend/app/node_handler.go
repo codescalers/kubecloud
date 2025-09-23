@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	"kubecloud/internal/workflow"
 
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -261,7 +261,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowReserveNode)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowReserveNode)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -395,7 +395,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	}
 	contractID := uint32(contractID64)
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUnreserveNode)
+	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowUnreserveNode)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
