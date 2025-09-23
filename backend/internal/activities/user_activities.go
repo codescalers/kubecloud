@@ -360,7 +360,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, notificationService *notification.NotificationService) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -405,18 +405,6 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return err
 		}
 
-		user, err := db.GetUserByID(userID)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("could not get user for updated balance notification")
-		} else {
-			netMillicent, err := computeNetBalanceMillicent(db, substrateClient, user)
-			if err == nil {
-				state["net_balance"] = netMillicent + amount
-			} else {
-				logger.GetLogger().Error().Err(err).Msg("error computing net balance")
-			}
-		}
-
 		if err = db.CreatePendingRecord(&models.PendingRecord{
 			UserID:       userID,
 			Username:     username,
@@ -431,7 +419,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 	}
 }
 
-func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
+func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -462,12 +450,17 @@ func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification
 		}
 
 		state["mnemonic"] = user.Mnemonic
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
 
 		return nil
 	}
 }
 
-func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
+func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -497,38 +490,12 @@ func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.N
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
+
 		return nil
 	}
-}
-
-func computeNetBalanceMillicent(db models.DB, substrateClient *substrate.Substrate, user models.User) (uint64, error) {
-	if substrateClient == nil || strings.TrimSpace(user.Mnemonic) == "" {
-		return 0, fmt.Errorf("missing substrate client or user mnemonic")
-	}
-
-	usdMillicentChain, err := internal.GetUserBalanceUSDMillicent(substrateClient, user.Mnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	var tftPendingAmount uint64
-	if pendingRecords, perr := db.ListUserPendingRecords(user.ID); perr == nil {
-		for _, record := range pendingRecords {
-			tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-		}
-	}
-
-	var usdPendingMillicent uint64
-	if tftPendingAmount > 0 {
-		if v, convErr := internal.FromTFTtoUSDMillicent(substrateClient, tftPendingAmount); convErr == nil {
-			usdPendingMillicent = v
-		}
-	}
-
-	// guard underflow
-	total := usdMillicentChain + usdPendingMillicent
-	if user.Debt >= total {
-		return 0, nil
-	}
-	return total - user.Debt, nil
 }

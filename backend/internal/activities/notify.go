@@ -328,11 +328,8 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 	if err == nil {
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
-		if newBalanceUSD > 0 {
-			message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
-		} else {
-			message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f.", amountUSD)
-		}
+		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
+
 		if wf.Name == constants.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
