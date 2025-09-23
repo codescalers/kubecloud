@@ -315,6 +315,7 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 			amountUSD = internal.FromUSDMilliCentToUSD(amount)
 		}
 	}
+
 	if balanceVal, exists := wf.State["net_balance"]; exists {
 		if balance, okBalance := balanceVal.(uint64); okBalance {
 			newBalanceUSD = internal.FromUSDMilliCentToUSD(balance)
@@ -327,7 +328,11 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 	if err == nil {
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
-		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
+		if newBalanceUSD > 0 {
+			message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
+		} else {
+			message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f.", amountUSD)
+		}
 		if wf.Name == constants.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"

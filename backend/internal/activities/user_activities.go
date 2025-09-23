@@ -409,11 +409,11 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("could not get user for updated balance notification")
 		} else {
-			netMillicent, nerr := computeNetBalanceMillicent(db, substrateClient, user)
-			if nerr == nil {
+			netMillicent, err := computeNetBalanceMillicent(db, substrateClient, user)
+			if err == nil {
 				state["net_balance"] = netMillicent + amount
 			} else {
-				logger.GetLogger().Error().Err(nerr).Msg("error computing net balance")
+				logger.GetLogger().Error().Err(err).Msg("error computing net balance")
 			}
 		}
 
