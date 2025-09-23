@@ -13,7 +13,7 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflowHook {
+func hookNotifyWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflowHook {
 	return func(ctx context.Context, w *ewf.Workflow) {
 		var userID int
 		cfg, err := getConfig(w.State)
@@ -54,25 +54,6 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 	}
 }
 
-func hookStepStarted(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-	logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
-}
-
-func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("workflow_name", wf.Name).Msg("Workflow failed")
-	} else {
-		logger.GetLogger().Info().Str("workflow_name", wf.Name).Msg("Workflow completed successfully")
-	}
-}
-
-func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
-	} else {
-		logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
-	}
-}
 func hookClusterHealthCheck(notificationService *notification.NotificationService) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err == nil {
@@ -110,46 +91,28 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 	}
 }
 
-func hookNotificationWorkflowStarted(ctx context.Context, w *ewf.Workflow) {
-	logger.GetLogger().Info().Str("workflow_name", w.Name).Msg("Starting notification workflow")
+// Logging hooks
+
+func hookLogWorkflowStarted(ctx context.Context, wf *ewf.Workflow) {
+	logger.GetLogger().Info().Str("workflow_name", wf.Name).Msg("Starting workflow")
 }
 
-func newKubecloudWorkflowTemplate(n *notification.NotificationService) ewf.WorkflowTemplate {
-	return ewf.WorkflowTemplate{
-		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
-			hookWorkflowStarted(n),
-		},
-		AfterWorkflowHooks: []ewf.AfterWorkflowHook{
-			hookWorkflowDone,
-			notifyWorkflowProgress(n),
-		},
-		BeforeStepHooks: []ewf.BeforeStepHook{
-			hookStepStarted,
-		},
-		AfterStepHooks: []ewf.AfterStepHook{
-			hookStepDone,
-		},
+func hookLogWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Str("workflow_name", wf.Name).Msg("Workflow failed")
+	} else {
+		logger.GetLogger().Info().Str("workflow_name", wf.Name).Msg("Workflow completed successfully")
 	}
 }
 
-func getOrdinalSuffix(n int) string {
-	switch n % 100 {
-	case 11, 12, 13:
-		return "th"
-	default:
-		switch n % 10 {
-		case 1:
-			return "st"
-		case 2:
-			return "nd"
-		case 3:
-			return "rd"
-		default:
-			return "th"
-		}
-	}
+func hookLogStepStarted(_ context.Context, w *ewf.Workflow, step *ewf.Step) {
+	logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
 }
 
-func getDeployNodeStepName(index int) string {
-	return fmt.Sprintf("deploy-%d%s-node", index, getOrdinalSuffix(index))
+func hookLogStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
+	} else {
+		logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
+	}
 }

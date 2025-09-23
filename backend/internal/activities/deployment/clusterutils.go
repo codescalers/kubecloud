@@ -19,6 +19,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// TODO: this file needs a review and cleanup
 func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (string, error) {
 	if kc, ok := state["kubeconfig"].(string); ok && kc != "" {
 		return kc, nil

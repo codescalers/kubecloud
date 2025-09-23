@@ -2,18 +2,15 @@ package deployment
 
 import (
 	"context"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/metrics"
-	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
+	"kubecloud/internal/workflow"
 	"kubecloud/kubedeployer"
 	"time"
 
 	"github.com/xmonader/ewf"
 )
-
-// DEPLOYMENT HOOKS
 
 func closeClientHook() ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
@@ -32,7 +29,7 @@ func closeClientHook() ewf.AfterWorkflowHook {
 
 func addNodeFailureHook() ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		if err == nil || wf.Name != constants.WorkflowAddNode {
+		if err == nil || wf.Name != workflow.WorkflowAddNode {
 			return
 		}
 
@@ -109,56 +106,3 @@ func deployFailureHook(engine ewf.Engine, metrics *metrics.Metrics) ewf.AfterWor
 		}
 	}
 }
-
-// NOTIFICATION HOOKS
-
-func notifyWorkflowStartedHook(ns *notification.NotificationService) ewf.BeforeWorkflowHook {
-	return func(ctx context.Context, w *ewf.Workflow) {}
-	// return activities.NotifyWorkflowStartedHook(ns)
-}
-
-func notifyWorkflowProgressHook(ns *notification.NotificationService) ewf.AfterWorkflowHook {
-	return func(ctx context.Context, w *ewf.Workflow, err error) {}
-	// return activities.NotifyWorkflowProgress(ns)
-}
-
-func notifyStepProgressHook(ns *notification.NotificationService) ewf.AfterStepHook {
-	return func(ctx context.Context, w *ewf.Workflow, step *ewf.Step, err error) {}
-	// return activities.NotifyStepHook(ns)
-}
-
-// LOGGING HOOKS
-
-func logWorkflowStartedHook() ewf.BeforeWorkflowHook {
-	return func(ctx context.Context, wf *ewf.Workflow) {
-		logger.GetLogger().Info().Str("workflow_name", wf.Name).Msg("Starting workflow")
-	}
-}
-
-func logWorkflowDoneHook() ewf.AfterWorkflowHook {
-	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Str("workflow_name", wf.Name).Msg("Workflow failed")
-		} else {
-			logger.GetLogger().Info().Str("workflow_name", wf.Name).Msg("Workflow completed successfully")
-		}
-	}
-}
-
-func logStepStartedHook() ewf.BeforeStepHook {
-	return func(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-		logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
-	}
-}
-
-func logStepDoneHook() ewf.AfterStepHook {
-	return func(ctx context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
-		} else {
-			logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
-		}
-	}
-}
-
-// TODO: delegate the log/notify hooks to the parent package to avoid cyclic imports

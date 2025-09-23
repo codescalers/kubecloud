@@ -2,9 +2,9 @@ package deployment
 
 import (
 	"kubecloud/internal"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/workflow"
 	"kubecloud/models"
 	"time"
 
@@ -19,11 +19,12 @@ var (
 
 // TemplateRegistry manages deployment workflow and step registration
 type TemplateRegistry struct {
-	engine  *ewf.Engine
-	metrics *metrics.Metrics
-	db      models.DB
-	ns      *notification.NotificationService
-	config  internal.Configuration
+	engine          *ewf.Engine
+	metrics         *metrics.Metrics
+	db              models.DB
+	ns              *notification.NotificationService
+	config          internal.Configuration
+	templateBuilder workflow.TemplateBuilderFunc
 }
 
 func NewTemplateRegistry(
@@ -32,13 +33,15 @@ func NewTemplateRegistry(
 	db models.DB,
 	ns *notification.NotificationService,
 	config internal.Configuration,
+	templateBuilder workflow.TemplateBuilderFunc,
 ) *TemplateRegistry {
 	return &TemplateRegistry{
-		engine:  engine,
-		metrics: metrics,
-		db:      db,
-		ns:      ns,
-		config:  config,
+		engine:          engine,
+		metrics:         metrics,
+		db:              db,
+		ns:              ns,
+		config:          config,
+		templateBuilder: templateBuilder,
 	}
 }
 
@@ -46,28 +49,28 @@ func NewTemplateRegistry(
 func (tr *TemplateRegistry) RegisterAll() {
 	steps := map[string]ewf.StepFn{
 		// Network steps
-		constants.StepDeployNetwork: DeployNetworkStep(tr.metrics),
-		constants.StepUpdateNetwork: UpdateNetworkStep(tr.metrics),
+		workflow.StepDeployNetwork: DeployNetworkStep(tr.metrics),
+		workflow.StepUpdateNetwork: UpdateNetworkStep(tr.metrics),
 
 		// Node steps
-		constants.StepDeployNode: DeployNodeStep(tr.metrics),
-		constants.StepAddNode:    AddNodeStep(tr.metrics),
-		constants.StepRemoveNode: RemoveNodeStep(tr.metrics),
+		workflow.StepDeployNode: DeployNodeStep(tr.metrics),
+		workflow.StepAddNode:    AddNodeStep(tr.metrics),
+		workflow.StepRemoveNode: RemoveNodeStep(tr.metrics),
 
 		// Cluster management steps
-		constants.StepRemoveCluster:      CancelDeploymentStep(tr.db, tr.metrics),
-		constants.StepFetchKubeconfig:    FetchKubeconfigStep(tr.db, tr.config.SSH.PrivateKeyPath),
-		constants.StepVerifyClusterReady: VerifyClusterReadyStep(),
-		constants.StepVerifyNewNodes:     VerifyAddedNodeStep(tr.db, tr.config.SSH.PrivateKeyPath),
+		workflow.StepRemoveCluster:      CancelDeploymentStep(tr.db, tr.metrics),
+		workflow.StepFetchKubeconfig:    FetchKubeconfigStep(tr.db, tr.config.SSH.PrivateKeyPath),
+		workflow.StepVerifyClusterReady: VerifyClusterReadyStep(),
+		workflow.StepVerifyNewNodes:     VerifyAddedNodeStep(tr.db, tr.config.SSH.PrivateKeyPath),
 
 		// Database steps
-		constants.StepStoreDeployment:     StoreDeploymentStep(tr.db, tr.metrics),
-		constants.StepRemoveClusterFromDB: RemoveClusterFromDBStep(tr.db),
+		workflow.StepStoreDeployment:     StoreDeploymentStep(tr.db, tr.metrics),
+		workflow.StepRemoveClusterFromDB: RemoveClusterFromDBStep(tr.db),
 
 		// Bulk operations steps
-		constants.StepGatherAllContractIDs:  GatherAllContractIDsStep(tr.db),
-		constants.StepBatchCancelContracts:  BatchCancelContractsStep(),
-		constants.StepDeleteAllUserClusters: DeleteAllUserClustersStep(tr.db),
+		workflow.StepGatherAllContractIDs:  GatherAllContractIDsStep(tr.db),
+		workflow.StepBatchCancelContracts:  BatchCancelContractsStep(),
+		workflow.StepDeleteAllUserClusters: DeleteAllUserClustersStep(tr.db),
 	}
 
 	for stepName, stepFn := range steps {
@@ -75,12 +78,12 @@ func (tr *TemplateRegistry) RegisterAll() {
 	}
 
 	templates := map[string]ewf.WorkflowTemplate{
-		constants.WorkflowAddNode:                  buildAddNodeTemplate(tr.ns),
-		constants.WorkflowDeleteCluster:            buildDeleteClusterTemplate(tr.ns),
-		constants.WorkflowDeleteAllClusters:        buildDeleteAllClustersTemplate(tr.ns),
-		constants.WorkflowRemoveNode:               buildRemoveNodeTemplate(tr.ns),
-		constants.WorkflowRollbackFailedDeployment: buildRollbackFailedDeploymentTemplate(tr.ns),
-		constants.WorkflowRollbackAddNode:          buildRollbackAddNodeTemplate(tr.ns),
+		workflow.WorkflowAddNode:                  buildAddNodeTemplate(tr.templateBuilder),
+		workflow.WorkflowRemoveNode:               buildRemoveNodeTemplate(tr.templateBuilder),
+		workflow.WorkflowDeleteCluster:            buildDeleteClusterTemplate(tr.templateBuilder),
+		workflow.WorkflowDeleteAllClusters:        buildDeleteAllClustersTemplate(tr.templateBuilder),
+		workflow.WorkflowRollbackFailedDeployment: buildRollbackFailedDeploymentTemplate(tr.templateBuilder),
+		workflow.WorkflowRollbackAddNode:          buildRollbackAddNodeTemplate(tr.templateBuilder),
 	}
 
 	for templateName, template := range templates {
@@ -91,7 +94,7 @@ func (tr *TemplateRegistry) RegisterAll() {
 // RegisterDynamicDeployWorkflow creates and registers a dynamic deployment workflow with the specified number of nodes
 func (tr *TemplateRegistry) RegisterDynamicDeployWorkflow(wfName string, nodesNum int) {
 	steps := []ewf.Step{
-		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: workflow.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 	}
 
 	for i := 0; i < nodesNum; i++ {
@@ -101,18 +104,21 @@ func (tr *TemplateRegistry) RegisterDynamicDeployWorkflow(wfName string, nodesNu
 	}
 
 	steps = append(steps,
-		ewf.Step{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		ewf.Step{Name: workflow.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
 		// TODO: review the verify logic. if it fails?
-		ewf.Step{Name: constants.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy},
-		ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		ewf.Step{Name: workflow.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy},
+		ewf.Step{Name: workflow.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	)
 
-	template := extendBaseTemplate(tr.ns, steps,
-		[]ewf.AfterWorkflowHook{deployFailureHook(*tr.engine, tr.metrics)},
-		nil,
-		nil,
-		nil,
-	)
+	if tr.templateBuilder != nil {
+		template := tr.templateBuilder(
+			steps,
+			[]ewf.AfterWorkflowHook{deployFailureHook(*tr.engine, tr.metrics), closeClientHook()},
+			nil,
+			nil,
+			nil,
+		)
 
-	tr.engine.RegisterTemplate(wfName, &template)
+		tr.engine.RegisterTemplate(wfName, &template)
+	}
 }
