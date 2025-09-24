@@ -202,11 +202,17 @@ export function useNodeManagement() {
     }
   }
 
+
+
+  function nodeTotalCost(node: RentedNode) {
+    const basePrice = node.discount_price && typeof node.discount_price === 'number' ? node.discount_price : node.price_usd && typeof node.price_usd === 'number' ? node.price_usd : 0
+    const totalCost = basePrice + (node.extraFee || 0)
+    return totalCost
+  }
   // Calculate total monthly cost of rented nodes
   const totalMonthlyCost = computed(() => {
     return rentedNodes.value
-      .filter(node => typeof node.price_usd === 'number')
-      .reduce((sum, node) => sum + (node.price_usd || 0), 0)
+      .reduce((sum, node) => sum + (nodeTotalCost(node)), 0)
   })
 
   // Get nodes by status

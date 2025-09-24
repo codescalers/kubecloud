@@ -496,7 +496,7 @@ watch(filteredNodes, () => {
 .node-col {
   flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
   min-width: 250px; /* Enforce the minimum width */
-  max-width: 100%; /* Ensure it doesn't overflow on small screens */
+  max-width: 400px;
 }
 
 .range-display {
