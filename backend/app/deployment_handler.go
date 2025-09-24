@@ -503,6 +503,11 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": "Node with the same name already exists"})
 			return
 		}
+
+		if node.NodeID == cluster.Nodes[0].NodeID {
+			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID)})
+			return
+		}
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)

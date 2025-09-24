@@ -313,11 +313,17 @@ func (c *Cluster) UnmarshalJSON(data []byte) error {
 
 func (c *Cluster) Validate() error {
 	nodeNames := make(map[string]struct{})
+	nodeIDs := make(map[uint32]struct{})
 	for _, node := range c.Nodes {
 		if _, exists := nodeNames[node.Name]; exists {
 			return fmt.Errorf("duplicate node name found: %s", node.Name)
 		}
 		nodeNames[node.Name] = struct{}{}
+
+		if _, exists := nodeIDs[node.NodeID]; exists {
+			return fmt.Errorf("duplicate node id found: %d", node.NodeID)
+		}
+		nodeIDs[node.NodeID] = struct{}{}
 	}
 
 	return nil
