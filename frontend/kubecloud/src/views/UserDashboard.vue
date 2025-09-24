@@ -42,25 +42,10 @@ const STORAGE_KEY_DASHBOARD_SECTION = 'dashboard-section'
 
 // Note: Cluster events are handled globally by the useDeploymentEvents composable
 
-// Periodic balance refresh
-let balanceInterval: ReturnType<typeof setInterval> | null = null
-
-const startBalanceRefresh = () => {
-  if (balanceInterval) return
-  balanceInterval = setInterval(() => {
-    userStore.updateNetBalance()
-  }, 30000) // Refresh every 30 seconds
-}
-
-const stopBalanceRefresh = () => {
-  if (balanceInterval) {
-    clearInterval(balanceInterval)
-    balanceInterval = null
-  }
-}
 
 onMounted(async () => {
   try {
+    userStore.startBalanceRefresh()
     // Restore selected section from localStorage
     const savedSection = localStorage.getItem(STORAGE_KEY_DASHBOARD_SECTION)
     if (savedSection) {
@@ -80,9 +65,6 @@ onMounted(async () => {
       description: `Invoice ${inv.id}`,
       amount: inv.total
     }))
-
-    // Start periodic balance refresh
-    startBalanceRefresh()
   } catch (error) {
     console.error(error);
   }
@@ -90,7 +72,7 @@ onMounted(async () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
-  stopBalanceRefresh()
+  userStore.stopBalanceRefresh()
 })
 
 interface Bill {

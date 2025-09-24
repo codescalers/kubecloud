@@ -5,7 +5,7 @@
       <p class="dashboard-card-subtitle">Your Mycelium Cloud platform at a glance</p>
     </div>
     <!-- Stats Grid -->
-    <StatsGrid :key="netBalance" :stats="statsData" />
+    <StatsGrid :stats="statsData" />
 
     <!-- Quick Actions -->
     <div class="quick-actions-section">
