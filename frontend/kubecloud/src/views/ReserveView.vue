@@ -134,11 +134,11 @@
                   </v-btn>
                 </div>
                 <div v-else>
-                  <v-row dense align="stretch">
+                  <v-row dense align="stretch" style="display: flex;">
                     <v-col
                       v-for="node in paginatedNodes"
                       :key="node.nodeId"
-                      cols="12" sm="6" md="4" lg="3"
+                      class="node-col"
                     >
                       <NodeCard
                         :node="node"
@@ -491,6 +491,12 @@ watch(filteredNodes, () => {
   color: #CBD5E1;
   opacity: 0.85;
   margin-top: 0.5rem;
+}
+
+.node-col {
+  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
+  min-width: 250px; /* Enforce the minimum width */
+  max-width: 100%; /* Ensure it doesn't overflow on small screens */
 }
 
 .range-display {

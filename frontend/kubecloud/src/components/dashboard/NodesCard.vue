@@ -97,8 +97,9 @@
     </div>
 
     <div v-else class="nodes-section">
-      <v-row class="nodes-grid">
+      <v-row class="nodes-grid" align="stretch">
         <v-col
+          class="node-col"
           v-for="(node, idx) in normalizedNodes"
           :key="node.id"
           cols="12"
@@ -355,6 +356,13 @@ const normalizedNodes = computed(() =>
 
 .nodes-section {
   margin-top: 2rem;
+}
+
+
+.node-col {
+  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
+  min-width: 250px; /* Enforce the minimum width */
+  max-width: 100%; /* Ensure it doesn't overflow on small screens */
 }
 
 
