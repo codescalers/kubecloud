@@ -57,6 +57,15 @@ if [[ "${DUAL_STACK}" = "true" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS --node-ip=$ipv4,$ipv6"
 fi 
 
+wait_and_prepare_crd() {
+    while ! kubectl get nodes &>/dev/null; do
+        sleep 5
+    done
+    echo "K3s is ready, creating threefold-credentials secret..."
+    kubectl create secret generic threefold-credentials --from-literal=mnemonic="$MNEMONIC" || echo "Secret may already exist"
+    kubectl apply -f https://raw.githubusercontent.com/codescalers/kubecloud/main/crd/manifests/install.yaml
+}
+
 if [ -z "${K3S_URL}" ]; then
     # Add additional SANs for planetary network IP, public IPv4, and public IPv6  
     # https://github.com/threefoldtech/tf-images/issues/98
@@ -74,6 +83,8 @@ if [ -z "${K3S_URL}" ]; then
     if [ "${HA}" = "true" ]; then
         EXTRA_ARGS="$EXTRA_ARGS --cluster-init"
     fi
+    # Start CRD preparation in background after K3s starts
+    wait_and_prepare_crd &
     exec k3s server --flannel-iface $K3S_FLANNEL_IFACE $EXTRA_ARGS 2>&1
 elif [ "${MASTER}" = "true" ]; then
     exec k3s server --server $K3S_URL --flannel-iface $K3S_FLANNEL_IFACE $EXTRA_ARGS 2>&1
