@@ -108,16 +108,17 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 
 	sseManager := internal.NewSSEManager()
-	plugingOpts := []deployer.PluginOpt{
+	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
+		deployer.WithDisableSentry(),
 	}
 	if config.Debug {
-		plugingOpts = append(plugingOpts, deployer.WithLogs())
+		pluginOpts = append(pluginOpts, deployer.WithLogs())
 	}
 
 	gridClient, err := deployer.NewTFPluginClient(
 		config.SystemAccount.Mnemonic,
-		plugingOpts...,
+		pluginOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TF grid client: %w", err)
@@ -226,6 +227,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		sponsorKeyPair,
 		app.metrics,
 		app.notificationService,
+		gridProxy,
 	)
 
 	app.registerHandlers()
@@ -349,6 +351,7 @@ func (app *App) StartBackgroundWorkers() {
 	go app.handlers.TrackUserDebt(app.gridClient)
 	go app.handlers.MonitorSystemBalanceAndHandleSettlement()
 	go app.handlers.TrackClusterHealth()
+	go app.handlers.TrackReservedNodeHealth(app.notificationService, app.handlers.proxyClient)
 }
 
 // Run starts the server

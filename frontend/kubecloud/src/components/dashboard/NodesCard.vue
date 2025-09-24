@@ -97,8 +97,9 @@
     </div>
 
     <div v-else class="nodes-section">
-      <v-row class="nodes-grid">
+      <v-row class="nodes-grid" align="stretch">
         <v-col
+          class="node-col"
           v-for="(node, idx) in normalizedNodes"
           :key="node.id"
           cols="12"
@@ -230,7 +231,7 @@ const statCards = [
   {
     icon: 'mdi-currency-usd',
     color: 'info',
-    value: () => totalMonthlyCost.value,
+    value: () => totalMonthlyCost.value.toFixed(2),
     label: 'Monthly Cost'
   }
 ]
@@ -355,6 +356,13 @@ const normalizedNodes = computed(() =>
 
 .nodes-section {
   margin-top: 2rem;
+}
+
+
+.node-col {
+  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
+  min-width: 250px; /* Enforce the minimum width */
+  max-width: 400px;
 }
 
 

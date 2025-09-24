@@ -293,6 +293,12 @@ func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
 	return userNodes, s.db.Where("user_id = ?", userID).Find(&userNodes).Error
 }
 
+// ListAllReservedNodes returns all reserved nodes from all users
+func (s *GormDB) ListAllReservedNodes() ([]UserNodes, error) {
+	var userNodes []UserNodes
+	return userNodes, s.db.Find(&userNodes).Error
+}
+
 // CreateNotification creates a new notification
 // CreateSSHKey creates a new SSH key for a user
 func (s *GormDB) CreateSSHKey(sshKey *SSHKey) error {

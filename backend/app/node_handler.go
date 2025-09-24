@@ -271,9 +271,10 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":  userID,
-		"mnemonic": user.Mnemonic,
-		"node_id":  nodeID,
+		"user_id":       userID,
+		"mnemonic":      user.Mnemonic,
+		"node_id":       nodeID,
+		"target_status": constants.NodeRented,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)
@@ -415,10 +416,11 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":     userID,
-		"mnemonic":    user.Mnemonic,
-		"contract_id": contractID,
-		"node_id":     userNode.NodeID,
+		"user_id":       userID,
+		"mnemonic":      user.Mnemonic,
+		"contract_id":   contractID,
+		"node_id":       userNode.NodeID,
+		"target_status": constants.NodeRentable,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)

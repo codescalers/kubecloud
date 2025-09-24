@@ -1,30 +1,28 @@
 <template>
-  <v-card class="node-card mb-4" elevation="0">
+  <v-card class="node-card d-flex h-100 flex-column mb-4" elevation="0">
     <div class="price-area px-4 pt-4 pb-2 mb-3">
       <!-- Monthly Price -->
-      <div class="d-flex align-center flex-wrap mb-1">
-        <div class="d-flex align-center justify-space-between flex-wrap price-container">
-          <div>
-            <span :style="`color:${priceColor}; font-size:1.5rem; font-weight:700; letter-spacing:0.01em;`">${{
-              monthlyPrice }}</span>
-            <span class="text-caption ml-2"
-              :style="`color:${priceLabelColor}; font-size:1.1rem; font-weight:500;`">/month</span>
-          </div>
-          <div v-if="hasDiscount">
-            <span class="text-grey text-body-1 font-weight-medium mr-2 original-price-text">
-              ${{ originalMonthlyPrice }}
-            </span>
-          </div>
+      <div class="price-grid">
+        <div class="price-main">
+          <span :style="`color:${priceColor}; font-size:1.5rem; font-weight:700; letter-spacing:0.01em;`">${{
+            monthlyPrice }}</span>
+          <span class="text-caption ml-2"
+            :style="`color:${priceLabelColor}; font-size:1.1rem; font-weight:500;`">/month</span>
+        </div>
+        <div :style="{ visibility: hasDiscount ? 'visible' : 'hidden' }" class="justify-self-end">
+          <span class="text-grey text-body-1 font-weight-medium original-price-text">
+            ${{ originalMonthlyPrice }}
+          </span>
         </div>
       </div>
-      <div class="d-flex align-center justify-space-between flex-wrap">
-        <div>
+      <div class="price-grid">
+        <div class="price-main">
           <span :style="`color:${priceColor}; font-size:1.1rem; font-weight:600;`">${{ hourlyPrice }}</span>
           <span class="text-caption ml-1"
             :style="`color:${priceLabelColor}; font-size:1.05rem; font-weight:500;`">/hr</span>
         </div>
         <div v-if="hasDiscount">
-          <v-chip color="success" variant="outlined" size="small" 
+          <v-chip color="success" variant="outlined" size="small"
                   class="text-caption font-weight-bold pulse-chip">
             {{ discountPercentage }}% OFF
           </v-chip>
@@ -170,6 +168,7 @@ const priceLabelColor = '#a3a3a3';
 
 <style scoped>
 .node-card {
+  min-width: 250px  ;
   border-radius: 16px;
   transition: box-shadow 0.2s, transform 0.2s;
 }
@@ -178,7 +177,21 @@ const priceLabelColor = '#a3a3a3';
 }
 .price-area {
   background: rgba(16, 185, 129, 0.07);
-  }
+}
+
+.price-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  min-height: 36px;
+}
+
+.price-main {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
   /* Price styling - minimal CSS, using Vuetify classes in template */
   .price-container {

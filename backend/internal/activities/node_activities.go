@@ -3,10 +3,12 @@ package activities
 import (
 	"context"
 	"fmt"
+	"kubecloud/internal/constants"
 	"kubecloud/models"
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
 
@@ -85,6 +87,40 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 		err = substrateClient.CancelContract(identity, uint64(contractID))
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
+		}
+
+		return nil
+	}
+}
+
+// VerifyNodeStateStep checks if node has reached the desired state
+func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+
+		targetStatus, ok := state["target_status"].(string)
+		if !ok {
+			return fmt.Errorf("missing or invalid 'target_status' in state")
+		}
+
+		nodeID, exists := state["node_id"]
+		if !exists {
+			return fmt.Errorf("missing or invalid 'node_id' in state")
+		}
+
+		nodeIDUint32, ok := nodeID.(uint32)
+		if !ok {
+			return fmt.Errorf("node_id in state is not a uint32")
+		}
+
+		node, err := proxyClient.Node(ctx, nodeIDUint32)
+		if err != nil {
+			return fmt.Errorf("failed to get node: %w", err)
+		}
+
+		reached := targetStatus == constants.NodeRentable && node.Rentable || targetStatus == constants.NodeRented && !node.Rentable
+
+		if !reached {
+			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeIDUint32, targetStatus, node.Rentable)
 		}
 
 		return nil

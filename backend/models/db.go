@@ -33,6 +33,7 @@ type DB interface {
 	CreateUserNode(userNode *UserNodes) error
 	ListUserNodes(userID int) ([]UserNodes, error)
 	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
+	ListAllReservedNodes() ([]UserNodes, error)
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)

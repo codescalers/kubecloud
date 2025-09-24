@@ -66,6 +66,7 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	pluginClient, err := deployer.NewTFPluginClient(
 		mne,
 		deployer.WithNetwork(net),
+		deployer.WithDisableSentry(),
 		// TODO: remove this after testing
 		// deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
 		// deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
