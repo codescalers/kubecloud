@@ -53,8 +53,8 @@ export function useNotificationEvents() {
   const processingQueue = ref(false)
   const isConnected = ref(false)
   const reconnectAttempts = ref(0)
-  const isOnline = ref(navigator.onLine)
-  const isPageVisible = ref(document.visibilityState === 'visible')
+  const isOnline = ref(true)
+  const isPageVisible = ref(true)
   const shouldReconnectOnVisibility = ref(false)
   const eventListenersInitialized = ref(false)
 
@@ -406,12 +406,22 @@ export function useNotificationEvents() {
   }
 
   onMounted(() => {
-    setupNetworkAndVisibilityListeners()
+    try {
+      isOnline.value = navigator.onLine
+      isPageVisible.value = document.visibilityState === 'visible'
+      setupNetworkAndVisibilityListeners()
+    } catch (err) {
+      console.error('[SSE] Error during mounted init:', err)
+    }
   })
 
   onUnmounted(async () => {
-    await disconnect()
-    cleanup()
+    try {
+      await disconnect()
+      cleanup()
+    } catch (err) {
+      console.error('[SSE] Error during unmounted cleanup:', err)
+    }
   })
 
   /**
