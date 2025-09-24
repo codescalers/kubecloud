@@ -21,9 +21,19 @@ export function useNodeFilters(nodes: () => NormalizedNode[], initialPriceRange:
 
   // Location options
   const locationOptions = computed(() => {
-    const locations = Array.from(new Set(nodes().map(n => n.locationString)));
-    return [{ title: 'All locations', value: null }, ...locations.map(loc => ({ title: loc, value: loc }))];
-  });
+    const locations = Array.from(
+      new Set(
+        nodes().map((n) => {
+          let loc = n.locationString.split(',')[0].trim()
+          return loc.charAt(0).toUpperCase() + loc.slice(1)
+        }),
+      ),
+    ).sort()
+    return [
+      { title: 'All locations', value: null },
+      ...locations.map((loc) => ({ title: loc, value: loc })),
+    ]
+  })
 
   // Storage min/max with safe fallback
   const storageValues = computed(() => nodes().map(n => n.storage).filter(v => typeof v === 'number' && !isNaN(v)));
@@ -55,7 +65,10 @@ export function useNodeFilters(nodes: () => NormalizedNode[], initialPriceRange:
       if (Math.round(node.ram) < filters.value.ram[0] || Math.round(node.ram) > filters.value.ram[1]) return false;
       if (filters.value.gpu && node.gpu === false) return false;
       if (typeof node.price_usd === 'number' && (node.price_usd < filters.value.priceRange[0] || node.price_usd > filters.value.priceRange[1])) return false;
-      if (filters.value.location && node.locationString !== filters.value.location) return false;
+      if (filters.value.location &&
+        !node.locationString.toLowerCase().includes(filters.value.location?.toLowerCase() ?? '')
+      )
+        return false;
       const storageOk = node.storage >= filters.value.storage[0] && node.storage <= filters.value.storage[1]
       return storageOk;
     });
