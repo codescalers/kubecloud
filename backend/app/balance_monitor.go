@@ -12,10 +12,17 @@ import (
 	"github.com/pkg/errors"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
-const zeroTFTBalanceValue = 0.05 * 1e7 // 0.05 TFT
+const (
+	// UnitFactor represents the smallest unit conversion factor for both USD and TFT
+	TFTUnitFactor = 1e7
+
+	zeroTFTBalanceValue    = 0.05 * TFTUnitFactor // 0.05 TFT
+	defaultPricingPolicyID = uint32(1)
+)
 
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 	settleTransfersTicker := time.NewTicker(time.Duration(h.config.SettleTransferRecordsIntervalInMinutes) * time.Minute)
@@ -83,7 +90,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 				if err := h.db.CreateTransferRecord(&models.TransferRecord{
 					UserID:    user.ID,
 					Username:  user.Username,
-					TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * 1e7,
+					TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * TFTUnitFactor,
 					Operation: models.DepositOperation,
 				}); err != nil {
 					logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
@@ -111,7 +118,7 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 				continue
 			}
 
-			if userTFTBalance <= uint64(h.config.MinimumTFTAmountInWallet)*1e7 {
+			if userTFTBalance <= uint64(h.config.MinimumTFTAmountInWallet)*TFTUnitFactor {
 				continue
 			}
 
@@ -215,7 +222,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User
 		return err
 	}
 
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(user.ID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", user.ID)
 		return err
@@ -258,6 +265,7 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User
 }
 
 func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
+	ctx context.Context,
 	userID int,
 	userMnemonic string,
 	rentedNodes []types.Node,
@@ -272,6 +280,8 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 	calculator := calculator.NewCalculator(h.gridClient.SubstrateConn, userIdentity)
 
 	var totalResourcesCostMillicent uint64
+
+	// Calculate rented nodes
 	for _, node := range rentedNodes {
 		resourcesCost, err := calculator.CalculateCost(
 			node.TotalResources.CRU,
@@ -286,17 +296,24 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 		}
 
 		// resources cost per month
-		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost)
+		// apply 50% discount for rented nodes
+		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost / 2)
 	}
 
+	// Calculate shared nodes
 	for _, node := range sharedNodes {
+		proxyNode, err := h.proxyClient.Node(ctx, node.NodeID)
+		if err != nil {
+			return 0, err
+		}
+
 		resourcesCost, err := calculator.CalculateCost(
 			uint64(node.CPU),
 			node.Memory,
 			0,
 			node.DiskSize+node.RootSize,
 			false,
-			false,
+			proxyNode.CertificationType != "",
 		)
 		if err != nil {
 			return 0, err
@@ -306,7 +323,25 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost)
 	}
 
-	return uint64(float64(totalResourcesCostMillicent) * getDiscountPackage(configuredDiscount).DurationInMonth), nil
+	// Calculate name contracts
+	nameContracts, err := h.listNameContractsForUser(userIdentity)
+	if err != nil {
+		return 0, err
+	}
+
+	nameContractMonthlyCostInUSD, err := h.calculateUniqueNameMonthlyCost()
+	if err != nil {
+		return 0, err
+	}
+
+	totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(float64(len(nameContracts)) * nameContractMonthlyCostInUSD)
+
+	discount := getDiscountPackage(configuredDiscount).DurationInMonth
+	if discount == 0 {
+		return totalResourcesCostMillicent, nil
+	}
+
+	return uint64(float64(totalResourcesCostMillicent) * discount), nil
 }
 
 func (h *Handler) notifyAdminWithPendingRecords(records []models.TransferRecord) error {
@@ -326,4 +361,43 @@ func (h *Handler) notifyAdminWithPendingRecords(records []models.TransferRecord)
 	}
 
 	return nil
+}
+
+func (h *Handler) listNameContractsForUser(userIdentity substrate.Identity) ([]graphql.Contract, error) {
+	graphQl, err := graphql.NewGraphQl(h.config.GraphqlURL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not create a new graphql with url: %s", h.config.GraphqlURL)
+	}
+
+	twinID, err := h.substrateClient.GetTwinByPubKey(userIdentity.PublicKey())
+	if err != nil {
+		return nil, err
+	}
+
+	contractGetter := graphql.NewContractsGetter(
+		twinID,
+		graphQl,
+		h.gridClient.SubstrateConn,
+		h.gridClient.NcPool,
+	)
+
+	contractsList, err := contractGetter.ListContractsByTwinID([]string{"Created, GracePeriod"})
+	if err != nil {
+		return nil, err
+	}
+
+	return contractsList.NameContracts, nil
+}
+
+func (h *Handler) calculateUniqueNameMonthlyCost() (float64, error) {
+	pricingPolicy, err := h.substrateClient.GetPricingPolicy(defaultPricingPolicyID)
+	if err != nil {
+		return 0, err
+	}
+
+	// cost in unit-USD
+	monthlyCost := float64(pricingPolicy.UniqueName.Value) * 24 * 30
+
+	costInUSD := monthlyCost / TFTUnitFactor
+	return costInUSD, nil
 }

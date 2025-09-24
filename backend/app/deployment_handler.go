@@ -323,7 +323,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	// calculate resources usage in USD applying discount
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(user.ID, user.Mnemonic, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount))
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(c.Request.Context(), user.ID, user.Mnemonic, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount))
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

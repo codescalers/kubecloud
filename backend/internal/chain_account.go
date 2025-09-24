@@ -11,8 +11,9 @@ import (
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
-	"github.com/tyler-smith/go-bip39"
 	"kubecloud/internal/logger"
+
+	"github.com/tyler-smith/go-bip39"
 )
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID

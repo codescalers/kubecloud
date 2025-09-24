@@ -120,42 +120,44 @@ func (h *Handler) fromTFTtoUSDMillicent(amount uint64, report internal.Report) (
 		return 0, err
 	}
 
-	usdMillicentBalance := uint64(math.Round((float64(amount) / 1e7) * float64(price)))
+	usdMillicentBalance := uint64(math.Round((float64(amount) / TFTUnitFactor) * float64(price)))
 	return usdMillicentBalance, nil
 }
 
 func removeDiscountFromReport(report *internal.Report) (uint64, error) {
-	discountPackage := getDiscountPackage(discount(report.DiscountRecieved))
+	discountPackage := getDiscountPackage(discount(report.DiscountReceived))
 
 	amountBilled, err := strconv.ParseInt(report.AmountBilled, 10, 64)
 	if err != nil {
 		return 0, err
 	}
 
-	amountBilledWithNoDsiscount := float64(amountBilled) / float64(1-discountPackage.Discount/100)
-	return uint64(amountBilledWithNoDsiscount), nil
+	amountBilledWithNoDiscount := float64(amountBilled) / float64(1-discountPackage.Discount/100)
+	return uint64(amountBilledWithNoDiscount), nil
 }
 
 func getDiscountPackage(discountInput discount) DiscountPackage {
+	oneDayMargin := 1.0 / 30.0
+
 	discountPackages := map[discount]DiscountPackage{
 		"none": {
 			DurationInMonth: 0,
 			Discount:        0,
 		},
 		"default": {
-			DurationInMonth: 1.5,
+			DurationInMonth: 1.5 + oneDayMargin,
 			Discount:        20,
 		},
 		"bronze": {
-			DurationInMonth: 3,
+			DurationInMonth: 3 + oneDayMargin,
 			Discount:        30,
 		},
 		"silver": {
-			DurationInMonth: 6,
+			DurationInMonth: 6 + oneDayMargin,
 			Discount:        40,
 		},
 		"gold": {
-			DurationInMonth: 10,
+			DurationInMonth: 10 + oneDayMargin,
 			Discount:        60,
 		},
 	}

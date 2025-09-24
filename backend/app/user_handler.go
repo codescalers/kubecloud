@@ -660,17 +660,11 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	}
 
 	millicentAmount := internal.FromUSDToUSDMillicent(request.Amount)
-	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
 
 	if err := h.db.CreateTransferRecord(&models.TransferRecord{
 		UserID:    userID,
 		Username:  user.Username,
-		TFTAmount: tftAmount,
+		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
 		Operation: models.DepositOperation,
 	}); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
@@ -786,17 +780,10 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
 	if err := h.db.CreateTransferRecord(&models.TransferRecord{
 		UserID:    userID,
 		Username:  user.Username,
-		TFTAmount: tftAmount,
+		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
 		Operation: models.DepositOperation,
 	}); err != nil {
 		logger.GetLogger().Error().Err(err).Send()

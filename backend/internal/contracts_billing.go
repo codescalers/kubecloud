@@ -20,7 +20,7 @@ type Report struct {
 	ContractID       string `json:"contractID"`
 	Timestamp        string `json:"timestamp"`
 	AmountBilled     string `json:"amountBilled"`
-	DiscountRecieved string `json:"discountRecieved"`
+	DiscountReceived string `json:"discountReceived"`
 }
 
 // ListContractBillReports returns bill reports for contract ID month ago
@@ -35,7 +35,7 @@ func ListContractBillReports(graphqlClient graphql.GraphQl, contractID uint64, s
               contractID
               timestamp
               amountBilled
-              discountRecieved
+              discountReceived
             }
           }`, contractID, endTime.Unix(), startTime.Unix()),
 		map[string]interface{}{

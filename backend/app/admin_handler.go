@@ -344,17 +344,10 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, millicentAmount)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to convert USD millicent to TFT")
-		InternalServerError(c)
-		return
-	}
-
 	if err := h.db.CreateTransferRecord(&models.TransferRecord{
 		UserID:    id,
 		Username:  user.Username,
-		TFTAmount: tftAmount,
+		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
 		Operation: models.DepositOperation,
 	}); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
