@@ -52,7 +52,7 @@ By default, Mycelium Cloud looks for a `config.json` file in the current directo
 myceliumcloud --config /path/to/config.json
 ```
 
-The configuration file should be in JSON format. Check the [config example](https://github.com/codescalers/kubecloud/blob/master_docs/backend/config-example.json) for reference.
+The configuration file should be in JSON format. Check the [config example](https://github.com/codescalers/kubecloud/blob/master/backend/config-example.json) for reference.
 
 #### Notification Configuration
 
@@ -96,10 +96,10 @@ Integrated Prometheus metrics collection and Grafana dashboards for comprehensiv
 
 ## Next Steps
 
-- [Platform Tutorial](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md) - Complete walkthrough including Hello World, 3 Python servers, and service communication examples
-- [Architecture Overview](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md) - Deep dive into Mycelium networking and system design
-- [API Reference](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md) - Complete API documentation
-- [FAQ](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions and troubleshooting
+- [Platform Tutorial](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md) - Complete walkthrough including Hello World, 3 Python servers, and service communication examples
+- [Architecture Overview](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md) - Deep dive into Mycelium networking and system design
+- [API Reference](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md) - Complete API documentation
+- [FAQ](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions and troubleshooting
 
 ## Support
 

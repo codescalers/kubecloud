@@ -46,31 +46,31 @@ const docs = [
     icon: 'mdi-rocket-launch',
     title: 'Getting Started',
     description: 'Quick start guide to deploy your first Kubernetes cluster on Mycelium Cloud.',
-    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/getting-started.md'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/getting-started.md'
   },
   {
     icon: 'mdi-book-open-page-variant',
     title: 'Platform Tutorial',
     description: 'Comprehensive step-by-step tutorial for deploying and managing clusters.',
-    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md'
   },
   {
     icon: 'mdi-api',
     title: 'API Reference',
     description: 'Complete REST API documentation with examples and authentication details.',
-    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md'
   },
   {
     icon: 'mdi-help-circle',
     title: 'FAQ',
     description: 'Frequently asked questions and troubleshooting guides.',
-    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md'
   },
   {
     icon: 'mdi-sitemap',
     title: 'Architecture',
     description: 'Deep dive into platform architecture, components, and design principles.',
-    link: 'https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md'
   },
   {
     icon: 'mdi-github',

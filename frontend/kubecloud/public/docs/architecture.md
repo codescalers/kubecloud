@@ -516,6 +516,6 @@ Mycelium Cloud's architecture is designed for scalability, reliability, and ease
 
 For more detailed technical information, refer to:
 
-- [API Reference](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md)
-- [Deployment Guide](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md)
-- [FAQ](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md)
+- [API Reference](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md)
+- [Deployment Guide](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md)
+- [FAQ](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md)

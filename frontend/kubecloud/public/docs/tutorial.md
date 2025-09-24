@@ -1146,7 +1146,7 @@ Congratulations! You've successfully deployed and managed your first Kubernetes 
 
 ## Additional Resources
 
-- [API Reference](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md) - Complete API documentation
-- [FAQ](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions
-- [Architecture Guide](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md) - Deep dive into platform architecture
-- [Best Practices](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/best-practices.md) - Production deployment guidelines
+- [API Reference](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md) - Complete API documentation
+- [FAQ](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions
+- [Architecture Guide](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md) - Deep dive into platform architecture
+- [Best Practices](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/best-practices.md) - Production deployment guidelines

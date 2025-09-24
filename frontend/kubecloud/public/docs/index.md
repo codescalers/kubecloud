@@ -6,18 +6,18 @@ Welcome to the comprehensive documentation for Mycelium Cloud - a powerful platf
 
 ### 🚀 Getting Started
 
-- [**Getting Started Guide**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/getting-started.md) - Your first steps with Mycelium Cloud
-- [**Platform Tutorial**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md) - Complete walkthrough including Hello World, 3 Python servers, and service communication examples
+- [**Getting Started Guide**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/getting-started.md) - Your first steps with Mycelium Cloud
+- [**Platform Tutorial**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md) - Complete walkthrough including Hello World, 3 Python servers, and service communication examples
 
 ### 📚 Core Documentation
 
-- [**API Reference**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md) - Complete REST API documentation
-- [**Architecture Overview**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md) - System design and components
-- [**Best Practices**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/best-practices.md) - Production deployment guidelines
+- [**API Reference**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md) - Complete REST API documentation
+- [**Architecture Overview**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md) - System design and components
+- [**Best Practices**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/best-practices.md) - Production deployment guidelines
 
 ### 🔧 Support & Troubleshooting
 
-- [**FAQ**](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions and solutions
+- [**FAQ**](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md) - Frequently asked questions and solutions
 - [**GitHub Repository**](https://github.com/codescalers/kubecloud) - Source code and issues
 
 ## What is Mycelium Cloud?
@@ -159,14 +159,14 @@ Mycelium Cloud is licensed under the Apache License 2.0. See the [LICENSE](https
 
 | Resource | Description | Link |
 |----------|-------------|------|
-| 🌟 **Getting Started** | Begin your journey | [Start Here](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/getting-started.md) |
-| 📖 **Tutorial** | Step-by-step guide | [Learn More](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md) |
-| 🔌 **API Docs** | Integration guide | [API Reference](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/api-reference.md) |
-| ❓ **FAQ** | Common questions | [Get Answers](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/faq.md) |
-| 🏗️ **Architecture** | Technical deep-dive | [Explore](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/architecture.md) |
-| ⭐ **Best Practices** | Production tips | [Optimize](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/best-practices.md) |
+| 🌟 **Getting Started** | Begin your journey | [Start Here](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/getting-started.md) |
+| 📖 **Tutorial** | Step-by-step guide | [Learn More](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md) |
+| 🔌 **API Docs** | Integration guide | [API Reference](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md) |
+| ❓ **FAQ** | Common questions | [Get Answers](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md) |
+| 🏗️ **Architecture** | Technical deep-dive | [Explore](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md) |
+| ⭐ **Best Practices** | Production tips | [Optimize](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/best-practices.md) |
 | 💻 **Source Code** | GitHub repository | [Contribute](https://github.com/codescalers/kubecloud) |
 
 ---
 
-**Ready to get started?** [Create your first cluster](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/getting-started.md) or [explore the tutorial](https://github.com/codescalers/kubecloud/blob/master_docs/frontend/kubecloud/public/docs/tutorial.md) to learn more about Mycelium Cloud's capabilities.
+**Ready to get started?** [Create your first cluster](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/getting-started.md) or [explore the tutorial](https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md) to learn more about Mycelium Cloud's capabilities.
