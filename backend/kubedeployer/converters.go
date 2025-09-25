@@ -31,6 +31,7 @@ func deploymentFromNode(
 	leaderIP string,
 	token string,
 	masterSSH string,
+	mnemonic string,
 ) (workloads.Deployment, error) {
 	ipSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
@@ -81,6 +82,8 @@ func deploymentFromNode(
 	}
 	if node.Type != NodeTypeLeader {
 		vm.EnvVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", leaderIP)
+	} else {
+		vm.EnvVars["MNEMONIC"] = mnemonic
 	}
 	if vm.EnvVars["K3S_FLANNEL_IFACE"] == "" {
 		vm.EnvVars["K3S_FLANNEL_IFACE"] = K3S_IFACE

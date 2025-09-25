@@ -61,9 +61,9 @@ wait_and_prepare_crd() {
     while ! kubectl get nodes &>/dev/null; do
         sleep 5
     done
-    echo "K3s is ready, creating threefold-credentials secret..."
+    echo "K3s is ready, preparing CRDs."
     kubectl create secret generic threefold-credentials --from-literal=mnemonic="$MNEMONIC" || echo "Secret may already exist"
-    kubectl apply -f https://raw.githubusercontent.com/codescalers/kubecloud/main/crd/manifests/install.yaml
+    kubectl apply -f /var/lib/rancher/k3s/server/manifests/install-crd.yaml
 }
 
 if [ -z "${K3S_URL}" ]; then
@@ -83,7 +83,7 @@ if [ -z "${K3S_URL}" ]; then
     if [ "${HA}" = "true" ]; then
         EXTRA_ARGS="$EXTRA_ARGS --cluster-init"
     fi
-    # Start CRD preparation in background after K3s starts
+    # Start CRD preparation in background
     wait_and_prepare_crd &
     exec k3s server --flannel-iface $K3S_FLANNEL_IFACE $EXTRA_ARGS 2>&1
 elif [ "${MASTER}" = "true" ]; then
