@@ -30,7 +30,6 @@ interface SSEMessage {
   timestamp: string
 }
 
-
 const MAX_RECONNECT_ATTEMPTS = 5
 const RECONNECT_DELAY = 2000
 const NOTIFICATION_DELAY = 2000
