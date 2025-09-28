@@ -289,7 +289,11 @@ export function useNotificationEvents() {
    * Fetches updated node rental information when node status changes.
    */
   function handleNodeNotification() {
-    fetchRentedNodes()
+    // Dispatch a custom event that components can listen to
+    const event = new CustomEvent('node-update', {
+      detail: { timestamp: new Date().toISOString() }
+    });
+    window.dispatchEvent(event);
   }
 
   /**

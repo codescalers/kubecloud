@@ -159,8 +159,6 @@ export function useNodeManagement() {
     reserveNodeLoading.value = true
     try {
       await userService.reserveNode(nodeId)
-      // Refresh the rented nodes list after successful reservation
-      await fetchRentedNodes()
     } catch (err: any) {
       useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw err
@@ -172,10 +170,6 @@ export function useNodeManagement() {
   // Unreserve a node
   async function unreserveNode(contractId: string, nodeId: number) {
     await userService.unreserveNode(contractId, nodeId)
-    // Optimistically remove the node from the list
-    rentedNodes.value = rentedNodes.value.filter(
-      (node) => node.rentContractId?.toString() !== contractId,
-    )
   }
 
   // Add node to deployment
