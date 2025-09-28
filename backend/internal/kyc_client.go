@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	"github.com/vedhavyas/go-subkey"
-	"kubecloud/internal/logger"
 )
 
 type httpClient interface {
@@ -159,4 +160,36 @@ func (c *KYCClient) IsUserVerified(ctx context.Context, sponseeAddress string) (
 	}
 
 	return result.Result.Status == "VERIFIED", nil
+}
+
+// IsValidSponsee checks if a sponsor is a valid sponsee and not white listed by calling the tf-kyc-verifier API
+func (c *KYCClient) IsValidSponsee(ctx context.Context, sponsorAddress string) (bool, error) {
+	if strings.TrimSpace(sponsorAddress) == "" {
+		return false, fmt.Errorf("sponsor address is empty")
+	}
+	url := fmt.Sprintf("%s/api/v1/status?client_id=%s", c.APIURL, sponsorAddress)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create HTTP request: %w", err)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("KYC verifier returned status: %s", resp.Status)
+	}
+
+	var result struct {
+		Result struct {
+			IdenfyRef string `json:"idenfyRef"`
+		} `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, err
+	}
+
+	return result.Result.IdenfyRef != "", nil
 }
