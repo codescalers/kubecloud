@@ -187,7 +187,8 @@ const availableNodes = computed<RawNode[]>(() => {
   return nodes.value.filter((node: RawNode) => {
     const availRAM = getAvailableRAM(node)
     const availStorage = getAvailableStorage(node)
-    return availRAM > 0 && availStorage > 0
+    const nodeIsNotInCluster = !clusterNodes.value.some((clusterNode: any) => clusterNode.node_id === node.nodeId)
+    return availRAM > 0 && availStorage > 0 && nodeIsNotInCluster
   })
 })
 
