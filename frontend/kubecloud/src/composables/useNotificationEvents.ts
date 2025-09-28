@@ -175,6 +175,12 @@ export function useNotificationEvents() {
         break
       case 'error':
         notificationStore.error(subject, message)
+        if (type === 'user') {
+          setTimeout(() => {
+            userStore.logout()
+            router.push('/')
+          }, 2000)
+        }
         break
       case 'warning':
         notificationStore.warning(subject, message)
