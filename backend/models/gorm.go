@@ -35,6 +35,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&SSHKey{},
 		&Cluster{},
 		&TransferRecord{},
+		&UserUsageCalculationTime{},
 	)
 	if err != nil {
 		return nil, err
@@ -440,6 +441,44 @@ func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
 	var userNode UserNodes
 	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
+}
+
+// GetUserLastCalcTime returns the last calculation time for a user
+func (s *GormDB) GetUserLastCalcTime(userID int) (time.Time, error) {
+	var calcTime UserUsageCalculationTime
+	err := s.db.Where("user_id = ?", userID).First(&calcTime).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// If no record exists, return zero time
+			return time.Time{}, nil
+		}
+		return time.Time{}, err
+	}
+	return calcTime.LastCalcTime, nil
+}
+
+// UpdateUserLastCalcTime updates the last calculation time for a user
+func (s *GormDB) UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error {
+	var calcTime UserUsageCalculationTime
+	err := s.db.Where("user_id = ?", userID).First(&calcTime).Error
+	
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Create a new record if one doesn't exist
+			calcTime = UserUsageCalculationTime{
+				UserID:       userID,
+				LastCalcTime: lastCalcTime,
+				UpdatedAt:    time.Now(),
+			}
+			return s.db.Create(&calcTime).Error
+		}
+		return err
+	}
+	
+	// Update existing record
+	calcTime.LastCalcTime = lastCalcTime
+	calcTime.UpdatedAt = time.Now()
+	return s.db.Save(&calcTime).Error
 }
 
 func migrateNotifications(db *gorm.DB) error {

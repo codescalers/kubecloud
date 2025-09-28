@@ -5,13 +5,8 @@ import (
 	"kubecloud/internal/logger"
 	"math"
 	"strconv"
-	"sync"
 	"time"
 )
-
-// Map to store the last calculation time for each user
-var lastCalculationTimeByUser = make(map[int]time.Time)
-var lastCalculationTimeByUserMutex = sync.RWMutex{}
 
 type discount string
 
@@ -61,12 +56,14 @@ func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
 	// Define the end of the day (next day at 00:00)
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.Local)
 
-	// Get the last calculation time for this user, or use a default if not available
-	lastCalculationTimeByUserMutex.RLock()
-	lastCalcTime, exists := lastCalculationTimeByUser[userID]
-	lastCalculationTimeByUserMutex.RUnlock()
-	if !exists {
-		// If this is the first time, use the start of the day as default
+	// Get the last calculation time for this user from the database, or use a default if not available
+	lastCalcTime, err := h.db.GetUserLastCalcTime(userID)
+	if err != nil {
+		return 0, err
+	}
+	
+	// If this is the first time or no record exists, use the start of the day as default
+	if lastCalcTime.IsZero() {
 		lastCalcTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	}
 
@@ -87,10 +84,10 @@ func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
 		totalDailyUsageInUSDMillicent += totalAmountBilledInUSDMillicent
 	}
 
-	// Update the last calculation time for this user
-	lastCalculationTimeByUserMutex.Lock()
-	lastCalculationTimeByUser[userID] = now
-	lastCalculationTimeByUserMutex.Unlock()
+	// Update the last calculation time for this user in the database
+	if err := h.db.UpdateUserLastCalcTime(userID, now); err != nil {
+		logger.GetLogger().Error().Err(err).Msgf("Failed to update last calculation time for user %d", userID)
+	}
 
 	return totalDailyUsageInUSDMillicent, nil
 }

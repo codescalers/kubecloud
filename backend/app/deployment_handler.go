@@ -344,15 +344,23 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
+	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	// fund user to fulfill discount
 	// make sure no old payments will fund more than needed
 	if totalPendingTFTAmount < dailyUsageInTFT &&
+		userTFTBalance < dailyUsageInTFT &&
 		dailyUsageInUSDMillicent > 0 &&
 		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
 		if err := h.db.CreateTransferRecord(&models.TransferRecord{
 			UserID:    user.ID,
 			Username:  user.Username,
-			TFTAmount: dailyUsageInTFT,
+			TFTAmount: dailyUsageInTFT - userTFTBalance,
 			Operation: models.DepositOperation,
 		}); err != nil {
 			logger.GetLogger().Error().Err(err).Send()

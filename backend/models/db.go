@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -35,6 +36,9 @@ type DB interface {
 	ListUserNodes(userID int) ([]UserNodes, error)
 	DeleteUserNode(contractID uint32) error
 	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
+	// Usage calculation time methods
+	GetUserLastCalcTime(userID int) (time.Time, error)
+	UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)

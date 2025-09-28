@@ -19,6 +19,8 @@ import (
 const (
 	// UnitFactor represents the smallest unit conversion factor for both USD and TFT
 	TFTUnitFactor = 1e7
+	transferFees  = 0.01 * TFTUnitFactor // 0.01 TFT
+	nodeCertified = "Certified"
 
 	zeroTFTBalanceValue    = 0.05 * TFTUnitFactor // 0.05 TFT
 	defaultPricingPolicyID = uint32(1)
@@ -122,6 +124,10 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 				continue
 			}
 
+			if userTFTBalance <= transferFees {
+				continue
+			}
+
 			transferRecord := models.TransferRecord{
 				UserID:    user.ID,
 				Username:  user.Username,
@@ -217,12 +223,7 @@ func (h *Handler) withdrawTFTsFromUser(userID int, userMnemonic string, amountTo
 }
 
 func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User, configuredDiscount discount) error {
-	rentedNodes, _, err := h.getRentedNodesForUser(ctx, user.ID, true)
-	if err != nil {
-		return err
-	}
-
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, configuredDiscount)
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, []types.Node{}, []kubedeployer.Node{}, configuredDiscount)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", user.ID)
 		return err
@@ -240,20 +241,21 @@ func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User
 		return err
 	}
 
+	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
+		return err
+	}
+
 	// make sure no old payments will fund more than needed
 	if totalPendingTFTAmount < dailyUsageInTFT &&
-		dailyUsageInUSDMillicent > 0 &&
+		userTFTBalance < dailyUsageInTFT &&
+		dailyUsageInTFT > 0 &&
 		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
-		tftAmount, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msgf("Failed to convert USD to TFTs for user %d", user.ID)
-			return err
-		}
-
 		if err := h.db.CreateTransferRecord(&models.TransferRecord{
 			UserID:    user.ID,
 			Username:  user.Username,
-			TFTAmount: tftAmount,
+			TFTAmount: dailyUsageInTFT - userTFTBalance,
 			Operation: models.DepositOperation,
 		}); err != nil {
 			logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
@@ -268,8 +270,8 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 	ctx context.Context,
 	userID int,
 	userMnemonic string,
-	rentedNodes []types.Node,
-	sharedNodes []kubedeployer.Node,
+	addedRentedNodes []types.Node,
+	addedSharedNodes []kubedeployer.Node,
 	configuredDiscount discount,
 ) (uint64, error) {
 	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
@@ -280,6 +282,12 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 	calculator := calculator.NewCalculator(h.gridClient.SubstrateConn, userIdentity)
 
 	var totalResourcesCostMillicent uint64
+
+	rentedNodes, _, err := h.getRentedNodesForUser(ctx, userID, true)
+	if err != nil {
+		return 0, err
+	}
+	rentedNodes = append(rentedNodes, addedRentedNodes...)
 
 	// Calculate rented nodes
 	for _, node := range rentedNodes {
@@ -296,9 +304,19 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 		}
 
 		// resources cost per month
-		// apply 50% discount for rented nodes
-		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost / 2)
+		pricingPolicy, err := h.substrateClient.GetPricingPolicy(defaultPricingPolicyID)
+		if err != nil {
+			return 0, err
+		}
+		dedicatedDiscountPercentage := float64(pricingPolicy.DedicatedNodesDiscount / 100)
+		totalResourcesCostMillicent += internal.FromUSDToUSDMillicent(resourcesCost * dedicatedDiscountPercentage)
 	}
+
+	sharedNodes, err := h.getUserNodes(userID)
+	if err != nil {
+		return 0, err
+	}
+	sharedNodes = append(sharedNodes, addedSharedNodes...)
 
 	// Calculate shared nodes
 	for _, node := range sharedNodes {
@@ -313,7 +331,7 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 			0,
 			node.DiskSize+node.RootSize,
 			false,
-			proxyNode.CertificationType != "",
+			proxyNode.CertificationType == nodeCertified,
 		)
 		if err != nil {
 			return 0, err
@@ -400,4 +418,22 @@ func (h *Handler) calculateUniqueNameMonthlyCost() (float64, error) {
 
 	costInUSD := monthlyCost / TFTUnitFactor
 	return costInUSD, nil
+}
+
+func (h *Handler) getUserNodes(userID int) ([]kubedeployer.Node, error) {
+	userClusters, err := h.db.ListUserClusters(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sharedNodes []kubedeployer.Node
+	for _, cluster := range userClusters {
+		clusterResult, err := cluster.GetClusterResult()
+		if err != nil {
+			return nil, err
+		}
+		sharedNodes = append(sharedNodes, clusterResult.Nodes...)
+	}
+
+	return sharedNodes, nil
 }
