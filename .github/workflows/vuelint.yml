@@ -2,7 +2,7 @@ name: Vue lint
 on:
   push:
     paths:
-      - client/**
+      - frontend/**
   workflow_dispatch:
 
 jobs:
@@ -18,11 +18,9 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'yarn'
+          cache: 'npm'
           cache-dependency-path: ./frontend/yarn.lock
-      - name: frontend
-        run: cd frontend
-      - name: Yarn Install
-        run: cd frontend && yarn install
+      - name: npm Install
+        run: cd frontend && npm install
       - name: ESLint
-        run: cd frontend && yarn lint
+        run: cd frontend && npm run lint
