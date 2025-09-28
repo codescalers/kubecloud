@@ -287,6 +287,11 @@ func (s *GormDB) CreateUserNode(userNode *UserNodes) error {
 	return s.db.Create(&userNode).Error
 }
 
+// DeleteUserNode deletes a node record for user by its contract ID
+func (s *GormDB) DeleteUserNode(contractID uint64) error {
+	return s.db.Where("contract_id = ?", contractID).Delete(&UserNodes{}).Error
+}
+
 // ListUserNodes returns all nodes records for user by its ID
 func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
 	var userNodes []UserNodes
@@ -297,6 +302,11 @@ func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
 func (s *GormDB) ListAllReservedNodes() ([]UserNodes, error) {
 	var userNodes []UserNodes
 	return userNodes, s.db.Find(&userNodes).Error
+}
+
+func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
+	var userNode UserNodes
+	return userNode, s.db.Where("node_id = ?", nodeID).First(&userNode).Error
 }
 
 // CreateNotification creates a new notification

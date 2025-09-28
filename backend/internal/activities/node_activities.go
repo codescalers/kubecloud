@@ -84,9 +84,16 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 			return fmt.Errorf("failed to create identity: %w", err)
 		}
 
-		err = substrateClient.CancelContract(identity, uint64(contractID))
+		contractIDUint64 := uint64(contractID)
+
+		err = substrateClient.CancelContract(identity, contractIDUint64)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
+		}
+
+		err = db.DeleteUserNode(contractIDUint64)
+		if err != nil {
+			return fmt.Errorf("failed to delete user node: %w", err)
 		}
 
 		return nil
