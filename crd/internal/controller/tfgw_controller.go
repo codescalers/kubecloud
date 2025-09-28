@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -63,13 +65,19 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		klog.Warning("ThreeFold network or mnemonic not configured, skipping gateway deployment")
 		return ctrl.Result{}, fmt.Errorf("threefold network or mnemonic not configured")
 	}
+
+	b := make([]byte, 6)
+	_, err := rand.Read(b)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	sessionID := fmt.Sprintf("tfgwCRD-%s", base64.URLEncoding.EncodeToString(b))
+
 	pluginClient, err := deployer.NewTFPluginClient(
 		mne,
 		deployer.WithNetwork(net),
 		deployer.WithDisableSentry(),
-		// TODO: remove this after testing
-		// deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
-		// deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
+		deployer.WithSessionId(sessionID),
 	)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("failed to create TF plugin client: %w", err)
