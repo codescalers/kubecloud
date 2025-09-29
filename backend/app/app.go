@@ -196,10 +196,10 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		config.KYCChallengeDomain,
 		nil, // Use default http.Client
 	)
-	if valid, err := kycClient.IsValidSponsee(appCtx, sponsorAddress); err != nil || !valid {
+	if valid, err := kycClient.IsValidSponsor(appCtx, sponsorAddress); err != nil || !valid {
 		appCancel()
 		if err != nil {
-			return nil, fmt.Errorf("failed to validate sponsor address")
+			return nil, fmt.Errorf("failed to validate sponsor address, %w", err)
 		}
 		return nil, fmt.Errorf("the provided sponsor address can't be used as a sponsor")
 	}

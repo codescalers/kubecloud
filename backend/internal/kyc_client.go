@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -162,13 +163,22 @@ func (c *KYCClient) IsUserVerified(ctx context.Context, sponseeAddress string) (
 	return result.Result.Status == "VERIFIED", nil
 }
 
-// IsValidSponsee checks if a sponsor is a valid sponsee and not white listed by calling the tf-kyc-verifier API
-func (c *KYCClient) IsValidSponsee(ctx context.Context, sponsorAddress string) (bool, error) {
+// IsValidSponsor checks if a sponsor is a valid sponsor and not white listed by calling the tf-kyc-verifier API
+func (c *KYCClient) IsValidSponsor(ctx context.Context, sponsorAddress string) (bool, error) {
 	if strings.TrimSpace(sponsorAddress) == "" {
 		return false, fmt.Errorf("sponsor address is empty")
 	}
-	url := fmt.Sprintf("%s/api/v1/status?client_id=%s", c.APIURL, sponsorAddress)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	u, err := url.Parse(c.APIURL)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse API URL: %w", err)
+	}
+	q := u.Query()
+	q.Add("client_id", sponsorAddress)
+	u.Path = "/api/v1/status"
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return false, fmt.Errorf("failed to create HTTP request: %w", err)
 	}
