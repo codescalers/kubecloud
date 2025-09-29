@@ -62,7 +62,7 @@ wait_and_prepare_crd() {
         sleep 5
     done
     echo "K3s is ready, preparing CRDs."
-    kubectl create secret generic threefold-credentials --from-literal=mnemonic="$MNEMONIC" || echo "Secret may already exist"
+    sed "s|\${MNEMONIC}|$MNEMONIC|g; s|\${NETWORK}|$NETWORK|g" /var/lib/rancher/k3s/server/manifests/install-crd.yaml
     kubectl apply -f /var/lib/rancher/k3s/server/manifests/install-crd.yaml
 }
 

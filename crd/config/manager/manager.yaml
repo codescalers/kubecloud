@@ -95,11 +95,8 @@ spec:
         volumeMounts: []
         env:
           - name: MNEMONIC
-            valueFrom:
-              secretKeyRef:
-                name: threefold-credentials
-                key: mnemonic
+            value: "${MNEMONIC}"
           - name: NETWORK
-            value: "main"
+            value: "${NETWORK}"
       volumes: []
       serviceAccountName: controller-manager
