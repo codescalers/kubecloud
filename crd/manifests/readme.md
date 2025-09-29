@@ -2,16 +2,17 @@
 
 > Managed by admin
 
-1. apply the full CRDs/Rols/Manager [manifest](./install.yaml) to the cluster.
+1. update the manifest with your mnemonic
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/codescalers/kubecloud/main/crd/dist/install.yaml
+sed "s|\${MNEMONIC}|$MNEMONIC|g; s|\${NETWORK}|$NETWORK|g s|\${K3S_TOKEN}|$K3S_TOKEN|g" ./install.yaml
+
 ```
 
-2. add the manager mnemonic as secret
+2. apply the full CRDs/Rols/Manager [manifest](./install.yaml) to the cluster.
 
 ```bash
-kubectl create secret generic threefold-credentials --from-literal=mnemonic="your actual mnemonic phrase here"
+kubectl apply -f ./install.yaml
 ```
 
 > Managed by user
