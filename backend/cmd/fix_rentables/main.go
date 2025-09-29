@@ -3,44 +3,27 @@ package main
 import (
 	"flag"
 	"fmt"
-	"kubecloud/internal"
 	"kubecloud/models"
 	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-var config internal.Configuration
-
-func loadConfig(configPath string) error {
-	viper.SetConfigFile(configPath)
-	if err := viper.ReadInConfig(); err != nil {
-		log.Error().Err(err).Msg("Failed to read config file")
-		return err
-	}
-
-	config = internal.Configuration{
-		Database: internal.DB{
-			File: viper.GetString("database.file"),
-		},
-		TFChainURL: viper.GetString("tfchain_url"),
-	}
-	return nil
-}
-
 func main() {
-	configPath := flag.String("config", "../../config.json", "Path to config file")
+	var dbPath string
+	var tfchainURL string
+	flag.StringVar(&dbPath, "db", "", "Path to SQLite database file")
+	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
 	flag.Parse()
-	err := loadConfig(*configPath)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to load config")
+
+	if dbPath == "" || tfchainURL == "" {
+		log.Error().Msg("Both --db and --tfchain-url flags are required")
 		return
 	}
 
-	_, err = os.Stat(config.Database.File)
+	_, err := os.Stat(dbPath)
 	if os.IsNotExist(err) {
 		log.Error().Err(err).Msg("Database file does not exist")
 		return
@@ -50,14 +33,19 @@ func main() {
 		return
 	}
 
-	db, err := models.NewSqliteDB(config.Database.File)
+	db, err := models.NewSqliteDBNoMigrate(dbPath)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return
 	}
 	defer db.Close()
 
-	substrateClient, err := substrate.NewManager(config.TFChainURL).Substrate()
+	if err := db.GetDB().Exec("DROP INDEX IF EXISTS idx_user_node_id").Error; err != nil {
+		log.Error().Err(err).Msg("Failed to drop idx_user_node_id index")
+		return
+	}
+
+	substrateClient, err := substrate.NewManager(tfchainURL).Substrate()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create substrate client")
 		return

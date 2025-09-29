@@ -48,6 +48,15 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 	return gormDB, gormDB.UpdatePendingRecordsWithUsername()
 }
 
+func NewGormStorageNoMigrate(dialector gorm.Dialector) (DB, error) {
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &GormDB{db: db}, nil
+}
+
 // TODO: TO BE REMOVED
 func (s *GormDB) UpdatePendingRecordsWithUsername() error {
 	var pendingRecords []PendingRecord
