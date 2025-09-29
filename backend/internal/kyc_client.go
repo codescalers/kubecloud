@@ -194,6 +194,7 @@ func (c *KYCClient) IsValidSponsor(ctx context.Context, sponsorAddress string) (
 
 	var result struct {
 		Result struct {
+			Status string `json:"status"`
 			IdenfyRef string `json:"idenfyRef"`
 		} `json:"result"`
 	}
@@ -201,5 +202,5 @@ func (c *KYCClient) IsValidSponsor(ctx context.Context, sponsorAddress string) (
 		return false, err
 	}
 
-	return result.Result.IdenfyRef != "", nil
+	return result.Result.Status == "VERIFIED" && result.Result.IdenfyRef != "", nil
 }
