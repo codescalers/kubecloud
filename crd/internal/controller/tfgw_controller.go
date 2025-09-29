@@ -101,6 +101,8 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		tfgw.Status.Message = "Failed to decrypt mnemonic, using raw value"
 		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, nil
 	}
 
 	sessionID, err := generateSessionId()
