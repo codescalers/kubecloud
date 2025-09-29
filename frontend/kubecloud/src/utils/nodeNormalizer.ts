@@ -2,6 +2,13 @@ import type { RawNode } from '../types/rawNode';
 import type { NormalizedNode } from '../types/normalizedNode';
 import type { RentedNode } from '../composables/useNodeManagement';
 
+
+export function getNodePrice(node: NormalizedNode) {
+  const base = Number(node.discount_price ?? node.price_usd ?? 0);
+  const extra = Number(node.extraFee ?? 0) / 1000;
+  const price = base + extra;
+  return isNaN(price) ? null : price;
+}
 export function normalizeNode(node: RawNode): NormalizedNode {
   return {
     nodeId: node.nodeId,
