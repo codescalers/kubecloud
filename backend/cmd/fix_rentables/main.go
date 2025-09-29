@@ -18,7 +18,7 @@ func main() {
 	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
 	flag.Parse()
 
-	if dbPath == "" || tfchainURL == "" {
+	if strings.TrimSpace(dbPath) == "" || strings.TrimSpace(tfchainURL) == "" {
 		log.Error().Msg("Both --db and --tfchain-url flags are required")
 		return
 	}
