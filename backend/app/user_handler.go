@@ -655,6 +655,12 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	paymentMethod, err := internal.CreatePaymentMethod(request.CardType, request.PaymentToken)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("error creating payment method")
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			h.metrics.IncrementStripePaymentFailure()
+			return
+		}
+
 		InternalServerError(c)
 		return
 	}
@@ -664,6 +670,11 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("error attaching payment method to customer")
+		if stripeErr, ok := err.(*stripe.Error); ok {
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			h.metrics.IncrementStripePaymentFailure()
+			return
+		}
 		InternalServerError(c)
 		return
 	}
