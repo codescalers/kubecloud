@@ -38,6 +38,7 @@ func deploymentFromNode(
 	token string,
 	masterSSH string,
 	mnemonic string,
+	gridNet string,
 ) (workloads.Deployment, error) {
 	ipSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
@@ -94,7 +95,7 @@ func deploymentFromNode(
 			encryptedMnemonic = ""
 		}
 		vm.EnvVars["MNEMONIC"] = encryptedMnemonic
-		vm.EnvVars["NETWORK"] = "dev"
+		vm.EnvVars["NETWORK"] = gridNet
 	}
 	if vm.EnvVars["K3S_FLANNEL_IFACE"] == "" {
 		vm.EnvVars["K3S_FLANNEL_IFACE"] = K3S_IFACE
