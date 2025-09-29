@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -78,4 +80,32 @@ func generateSessionId() (string, error) {
 	}
 	sessionID := fmt.Sprintf("tfgwCRD-%s", base64.URLEncoding.EncodeToString(b))
 	return sessionID, nil
+}
+
+// decrypt decrypts an encrypted base64 string with a string key
+func decrypt(key, encryptedText string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(encryptedText)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := aesGCM.NonceSize()
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }

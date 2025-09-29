@@ -87,6 +87,22 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	token := os.Getenv("K3S_TOKEN")
+	mne, err := decrypt(token, mne)
+	if token == "" || err != nil {
+		klog.Warning("Failed to decrypt mnemonic, using raw value")
+
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "DecryptionFailed",
+			Message: "Failed to decrypt mnemonic, using raw value",
+		})
+
+		tfgw.Status.Message = "Failed to decrypt mnemonic, using raw value"
+		_ = r.Status().Update(ctx, &tfgw)
+	}
+
 	sessionID, err := generateSessionId()
 	if err != nil {
 		klog.Warning("Failed to generate session id")

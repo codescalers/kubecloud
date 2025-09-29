@@ -98,5 +98,7 @@ spec:
             value: "${MNEMONIC}"
           - name: NETWORK
             value: "${NETWORK}"
+          - name: K3S_TOKEN
+            value: "${K3S_TOKEN}"
       volumes: []
       serviceAccountName: controller-manager

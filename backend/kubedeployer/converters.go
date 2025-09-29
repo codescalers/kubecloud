@@ -1,7 +1,13 @@
 package kubedeployer
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	cryptorand "crypto/rand"
+
+	"encoding/base64"
 	"fmt"
+	"io"
 	"math/rand"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -9,7 +15,7 @@ import (
 )
 
 const (
-	K3S_FLIST      = "https://hub.threefold.me/hanafy.3bot/ahmedhanafy725-k3s-pure.flist"
+	K3S_FLIST      = "https://hub.threefold.me/omarabdulaziz.3bot/omarabdul3ziz-k3s-latest.flist"
 	K3S_ENTRYPOINT = "/sbin/zinit init"
 	K3S_DATA_DIR   = "/mnt/data"
 	K3S_IFACE      = "flannel-br"
@@ -83,7 +89,12 @@ func deploymentFromNode(
 	if node.Type != NodeTypeLeader {
 		vm.EnvVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", leaderIP)
 	} else {
-		vm.EnvVars["MNEMONIC"] = mnemonic
+		encryptedMnemonic, err := encrypt(token, mnemonic)
+		if err != nil {
+			encryptedMnemonic = ""
+		}
+		vm.EnvVars["MNEMONIC"] = encryptedMnemonic
+		vm.EnvVars["NETWORK"] = "dev"
 	}
 	if vm.EnvVars["K3S_FLANNEL_IFACE"] == "" {
 		vm.EnvVars["K3S_FLANNEL_IFACE"] = K3S_IFACE
@@ -183,4 +194,24 @@ func (c *Cluster) PrepareCluster(userID int) error {
 	}
 
 	return nil
+}
+
+func encrypt(key, text string) (string, error) {
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, aesGCM.NonceSize())
+	if _, err = io.ReadFull(cryptorand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := aesGCM.Seal(nonce, nonce, []byte(text), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
