@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -66,4 +68,14 @@ func selectNode(pluginClient deployer.TFPluginClient) (uint32, error) {
 	}
 
 	return uint32(nodes[0].NodeID), nil
+}
+
+func generateSessionId() (string, error) {
+	b := make([]byte, 6)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	sessionID := fmt.Sprintf("tfgwCRD-%s", base64.URLEncoding.EncodeToString(b))
+	return sessionID, nil
 }
