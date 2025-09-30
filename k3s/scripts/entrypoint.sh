@@ -57,15 +57,6 @@ if [[ "${DUAL_STACK}" = "true" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS --node-ip=$ipv4,$ipv6"
 fi 
 
-wait_and_prepare_crd() {
-    while ! kubectl get nodes &>/dev/null; do
-        sleep 5
-    done
-    echo "K3s is ready, preparing CRDs."
-    sed -i "s|\${MNEMONIC}|$MNEMONIC|g; s|\${NETWORK}|$NETWORK|g; s|\${K3S_TOKEN}|$K3S_TOKEN|g" /var/lib/rancher/k3s/server/manifests/install-crd.yaml
-    kubectl apply -f /var/lib/rancher/k3s/server/manifests/install-crd.yaml
-}
-
 if [ -z "${K3S_URL}" ]; then
     # Add additional SANs for planetary network IP, public IPv4, and public IPv6  
     # https://github.com/threefoldtech/tf-images/issues/98
@@ -83,8 +74,6 @@ if [ -z "${K3S_URL}" ]; then
     if [ "${HA}" = "true" ]; then
         EXTRA_ARGS="$EXTRA_ARGS --cluster-init"
     fi
-    # Start CRD preparation in background
-    wait_and_prepare_crd &
     exec k3s server --flannel-iface $K3S_FLANNEL_IFACE $EXTRA_ARGS 2>&1
 elif [ "${MASTER}" = "true" ]; then
     exec k3s server --server $K3S_URL --flannel-iface $K3S_FLANNEL_IFACE $EXTRA_ARGS 2>&1

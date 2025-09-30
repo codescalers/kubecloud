@@ -38,7 +38,6 @@ func deployGateway(pluginClient deployer.TFPluginClient, gw GWRequest) (workload
 	}
 
 	gateway.NodeID = node
-	// gateway.NodeID = 14 // TODO: remove this after testing
 	if err := pluginClient.GatewayNameDeployer.Deploy(context.TODO(), &gateway); err != nil {
 		return workloads.GatewayNameProxy{}, fmt.Errorf("failed to deploy gateway on node %d: %w", node, err)
 	}
