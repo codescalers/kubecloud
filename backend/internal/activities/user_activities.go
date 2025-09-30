@@ -390,6 +390,53 @@ func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
+		state["mnemonic"] = user.Mnemonic
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
+
+		return nil
+	}
+}
+
+func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		userIDVal, ok := state["user_id"]
+		if !ok {
+			return fmt.Errorf("missing 'user_id' in state")
+		}
+		userID, ok := userIDVal.(int)
+		if !ok {
+			return fmt.Errorf("'user_id' in state is not an int")
+		}
+
+		amountVal, ok := state["amount"]
+		if !ok {
+			return fmt.Errorf("missing 'amount' in state")
+		}
+		amount, ok := amountVal.(uint64)
+		if !ok {
+			return fmt.Errorf("'amount' in state is not a uint64")
+		}
+
+		user, err := db.GetUserByID(userID)
+		if err != nil {
+			return fmt.Errorf("user is not found: %w", err)
+		}
+
+		user.CreditedBalance += amount
+		if err := db.UpdateUserByID(&user); err != nil {
+			return fmt.Errorf("error updating user: %w", err)
+		}
+
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
+
 		return nil
 	}
 }

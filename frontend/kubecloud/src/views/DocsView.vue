@@ -14,14 +14,20 @@
     <section class="docs-content section-padding">
       <div class="container-padding">
         <v-row class="docs-cards d-flex justify-center" :gap="10">
-          <v-col cols="12" md="6" lg="3" v-for="doc in docs" :key="doc.title" class="doc-col">
+          <v-col cols="12" md="6" lg="4" v-for="doc in docs" :key="doc.title" class="doc-col">
             <div class="doc-card card-enhanced fade-in">
               <div class="doc-icon">
                 <v-icon :icon="doc.icon" size="48" color="primary"></v-icon>
               </div>
               <h2 class="card-title">{{ doc.title }}</h2>
               <p class="body-text">{{ doc.description }}</p>
-              <v-btn color="white" variant="outlined" :href="doc.link" target="_blank" class="doc-link">
+              <v-btn
+                color="white"
+                variant="outlined"
+                :href="doc.link"
+                target="_blank"
+                class="doc-link"
+              >
                 Read More
               </v-btn>
             </div>
@@ -37,22 +43,40 @@ import { onMounted } from 'vue'
 
 const docs = [
   {
+    icon: 'mdi-rocket-launch',
+    title: 'Getting Started',
+    description: 'Quick start guide to deploy your first Kubernetes cluster on Mycelium Cloud.',
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/getting-started.md'
+  },
+  {
+    icon: 'mdi-book-open-page-variant',
+    title: 'Platform Tutorial',
+    description: 'Comprehensive step-by-step tutorial for deploying and managing clusters.',
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/tutorial.md'
+  },
+  {
     icon: 'mdi-api',
     title: 'API Reference',
-    description: 'Complete API documentation with examples and authentication details.',
-    link: '#'
+    description: 'Complete REST API documentation with examples and authentication details.',
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/api-reference.md'
   },
   {
     icon: 'mdi-help-circle',
-    title: 'Platform FAQ',
+    title: 'FAQ',
     description: 'Frequently asked questions and troubleshooting guides.',
-    link: '#'
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/faq.md'
   },
   {
-    icon: 'mdi-book-open',
-    title: 'Tutorials',
-    description: 'Step-by-step tutorials for common use cases and scenarios.',
-    link: '#'
+    icon: 'mdi-sitemap',
+    title: 'Architecture',
+    description: 'Deep dive into platform architecture, components, and design principles.',
+    link: 'https://github.com/codescalers/kubecloud/blob/master/frontend/kubecloud/public/docs/architecture.md'
+  },
+  {
+    icon: 'mdi-github',
+    title: 'Source Code',
+    description: 'Explore the open-source codebase and contribute to the project.',
+    link: 'https://github.com/codescalers/kubecloud'
   }
 ]
 
@@ -115,13 +139,6 @@ onMounted(() => {
   color: #fff;
 }
 
-.hero-description {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
-  color: #60a5fa;
-  line-height: 1.7;
-  opacity: 0.92;
-  font-weight: 400;
-}
 
 .docs-content {
   position: relative;
@@ -162,24 +179,7 @@ onMounted(() => {
   margin-bottom: 1rem;
 }
 
-.doc-description {
-  font-size: 1.1rem;
-  color: #60a5fa;
-  opacity: 0.85;
-  max-width: 700px;
-  margin: 0 auto 2rem auto;
-  line-height: 1.6;
-  font-weight: 400;
-}
 
-.section-title {
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
-  font-weight: 500;
-  margin-bottom: 2rem;
-  line-height: 1.2;
-  color: #fff;
-  letter-spacing: -0.5px;
-}
 
 .section-subtitle {
   font-size: clamp(1.2rem, 2vw, 1.6rem);

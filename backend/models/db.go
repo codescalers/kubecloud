@@ -33,9 +33,11 @@ type DB interface {
 	ListInvoices() ([]Invoice, error)
 	UpdateInvoicePDF(id int, data []byte) error
 	CreateUserNode(userNode *UserNodes) error
+	DeleteUserNode(contractID uint64) error
 	ListUserNodes(userID int) ([]UserNodes, error)
-	DeleteUserNode(contractID uint32) error
+	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
 	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
+	ListAllReservedNodes() ([]UserNodes, error)
 	// Usage calculation time methods
 	GetUserLastCalcTime(userID int) (time.Time, error)
 	UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error

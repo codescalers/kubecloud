@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useUserStore } from '../stores/user'
 import ClustersCard from '../components/dashboard/ClustersCard.vue'
 import BillingCard from '../components/dashboard/BillingCard.vue'
@@ -42,8 +42,10 @@ const STORAGE_KEY_DASHBOARD_SECTION = 'dashboard-section'
 
 // Note: Cluster events are handled globally by the useDeploymentEvents composable
 
+
 onMounted(async () => {
   try {
+    userStore.startBalanceRefresh()
     // Restore selected section from localStorage
     const savedSection = localStorage.getItem(STORAGE_KEY_DASHBOARD_SECTION)
     if (savedSection) {
@@ -66,6 +68,11 @@ onMounted(async () => {
   } catch (error) {
     console.error(error);
   }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  userStore.stopBalanceRefresh()
 })
 
 interface Bill {
@@ -101,6 +108,7 @@ function handleNavigateToFund() {
   selected.value = 'add-funds'
   localStorage.setItem('dashboard-section', 'add-funds')
 }
+
 </script>
 
 <template>
@@ -122,7 +130,6 @@ function handleNavigateToFund() {
                 :clusters="clustersArray"
                 :sshKeys="sshKeys"
                 :totalSpent="totalSpent"
-                :balance="userStore.netBalance"
                 @navigate="handleNavigate"
               />
               <ClustersCard v-if="selected === 'clusters'" :clusters="clusters" @navigateToFund="handleNavigateToFund" />

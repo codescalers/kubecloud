@@ -196,6 +196,13 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		config.KYCChallengeDomain,
 		nil, // Use default http.Client
 	)
+	if valid, err := kycClient.IsValidSponsor(appCtx, sponsorAddress); err != nil || !valid {
+		appCancel()
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate sponsor address, %w", err)
+		}
+		return nil, fmt.Errorf("the provided sponsor address can't be used as a sponsor")
+	}
 
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
@@ -227,6 +234,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		sponsorKeyPair,
 		app.metrics,
 		app.notificationService,
+		gridProxy,
 	)
 
 	app.registerHandlers()
@@ -351,6 +359,7 @@ func (app *App) StartBackgroundWorkers(ctx context.Context) {
 	go app.handlers.TrackClusterHealth()
 	// Start command socket
 	go app.startCommandSocket()
+	go app.handlers.TrackReservedNodeHealth(app.notificationService, app.handlers.proxyClient)
 }
 
 // Run starts the server

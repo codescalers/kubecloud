@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../stores/user'
 import StatsGrid from '../StatsGrid.vue'
@@ -59,38 +59,40 @@ interface Props {
   clusters: Cluster[]
   sshKeys: SshKey[]
   totalSpent: string
-  balance: number
 }
 
 const props = defineProps<Props>()
 const router = useRouter()
 const userStore = useUserStore()
+const netBalance = ref(userStore.netBalance)
+const pendingBalance = ref(userStore.pendingBalance)
 
-const uptimeHours = computed(() => {
-  return props.clusters
-    .filter(cluster => cluster.status === 'running')
-    .reduce((sum, cluster) => sum + cluster.nodes * 24, 0)
+watchEffect(() => {
+  netBalance.value = userStore.netBalance
+  pendingBalance.value = userStore.pendingBalance
 })
 
 // Computed data for stats
-const statsData = computed(() => [
-  {
-    icon: 'mdi-server',
-    value: props.clusters.length,
-    label: 'Active Clusters'
-  },
-  {
-    icon: 'mdi-currency-usd',
-    value: `$${userStore.netBalance.toFixed(2)}`,
-    subvalue: userStore.pendingBalance > 0 ? `+$${userStore.pendingBalance.toFixed(2)} pending` : '',
-    label: 'Balance'
-  },
-  {
-    icon: 'mdi-currency-usd',
-    value: `$${props.totalSpent}`,
-    label: 'Total Spent'
-  },
-])
+const statsData = computed(() => {
+  return [
+    {
+      icon: 'mdi-server',
+      value: props.clusters.length,
+      label: 'Active Clusters'
+    },
+    {
+      icon: 'mdi-currency-usd',
+      value: `$${netBalance.value.toFixed(2)}`,
+      subvalue: pendingBalance.value > 0 ? `+$${pendingBalance.value.toFixed(2)} pending` : '',
+      label: 'Balance'
+    },
+    {
+      icon: 'mdi-currency-usd',
+      value: `$${props.totalSpent}`,
+      label: 'Total Spent'
+    },
+  ]
+})
 
 // Quick actions data
 const quickActions = [

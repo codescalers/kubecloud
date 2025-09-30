@@ -9,6 +9,7 @@ import (
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -38,6 +39,7 @@ func RegisterEWFWorkflows(
 	sponsorKeyPair subkey.KeyPair,
 	metrics *metrics.Metrics,
 	notificationService *notification.NotificationService,
+	proxyClient proxy.Client,
 ) {
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))
@@ -53,6 +55,7 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepUnreserveNode, UnreserveNodeStep(db, substrate))
 	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
+	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -107,12 +110,14 @@ func RegisterEWFWorkflows(
 	reserveNodeTemplate.Steps = []ewf.Step{
 		{Name: constants.StepCreateIdentity, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: constants.StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(constants.WorkflowReserveNode, &reserveNodeTemplate)
 
 	unreserveNodeTemplate := newKubecloudWorkflowTemplate(notificationService)
 	unreserveNodeTemplate.Steps = []ewf.Step{
 		{Name: constants.StepUnreserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: constants.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(constants.WorkflowUnreserveNode, &unreserveNodeTemplate)
 

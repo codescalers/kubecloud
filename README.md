@@ -26,6 +26,7 @@ Mycelium Cloud is a comprehensive cloud-native platform designed for deploying, 
 - **Multi-Component Architecture**: Backend (Go), Frontend (Vue.js), CRDs, and networking plugins
 - **Monitoring & Observability**: Integrated Prometheus and Grafana for metrics and dashboards
 - **Custom Networking**: Mycelium CNI plugin for peer-to-peer networking
+- **Mycelium Integration**: Built-in Mycelium peer for decentralized networking (Docker) or separate binary (local development)
 - **Ingress Management**: Custom ingress controller for traffic routing
 - **RESTful APIs**: Comprehensive backend APIs for cluster operations
 - **Web UI**: Modern Vue.js frontend for cluster management
@@ -88,6 +89,8 @@ make run .
 
 The backend will start on the configured port (default: 8080).
 
+**Note**: If running locally, you need to run the Mycelium binary separately. See [Local Development with Mycelium](#4-local-development-with-mycelium) section below.
+
 ### 3. Frontend Setup
 
 Navigate to the frontend directory and install dependencies:
@@ -100,7 +103,43 @@ npm run dev
 
 The frontend development server will start on `http://localhost:5173` (default Vite port).
 
-### 4. Docker Compose (Full Stack)
+### 4. Local Development with Mycelium
+
+⚠️ **Important**: When running the backend locally (not in Docker), you need to run the Mycelium binary separately.
+
+#### Download and Run Mycelium
+
+1. **Download Mycelium binary** from [https://github.com/threefoldtech/mycelium](https://github.com/threefoldtech/mycelium):
+
+```bash
+wget https://github.com/threefoldtech/mycelium/releases/latest/download/mycelium-linux-amd64
+chmod +x mycelium-linux-amd64
+sudo mv mycelium-linux-amd64 /usr/local/bin/mycelium
+```
+
+1. **Start Mycelium** (in a separate terminal):
+
+```bash
+mycelium --peers "tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651"
+```
+
+1. **Start Backend** (in another terminal):
+
+```bash
+cd backend
+make build
+make run .
+```
+
+1. **Start Frontend** (in another terminal):
+
+```bash
+cd frontend/kubecloud
+npm install
+npm run dev
+```
+
+### 5. Docker Compose (Full Stack)
 
 For a complete local development environment:
 
@@ -111,7 +150,7 @@ docker-compose up
 
 This will start all services including the backend, frontend, monitoring stack, and databases.
 
-### 5. Access the Application
+### 6. Access the Application
 
 - **Frontend UI**: <http://localhost:5173>
 - **Backend API**: <http://localhost:8080>
