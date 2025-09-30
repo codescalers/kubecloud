@@ -19,7 +19,7 @@ var workflowsDescriptions = map[string]string{
 	constants.WorkflowRemoveNode:               "Removing Node",
 	constants.WorkflowDeleteCluster:            "Deleting Cluster",
 	constants.WorkflowDeleteAllClusters:        "Deleting All Clusters",
-	constants.WorkflowRollbackFailedDeployment: "Rollback Deployment",
+	constants.WorkflowRollbackFailedDeployment: "Rollback",
 	constants.WorkflowUserRegistration:         "User Registration",
 	constants.WorkflowUserVerification:         "User Verification",
 	constants.WorkflowChargeBalance:            "Charge Balance",
