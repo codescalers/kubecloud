@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 
 	"encoding/base64"
 	"fmt"
@@ -43,6 +44,11 @@ func deploymentFromNode(
 	ipSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
 		return workloads.Deployment{}, err
+	}
+
+	encryptedMnemonic, err := encrypt(token, mnemonic)
+	if err != nil {
+		return workloads.Deployment{}, fmt.Errorf("failed to encrypt mnemonic: %v", err)
 	}
 
 	disk := workloads.Disk{
@@ -90,10 +96,6 @@ func deploymentFromNode(
 	if node.Type != NodeTypeLeader {
 		vm.EnvVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", leaderIP)
 	} else {
-		encryptedMnemonic, err := encrypt(token, mnemonic)
-		if err != nil {
-			encryptedMnemonic = ""
-		}
 		vm.EnvVars["MNEMONIC"] = encryptedMnemonic
 		vm.EnvVars["NETWORK"] = gridNet
 	}
@@ -198,6 +200,9 @@ func (c *Cluster) PrepareCluster(userID int) error {
 }
 
 func encrypt(key, text string) (string, error) {
+	hash := sha256.Sum256([]byte(key)) // valid 32 bytes for AES-256
+	key = string(hash[:])
+
 	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", err

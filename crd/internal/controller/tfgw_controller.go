@@ -90,7 +90,7 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	token := os.Getenv("K3S_TOKEN")
 	mne, err := decrypt(token, mne)
 	if token == "" || err != nil {
-		klog.Warning("Failed to decrypt mnemonic, using raw value")
+		klog.Warningf("Failed to decrypt mnemonic, using raw value: %v", err)
 
 		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
 			Type:    ingressv1.ConditionTypeError,

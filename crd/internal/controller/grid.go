@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 
@@ -83,6 +84,9 @@ func generateSessionId() (string, error) {
 
 // decrypt decrypts an encrypted base64 string with a string key
 func decrypt(key, encryptedText string) (string, error) {
+	hash := sha256.Sum256([]byte(key)) // valid 32 bytes for AES-256
+	key = string(hash[:])
+
 	data, err := base64.StdEncoding.DecodeString(encryptedText)
 	if err != nil {
 		return "", err
