@@ -6,7 +6,7 @@
         Assign VMs to Nodes
       </h3>
       <p class="section-subtitle">Select nodes to host your cluster VMs</p>
-
+      {{ allVMs.map(vm => vm.node) }}
       <v-alert
         type="info"
         variant="tonal"
@@ -64,14 +64,19 @@
             </div>
           </div>
           <NodeSelect
-            v-model="vm.node"
+            ref="nodeSelectRef"
+            :model-value="vm.node"
+            @update:modelValue="val => onNodeSelected(val, index)"
             :items="getAvailableNodesForVM(index)"
             label="Select Node"
             clearable
             class="node-select"
             :get-node-resources="getNodeAvailableResources"
             cpu-label="vCPU"
-            @update:modelValue="val => props.onAssignNode(index, val)"
+            :loading="validatingNode"
+            :error="true"
+            :error-message="'test error message'"
+
           />
         </div>
       </v-col>
@@ -81,7 +86,7 @@
         <v-icon start icon="mdi-arrow-left"></v-icon>
         Back
       </v-btn>
-      <v-btn variant="outlined" color="primary" :disabled="!isStep2Valid" @click="$emit('nextStep')">
+      <v-btn variant="outlined" color="primary" :disabled="!isStep2Valid || validatingNode" @click="$emit('nextStep')">
         Continue
         <v-icon end icon="mdi-arrow-right"></v-icon>
       </v-btn>
@@ -91,7 +96,7 @@
 <script setup lang="ts">
 import type { NormalizedNode } from '../../types/normalizedNode';
 import { type VM } from '../../composables/useDeployCluster';
-import { defineProps, withDefaults, defineEmits, onMounted, computed, ref, watch } from 'vue';
+import { defineProps, withDefaults, defineEmits, onMounted, computed, ref, watch, useTemplateRef } from 'vue';
 import NodeSelect from '../ui/NodeSelect.vue';
 
 const props = withDefaults(defineProps<{
@@ -108,7 +113,9 @@ const props = withDefaults(defineProps<{
 });
 const emit = defineEmits(['nextStep', 'prevStep']);
 
+
 const selectedRegion = ref<string>('');
+const validatingNode = ref<boolean>(false);
 
 // All supported regions - show all regions, let backend handle filtering
 const ALL_REGIONS = ['Africa', 'Asia', 'South America', 'North America', 'Europe', 'Oceania'];
@@ -148,7 +155,7 @@ onMounted(() => {
 
 const currentAllocations = computed(() => {
   const allocations: Record<number, { ram: number; storage: number }> = {};
-  
+
   for (const vm of props.allVMs) {
     if (vm.node != null) {
       if (!allocations[vm.node]) {
@@ -158,7 +165,7 @@ const currentAllocations = computed(() => {
       allocations[vm.node].storage += (vm.disk || 0) + vm.rootfs;
     }
   }
-  
+
   return allocations;
 });
 
@@ -166,7 +173,7 @@ const getNodeResources = (node: NormalizedNode, excludeVM?: { ram: number; stora
   const used = currentAllocations.value[node.nodeId] || { ram: 0, storage: 0 };
   const excludeRam = excludeVM?.ram || 0;
   const excludeStorage = excludeVM?.storage || 0;
-  
+
   return {
     cpu: node.cpu || 0,
     ram: (node.available_ram || 0) - used.ram + excludeRam,
@@ -200,6 +207,17 @@ const getNodeAvailableResources = (node: NormalizedNode) => {
     storage: Math.max(0, available.storage)
   };
 };
+
+const onNodeSelected = async (val: any, index: number) => {
+  if(val){
+    validatingNode.value = true
+    console.log(val, index)
+
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    validatingNode.value = false
+  }
+  props?.onAssignNode(index, val)
+}
 </script>
 <style scoped>
 .section-header {

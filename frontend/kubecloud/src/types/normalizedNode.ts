@@ -23,3 +23,12 @@ export interface NormalizedNode {
   twinId: number;
   // Add any other UI fields needed
 }
+
+export interface StoragePool {
+  name: string;
+  free: number;
+}
+
+export interface NodeStoragePool {
+  pools: StoragePool[];
+}
