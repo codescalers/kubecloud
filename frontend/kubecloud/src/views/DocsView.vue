@@ -95,13 +95,13 @@ const docs = [
     icon: 'mdi-rocket-launch',
     title: 'Getting Started',
     slug: 'getting-started',
-    path: '/docs/getting-started.md'
+    path: '/md/getting-started.md'
   },
   {
     icon: 'mdi-book-open-page-variant',
     title: 'Tutorials',
     slug: 'tutorial',
-    path: '/docs/tutorial.md'
+    path: '/md/tutorial.md'
   }
 ]
 
