@@ -696,5 +696,3 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
 }
-	
-
