@@ -656,7 +656,9 @@ type NodeStoragePoolResponse struct {
 // @Accept json
 // @Produce json
 // @Param node_id path string true "Node ID"
-// @Success 200 {object} NodeStoragePoolResponse "Node storage pool is retrieved successfully"
+// @Success 200 {object} APIResponse{data=NodeStoragePoolResponse} "Node storage pool is retrieved successfully"
+// @Failure 400 {object} APIResponse "Bad Request or Invalid params"
+// @Failure 404 {object} APIResponse "Node not found"
 // @Failure 500 {object} APIResponse "Internal Server Error"
 // @Router /nodes/{node_id}/storage-pool [get]
 func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
@@ -666,15 +668,24 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 		return
 	}
 
-	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 64)
+	nodeID, err := strconv.ParseUint(nodeIDParam, 10, 32)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing node id")
 		return
 	}
 
-	nodeID := uint32(nodeID64)
-	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, nodeID)
+	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
+	if err != nil {
+		Error(c, http.StatusNotFound, "failed to get node", "")
+		return
+	}
+	if len(res) == 0 {
+		Error(c, http.StatusNotFound, "Node not found", "")
+		return
+	}
+
+	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, uint32(nodeID))
 	if err != nil {
 		InternalServerError(c)
 		return
