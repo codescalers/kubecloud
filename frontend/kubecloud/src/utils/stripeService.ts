@@ -1,3 +1,4 @@
+import { useNotificationStore } from '@/stores/notifications'
 import { loadStripe, type Stripe } from '@stripe/stripe-js'
 
 export interface PaymentMethod {
@@ -65,11 +66,14 @@ class StripeService {
   async createToken(cardElement: any, billingDetails?: any): Promise<string> {
     const stripe = await this.getStripe();
     const { token, error } = await stripe.createToken(cardElement, billingDetails);
-
-    if (error) {
+    
+    const notificationStore = useNotificationStore()
+    if (error?.message) {
+      notificationStore.error('Stripe Error', error.message);
       throw new Error(error.message);
     }
     if (!token) {
+      notificationStore.error('Stripe Error', 'Token creation failed');
       throw new Error('Token creation failed');
     }
     
