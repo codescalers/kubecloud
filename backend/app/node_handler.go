@@ -675,17 +675,16 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 		return
 	}
 
-	
 	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
 	if err != nil {
 		Error(c, http.StatusNotFound, "failed to get node", "")
-		return 
+		return
 	}
 	if len(res) == 0 {
 		Error(c, http.StatusNotFound, "Node not found", "")
-		return 
+		return
 	}
-	
+
 	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, uint32(nodeID))
 	if err != nil {
 		InternalServerError(c)
