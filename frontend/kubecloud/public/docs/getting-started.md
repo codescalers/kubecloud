@@ -68,4 +68,4 @@ Mycelium Cloud uses peer-to-peer networking that enables:
 
 4. **SSH to nodes**: `ssh root@<mycelium-ip>`
 
-> **Note**: Mycelium is only needed for SSH access. Normal kubectl operations work without it.
+<!-- > **Note**: Mycelium is only needed for SSH access. Normal kubectl operations work without it. -->

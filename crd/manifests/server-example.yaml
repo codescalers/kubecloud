@@ -1,25 +1,30 @@
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: test-server
-  labels:
-    app: test-server
+  name: hello-world
 spec:
-  containers:
-    - name: python-http
-      image: python:3.12
-      command: ["python", "-m", "http.server", "8000", "--bind", "0.0.0.0"]
-      ports:
-        - containerPort: 8000
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-world
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-server-svc
+  name: my-service
 spec:
-  type: LoadBalancer
   selector:
-    app: test-server
+    app: hello-world
   ports:
-    - port: 80
-      targetPort: 8000
+    - port: 80           # Service port
+      targetPort: 80     # Container port

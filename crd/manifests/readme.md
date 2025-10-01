@@ -34,3 +34,10 @@ kubectl apply -f ./crd-example.yaml
 ```bash 
 kubectl get tfgw
 ```
+
+6. now you need to apply ingress on cluster redirect to your service
+
+```bash
+# update the example with the generated FGDN
+kubectl apply -f ./ingress-example.yaml
+```
