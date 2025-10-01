@@ -207,7 +207,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
 
 	app := &App{
 		router:              router,
@@ -260,6 +260,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
 		v1.GET("/stats", app.handlers.GetStatsHandler)
 		v1.GET("/nodes", app.handlers.ListAllGridNodesHandler)
+		v1.GET("/nodes/:node_id/storage-pool", app.handlers.GetNodeStoragePoolHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))

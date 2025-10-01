@@ -17,6 +17,7 @@ import (
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
@@ -51,6 +52,7 @@ type Handler struct {
 	sponsorAddress      string
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
+	gridClient          deployer.TFPluginClient
 }
 
 // NewHandler create new handler
@@ -61,7 +63,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
@@ -83,6 +85,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		sponsorAddress:      sponsorAddress,
 		metrics:             metrics,
 		notificationService: notificationService,
+		gridClient:          gridClient,
 	}
 }
 

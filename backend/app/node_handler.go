@@ -638,3 +638,63 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	})
 
 }
+
+type Pool struct {
+	Name string `json:"name"`
+	// free space in bytes
+	Free uint64 `json:"free"`
+}
+
+type NodeStoragePoolResponse struct {
+	Pools []Pool `json:"pools"`
+}
+
+// @Summary Get node storage pool
+// @Description Returns node storage pool
+// @Tags nodes
+// @ID get-node-storage-pool
+// @Accept json
+// @Produce json
+// @Param node_id path string true "Node ID"
+// @Success 200 {object} NodeStoragePoolResponse "Node storage pool is retrieved successfully"
+// @Failure 500 {object} APIResponse "Internal Server Error"
+// @Router /nodes/{node_id}/storage-pool [get]
+func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
+	nodeIDParam := c.Param("node_id")
+	if nodeIDParam == "" {
+		Error(c, http.StatusBadRequest, "Node ID is required", "")
+		return
+	}
+
+	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 64)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing node id")
+		return
+	}
+
+	nodeID := uint32(nodeID64)
+	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, nodeID)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	storagePool, err := nc.Pools(c.Request.Context())
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	var pools []Pool
+	for _, pool := range storagePool {
+		pools = append(pools, Pool{
+			Name: pool.Name,
+			Free: uint64(pool.Size - pool.Used),
+		})
+	}
+
+	Success(c, http.StatusOK, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
+}
+	
+

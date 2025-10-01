@@ -999,6 +999,45 @@
                 }
             }
         },
+        "/nodes/{node_id}/storage-pool": {
+            "get": {
+                "description": "Returns node storage pool",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "Get node storage pool",
+                "operationId": "get-node-storage-pool",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node ID",
+                        "name": "node_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Node storage pool is retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/app.NodeStoragePoolResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/pending-records": {
             "get": {
                 "security": [
@@ -3048,6 +3087,17 @@
                 }
             }
         },
+        "app.NodeStoragePoolResponse": {
+            "type": "object",
+            "properties": {
+                "pools": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.Pool"
+                    }
+                }
+            }
+        },
         "app.NodesWithDiscount": {
             "type": "object",
             "properties": {
@@ -3202,6 +3252,18 @@
                     "type": "integer"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.Pool": {
+            "type": "object",
+            "properties": {
+                "free": {
+                    "description": "free space in bytes",
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
