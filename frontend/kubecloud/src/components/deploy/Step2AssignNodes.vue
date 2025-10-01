@@ -74,8 +74,8 @@
             :get-node-resources="getNodeAvailableResources"
             cpu-label="vCPU"
             :loading="validatingNode"
-            :error="true"
-            :error-message="'test error message'"
+            :error="!!validationError"
+            :error-message="validationError"
 
           />
         </div>
@@ -86,7 +86,7 @@
         <v-icon start icon="mdi-arrow-left"></v-icon>
         Back
       </v-btn>
-      <v-btn variant="outlined" color="primary" :disabled="!isStep2Valid || validatingNode" @click="$emit('nextStep')">
+      <v-btn variant="outlined" color="primary" :disabled="!isStep2Valid || validatingNode || !!validationError" @click="$emit('nextStep')">
         Continue
         <v-icon end icon="mdi-arrow-right"></v-icon>
       </v-btn>
@@ -98,6 +98,7 @@ import type { NormalizedNode } from '../../types/normalizedNode';
 import { type VM } from '../../composables/useDeployCluster';
 import { defineProps, withDefaults, defineEmits, onMounted, computed, ref, watch, useTemplateRef } from 'vue';
 import NodeSelect from '../ui/NodeSelect.vue';
+import useNodeStoragePool from '@/composables/useNodeStoragePool';
 
 const props = withDefaults(defineProps<{
   allVMs: VM[];
@@ -112,6 +113,8 @@ const props = withDefaults(defineProps<{
   isStep2Valid: false
 });
 const emit = defineEmits(['nextStep', 'prevStep']);
+const nodeStoragePool = useNodeStoragePool();
+const validationError = ref<string>('');
 
 
 const selectedRegion = ref<string>('');
@@ -209,14 +212,30 @@ const getNodeAvailableResources = (node: NormalizedNode) => {
 };
 
 const onNodeSelected = async (val: any, index: number) => {
-  if(val){
+   props?.onAssignNode(index, val)
+   validationError.value = ''
+  if (val) {
     validatingNode.value = true
     console.log(val, index)
+    const vm = props.allVMs[index];
+    const requiredStorage = (vm.disk || 0) + vm.rootfs;
+    try {
+      const isValid = await nodeStoragePool.validateNodeStoragePool(requiredStorage, val);
+      if (!isValid) {
+        validatingNode.value = false
+        validationError.value = 'Node storage pool is not valid'
+        return
+      }
+      validationError.value = ''
+    } catch (error) {
+      console.error(error)
+      validationError.value = 'Failed to verify node storage pool'
 
-    await new Promise(resolve => setTimeout(resolve, 10000));
-    validatingNode.value = false
+      return
+    }finally {
+      validatingNode.value = false
+    }
   }
-  props?.onAssignNode(index, val)
 }
 </script>
 <style scoped>
