@@ -543,6 +543,8 @@ This demonstrates how services communicate across nodes using Mycelium networkin
 
 Custom Resource Definitions (CRDs) allow you to extend Kubernetes with your own custom resources. In this example, we'll work with the TFGW (ThreeFold Gateway) CRD, which manages load balancing and proxying by taking a hostname and backend services.
 
+> To find the gateways on Threefold Grid [Gateways listing](https://gridproxy.grid.tf/gateways)
+
 ### Understanding the TFGW CRD
 
 The TFGW CRD has the following structure:
