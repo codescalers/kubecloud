@@ -60,6 +60,7 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
+	engine.Register(constants.StepVerifyClusterInDB, VerifyClusterInDBStep(db))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -142,6 +143,7 @@ func RegisterEWFWorkflows(
 
 	trackClusterHealthWFTemplate := newKubecloudWorkflowTemplate(notificationService)
 	trackClusterHealthWFTemplate.Steps = []ewf.Step{
+		{Name: constants.StepVerifyClusterInDB, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepFetchKubeconfig, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepVerifyClusterReady, RetryPolicy: standardRetryPolicy},
 	}

@@ -48,6 +48,7 @@ const (
 	StepSendEmailNotification   = "send-email-notification"
 	StepSendUINotification      = "send-ui-notification"
 	StepVerifyNodeState         = "verify-node-state"
+	StepVerifyClusterInDB       = "verify-cluster-in-db"
 
 	NodeRentable = "rentable"
 	NodeRented   = "rented"
