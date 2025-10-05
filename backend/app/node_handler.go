@@ -643,6 +643,8 @@ type Pool struct {
 	Name string `json:"name"`
 	// free space in bytes
 	Free uint64 `json:"free"`
+	// type of the disk wither ssd or hdd
+	Type string `json:"type"`
 }
 
 type NodeStoragePoolResponse struct {
@@ -702,6 +704,7 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 		pools = append(pools, Pool{
 			Name: pool.Name,
 			Free: uint64(pool.Size - pool.Used),
+			Type: string(pool.Type),
 		})
 	}
 
