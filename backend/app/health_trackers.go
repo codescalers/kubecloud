@@ -101,7 +101,7 @@ func (h *Handler) TrackReservedNodeHealth(notificationService *notification.Noti
 }
 
 // checkNodesWithWorkerPool uses a worker pool to check node health concurrently
-func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, grid proxy.Client, notificationService *notification.NotificationService) {
+func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserContractData, grid proxy.Client, notificationService *notification.NotificationService) {
 	timeout := time.Duration(h.config.ReservedNodeHealthCheckTimeoutInMinutes) * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -111,7 +111,7 @@ func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, gri
 		workerCount = len(reservedNodes)
 	}
 
-	jobs := make(chan models.UserNodes, len(reservedNodes))
+	jobs := make(chan models.UserContractData, len(reservedNodes))
 	results := make(chan NodeHealthResult, len(reservedNodes))
 
 	var wg sync.WaitGroup
@@ -187,7 +187,7 @@ func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, gri
 	}
 }
 
-func (h *Handler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserNodes, results chan<- NodeHealthResult, grid proxy.Client) {
+func (h *Handler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserContractData, results chan<- NodeHealthResult, grid proxy.Client) {
 	defer wg.Done()
 
 	for userNode := range jobs {

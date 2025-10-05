@@ -43,15 +43,6 @@ func (h *Handler) DeductBalanceBasedOnUsage() {
 }
 
 func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
-	records, err := h.db.ListUserNodes(userID)
-	if err != nil {
-		return 0, err
-	}
-
-	if len(records) == 0 {
-		return 0, nil
-	}
-
 	now := time.Now()
 	// Define the end of the day (next day at 00:00)
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.Local)
@@ -67,9 +58,18 @@ func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
 		lastCalcTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	}
 
+	contracts, err := h.db.ListAllContractsInPeriod(userID, lastCalcTime, endOfDay)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(contracts) == 0 {
+		return 0, nil
+	}
+
 	var totalDailyUsageInUSDMillicent uint64
 
-	for _, record := range records {
+	for _, record := range contracts {
 		// Get bill reports from the last calculation time to the end of day
 		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, lastCalcTime, endOfDay)
 		if err != nil {

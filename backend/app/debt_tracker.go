@@ -4,14 +4,17 @@ import (
 	"kubecloud/internal"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"kubecloud/internal/logger"
 )
 
+const TrackingDeptPeriod = time.Hour
+
 func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
-	ticker := time.NewTicker(1 * time.Hour)
+	ticker := time.NewTicker(TrackingDeptPeriod)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -28,11 +31,12 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 	}
 
 	for _, user := range users {
-		userNodes, err := h.db.ListUserNodes(user.ID)
+		userContracts, err := h.db.ListAllContractsInPeriod(user.ID, time.Now().Add(-TrackingDeptPeriod), time.Now())
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			continue
 		}
+
 		// Create identity from mnemonic
 		identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
 		if err != nil {
@@ -41,9 +45,9 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 		}
 
 		var totalDebt int64
-		for _, node := range userNodes {
+		for _, contract := range userContracts {
 			calculatorClient := calculator.NewCalculator(gridClient.SubstrateConn, identity)
-			debt, err := calculatorClient.CalculateContractOverdue(node.ContractID, time.Hour)
+			debt, err := calculatorClient.CalculateContractOverdue(contract.ContractID, time.Hour)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Send()
 				continue

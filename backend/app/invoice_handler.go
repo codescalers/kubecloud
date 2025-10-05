@@ -174,21 +174,21 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 }
 
 func (h *Handler) createUserInvoice(user models.User) error {
-	records, err := h.db.ListUserNodes(user.ID)
+	now := time.Now()
+
+	contracts, err := h.db.ListAllContractsInPeriod(user.ID, now.AddDate(0, -1, 0), now)
 	if err != nil {
 		return err
 	}
 
-	if len(records) == 0 {
+	if len(contracts) == 0 {
 		return nil
 	}
-
-	now := time.Now()
 
 	var nodeItems []models.NodeItem
 	var totalInvoiceCostUSD float64
 
-	for _, record := range records {
+	for _, record := range contracts {
 		// get bill reports for the last month
 		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, now.AddDate(0, -1, 0), now)
 		if err != nil {

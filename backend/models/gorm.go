@@ -30,7 +30,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		Transaction{},
 		Invoice{},
 		NodeItem{},
-		UserNodes{},
+		UserContractData{},
 		&Notification{},
 		&SSHKey{},
 		&Cluster{},
@@ -299,31 +299,59 @@ func (s *GormDB) UpdateInvoicePDF(id int, data []byte) error {
 	return s.db.Model(&Invoice{}).Where("id = ?", id).Updates(map[string]interface{}{"file_data": data}).Error
 }
 
-// CreateUserNode creates new node record for user
-func (s *GormDB) CreateUserNode(userNode *UserNodes) error {
-	return s.db.Create(&userNode).Error
+// CreateUserContractData creates new contract record for user
+func (s *GormDB) CreateUserContractData(contractData *UserContractData) error {
+	return s.db.Create(&contractData).Error
 }
 
-// DeleteUserNode deletes a node record for user by its contract ID
-func (s *GormDB) DeleteUserNode(contractID uint64) error {
-	return s.db.Where("contract_id = ?", contractID).Delete(&UserNodes{}).Error
+// DeleteUserContract updates deleted time of a contract record for user by its contract ID
+func (s *GormDB) DeleteUserContract(contractID uint64) error {
+	return s.db.Where("contract_id = ?", contractID).Update("deleted_at", time.Now()).Error
 }
 
-// ListUserNodes returns all nodes records for user by its ID
-func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
-	var userNodes []UserNodes
-	return userNodes, s.db.Where("user_id = ?", userID).Find(&userNodes).Error
+// ListUserRentedNodes returns all nodes records for user by its ID
+func (s *GormDB) ListUserRentedNodes(userID int) ([]UserContractData, error) {
+	var userNodes []UserContractData
+	return userNodes, s.db.Where("user_id = ? and type = ? and deleted_at = ?", userID, ContractTypeRented, time.Time{}).Find(&userNodes).Error
+}
+
+// ListAllContractsInPeriod returns all contracts that existed during the specified time period.
+// This includes:
+// 1. Contracts created before or during the period end date
+// 2. AND either not deleted (deleted_at is zero time) OR deleted after the period start date
+// If userID is provided (non-zero), it will only return contracts for that specific user.
+// If userID is 0, it will return contracts for all users.
+func (s *GormDB) ListAllContractsInPeriod(userID int, start, end time.Time) ([]UserContractData, error) {
+	var userNodes []UserContractData
+
+	// Query for contracts that:
+	// - Were created on or before the end date of the period
+	// - AND are either not deleted (deleted_at is zero) OR were deleted after the start of the period
+	query := s.db.Where("created_at <= ?", end).
+		Where("(deleted_at = ? OR deleted_at >= ?)", time.Time{}, start)
+
+	// If userID is provided (non-zero), filter by that user
+	if userID > 0 {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	return userNodes, query.Find(&userNodes).Error
 }
 
 // ListAllReservedNodes returns all reserved nodes from all users
-func (s *GormDB) ListAllReservedNodes() ([]UserNodes, error) {
-	var userNodes []UserNodes
-	return userNodes, s.db.Find(&userNodes).Error
+func (s *GormDB) ListAllReservedNodes() ([]UserContractData, error) {
+	var userNodes []UserContractData
+	return userNodes, s.db.Where("type = ? and deleted_at = ?", ContractTypeRented, time.Time{}).Find(&userNodes).Error
 }
 
-func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
-	var userNode UserNodes
-	return userNode, s.db.Where("node_id = ?", nodeID).First(&userNode).Error
+func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserContractData, error) {
+	var userNode UserContractData
+	return userNode, s.db.Where("node_id = ? and deleted_at = ?", nodeID, time.Time{}).First(&userNode).Error
+}
+
+func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserContractData, error) {
+	var userNode UserContractData
+	return userNode, s.db.Where("contract_id = ? and deleted_at = ?", contractID, time.Time{}).First(&userNode).Error
 }
 
 // CreateNotification creates a new notification
@@ -368,6 +396,26 @@ func (s *GormDB) CreateCluster(userID int, cluster *Cluster) error {
 	cluster.CreatedAt = time.Now()
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
+
+	clusterDate, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
+	}
+
+	for _, node := range clusterDate.Nodes {
+		if err := s.CreateUserContractData(
+			&UserContractData{
+				UserID:     userID,
+				ContractID: node.ContractID,
+				NodeID:     node.NodeID,
+				Type:       ContractTypeDeployed,
+				CreatedAt:  time.Now(),
+			},
+		); err != nil {
+			return err
+		}
+	}
+
 	return s.db.Create(cluster).Error
 }
 
@@ -395,11 +443,45 @@ func (s *GormDB) UpdateCluster(cluster *Cluster) error {
 
 // DeleteCluster deletes a cluster by name for a specific user
 func (s *GormDB) DeleteCluster(userID int, projectName string) error {
+	cluster, err := s.GetClusterByName(userID, projectName)
+	if err != nil {
+		return err
+	}
+
+	clusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
+	}
+
+	for _, node := range clusterData.Nodes {
+		if err := s.DeleteUserContract(node.ContractID); err != nil {
+			return err
+		}
+	}
+
 	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
 }
 
 // DeleteAllUserClusters deletes all clusters for a specific user
 func (s *GormDB) DeleteAllUserClusters(userID int) error {
+	clusters, err := s.ListUserClusters(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, cluster := range clusters {
+		clusterData, err := cluster.GetClusterResult()
+		if err != nil {
+			return err
+		}
+
+		for _, node := range clusterData.Nodes {
+			if err := s.DeleteUserContract(node.ContractID); err != nil {
+				return err
+			}
+		}
+	}
+
 	return s.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
 }
 
@@ -457,11 +539,6 @@ func (s *GormDB) CountAllClusters() (int64, error) {
 func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 	var clusters []Cluster
 	return clusters, s.db.Find(&clusters).Error
-}
-
-func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
-	var userNode UserNodes
-	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
 }
 
 // GetUserLastCalcTime returns the last calculation time for a user

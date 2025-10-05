@@ -32,12 +32,14 @@ type DB interface {
 	ListUserInvoices(userID int) ([]Invoice, error)
 	ListInvoices() ([]Invoice, error)
 	UpdateInvoicePDF(id int, data []byte) error
-	CreateUserNode(userNode *UserNodes) error
-	DeleteUserNode(contractID uint64) error
-	ListUserNodes(userID int) ([]UserNodes, error)
-	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
-	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
-	ListAllReservedNodes() ([]UserNodes, error)
+	// Contract methods
+	CreateUserContractData(contractData *UserContractData) error
+	DeleteUserContract(contractID uint64) error
+	ListUserRentedNodes(userID int) ([]UserContractData, error)
+	GetUserNodeByNodeID(nodeID uint64) (UserContractData, error)
+	GetUserNodeByContractID(contractID uint64) (UserContractData, error)
+	ListAllReservedNodes() ([]UserContractData, error)
+	ListAllContractsInPeriod(userID int, start, end time.Time) ([]UserContractData, error)
 	// Usage calculation time methods
 	GetUserLastCalcTime(userID int) (time.Time, error)
 	UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error
