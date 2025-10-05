@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/activities"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/rbac"
 	"kubecloud/middlewares"
 	"kubecloud/models"
 	"net"
@@ -154,6 +155,8 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
+	rbac := rbac.NewRBAC(db)
+
 	// Create an app-level context for coordinating shutdown
 	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)
 	if err != nil {
@@ -207,7 +210,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, rbac)
 
 	app := &App{
 		router:              router,

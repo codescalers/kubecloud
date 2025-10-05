@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/rbac"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
@@ -61,7 +62,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, rbac *rbac.RBAC) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
