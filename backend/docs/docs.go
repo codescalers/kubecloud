@@ -507,7 +507,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Node storage pool is retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.NodeStoragePoolResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.NodeStoragePoolResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request or Invalid params",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Node not found",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
@@ -3271,6 +3295,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "type of the disk wither ssd or hdd",
                     "type": "string"
                 }
             }
