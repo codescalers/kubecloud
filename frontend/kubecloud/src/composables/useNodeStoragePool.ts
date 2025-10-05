@@ -13,8 +13,9 @@ export default function useNodeStoragePool() {
         const nodeStoragePoolResponse: ApiResponse<ApiResponse<NodeStoragePool>> = await api.get(`/v1/nodes/${nodeId}/storage-pool`, {
           showNotifications: false
         })
-        nodesStoragePool.value.set(nodeId, nodeStoragePoolResponse.data.data.pools)
-        return nodeStoragePoolResponse.data.data.pools
+        const pools = nodeStoragePoolResponse.data.data.pools.filter((pool) => pool.type === "ssd")
+        nodesStoragePool.value.set(nodeId, pools)
+        return pools
       } catch (error) {
         console.error(error)
         throw failedToCheckStoragePoolError()

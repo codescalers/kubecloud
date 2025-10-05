@@ -24,9 +24,11 @@ export interface NormalizedNode {
   // Add any other UI fields needed
 }
 
+type diskType = "ssd" | "hdd";
 export interface StoragePool {
   name: string;
   free: number;
+  type: diskType;
 }
 
 export interface NodeStoragePool {

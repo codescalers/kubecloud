@@ -2,7 +2,7 @@
     <v-dialog v-model="props.modelValue" max-width="900" @click:outside="emit('update:modelValue', false)">
       <BaseDialogCard>
         <template #title>
-          Add Node {{ validatingNode }}
+          Add Node
         </template>
         <template #content>
           <div>
@@ -151,19 +151,16 @@ async function handleAddNode(payload: any) {
   }
 }
 
-async function validateNode(nodeId: number) {
-  nodeValidationError.value = ''
-  validatingNode.value = true
-  if (!nodeId) return
+async function validateNode(nodeId: number | null) {
   try {
+    nodeValidationError.value = ''
+    validatingNode.value = true
+    if (!nodeId || !availableNodesWithName.value.find((node: RawNode) => node.nodeId === nodeId)) return
     const isValid = await validateNodeStoragePool(addFormStorage.value, nodeId)
     if (!isValid) {
       nodeValidationError.value = createStoragePoolError(nodeId)
       return
     }
-    nodeValidationError.value = ''
-
-
   } catch (error) {
     console.error(error)
     nodeValidationError.value = failedToCheckStoragePoolError().message
@@ -172,7 +169,6 @@ async function validateNode(nodeId: number) {
   }
 }
 watch(addFormStorage, () => {
-  if (!addFormNodeId.value) return
   validateNode(addFormNodeId.value)
 })
 
