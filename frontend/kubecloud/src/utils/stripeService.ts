@@ -42,8 +42,10 @@ class StripeService {
   async initialize(): Promise<void> {
     if (this.isInitialized) return
 
-		const stripePublishableKey = (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_STRIPE_PUBLISHABLE_KEY) || import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-		if (!stripePublishableKey) {
+    const stripePublishableKey =
+      (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_STRIPE_PUBLISHABLE_KEY) ||
+      import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+    if (!stripePublishableKey) {
       throw new Error('Stripe publishable key not found in environment variables')
     }
 
@@ -64,51 +66,48 @@ class StripeService {
   // Create a token from card details (for legacy or backend expecting 'tok_' tokens)
   // Use this when your backend expects a token id (starts with 'tok_') instead of a payment method id (starts with 'pm_')
   async createToken(cardElement: any, billingDetails?: any): Promise<string> {
-    const stripe = await this.getStripe();
-    const { token, error } = await stripe.createToken(cardElement, billingDetails);
-    
-    const notificationStore = useNotificationStore()
-    if (error?.message) {
-      notificationStore.error('Stripe Error', error.message);
-      throw new Error(error.message);
-    }
+    const stripe = await this.getStripe()
+    const { token, error } = await stripe.createToken(cardElement, billingDetails)
+
     if (!token) {
-      notificationStore.error('Stripe Error', 'Token creation failed');
-      throw new Error('Token creation failed');
+      const errorMessage = error?.message || 'Token creation failed'
+      const notificationStore = useNotificationStore()
+      notificationStore.error('Stripe Error', errorMessage)
+      throw new Error(errorMessage)
     }
-    
-    return token.id; // This will be a 'tok_...' string
+
+    return token.id // This will be a 'tok_...' string
   }
 
   // Create a payment method from card details (for PaymentMethod id 'pm_...')
   // Use this when your backend expects a payment method id (starts with 'pm_')
   async createPaymentMethod(cardElement: any, billingDetails?: any): Promise<PaymentMethod> {
     const stripe = await this.getStripe()
-    
+
     const { paymentMethod, error } = await stripe.createPaymentMethod({
       type: 'card',
       card: cardElement,
-      billing_details: billingDetails
+      billing_details: billingDetails,
     })
 
     if (error) {
       throw new Error(error.message)
     }
-      console.log({paymentMethod});
-      
+    console.log({ paymentMethod })
+
     return paymentMethod as PaymentMethod
   }
 
   // Confirm a payment intent
   async confirmPayment(clientSecret: string, paymentMethodId: string): Promise<any> {
     const stripe = await this.getStripe()
-    
+
     const result = await stripe.confirmPayment({
       clientSecret,
       confirmParams: {
         payment_method: paymentMethodId,
-        return_url: `${window.location.origin}/dashboard/payment`
-      }
+        return_url: `${window.location.origin}/dashboard/payment`,
+      },
     })
 
     if (result.error) {
@@ -138,4 +137,4 @@ class StripeService {
   }
 }
 
-export const stripeService = new StripeService() 
+export const stripeService = new StripeService()
