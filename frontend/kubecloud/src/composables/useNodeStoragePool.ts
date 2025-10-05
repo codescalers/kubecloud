@@ -17,7 +17,7 @@ export default function useNodeStoragePool() {
         return nodeStoragePoolResponse.data.data.pools
       } catch (error) {
         console.error(error)
-        throw new Error("Failed to verify node storage pool")
+        throw failedToCheckStoragePoolError()
       }
     }
     return storagePool;
@@ -36,7 +36,17 @@ export default function useNodeStoragePool() {
     nodesStoragePool.value.clear()
   })
 
+  const createStoragePoolError = (nodeId: number) => {
+    return `Although node ${nodeId} appears to have sufficient storage capacity for your workload, it lacks a single internal partition capable of accommodating it. Please select a different node.`
+  }
+
+  const failedToCheckStoragePoolError = () => {
+    return new Error('Something went wrong while checking status of the node. Please check your connection and try again.')
+  }
+
   return {
-    validateNodeStoragePool
+    validateNodeStoragePool,
+    createStoragePoolError,
+    failedToCheckStoragePoolError
   }
 }

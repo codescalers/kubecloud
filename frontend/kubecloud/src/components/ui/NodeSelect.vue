@@ -6,7 +6,7 @@
 		:clearable="clearable"
 		item-value="nodeId"
 		class="node-select"
-    :error="true"
+    :error="error"
     :error-messages="errorMessage"
 	>
 		<template #item="{ item, index, props: { title, ...rest } }">

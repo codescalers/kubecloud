@@ -6,7 +6,6 @@
         Assign VMs to Nodes
       </h3>
       <p class="section-subtitle">Select nodes to host your cluster VMs</p>
-      {{ allVMs.map(vm => vm.node) }}
       <v-alert
         type="info"
         variant="tonal"
@@ -74,8 +73,8 @@
             :get-node-resources="getNodeAvailableResources"
             cpu-label="vCPU"
             :loading="validatingNode"
-            :error="!!validationError"
             :error-message="validationError"
+            :error="!!validationError"
 
           />
         </div>
@@ -223,14 +222,13 @@ const onNodeSelected = async (val: any, index: number) => {
       const isValid = await nodeStoragePool.validateNodeStoragePool(requiredStorage, val);
       if (!isValid) {
         validatingNode.value = false
-        validationError.value = 'Node storage pool is not valid'
+        validationError.value = nodeStoragePool.createStoragePoolError(val)
         return
       }
       validationError.value = ''
-    } catch (error) {
+    } catch (error ) {
       console.error(error)
-      validationError.value = 'Failed to verify node storage pool'
-
+      validationError.value = nodeStoragePool.failedToCheckStoragePoolError().message
       return
     }finally {
       validatingNode.value = false
