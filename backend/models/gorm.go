@@ -35,6 +35,10 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&SSHKey{},
 		&Cluster{},
 		&PendingRecord{},
+		&Role{},
+		&Permission{},
+		&UserRole{},
+		&UserPermission{},
 	)
 	if err != nil {
 		return nil, err

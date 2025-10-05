@@ -67,4 +67,20 @@ type DB interface {
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
 	ListAllClusters() ([]Cluster, error)
+	// RBAC methods
+	CreateRole(role *Role) error
+	GetRoleByName(name string) (Role, error)
+	ListRoles() ([]Role, error)
+	UpdateRole(role *Role) error
+	DeleteRole(id int) error
+	CreatePermission(permission *Permission) error
+	AssignRoleToUser(userID, roleID int) error
+	RemoveRoleFromUser(userID, roleID int) error
+	GetUserRoles(userID int) ([]Role, error)
+	GrantPermissionToUser(userID int, resource, action, resourceID string) error
+	RevokePermissionFromUser(userID int, resource, action, resourceID string) error
+	CheckUserPermission(userID int, resource, action, resourceID string) (bool, error)
+	CheckUserRolePermission(userID int, resource, action string) (bool, error)
+	AssignPermissionToRole(roleID, permissionID int) error
+	RemovePermissionFromRole(roleID, permissionID int) error
 }
