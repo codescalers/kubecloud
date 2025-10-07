@@ -14,29 +14,32 @@ import (
 )
 
 type Configuration struct {
-	Server                               Server             `json:"server" validate:"required,dive"`
-	Database                             DB                 `json:"database" validate:"required"`
-	JwtToken                             JwtToken           `json:"jwt_token" validate:"required"`
-	Admins                               []string           `json:"admins" validate:"required"`
-	MailSender                           MailSender         `json:"mailSender"`
-	Currency                             string             `json:"currency" validate:"required"`
-	StripeSecret                         string             `json:"stripe_secret" validate:"required"`
-	VoucherNameLength                    int                `json:"voucher_name_length"  validate:"required,gt=0"`
-	GridProxyURL                         string             `json:"gridproxy_url" validate:"required"`
-	TFChainURL                           string             `json:"tfchain_url" validate:"required"`
-	TermsANDConditions                   TermsANDConditions `json:"terms_and_conditions"`
-	ActivationServiceURL                 string             `json:"activation_service_url" validate:"required"`
-	GraphqlURL                           string             `json:"graphql_url" validate:"required"`
-	FiresquidURL                         string             `json:"firesquid_url" validate:"required"`
-	SystemAccount                        GridAccount        `json:"system_account"`
-	Redis                                Redis              `json:"redis" validate:"required,dive"`
-	DeployerWorkersNum                   int                `json:"deployer_workers_num" default:"1"`
-	Invoice                              InvoiceCompanyData `json:"invoice"`
-	SSH                                  SSHConfig          `json:"ssh" validate:"required,dive"`
-	Debug                                bool               `json:"debug"`
-	MonitorBalanceIntervalInMinutes      int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
-	NotifyAdminsForPendingRecordsInHours int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
-	ClusterHealthCheckIntervalInHours    int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"6"`
+	Server                                  Server             `json:"server" validate:"required,dive"`
+	Database                                DB                 `json:"database" validate:"required"`
+	JwtToken                                JwtToken           `json:"jwt_token" validate:"required"`
+	Admins                                  []string           `json:"admins" validate:"required"`
+	MailSender                              MailSender         `json:"mailSender"`
+	Currency                                string             `json:"currency" validate:"required"`
+	StripeSecret                            string             `json:"stripe_secret" validate:"required"`
+	VoucherNameLength                       int                `json:"voucher_name_length"  validate:"required,gt=0"`
+	GridProxyURL                            string             `json:"gridproxy_url" validate:"required"`
+	TFChainURL                              string             `json:"tfchain_url" validate:"required"`
+	TermsANDConditions                      TermsANDConditions `json:"terms_and_conditions"`
+	ActivationServiceURL                    string             `json:"activation_service_url" validate:"required"`
+	GraphqlURL                              string             `json:"graphql_url" validate:"required"`
+	FiresquidURL                            string             `json:"firesquid_url" validate:"required"`
+	SystemAccount                           GridAccount        `json:"system_account"`
+	Redis                                   Redis              `json:"redis" validate:"required,dive"`
+	DeployerWorkersNum                      int                `json:"deployer_workers_num" default:"1"`
+	Invoice                                 InvoiceCompanyData `json:"invoice"`
+	SSH                                     SSHConfig          `json:"ssh" validate:"required,dive"`
+	Debug                                   bool               `json:"debug"`
+	MonitorBalanceIntervalInMinutes         int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
+	NotifyAdminsForPendingRecordsInHours    int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	ClusterHealthCheckIntervalInHours       int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
+	ReservedNodeHealthCheckIntervalInHours  int                `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
+	ReservedNodeHealthCheckTimeoutInMinutes int                `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
+	ReservedNodeHealthCheckWorkersNum       int                `json:"reserved_node_health_check_workers_num" validate:"required,gt=0" default:"10"`
 
 	// KYC Verifier config
 	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`

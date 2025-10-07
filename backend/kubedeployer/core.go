@@ -50,6 +50,8 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		leaderIP,
 		cluster.Token,
 		masterPubKey,
+		c.mnemonic,
+		c.GridClient.Network,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create VM for node: %v", err)
@@ -162,112 +164,8 @@ func (c *Client) CancelCluster(ctx context.Context, cluster Cluster) error {
 		return fmt.Errorf("failed to get cluster contract IDs: %v", err)
 	}
 
-	if len(clusterContracts) == 0 {
-		logger.GetLogger().Debug().Msgf("No contracts to cancel for cluster %s", cluster.Name)
-		return nil
-	}
-
-	if err := c.GridClient.BatchCancelContract(clusterContracts); err != nil {
-		return fmt.Errorf("failed to cancel deployment contracts by project name: %v", err)
-	}
-
-	return nil
-}
-
-func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName string) error {
-	var nodeToRemove *Node
-	var nodeIndex int
-	for i, node := range cluster.Nodes {
-		if node.Name == nodeName {
-			nodeToRemove = &node
-			nodeIndex = i
-			break
-		}
-	}
-
-	if nodeToRemove == nil {
-		return fmt.Errorf("node %s not found in cluster", nodeName)
-	}
-
-	if nodeToRemove.Type == NodeTypeLeader {
-		return fmt.Errorf("cannot remove leader nodes")
-	}
-
-	var contractsToCancel []uint64
-	if nodeToRemove.ContractID != 0 {
-		contractsToCancel = append(contractsToCancel, nodeToRemove.ContractID)
-	}
-
-	networkWorkload := cluster.Network
-	// is the network still used by other nodes?
-	if networkContractID, exists := networkWorkload.NodeDeploymentID[nodeToRemove.NodeID]; exists && networkContractID != 0 {
-		networkStillInUse := false
-		for _, otherNode := range cluster.Nodes {
-			if otherNode.Name == nodeToRemove.Name { // skip self
-				continue
-			}
-
-			if otherNode.NodeID == nodeToRemove.NodeID { // multiple vms on same node
-				networkStillInUse = true
-				break
-			}
-		}
-
-		if !networkStillInUse {
-			contractsToCancel = append(contractsToCancel, networkContractID)
-		}
-	}
-
-	// Remove from Grid
-	if len(contractsToCancel) > 0 {
-		logger.GetLogger().Debug().Msgf("Removing node %s with contracts: %v", nodeToRemove.Name, contractsToCancel)
-		if err := c.GridClient.BatchCancelContract(contractsToCancel); err != nil {
-			return fmt.Errorf("failed to cancel node and/or network contracts: %v", err)
-		}
-	}
-
-	// Remove from database
-	updatedNodes := make([]Node, 0, len(cluster.Nodes)-1)
-	updatedNodes = append(updatedNodes, cluster.Nodes[:nodeIndex]...)
-	updatedNodes = append(updatedNodes, cluster.Nodes[nodeIndex+1:]...)
-	cluster.Nodes = updatedNodes
-
-	if networkContractID, exists := cluster.Network.NodeDeploymentID[nodeToRemove.NodeID]; exists {
-		networkWasCanceled := false
-		for _, contractID := range contractsToCancel {
-			if contractID == networkContractID {
-				networkWasCanceled = true
-				break
-			}
-		}
-
-		delete(cluster.Network.NodeDeploymentID, nodeToRemove.NodeID)
-
-		var updatedNetworkNodes []uint32
-		for _, nodeID := range cluster.Network.Nodes {
-			if nodeID != nodeToRemove.NodeID {
-				updatedNetworkNodes = append(updatedNetworkNodes, nodeID)
-			}
-		}
-		cluster.Network.Nodes = updatedNetworkNodes
-
-		if cluster.Network.NodesIPRange != nil {
-			delete(cluster.Network.NodesIPRange, nodeToRemove.NodeID)
-		}
-		if cluster.Network.MyceliumKeys != nil {
-			delete(cluster.Network.MyceliumKeys, nodeToRemove.NodeID)
-		}
-		if cluster.Network.Keys != nil {
-			delete(cluster.Network.Keys, nodeToRemove.NodeID)
-		}
-		if cluster.Network.WGPort != nil {
-			delete(cluster.Network.WGPort, nodeToRemove.NodeID)
-		}
-
-		if networkWasCanceled {
-			logger.GetLogger().Debug().Uint32("node_id", nodeToRemove.NodeID).Msg("Cleaned up network workload data for canceled network contract")
-		}
-
+	if err := c.cancelNodeContracts(clusterContracts, cluster.Name); err != nil {
+		return fmt.Errorf("failed to cancel cluster contracts: %v", err)
 	}
 
 	return nil
@@ -278,9 +176,8 @@ func (c *Client) CancelAllContractsForUser(ctx context.Context, contractIDs []ui
 		return nil
 	}
 
-	logger.GetLogger().Debug().Msgf("Canceling %d contracts", len(contractIDs))
-	if err := c.GridClient.BatchCancelContract(contractIDs); err != nil {
-		return fmt.Errorf("failed to batch cancel contracts: %v", err)
+	if err := c.cancelNodeContracts(contractIDs, "user"); err != nil {
+		return fmt.Errorf("failed to cancel user contracts: %v", err)
 	}
 
 	return nil

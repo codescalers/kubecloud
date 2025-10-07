@@ -37,11 +37,26 @@ export const useUserStore = defineStore('user',
     const error = ref<string | null>(null)
     const netBalance = ref(0)
     const pendingBalance = ref(0)
+    const balanceInterval = ref<ReturnType<typeof setInterval> | null>(null)
+
     // Computed properties
     const isAdmin = computed(() => user.value?.admin)
     const isLoggedIn = computed(() => !!token.value)
 
     // Actions
+    const startBalanceRefresh = () => {
+      if (balanceInterval.value) return
+      balanceInterval.value = setInterval(() => {
+        updateNetBalance()
+      }, 30000) // Refresh every 30 seconds
+    }
+    const stopBalanceRefresh = () => {
+      if (balanceInterval.value) {
+        clearInterval(balanceInterval.value)
+        balanceInterval.value = null
+      }
+    }
+
     const loadUser = async () => {
       const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
       user.value = userRes.data.data.user
@@ -189,6 +204,8 @@ export const useUserStore = defineStore('user',
       refreshToken,
       initializeAuth,
       updateNetBalance,
+      startBalanceRefresh,
+      stopBalanceRefresh,
       loadUser,
     }
   },

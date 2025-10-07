@@ -97,8 +97,9 @@
     </div>
 
     <div v-else class="nodes-section">
-      <v-row class="nodes-grid">
+      <v-row class="nodes-grid" align="stretch">
         <v-col
+          class="node-col"
           v-for="(node, idx) in normalizedNodes"
           :key="node.id"
           cols="12"
@@ -109,7 +110,7 @@
           <NodeCard
             :node="node"
             :isAuthenticated="true"
-            :loading="unreservingNode === rentedNodes[idx]?.rentContractId?.toString()"
+            :loading="unreservingNodes.includes(node.nodeId)"
             :disabled="false"
             :buttonLabel="'Unreserve Node'"
             @action="handleNodeAction(node, $event)"
@@ -138,7 +139,7 @@
             color="error"
             variant="outlined"
             @click="handleUnreserve"
-            :loading="unreservingNode === selectedNode?.rentContractId?.toString()"
+            :loading="(!!selectedNode && unreservingNodes.includes(selectedNode.nodeId))"
           >
             Unreserve
           </v-btn>
@@ -149,9 +150,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNodeManagement, type RentedNode } from '../../composables/useNodeManagement'
+import { useNodeManagement } from '@/composables/useNodeManagement'
+import type { RentedNode } from '@/composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
 import NodeCard from '../NodeCard.vue'
 
@@ -167,15 +169,31 @@ const {
   unhealthyNodes
 } = useNodeManagement()
 
+const listeningToNodeUpdate = ref(false)
 const notificationStore = useNotificationStore()
 
 // Dialog state
 const showUnreserveDialog = ref(false)
 const selectedNode = ref<RentedNode | null>(null)
-const unreservingNode = ref<string | null>(null)
+const unreservingNodes = ref<number[]>([])
+
+// Handle node update events
+const handleNodeUpdate = () => {
+  fetchRentedNodes();
+  unreservingNodes.value = unreservingNodes.value.filter(id => !rentedNodes.value.some(node => node.nodeId === id))
+  if (unreservingNodes.value.length === 0 || rentedNodes.value.length === 0) {
+    window.removeEventListener('node-update', handleNodeUpdate)
+    listeningToNodeUpdate.value = false
+  }
+}
 
 onMounted(() => {
   fetchRentedNodes()
+})
+
+onBeforeUnmount(() => {
+  listeningToNodeUpdate.value = false
+  window.removeEventListener('node-update', handleNodeUpdate)
 })
 
 const navigateToReserve = () => {
@@ -188,16 +206,19 @@ const confirmUnreserve = (node: RentedNode) => {
 }
 
 const handleUnreserve = async () => {
-  if (!selectedNode.value?.rentContractId) return
-  unreservingNode.value = selectedNode.value.rentContractId.toString()
+  const nodeId = selectedNode.value?.nodeId || 0
+  const contractId = selectedNode.value?.rentContractId
+  if (!contractId) return
+  unreservingNodes.value.push(nodeId)
   try {
-    await unreserveNode(selectedNode.value.rentContractId.toString(), selectedNode.value.nodeId)
+    listeningToNodeUpdate.value = true
+    window.addEventListener('node-update', handleNodeUpdate)
+    await unreserveNode(contractId.toString(), contractId)
     showUnreserveDialog.value = false
     selectedNode.value = null
   } catch (err) {
     console.error('Failed to unreserve node. Please try again.')
-  } finally {
-    unreservingNode.value = null
+    unreservingNodes.value.splice(unreservingNodes.value.indexOf(nodeId), 1)
   }
 }
 
@@ -230,7 +251,7 @@ const statCards = [
   {
     icon: 'mdi-currency-usd',
     color: 'info',
-    value: () => totalMonthlyCost.value,
+    value: () => totalMonthlyCost.value.toFixed(2),
     label: 'Monthly Cost'
   }
 ]
@@ -256,6 +277,7 @@ const normalizedNodes = computed(() =>
     rented: true,
     dedicated: false,
     certificationType: '',
+    discount_price: node.discount_price
   }))
 );
 </script>
@@ -354,6 +376,13 @@ const normalizedNodes = computed(() =>
 
 .nodes-section {
   margin-top: 2rem;
+}
+
+
+.node-col {
+  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
+  min-width: 250px; /* Enforce the minimum width */
+  max-width: 400px;
 }
 
 

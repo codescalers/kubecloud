@@ -34,7 +34,12 @@ func (n *SSENotifier) Notify(notification models.Notification, receiver ...strin
 		data = map[string]string{}
 	}
 
-	n.sse.Notify(notification.UserID, msgType, notification.Severity, data, notification.TaskID)
+	var notificationID string
+	if notification.Persist {
+		notificationID = notification.ID
+	}
+
+	n.sse.Notify(notification.UserID, msgType, notification.Severity, data, notificationID, notification.TaskID)
 	return nil
 }
 

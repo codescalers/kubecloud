@@ -134,17 +134,17 @@
                   </v-btn>
                 </div>
                 <div v-else>
-                  <v-row dense align="stretch">
+                  <v-row dense align="stretch" style="display: flex;">
                     <v-col
                       v-for="node in paginatedNodes"
                       :key="node.nodeId"
-                      cols="12" sm="6" md="4" lg="3"
+                      class="node-col"
                     >
                       <NodeCard
                         :node="node"
                         :isAuthenticated="isAuthenticated"
-                        :loading="reservingNodeId === node.nodeId"
-                        :disabled="reservingNodeId === node.nodeId"
+                        :loading="reservingNodeIds.includes(node.nodeId)"
+                        :disabled="reservingNodeIds.includes(node.nodeId)"
                         @action="handleNodeAction(node, $event)"
                         @signin="handleSignIn"
                         tabindex="0"
@@ -169,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNodes, type NodeFilters } from '../composables/useNodes'
 import { userService } from '../utils/userService'
@@ -179,13 +179,32 @@ import { useNormalizedNodes } from '../composables/useNormalizedNodes'
 import { useNodeFilters } from '../composables/useNodeFilters'
 import NodeFilterPanel from '../components/NodeFilterPanel.vue'
 import NodeCard from '../components/NodeCard.vue'
-import type { NormalizedNode } from "@/types/normalizedNode"
+import type { NormalizedNode } from "../types/normalizedNode"
 
 const router = useRouter()
 const userStore = useUserStore()
 const isAuthenticated = computed(() => userStore.isLoggedIn)
 
 const { nodes, loading, fetchNodes } = useNodes()
+
+const listeningToNodeUpdate = ref(false)
+const handleNodeUpdate = () => {
+  fetchNodes(nodeFilters)
+  reservingNodeIds.value = reservingNodeIds.value.filter(id => !nodes.value.some(node => node.nodeId === id))
+
+  if (reservingNodeIds.value.length === 0 || nodes.value.length === 0) {
+    window.removeEventListener('node-update', handleNodeUpdate)
+    listeningToNodeUpdate.value = false
+  }
+}
+
+
+onBeforeUnmount(() => {
+  reservingNodeIds.value = []
+  listeningToNodeUpdate.value = false
+  window.removeEventListener('node-update', handleNodeUpdate)
+})
+
 const normalizedNodes = useNormalizedNodes(() => nodes.value)
 const {
   filters,
@@ -198,7 +217,7 @@ const {
   clearFilters
 } = useNodeFilters(() => normalizedNodes.value)
 
-const reservingNodeId = ref<number | null>(null)
+const reservingNodeIds = ref<number[]>([])
 const reservedNodeIds = ref(new Set<number>())
 const nodeFilters = <NodeFilters>{rentable: true}
 onMounted(() => {
@@ -225,12 +244,12 @@ const reserveNode = async (node: NormalizedNode) => {
     router.push('/sign-in')
     return
   }
-  reservingNodeId.value = node.nodeId
+  reservingNodeIds.value.push(node.nodeId)
   try {
     // Fetch user balance
     const { balance } = await userService.fetchBalance()
     // Calculate daily price (assuming monthly price divided by 30)
-    const basePrice = Number(node.price_usd ?? 0)
+    const basePrice = Number(node.discount_price ?? node.price_usd ?? 0)
     const extraFee = Number(node.extraFee ?? 0) / 1000
     const dailyPrice = (basePrice + extraFee) / 30
 
@@ -244,15 +263,15 @@ const reserveNode = async (node: NormalizedNode) => {
       router.push('/dashboard')
       return
     }
-
+    if (!listeningToNodeUpdate.value) {
+      window.addEventListener('node-update', handleNodeUpdate)
+      listeningToNodeUpdate.value = true
+    }
+    reservingNodeIds.value.push(node.nodeId)
     await userService.reserveNode(node.nodeId)
-    reservedNodeIds.value.add(node.nodeId) // Optimistically remove from UI
-    fetchNodes(nodeFilters)
   } catch (err) {
     console.error(err)
-    reservedNodeIds.value.delete(node.nodeId)
-  } finally {
-    reservingNodeId.value = null
+    reservingNodeIds.value.splice(reservingNodeIds.value.indexOf(node.nodeId), 1)
   }
 }
 
@@ -491,6 +510,12 @@ watch(filteredNodes, () => {
   color: #CBD5E1;
   opacity: 0.85;
   margin-top: 0.5rem;
+}
+
+.node-col {
+  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
+  min-width: 250px; /* Enforce the minimum width */
+  max-width: 400px;
 }
 
 .range-display {

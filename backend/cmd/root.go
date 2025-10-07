@@ -143,6 +143,20 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind deployer_workers_num flag: %w", err)
 	}
 
+	// === Health Checks ===
+	if err := bindIntFlag(rootCmd, "cluster_health_check_interval_in_hours", 1, "Cluster health check interval (hours)"); err != nil {
+		return fmt.Errorf("failed to bind cluster_health_check_interval_in_hours flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "reserved_node_health_check_interval_in_hours", 1, "Reserved node health check interval (hours)"); err != nil {
+		return fmt.Errorf("failed to bind reserved_node_health_check_interval_in_hours flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "reserved_node_health_check_timeout_in_minutes", 1, "Reserved node health check timeout (minutes)"); err != nil {
+		return fmt.Errorf("failed to bind reserved_node_health_check_timeout_in_minutes flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "reserved_node_health_check_workers_num", 10, "Reserved node health check workers number"); err != nil {
+		return fmt.Errorf("failed to bind reserved_node_health_check_workers_num flag: %w", err)
+	}
+
 	// === Invoice ===
 	if err := bindStringFlag(rootCmd, "invoice.name", "", "Invoice company name"); err != nil {
 		return fmt.Errorf("failed to bind invoice.name flag: %w", err)

@@ -92,6 +92,7 @@ export interface RentedNode {
     upload: number;
     download: number;
   };
+  discount_price: number;
 }
 
 export function useNodeManagement() {
@@ -136,6 +137,7 @@ export function useNodeManagement() {
           status: node.status,
           healthy: node.healthy,
           rentContractId: node.rentContractId,
+          discount_price: node.discount_price,
         }))
         total.value = responseData.data.total || 0
       } else {
@@ -157,8 +159,6 @@ export function useNodeManagement() {
     reserveNodeLoading.value = true
     try {
       await userService.reserveNode(nodeId)
-      // Refresh the rented nodes list after successful reservation
-      await fetchRentedNodes()
     } catch (err: any) {
       useNotificationStore().error('Node reservation error', 'Failed to reserve node')
       throw err
@@ -170,10 +170,6 @@ export function useNodeManagement() {
   // Unreserve a node
   async function unreserveNode(contractId: string, nodeId: number) {
     await userService.unreserveNode(contractId, nodeId)
-    // Optimistically remove the node from the list
-    rentedNodes.value = rentedNodes.value.filter(
-      (node) => node.rentContractId?.toString() !== contractId,
-    )
   }
 
   // Add node to deployment
@@ -200,11 +196,17 @@ export function useNodeManagement() {
     }
   }
 
+
+
+  function nodeTotalCost(node: RentedNode) {
+    const basePrice = node.discount_price && typeof node.discount_price === 'number' ? node.discount_price : node.price_usd && typeof node.price_usd === 'number' ? node.price_usd : 0
+    const totalCost = basePrice + (node.extraFee || 0)
+    return totalCost
+  }
   // Calculate total monthly cost of rented nodes
   const totalMonthlyCost = computed(() => {
     return rentedNodes.value
-      .filter(node => typeof node.price_usd === 'number')
-      .reduce((sum, node) => sum + (node.price_usd || 0), 0)
+      .reduce((sum, node) => sum + (nodeTotalCost(node)), 0)
   })
 
   // Get nodes by status

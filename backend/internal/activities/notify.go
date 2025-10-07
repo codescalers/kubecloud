@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"kubecloud/internal/logger"
 
@@ -39,24 +40,34 @@ func workflowToNotificationType(workflowName string) models.NotificationType {
 
 func notifyWorkflowProgress(notificationService *notification.NotificationService) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
-		var notifcation *models.Notification
+		var notifications []*models.Notification
 		notifcationType := workflowToNotificationType(wf.Name)
-		if notifcationType == models.NotificationTypeDeployment {
-			notifcation = CreateDeploymentWorkflowNotification(ctx, wf, err)
+		switch notifcationType {
+		case models.NotificationTypeDeployment:
+			if n := CreateDeploymentWorkflowNotification(ctx, wf, err); n != nil {
+				notifications = append(notifications, n)
+			}
+		case models.NotificationTypeBilling:
+			if n := CreateBillingWorkflowNotifications(ctx, wf, err); n != nil {
+				notifications = append(notifications, n...)
+			}
+		case models.NotificationTypeNode:
+			if n := CreateNodeWorkflowNotification(ctx, wf, err); n != nil {
+				notifications = append(notifications, n)
+			}
+		case models.NotificationTypeUser:
+			if n := CreateUserWorkflowNotification(ctx, wf, err); n != nil {
+				notifications = append(notifications, n)
+			}
 		}
-		if notifcationType == models.NotificationTypeBilling {
-			notifcation = CreateBillingWorkflowNotification(ctx, wf, err)
-		}
-		if notifcationType == models.NotificationTypeNode {
-			notifcation = CreateNodeWorkflowNotification(ctx, wf, err)
-		}
-		if notifcationType == models.NotificationTypeUser {
-			notifcation = CreateUserWorkflowNotification(ctx, wf, err)
-		}
-		if notifcation != nil {
-			err = notificationService.Send(ctx, notifcation)
-			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
+
+		for _, n := range notifications {
+
+			if err := notificationService.Send(ctx, n); err != nil {
+				logger.GetLogger().Error().
+					Str("notification_id", n.ID).
+					Err(err).
+					Msg("Failed to send notification")
 			}
 		}
 	}
@@ -73,9 +84,12 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 	var notificationPayload map[string]string
 
 	if err != nil {
+		var clusterName string
 		message := fmt.Sprintf("%s failed", workflowDesc)
 		if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
+			clusterName = cluster.Name
 			message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
+
 		}
 
 		notificationPayload = notification.MergePayload(notification.CommonPayload{
@@ -84,7 +98,9 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 			Subject: fmt.Sprintf("%s failed", workflowDesc),
 			Status:  "failed",
 		}, map[string]string{
-			"name": wf.Name,
+			"workflow_name": workflowDesc,
+			"cluster_name":  clusterName,
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		})
 
 		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)
@@ -97,7 +113,9 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 			Subject: fmt.Sprintf("%s completed successfully", workflowDesc),
 			Status:  "succeeded",
 		}, map[string]string{
-			"name": wf.Name,
+			"workflow_name": getWorkflowDescription(wf.Name),
+			"cluster_name":  cluster.Name,
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		})
 
 	} else {
@@ -112,10 +130,11 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 				workflowDesc),
 			Status: "succeeded",
 		}, map[string]string{
-			"name":         wf.Name,
-			"cluster_name": cluster.Name,
-			"node_count":   fmt.Sprintf("%d", nodeCount),
-			"total_steps":  fmt.Sprintf("%d", totalSteps),
+			"workflow_name": workflowDesc,
+			"cluster_name":  cluster.Name,
+			"node_count":    fmt.Sprintf("%d", nodeCount),
+			"total_steps":   fmt.Sprintf("%d", totalSteps),
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		})
 	}
 
@@ -148,21 +167,17 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 
 	var message string
 	var notificationType string
-	var severity models.NotificationSeverity
 	switch {
 	case err != nil:
 		notificationType = "step_failed"
 		message = fmt.Sprintf("Step failed%s", progressStr)
-		severity = models.NotificationSeverityError
 	case status == "completed":
 		notificationType = "step_completed"
 		message = fmt.Sprintf("Step completed%s", progressStr)
-		severity = models.NotificationSeveritySuccess
 	case status == "retrying":
 		notificationType = "step_retrying"
 		retryStr := fmt.Sprintf(" - retry %d/%d", retryCount, maxRetries)
 		message = fmt.Sprintf("Retrying Step %s%s", progressStr, retryStr)
-		severity = models.NotificationSeverityWarning
 	default:
 		return
 	}
@@ -191,7 +206,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 		payload,
 		models.WithNoPersist(),
 		models.WithChannels(notification.ChannelUI),
-		models.WithSeverity(severity),
+		models.WithSeverity(models.NotificationSeverityInfo),
 	)
 	err = notificationService.Send(context.Background(), notification)
 	if err != nil {
@@ -268,11 +283,23 @@ func isDeployStep(stepName string) bool {
 	return strings.HasPrefix(stepName, "deploy-") && strings.HasSuffix(stepName, "-node")
 }
 
-func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
+func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, err error) []*models.Notification {
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
 		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
+	}
+
+	var amountUSD, newBalanceUSD float64
+	if amountVal, ok := wf.State["amount"]; ok {
+		if amount, okAmount := amountVal.(uint64); okAmount {
+			amountUSD = internal.FromUSDMilliCentToUSD(amount)
+		}
+	}
+	if balanceVal, ok := wf.State["new_balance"]; ok {
+		if balance, okBalance := balanceVal.(uint64); okBalance {
+			newBalanceUSD = internal.FromUSDMilliCentToUSD(balance)
+		}
 	}
 
 	if wf.Name == workflow.WorkflowAdminCreditBalance {
@@ -291,21 +318,40 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 			severity = models.NotificationSeverityError
 			payloadData.Message = fmt.Sprintf("Money transfer to user %d's account failed", userID)
 			payloadData.Subject = "Money transfer to user's account failed"
-			return models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
+				"workflow_name": getWorkflowDescription(wf.Name),
+				"timestamp":     time.Now().Local().Format(TimestampFormat),
+			}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+			return []*models.Notification{adminNotif}
 		}
-		return models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
+			"workflow_name": getWorkflowDescription(wf.Name),
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
+		}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+		// also notify the user about success
+		userPayload := notification.MergePayload(notification.CommonPayload{
+			Message: fmt.Sprintf("Funds were credited to your account. Amount added: $%.2f.", amountUSD),
+			Subject: "Your Account Has Been Credited",
+			Status:  "succeeded",
+		}, map[string]string{
+			"workflow_name": getWorkflowDescription(wf.Name),
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
+			"amount":        fmt.Sprintf("%.2f", amountUSD),
+		})
+		userNotif := models.NewNotification(userID, models.NotificationTypeBilling, userPayload, models.WithSeverity(severity), models.WithChannels(notification.ChannelEmail))
+		return []*models.Notification{adminNotif, userNotif}
 	}
 
 	var payload map[string]string
 
 	// Extract amount and balance from workflow state
-	var amountUSD, newBalanceUSD float64
 	if amountVal, ok := wf.State["amount"]; ok {
 		if amount, okAmount := amountVal.(uint64); okAmount {
 			amountUSD = internal.FromUSDMilliCentToUSD(amount)
 		}
 	}
-	if balanceVal, ok := wf.State["new_balance"]; ok {
+
+	if balanceVal, exists := wf.State["net_balance"]; exists {
 		if balance, okBalance := balanceVal.(uint64); okBalance {
 			newBalanceUSD = internal.FromUSDMilliCentToUSD(balance)
 		}
@@ -317,7 +363,7 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 	if err == nil {
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
-		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance: $%.2f.", amountUSD, newBalanceUSD)
+		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
 		if wf.Name == workflow.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
@@ -325,7 +371,8 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 		}
 	}
 	payloadData := map[string]string{
-		"name": wf.Name,
+		"workflow_name": getWorkflowDescription(wf.Name),
+		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 	if amountUSD > 0 {
 		payloadData["amount"] = fmt.Sprintf("%.2f", amountUSD)
@@ -344,11 +391,11 @@ func CreateBillingWorkflowNotification(ctx context.Context, wf *ewf.Workflow, er
 		payload["error"] = err.Error()
 	}
 
-	return models.NewNotification(
+	return []*models.Notification{models.NewNotification(
 		userID,
 		models.NotificationTypeBilling,
 		payload,
-	)
+	)}
 }
 
 func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
@@ -397,7 +444,8 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 
 	// Build payload data
 	payloadData := map[string]string{
-		"name": wf.Name,
+		"workflow_name": getWorkflowDescription(wf.Name),
+		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 	if nodeID > 0 {
 		payloadData["node_id"] = fmt.Sprintf("%d", nodeID)
@@ -457,7 +505,8 @@ func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	}
 
 	payloadData := map[string]string{
-		"name": wf.Name,
+		"workflow_name": getWorkflowDescription(wf.Name),
+		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 
 	payload = notification.MergePayload(notification.CommonPayload{

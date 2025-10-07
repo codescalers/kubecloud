@@ -10,6 +10,7 @@ import (
 	"time"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -19,7 +20,7 @@ var workflowsDescriptions = map[string]string{
 	workflow.WorkflowRemoveNode:               "Removing Node",
 	workflow.WorkflowDeleteCluster:            "Deleting Cluster",
 	workflow.WorkflowDeleteAllClusters:        "Deleting All Clusters",
-	workflow.WorkflowRollbackFailedDeployment: "Rollback Deployment",
+	workflow.WorkflowRollbackFailedDeployment: "Rollback",
 	workflow.WorkflowUserRegistration:         "User Registration",
 	workflow.WorkflowUserVerification:         "User Verification",
 	workflow.WorkflowChargeBalance:            "Charge Balance",
@@ -27,6 +28,7 @@ var workflowsDescriptions = map[string]string{
 	workflow.WorkflowRedeemVoucher:            "Redeem Voucher",
 	workflow.WorkflowReserveNode:              "Reserve Node",
 	workflow.WorkflowUnreserveNode:            "Unreserve Node",
+	workflow.WorkflowTrackClusterHealth:       "Cluster Health Check",
 }
 
 func RegisterEWFWorkflows(
@@ -40,6 +42,7 @@ func RegisterEWFWorkflows(
 	sponsorKeyPair subkey.KeyPair,
 	metrics *metrics.Metrics,
 	notificationService *notification.NotificationService,
+	proxyClient proxy.Client,
 ) {
 	engine.Register(workflow.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(workflow.StepCreateUser, CreateUserStep(config, db))
@@ -49,14 +52,15 @@ func RegisterEWFWorkflows(
 	engine.Register(workflow.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(workflow.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
 	engine.Register(workflow.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
-	engine.Register(workflow.StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic, notificationService))
-	engine.Register(workflow.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db, notificationService))
+	engine.Register(workflow.StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic))
+	engine.Register(workflow.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db))
 	engine.Register(workflow.StepCreateIdentity, CreateIdentityStep())
 	engine.Register(workflow.StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(workflow.StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(workflow.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db, notificationService))
+	engine.Register(workflow.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
 	engine.Register(workflow.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(workflow.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
+	engine.Register(workflow.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -126,12 +130,14 @@ func RegisterEWFWorkflows(
 	reserveNodeTemplate.Steps = []ewf.Step{
 		{Name: workflow.StepCreateIdentity, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: workflow.StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: workflow.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(workflow.WorkflowReserveNode, &reserveNodeTemplate)
 
 	unreserveNodeTemplate := newKubecloudWorkflowTemplate(notificationService)
 	unreserveNodeTemplate.Steps = []ewf.Step{
 		{Name: workflow.StepUnreserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: workflow.StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
 	engine.RegisterTemplate(workflow.WorkflowUnreserveNode, &unreserveNodeTemplate)
 
@@ -141,6 +147,7 @@ func RegisterEWFWorkflows(
 		{Name: workflow.StepVerifyClusterReady, RetryPolicy: standardRetryPolicy},
 	}
 	trackClusterHealthWFTemplate.AfterWorkflowHooks = append(trackClusterHealthWFTemplate.AfterWorkflowHooks, hookClusterHealthCheck(notificationService))
+	trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotifyWorkflowStarted(notificationService)}
 	engine.RegisterTemplate(workflow.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
 	// registerDeploymentActivities(engine, metrics, db, notificationService, config)

@@ -181,6 +181,10 @@ const getAvailableNodesForVM = (vmIndex: number) => {
   const requiredStorage = (vm.disk || 0) + vm.rootfs;
 
   return props.availableNodes.filter(node => {
+    const nodeIsNotInCluster = !props.allVMs.some((vm: any) => vm.node === node.nodeId);
+    if(!nodeIsNotInCluster &&  vm.node !== node.nodeId){
+      return false;
+    }
     const vmResources = vm.node === node.nodeId ? { ram: vm.ram, storage: requiredStorage } : undefined;
     const available = getNodeResources(node, vmResources);
     return available.cpu >= vm.vcpu && available.ram >= vm.ram && available.storage >= requiredStorage;

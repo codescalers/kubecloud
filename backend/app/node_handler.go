@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"gorm.io/gorm"
 )
 
 var (
@@ -248,11 +250,27 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 	node := nodes[0]
 
+	if node.Rented {
+		Error(c, http.StatusBadRequest, "Node is already reserved.", "")
+		return
+	}
+
+	userNode, err := h.db.GetUserNodeByNodeID(uint64(nodeID))
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.GetLogger().Error().Err(err).Uint32("node_id", nodeID).Msg("failed to check node reservation state")
+		InternalServerError(c)
+		return
+	}
+	if err == nil && userNode.NodeID != 0 {
+		Error(c, http.StatusBadRequest, "Node is already reserved.", "")
+		return
+	}
 	// validate user has enough balance for reserving node
 	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
+		return
 	}
 
 	//TODO: check price in month constant
@@ -269,9 +287,10 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":  userID,
-		"mnemonic": user.Mnemonic,
-		"node_id":  nodeID,
+		"user_id":       userID,
+		"mnemonic":      user.Mnemonic,
+		"node_id":       nodeID,
+		"target_status": workflow.NodeRented,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)
@@ -394,18 +413,30 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 	contractID := uint32(contractID64)
+	userNode, err := h.db.GetUserNodeByContractID(contractID64)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
+			return
+		}
+		logger.GetLogger().Error().Err(err)
+		InternalServerError(c)
+		return
+	}
 
 	wf, err := h.ewfEngine.NewWorkflow(workflow.WorkflowUnreserveNode)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		logger.GetLogger().Error().Err(err)
 		InternalServerError(c)
 		return
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":     userID,
-		"mnemonic":    user.Mnemonic,
-		"contract_id": contractID,
+		"user_id":       userID,
+		"mnemonic":      user.Mnemonic,
+		"contract_id":   contractID,
+		"node_id":       userNode.NodeID,
+		"target_status": workflow.NodeRentable,
 	}
 
 	h.ewfEngine.RunAsync(c, wf)

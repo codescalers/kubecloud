@@ -1,6 +1,6 @@
 <template>
   <div class="stats-grid">
-    <div v-for="stat in stats" :key="stat.label" class="stat-item">
+    <div v-for="stat in props.stats" :key="stat.label" class="stat-item">
       <v-icon :icon="stat.icon" size="24" :color="stat.color || 'var(--color-primary)'"></v-icon>
       <div class="stat-info">
         <div class="stat-number">{{ stat.value }}</div>
@@ -23,7 +23,6 @@ interface Stat {
 }
 
 const props = defineProps<{ stats: Stat[] }>()
-const stats = props.stats
 </script>
 
 <style scoped>

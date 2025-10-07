@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -57,27 +59,89 @@ type TFGWReconciler struct {
 func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = logf.FromContext(ctx)
 
-	mne := os.Getenv("MNEMONIC")
-	net := os.Getenv("NETWORK")
-	if net == "" || mne == "" {
-		klog.Warning("ThreeFold network or mnemonic not configured, skipping gateway deployment")
-		return ctrl.Result{}, fmt.Errorf("threefold network or mnemonic not configured")
-	}
-	pluginClient, err := deployer.NewTFPluginClient(
-		mne,
-		deployer.WithNetwork(net),
-		// TODO: remove this after testing
-		// deployer.WithSubstrateURL("wss://tfchain.dev.grid.tf/ws"),
-		// deployer.WithProxyURL("https://gridproxy.dev.grid.tf"),
-	)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to create TF plugin client: %w", err)
-	}
-
 	var tfgw ingressv1.TFGW
 	if err := r.Get(ctx, req.NamespacedName, &tfgw); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
+	// updating status trigger another reconcile, avoid by checking the status
+	if meta.IsStatusConditionTrue(tfgw.Status.Conditions, ingressv1.ConditionTypeReady) {
+		return ctrl.Result{}, nil
+	}
+
+	mne := os.Getenv("MNEMONIC")
+	net := os.Getenv("NETWORK")
+	if net == "" || mne == "" {
+		klog.Warning("ThreeFold network or mnemonic not configured, skipping gateway deployment")
+
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "MissingConfiguration",
+			Message: "ThreeFold network or mnemonic not configured",
+		})
+
+		tfgw.Status.Message = "Configuration missing: MNEMONIC or NETWORK not set"
+		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, nil
+	}
+
+	token := os.Getenv("K3S_TOKEN")
+	mne, err := decrypt(token, mne)
+	if token == "" || err != nil {
+		klog.Warningf("Failed to decrypt mnemonic, using raw value: %v", err)
+
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "DecryptionFailed",
+			Message: "Failed to decrypt mnemonic, using raw value",
+		})
+
+		tfgw.Status.Message = "Failed to decrypt mnemonic, using raw value"
+		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, nil
+	}
+
+	sessionID, err := generateSessionId()
+	if err != nil {
+		klog.Warning("Failed to generate session id")
+
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "SessionGenerationFailed",
+			Message: "Failed to generate session ID",
+		})
+
+		tfgw.Status.Message = "Failed to generate session ID"
+		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, nil
+	}
+
+	pluginClient, err := deployer.NewTFPluginClient(
+		mne,
+		deployer.WithNetwork(net),
+		deployer.WithDisableSentry(),
+		deployer.WithSessionId(sessionID),
+	)
+	if err != nil {
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "ClientCreationFailed",
+			Message: fmt.Sprintf("Failed to create TF plugin client: %v", err),
+		})
+
+		tfgw.Status.Message = "Failed to create TF plugin client"
+		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, fmt.Errorf("failed to create TF plugin client: %w", err)
+	}
+	defer pluginClient.Close()
 
 	// Handle deletion logic
 	if !tfgw.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -111,16 +175,31 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Backends: tfgw.Spec.Backends,
 	})
 	if err != nil {
-		tfgw.Status.FQDN = ""
+		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+			Type:    ingressv1.ConditionTypeError,
+			Status:  metav1.ConditionFalse,
+			Reason:  "DeploymentFailed",
+			Message: fmt.Sprintf("Failed to deploy gateway: %v", err),
+		})
+
 		tfgw.Status.Message = "Failed to create DNS record"
-	} else {
-		tfgw.Status.FQDN = res.FQDN
-		tfgw.Status.Message = "DNS record created"
+		_ = r.Status().Update(ctx, &tfgw)
+
+		return ctrl.Result{}, fmt.Errorf("failed to deploy gateway: %w", err)
 	}
 
+	tfgw.Status.FQDN = res.FQDN
+	tfgw.Status.Message = "DNS record created"
+
+	meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+		Type:    ingressv1.ConditionTypeReady,
+		Status:  metav1.ConditionTrue,
+		Reason:  "Ready",
+		Message: "Gateway is ready and accessible",
+	})
 	_ = r.Status().Update(ctx, &tfgw)
 
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

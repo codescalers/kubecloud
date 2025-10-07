@@ -257,14 +257,15 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		kubeconfig, ok := state["kubeconfig"].(string)
-		if !ok || kubeconfig == "" {
-			return fmt.Errorf("kubeconfig not found in state")
-		}
-
 		dbCluster := &models.Cluster{
 			ProjectName: cluster.ProjectName,
-			Kubeconfig:  kubeconfig,
+		}
+
+		kubeconfig, ok := state["kubeconfig"].(string)
+		if !ok || kubeconfig == "" {
+			logger.GetLogger().Warn().Str("project_name", cluster.ProjectName).Msg("No kubeconfig found in state to store")
+		} else {
+			dbCluster.Kubeconfig = kubeconfig
 		}
 
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
@@ -321,6 +322,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			if err != nil {
 				return fmt.Errorf("failed to get cluster result: %w", err)
 			}
+			state["cluster"] = cluster
 		}
 
 		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {

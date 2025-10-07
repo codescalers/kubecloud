@@ -360,7 +360,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string, notificationService *notification.NotificationService) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -419,7 +419,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 	}
 }
 
-func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
+func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -449,14 +449,18 @@ func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
-		state["new_balance"] = user.CreditCardBalance
 		state["mnemonic"] = user.Mnemonic
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
 
 		return nil
 	}
 }
 
-func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
+func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -485,7 +489,13 @@ func UpdateCreditedBalanceStep(db models.DB, notificationService *notification.N
 		if err := db.UpdateUserByID(&user); err != nil {
 			return fmt.Errorf("error updating user: %w", err)
 		}
-		state["new_balance"] = user.CreditedBalance
+
+		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
+		if netBalance < 0 {
+			netBalance = 0
+		}
+		state["net_balance"] = uint64(netBalance)
+
 		return nil
 	}
 }

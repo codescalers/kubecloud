@@ -8,19 +8,21 @@ import (
 
 type Client struct {
 	GridClient deployer.TFPluginClient
+	mnemonic   string
 }
 
 func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
-	plugingOpts := []deployer.PluginOpt{
+	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(gridNet),
+		deployer.WithDisableSentry(),
 	}
 	if debug {
-		plugingOpts = append(plugingOpts, deployer.WithLogs())
+		pluginOpts = append(pluginOpts, deployer.WithLogs())
 	}
 
 	tfplugin, err := deployer.NewTFPluginClient(
 		mnemonic,
-		plugingOpts...,
+		pluginOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TFPluginClient: %v", err)
@@ -28,6 +30,7 @@ func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
 
 	return &Client{
 		GridClient: tfplugin,
+		mnemonic:   mnemonic,
 	}, nil
 }
 

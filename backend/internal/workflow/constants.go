@@ -49,4 +49,8 @@ const (
 	StepVerifyNewNodes          = "prepare-verify-new-nodes"
 	StepSendEmailNotification   = "send-email-notification"
 	StepSendUINotification      = "send-ui-notification"
+	StepVerifyNodeState         = "verify-node-state"
+
+	NodeRentable = "rentable"
+	NodeRented   = "rented"
 )

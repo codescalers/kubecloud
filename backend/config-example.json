@@ -8,8 +8,8 @@
   },
   "jwt_token": {
     "secret": "your-jwt-secret-key-here-make-it-long-and-secure",
-    "access_token_expiry_minutes": 15,
-    "refresh_token_expiry_hours": 25
+    "access_expiry_minutes": 15,
+    "refresh_expiry_hours": 25
   },
   "admins": ["admin@example.com", "admin2@example.com"],
   "mailSender": {
@@ -32,7 +32,7 @@
   "graphql_url": "https://graphql.grid.tf/graphql",
   "firesquid_url": "https://squid.grid.tf/graphql",
   "system_account": {
-    "mnemonics": "your system account 12-word mnemonic phrase goes here for blockchain operations",
+    "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
     "network": "dev"
   },
   "redis": {
@@ -52,7 +52,12 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
-  "cluster_health_check_interval_hours": 6,
+  "monitor_balance_interval_in_minutes": 120,
+  "notify_admins_for_pending_records_in_hours": 24,
+  "cluster_health_check_interval_in_hours": 1,
+  "reserved_node_health_check_interval_in_hours": 1,
+  "reserved_node_health_check_timeout_in_minutes": 1,
+  "reserved_node_health_check_workers_num": 10,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
   "logger": {

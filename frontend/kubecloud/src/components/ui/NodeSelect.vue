@@ -7,9 +7,9 @@
 		item-value="nodeId"
 		class="node-select"
 	>
-		<template #item="{ item, index, props: itemProps }">
+		<template #item="{ item, index, props: { title, ...rest } }">
 			<div>
-				<div v-bind="itemProps" class="node-option-row">
+				<div v-bind="rest" class="node-option-row">
 					<NodeInfoRow
 						:node="item.raw"
 						:get-node-resources="getResources"

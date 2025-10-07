@@ -36,6 +36,7 @@ type SSEMessage struct {
 	Severity  string            `json:"severity"`
 	TaskID    string            `json:"task_id,omitempty"`
 	Timestamp time.Time         `json:"timestamp"`
+	ID        string            `json:"id,omitempty"`
 }
 
 // NewSSEManager creates a new SSE manager
@@ -98,7 +99,7 @@ func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
 }
 
 // Notify sends a message to all clients of a specific user
-func (s *SSEManager) Notify(userID int, msgType string, severity models.NotificationSeverity, data map[string]string, taskID ...string) {
+func (s *SSEManager) Notify(userID int, msgType string, severity models.NotificationSeverity, data map[string]string, id string, taskID ...string) {
 	message := SSEMessage{
 		Type:     msgType,
 		Severity: string(severity),
@@ -107,6 +108,7 @@ func (s *SSEManager) Notify(userID int, msgType string, severity models.Notifica
 			"status":  data["status"],
 		},
 		Timestamp: time.Now(),
+		ID:        id,
 	}
 
 	if len(taskID) > 0 {
@@ -151,7 +153,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	defer s.RemoveClient(userID, clientChan)
 
 	// Send initial connection message
-	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"})
+	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"}, "")
 
 	// Stream messages to client
 	c.Stream(func(w io.Writer) bool {

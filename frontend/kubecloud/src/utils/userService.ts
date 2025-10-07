@@ -159,17 +159,12 @@ export class UserService {
 
   // Reserve a node
   async reserveNode(nodeId: number, data: ReserveNodeRequest = {}) {
-    const response = await api.post<ApiResponse<ReserveNodeResponse>>(
+    await api.post<ApiResponse<ReserveNodeResponse>>(
       `/v1/user/nodes/${nodeId}`,
       data,
       { requiresAuth: true, showNotifications: true },
     )
-    try {
-      await this.trackNodeStatus(nodeId, 'rented')
-    } catch (error) {
-      useNotificationStore().error('Node reservation error', 'Failed to reserve node')
-      throw new Error('Failed to reserve node')
-    }
+
   }
 
   // List reserved nodes
@@ -179,15 +174,10 @@ export class UserService {
 
   // Unreserve a node
   async unreserveNode(contractId: string, nodeId: number) {
-    const response = await api.delete<ApiResponse<UnreserveNodeResponse>>(
+    await api.delete<ApiResponse<UnreserveNodeResponse>>(
       `/v1/user/nodes/unreserve/${contractId}`,
       { requiresAuth: true, showNotifications: true },
     )
-    try {
-      await this.trackNodeStatus(nodeId, 'rentable')
-    } catch (error) {
-      useNotificationStore().error('Node unreservation error', 'Failed to verify node status')
-    }
   }
 
   // Charge balance
@@ -327,7 +317,7 @@ export class UserService {
       const intervalId = setInterval(async () => {
         const nodes = await this.listReservedNodes()
 
-        const node =(nodes?.data as {data: {nodes: {nodeId: number}[]}}).data.nodes.find((n) => n.nodeId === nodeId)
+        const node =(nodes?.data as {data: {nodes: {nodeId: number}[]}}).data.nodes?.find((n) => n.nodeId === nodeId)
         if((targetStatus === "rented" && node) || (targetStatus === "rentable" && !node)){
           clearInterval(intervalId)
           resolve(true)

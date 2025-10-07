@@ -9,6 +9,7 @@
             <v-form ref="form"  v-model="formValid">
               <div class="add-form-wrapper">
                 <v-text-field
+                  ref="nameField"
                   :rules="nameRules"
                   v-model="addFormName"
                   label="Name"
@@ -67,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, useTemplateRef, nextTick } from 'vue';
 import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
@@ -78,6 +79,7 @@ import { RULES, createUniqueNodeNameRule } from "../../utils/validation";
 import { useNodes } from '../../composables/useNodes';
 import { useNotificationStore } from '../../stores/notifications';
 
+const nameField = useTemplateRef('nameField')
 const props = defineProps<{
   modelValue: boolean,
   cluster: any
@@ -113,9 +115,9 @@ const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
 const form = ref<any>(null)
-const names = clusterNodes.value.map((node: any) => node.original_name);
+const names = computed(() => clusterNodes.value.map((node: any) => node.original_name));
 const nameRules = computed(() => [
-  createUniqueNodeNameRule(names, addFormName.value)
+  createUniqueNodeNameRule(names.value, addFormName.value)
 ]);
 
 
@@ -152,6 +154,12 @@ function resetForm() {
   addFormSshKeys.value = sshKeys.value.length > 0 ? [sshKeys.value[0].ID] : []
 }
 
+watch(() => names.value, async () => {
+  if (nameField.value && addFormName.value) {
+    await nextTick()
+    nameField.value.validate()
+  }
+})
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen) {
     await fetchNodes()
@@ -179,7 +187,8 @@ const availableNodes = computed<RawNode[]>(() => {
   return nodes.value.filter((node: RawNode) => {
     const availRAM = getAvailableRAM(node)
     const availStorage = getAvailableStorage(node)
-    return availRAM > 0 && availStorage > 0
+    const nodeIsNotInCluster = !clusterNodes.value.some((clusterNode: any) => clusterNode.node_id === node.nodeId)
+    return availRAM > 0 && availStorage > 0 && nodeIsNotInCluster
   })
 })
 

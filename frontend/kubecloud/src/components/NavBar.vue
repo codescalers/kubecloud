@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="navbar-content">
       <router-link to="/" class="navbar-logo">
-        <img :src="logo" alt="Mycelium Cloud Logo" class="logo" width="200">
+        <img :src="logo" alt="Mycelium Cloud Logo" class="logo">
       </router-link>
       <div class="navbar-main-links">
         <router-link v-for="link in publicLinks" :key="link.to" :to="link.to" class="navbar-link" active-class="active-link">

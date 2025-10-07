@@ -9,3 +9,9 @@ func NewSqliteDB(file string) (DB, error) {
 	dialector := sqlite.Open(file)
 	return NewGormStorage(dialector)
 }
+
+// NewSqliteDBNoMigrate opens the SQLite database without running any schema
+func NewSqliteDBNoMigrate(file string) (DB, error) {
+	dialector := sqlite.Open(file)
+	return NewGormStorageNoMigrate(dialector)
+}

@@ -48,6 +48,15 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 	return gormDB, gormDB.UpdatePendingRecordsWithUsername()
 }
 
+func NewGormStorageNoMigrate(dialector gorm.Dialector) (DB, error) {
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	return &GormDB{db: db}, nil
+}
+
 // TODO: TO BE REMOVED
 func (s *GormDB) UpdatePendingRecordsWithUsername() error {
 	var pendingRecords []PendingRecord
@@ -287,10 +296,26 @@ func (s *GormDB) CreateUserNode(userNode *UserNodes) error {
 	return s.db.Create(&userNode).Error
 }
 
+// DeleteUserNode deletes a node record for user by its contract ID
+func (s *GormDB) DeleteUserNode(contractID uint64) error {
+	return s.db.Where("contract_id = ?", contractID).Delete(&UserNodes{}).Error
+}
+
 // ListUserNodes returns all nodes records for user by its ID
 func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
 	var userNodes []UserNodes
 	return userNodes, s.db.Where("user_id = ?", userID).Find(&userNodes).Error
+}
+
+// ListAllReservedNodes returns all reserved nodes from all users
+func (s *GormDB) ListAllReservedNodes() ([]UserNodes, error) {
+	var userNodes []UserNodes
+	return userNodes, s.db.Find(&userNodes).Error
+}
+
+func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
+	var userNode UserNodes
+	return userNode, s.db.Where("node_id = ?", nodeID).First(&userNode).Error
 }
 
 // CreateNotification creates a new notification
@@ -415,6 +440,11 @@ func (s *GormDB) CountAllClusters() (int64, error) {
 func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 	var clusters []Cluster
 	return clusters, s.db.Find(&clusters).Error
+}
+
+func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
+	var userNode UserNodes
+	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
 }
 
 func migrateNotifications(db *gorm.DB) error {
