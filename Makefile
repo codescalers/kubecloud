@@ -5,14 +5,14 @@ run:
 	./myceliumcloud --config config.json & \
 	pid=$$!; \
 	echo "Backend started at $$pid"; \
-	sleep 1; \
 	if ps -p $$pid > /dev/null; then \
+		trap 'if [ -n "$$pid" ]; then echo "Stopping backend..."; kill -9 $$pid 2>/dev/null; rm -f ../../backend/myceliumcloud; pid=""; fi' INT EXIT;\
 		cd ../frontend/kubecloud; \
 		[ -d node_modules ] || npm install; \
-		trap "echo \"Frontend failed to start, Stopping backend...\"; kill $$pid; rm -f ../../backend/myceliumcloud" EXIT; \
 		npm run dev; \
 	else \
 		echo "Backend failed to start"; \
+		rm -f ../../backend/myceliumcloud; \
 	fi
 
 
