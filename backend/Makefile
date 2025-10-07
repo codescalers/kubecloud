@@ -16,3 +16,6 @@ example:
 
 migrate-db:
 	@CGO_ENABLED=1 go run cmd/migrate_db/main.go --source-db ${source-db} --destination-db ${destination-db}
+	
+postman-collection:
+	@openapi2postmanv2 -s docs/swagger.yaml -o ../postman/kubecloud_collection.json -p
