@@ -150,3 +150,31 @@ The priority order for configuration is:
 4. Default values
 
 This allows you to override specific settings without modifying the configuration file.
+
+
+## API Documentation
+
+The backend APIs is defined using **Swagger (OpenAPI)** and can be viewed or tested using **Postman collections**.
+
+### Swagger (OpenAPI)
+
+The OpenAPI definition file is located at [docs/swagger.yaml](docs/swagger.yaml)
+
+You can open it directly in a Swagger UI at
+[`http://localhost:8080/swagger/index.html`](http://localhost:8080/swagger/index.html) to browse and test endpoints interactively.
+
+### Postman Collection
+
+A ready-to-use Postman collection is available at [../postman/kubecloud_collection.json](../postman/kubecloud_collection.json)
+
+
+This collection contains all API endpoints, parameters, and sample request/response bodies generated from the Swagger file.
+
+It allows quick import and testing of the API without having to generate the collection manually.
+
+To use it:
+
+1. Open **Postman**.
+2. Click **Import → File** and select `../postman/kubecloud_collection.json`.
+
+
