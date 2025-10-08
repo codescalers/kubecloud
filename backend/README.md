@@ -172,9 +172,18 @@ This collection contains all API endpoints, parameters, and sample request/respo
 
 It allows quick import and testing of the API without having to generate the collection manually.
 
-To use it:
+#### How to use the postman collection
 
 1. Open **Postman**.
 2. Click **Import → File** and select `../postman/kubecloud_collection.json`.
 
 
+#### How to update the postman collection
+
+If any changes are made to the Swagger file, you can regenerate the Postman collection by running:
+
+```bash
+make update-postman-collection
+```
+
+This command automatically converts the latest `swagger.yaml` into an updated Postman collection file under the `postman` directory.
