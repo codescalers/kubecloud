@@ -54,7 +54,7 @@ type Handler struct {
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
-	cryptoMgr       *internal.CryptoManager
+	cryptoMgr           *internal.CryptoManager
 }
 
 // NewHandler create new handler
@@ -89,7 +89,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
-		cryptoMgr:       cryptoManager,
+		cryptoMgr:           cryptoManager,
 	}
 }
 
