@@ -15,6 +15,9 @@ run:
 		rm -f ../../backend/myceliumcloud; \
 	fi
 
+run-compose:
+	@docker compose build
+	@docker compose up -d
 
 
 backend-run: backend/config.json 
