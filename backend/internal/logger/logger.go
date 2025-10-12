@@ -1,7 +1,9 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -56,17 +58,23 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 		Compress:   config.Compress,
 	}
 
-	lokiWriter := NewLokiWriter(
-		lokiConfig.URL,
-		lokiConfig.Labels,
-		lokiConfig.FlushInterval,
-	)
-
-	multi := zerolog.MultiLevelWriter(
+	writers := []io.Writer{
 		zerolog.ConsoleWriter{Out: os.Stderr},
 		rotator,
-		lokiWriter,
-	)
+	}
+
+	var lokiWriter *LokiWriter
+	if lokiConfig != nil && lokiConfig.URL != "" {
+		lokiWriter = NewLokiWriter(lokiConfig.URL, lokiConfig.Labels, lokiConfig.FlushInterval)
+
+		if err := pingLoki(lokiWriter); err != nil {
+			lokiWriter = nil
+		} else {
+			writers = append(writers, lokiWriter)
+		}
+	}
+
+	multi := zerolog.MultiLevelWriter(writers...)
 
 	// Initialize the singleton instance
 	instance = &LoggerInstance{
@@ -77,10 +85,19 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 	// Set log level based on debug configuration
 	if debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-		instance.logger.Debug().Msg("debug logging enabled")
 	} else {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+
+	outputTypes := []string{"console", "file"}
+	if lokiWriter != nil {
+		outputTypes = append(outputTypes, "Loki")
+	}
+
+	instance.logger.Info().
+		Bool("level-debug", debug).
+		Strs("writers", outputTypes).
+		Msgf("Logger initialized")
 
 	return nil
 }
@@ -102,4 +119,23 @@ func CloseLogger() {
 	if instance != nil && instance.lokiWriter != nil {
 		instance.lokiWriter.Close()
 	}
+}
+
+func pingLoki(lw *LokiWriter) error {
+	if lw == nil {
+		return fmt.Errorf("loki writer is nil")
+	}
+
+	testPayload := `{"streams":[]}`
+	resp, err := lw.client.Post(lw.url, "application/json", bytes.NewBufferString(testPayload))
+	if err != nil {
+		return fmt.Errorf("loki post test failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("loki returned bad status: %s", resp.Status)
+	}
+
+	return nil
 }

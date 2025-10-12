@@ -21,8 +21,5 @@ jobs:
       - name: Install dependencies
         run: cd frontend/kubecloud && npm ci
         
-      - name: Lint
-        run: cd frontend/kubecloud && npm run lint
-        
       - name: Build
         run: cd frontend/kubecloud && npm run build

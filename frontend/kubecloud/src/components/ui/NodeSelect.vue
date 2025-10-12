@@ -6,10 +6,12 @@
 		:clearable="clearable"
 		item-value="nodeId"
 		class="node-select"
+    :error="error"
+    :error-messages="errorMessage"
 	>
-		<template #item="{ item, index, props: itemProps }">
+		<template #item="{ item, index, props: { title, ...rest } }">
 			<div>
-				<div v-bind="itemProps" class="node-option-row">
+				<div v-bind="rest" class="node-option-row">
 					<NodeInfoRow
 						:node="item.raw"
 						:get-node-resources="getResources"
@@ -41,6 +43,8 @@
 		getNodeResources?: (node: any) => { cpu: number; ram: number; storage: number },
 		gpuIcon?: string,
 		cpuLabel?: string,
+		error?: boolean,
+		errorMessage?: string,
 	}>(), {
 		label: 'Select Node',
 		clearable: false,

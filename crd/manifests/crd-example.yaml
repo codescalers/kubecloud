@@ -1,0 +1,11 @@
+apiVersion: ingress.grid.tf/v1
+kind: TFGW
+metadata:
+  labels:
+    app.kubernetes.io/name: crd
+    app.kubernetes.io/managed-by: kustomize
+  name: my-tfgw
+spec:
+  hostname: "omar"
+  backends:
+    - "http://[5ce:20f3:1d33:d235:ff0f:b265:334f:e240]:80"

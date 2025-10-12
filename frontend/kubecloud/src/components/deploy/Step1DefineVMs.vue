@@ -81,6 +81,10 @@
       </div>
     </div>
     <div class="step-actions">
+      <v-btn variant="outlined" @click="$emit('prevStep')">
+        <v-icon start icon="mdi-arrow-left"></v-icon>
+        Back
+      </v-btn>
       <v-btn variant="outlined" color="primary" :disabled="!isStep1Valid" @click="$emit('nextStep')">
         Continue
         <v-icon end icon="mdi-arrow-right"></v-icon>
@@ -115,7 +119,7 @@ const props = withDefaults(defineProps<{
   sshKeysLoading: false
 });
 
-const emit = defineEmits(['navigateToSshKeys', 'nextStep']);
+const emit = defineEmits(['navigateToSshKeys', 'nextStep', 'prevStep']);
 
 // Cluster name validation using centralized function
 const clusterNameRules = [
@@ -209,6 +213,7 @@ function generateRandomName() {
 .step-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 1rem;
   margin-top: 2rem;
 }
 </style>

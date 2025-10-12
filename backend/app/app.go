@@ -108,16 +108,17 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 
 	sseManager := internal.NewSSEManager()
-	plugingOpts := []deployer.PluginOpt{
+	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
+		deployer.WithDisableSentry(),
 	}
 	if config.Debug {
-		plugingOpts = append(plugingOpts, deployer.WithLogs())
+		pluginOpts = append(pluginOpts, deployer.WithLogs())
 	}
 
 	gridClient, err := deployer.NewTFPluginClient(
 		config.SystemAccount.Mnemonic,
-		plugingOpts...,
+		pluginOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TF grid client: %w", err)
@@ -195,11 +196,18 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		config.KYCChallengeDomain,
 		nil, // Use default http.Client
 	)
+	if valid, err := kycClient.IsValidSponsor(appCtx, sponsorAddress); err != nil || !valid {
+		appCancel()
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate sponsor address, %w", err)
+		}
+		return nil, fmt.Errorf("the provided sponsor address can't be used as a sponsor")
+	}
 
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
 
 	app := &App{
 		router:              router,
@@ -226,6 +234,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		sponsorKeyPair,
 		app.metrics,
 		app.notificationService,
+		gridProxy,
 	)
 
 	app.registerHandlers()
@@ -251,6 +260,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/system/maintenance/status", app.handlers.GetMaintenanceModeHandler)
 		v1.GET("/stats", app.handlers.GetStatsHandler)
 		v1.GET("/nodes", app.handlers.ListAllGridNodesHandler)
+		v1.GET("/nodes/:node_id/storage-pool", app.handlers.GetNodeStoragePoolHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.handlers.tokenManager))
@@ -349,6 +359,7 @@ func (app *App) StartBackgroundWorkers() {
 	go app.handlers.TrackUserDebt(app.gridClient)
 	go app.handlers.MonitorSystemBalanceAndHandleSettlement()
 	go app.handlers.TrackClusterHealth()
+	go app.handlers.TrackReservedNodeHealth(app.notificationService, app.handlers.proxyClient)
 }
 
 // Run starts the server

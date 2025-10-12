@@ -1,4 +1,4 @@
-config.json
+*config.json
 *.db
 *DS_store
 *DS_Store

@@ -106,7 +106,10 @@ func SetUp(t testing.TB) (*App, error) {
   "kyc_verifier_api_url": "https://kyc.dev.grid.tf",
   "kyc_challenge_domain": "kyc.dev.grid.tf",
   "notification_config_path": "%s",
-  "cluster_health_check_interval_in_hours": 2
+  "cluster_health_check_interval_in_hours": 1,
+  "reserved_node_health_check_interval_in_hours": 1,
+  "reserved_node_health_check_timeout_in_minutes": 1,
+  "reserved_node_health_check_workers_num": 10
 }
 `, dbPath, mnemonic, redisHost, workflowPath, privateKeyPath, publicKeyPath, notificationConfigPath)
 

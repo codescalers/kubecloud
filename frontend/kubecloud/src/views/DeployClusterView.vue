@@ -45,6 +45,7 @@
               :clusterName="clusterName"
               :onClusterNameChange="onClusterNameChange"
               @nextStep="nextStep"
+              @prevStep="navigateToDashboard"
               @navigateToSshKeys="navigateToSshKeys"
             />
             <Step2AssignNodes
