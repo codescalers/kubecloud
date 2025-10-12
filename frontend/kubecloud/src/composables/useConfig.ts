@@ -1,10 +1,9 @@
 export function useConfig() {
-  function isBalanceCheckDisabled(): boolean {
-    // Disable balance check when running on development network
-    return import.meta.env.VITE_NETWORK === 'dev'
+  function getMinBalance(): number {
+    return Number(import.meta.env.VITE_MIN_BALANCE) || 0
   }
 
   return {
-    isBalanceCheckDisabled
+    getMinBalance
   }
 }

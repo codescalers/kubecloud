@@ -14,7 +14,7 @@
             </v-btn>
           </div>
         </template>
-        <span>Insufficient balance. Minimum 5 TFT required to create a cluster.</span>
+        <span>Insufficient balance. Minimum {{ getMinBalance() }} TFT required to create a cluster.</span>
       </v-tooltip>
       <v-btn
         v-if="filteredClusters.length > 0 && !isLoading"
@@ -103,7 +103,7 @@
                     <v-icon icon="mdi-plus" />
                   </v-btn>
                 </template>
-                <span v-text="haveEnoughBalance ? 'Add node' : 'Insufficient balance'"></span>
+                <span v-text="haveEnoughBalance ? 'Add node' : `Insufficient balance. Minimum ${getMinBalance()} TFT required`"></span>
               </v-tooltip>
               <v-tooltip location="top">
                 <template #activator="{ props }">
@@ -212,11 +212,10 @@ const sortOptions = [
 ]
 
   const userStore = useUserStore()
-  const { isBalanceCheckDisabled } = useConfig()
+  const { getMinBalance } = useConfig()
 
-  const haveEnoughBalance = computed(() => {
-    if (isBalanceCheckDisabled()) return true
-    return userStore.netBalance >= 5
+  const haveEnoughBalance = computed(() => {    
+    return userStore.netBalance >= getMinBalance()
   })
 
 const error = computed(() => clusterStore.error)
