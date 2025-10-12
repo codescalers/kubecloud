@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-nat-setup
+  namespace: kube-system
+  labels:
+    k8s-app: calico-nat-setup
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-nat-setup
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-nat-setup
+    spec:
+      hostNetwork: true
+      hostPID: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute
+      - operator: Exists
+        key: CriticalAddonsOnly
+      serviceAccountName: calico-node
+      initContainers:
+      - name: setup-nat-rules
+        image: calico/node:v3.26.1
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Wait for basic iptables to be available and add rules directly
+          echo "Setting up NAT rules..."
+          sleep 10
+          
+          # Add IPv4 NAT rule if not exists
+          if ! iptables -t nat -C POSTROUTING -s 10.42.0.0/16 ! -d 10.42.0.0/16 -j MASQUERADE 2>/dev/null; then
+            echo "Adding IPv4 NAT rule..."
+            iptables -t nat -I POSTROUTING 1 -s 10.42.0.0/16 ! -d 10.42.0.0/16 -j MASQUERADE
+          fi
+          
+          # Add IPv6 NAT rule if not exists and IPv6 is available
+          if ip6tables -t nat -L >/dev/null 2>&1; then
+            if ! ip6tables -t nat -C POSTROUTING -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE 2>/dev/null; then
+              echo "Adding IPv6 NAT rule..."
+              ip6tables -t nat -I POSTROUTING 1 -s 2001:cafe:42::/56 ! -d 2001:cafe:42::/56 -j MASQUERADE
+            fi
+          else
+            echo "IPv6 NAT tables not available"
+          fi
+          
+          echo "NAT rules configured successfully"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /lib/modules
+          name: lib-modules
+          readOnly: true
+        - mountPath: /run/xtables.lock
+          name: xtables-lock
+        - mountPath: /var/run/calico
+          name: var-run-calico
+        - mountPath: /var/lib/calico
+          name: var-lib-calico
+        env:
+        - name: DATASTORE_TYPE
+          value: "kubernetes"
+        - name: WAIT_FOR_DATASTORE
+          value: "true"
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CALICO_NETWORKING_BACKEND
+          value: "vxlan"
+        - name: CLUSTER_TYPE
+          value: "k8s,bgp"
+        - name: IP
+          value: "autodetect"
+        - name: IP6
+          value: "autodetect"
+        - name: CALICO_IPV4POOL_CIDR
+          value: "10.42.0.0/16"
+        - name: CALICO_IPV6POOL_CIDR
+          value: "2001:cafe:42::/56"
+        - name: FELIX_IPINIPMTU
+          value: "0"
+        - name: FELIX_VXLANMTU
+          value: "0"
+        - name: FELIX_WIREGUARDMTU
+          value: "0"
+        - name: CALICO_IPV4POOL_IPIP
+          value: "Never"
+        - name: CALICO_IPV4POOL_VXLAN
+          value: "Always"
+        - name: CALICO_IPV6POOL_VXLAN
+          value: "Always"
+        - name: FELIX_IPV6SUPPORT
+          value: "true"
+        - name: FELIX_HEALTHENABLED
+          value: "true"
+      containers:
+      - name: pause
+        image: registry.k8s.io/pause:3.9
+      volumes:
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: var-run-calico
+        hostPath:
+          path: /var/run/calico
+      - name: var-lib-calico
+        hostPath:
+          path: /var/lib/calico
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
