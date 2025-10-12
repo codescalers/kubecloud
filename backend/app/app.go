@@ -29,7 +29,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	// Import the generated docs package
-	_ "kubecloud/docs"
+	_ "kubecloud/docs/swagger"
 )
 
 // App holds all configurations for the app
