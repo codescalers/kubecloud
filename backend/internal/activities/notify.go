@@ -440,6 +440,10 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 		if wf.Name == constants.WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
 			message = fmt.Sprintf("Failed to unreserve node %d", nodeID)
+
+			if strings.Contains(err.Error(), constants.NodeHasActiveContracts) {
+				message = fmt.Sprintf("Failed to unreserve node %d. This node has active workloads on it, please remove all deployments from it first", nodeID)
+			}
 		}
 	}
 
