@@ -1,36 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
+readonly K3S_VERSION="v1.33.1+k3s1"
+readonly KUBECTL_VERSION="v1.33.1"
+
 echo "🔧 Preparing system for K3s installation..."
 
-# Update package list
 echo "[1/4] Updating package list..."
-apt-get update -qq
+apt-get update -qq && apt upgrade -y
 
-# Install required dependencies
-echo "[2/4] Installing dependencies (wget, iproute2, ntp)..."
-apt-get install -y wget iproute2 ntp
+echo "[2/4] Installing dependencies..."
+apt-get install -y wget iproute2
 
-# Download K3s binary
-echo "[3/4] Downloading K3s v1.33.1+k3s1..."
+echo "[3/4] Downloading K3s ${K3S_VERSION}..."
 wget -q --show-progress -O /usr/local/bin/k3s \
-    https://github.com/k3s-io/k3s/releases/download/v1.33.1+k3s1/k3s
+    "https://github.com/k3s-io/k3s/releases/download/${K3S_VERSION}/k3s"
 chmod +x /usr/local/bin/k3s
 
-# Download kubectl binary
-echo "[3/4] Downloading kubectl v1.33.1..."
+echo "[4/4] Downloading kubectl ${KUBECTL_VERSION}..."
 wget -q --show-progress -O /usr/local/bin/kubectl \
-    https://dl.k8s.io/release/v1.33.1/bin/linux/amd64/kubectl
+    "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
 chmod +x /usr/local/bin/kubectl
 
-# Create K3s configuration directory
-echo "[4/4] Creating K3s configuration directory..."
-mkdir -p /etc/rancher/k3s
-
-# Set containerd snapshotter to native (more efficient)
-echo 'snapshotter: "native"' > /etc/rancher/k3s/config.yaml
-
-echo "✅ System preparation complete!"
-echo "   - K3s binary: /usr/local/bin/k3s"
-echo "   - kubectl binary: /usr/local/bin/kubectl"
-echo "   - Config directory: /etc/rancher/k3s"
+chmod +x ~/scripts/*
