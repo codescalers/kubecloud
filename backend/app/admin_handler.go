@@ -73,6 +73,47 @@ type MaintenanceModeStatus struct {
 	Enabled bool `json:"enabled"`
 }
 
+// @Summary Get users (paginated)
+// @Description Returns a paginated list of users with total count
+// @Tags admin
+// @ID get-users-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit the number of users returned (default: 20, max: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} APIResponse{data=object{users=[]UserResponse,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse "Invalid pagination parameters"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /users/paginated [get]
+// ListUsersPaginatedHandler lists users with pagination
+func (h *Handler) ListUsersPaginatedHandler(c *gin.Context) {
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+
+	users, total, err := h.db.ListUsersPaginated(limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to list users (paginated)")
+		InternalServerError(c)
+		return
+	}
+
+	usersWithBalance, err := h.buildUsersWithBalance(users)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Users are retrieved successfully", PaginatedData[UserResponse]{
+		Items:  usersWithBalance,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 // @Summary Get all users
 // @Description Returns a list of all users
 // @Tags admin
@@ -91,6 +132,16 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
+	usersWithBalance, err := h.buildUsersWithBalance(users)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+	Success(c, http.StatusOK, "Users are retrieved successfully", usersWithBalance)
+}
+
+// buildUsersWithBalance enriches users with USD balance using controlled concurrency
+func (h *Handler) buildUsersWithBalance(users []models.User) ([]UserResponse, error) {
 	var usersWithBalance []UserResponse
 	const maxConcurrentBalanceFetches = 20
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
@@ -129,17 +180,11 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 	}
 
 	wg.Wait()
-
-	// Check if there were any errors during balance fetching
 	if multiErr != nil {
 		logger.GetLogger().Error().Err(multiErr).Msg("errors occurred while fetching user balances")
-		InternalServerError(c)
-		return
+		return nil, multiErr
 	}
-
-	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
-		"users": usersWithBalance,
-	})
+	return usersWithBalance, nil
 }
 
 // @Summary Delete a user
@@ -285,6 +330,38 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 	})
 }
 
+// @Summary List vouchers (paginated)
+// @Description Returns vouchers with pagination
+// @Tags admin
+// @ID list-vouchers-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{vouchers=[]models.Voucher,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /vouchers/paginated [get]
+func (h *Handler) ListVouchersPaginatedHandler(c *gin.Context) {
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	vouchers, total, err := h.db.ListVouchersPaginated(limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to list all vouchers")
+		InternalServerError(c)
+		return
+	}
+	Success(c, http.StatusOK, "Vouchers are Retrieved successfully", PaginatedData[models.Voucher]{
+		Items:  vouchers,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 // @Summary Credit user balance
 // @Description Credits a specific user's balance
 // @Tags admin
@@ -412,6 +489,58 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
+	})
+}
+
+// @Summary List pending records (paginated)
+// @Description Returns pending records with pagination
+// @Tags admin
+// @ID list-pending-records-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{pending_records=[]PendingRecordsResponse,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /pending-records/paginated [get]
+func (h *Handler) ListPendingRecordsPaginatedHandler(c *gin.Context) {
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	records, total, err := h.db.ListAllPendingRecordsPaginated(limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
+		InternalServerError(c)
+		return
+	}
+	var pendingRecordsResponse []PendingRecordsResponse
+	for _, record := range records {
+		usdAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
+			InternalServerError(c)
+			return
+		}
+		usdTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
+			InternalServerError(c)
+			return
+		}
+		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
+			PendingRecord:        record,
+			USDAmount:            internal.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdTransferredAmount),
+		})
+	}
+	Success(c, http.StatusOK, "Pending records are retrieved successfully", PaginatedData[PendingRecordsResponse]{
+		Items:  pendingRecordsResponse,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 

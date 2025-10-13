@@ -113,6 +113,59 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 	})
 }
 
+// @Summary List deployments (paginated)
+// @Description Retrieves a paginated list of deployments for the authenticated user
+// @Tags deployments
+// @Security BearerAuth
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=PaginatedData[object]} "Deployments retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /deployments/paginated [get]
+func (h *Handler) HandleListDeploymentsPaginated(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	clusters, total, err := h.db.ListUserClustersPaginated(userID, limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user clusters")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
+		return
+	}
+
+	deployments := make([]gin.H, 0, len(clusters))
+	for _, cluster := range clusters {
+		clusterResult, err := cluster.GetClusterResult()
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+			continue
+		}
+		deployments = append(deployments, gin.H{
+			"id":           cluster.ID,
+			"project_name": cluster.ProjectName,
+			"cluster":      clusterResult,
+			"created_at":   cluster.CreatedAt,
+			"updated_at":   cluster.UpdatedAt,
+		})
+	}
+
+	Success(c, http.StatusOK, "Deployments retrieved successfully", PaginatedData[gin.H]{
+		Items:  deployments,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 // @Summary Get deployment
 // @Description Retrieves details of a specific deployment by name
 // @Tags deployments

@@ -5,18 +5,10 @@ import (
 	"fmt"
 	"kubecloud/models"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-)
-
-const (
-	// Default pagination values
-	DefaultNotificationLimit = 20
-	MaxNotificationLimit     = 100
-	DefaultOffset            = 0
 )
 
 // @Model NotificationResponse
@@ -89,24 +81,6 @@ func getUserIDFromContext(c *gin.Context) (int, error) {
 	return userID, nil
 }
 
-// validatePaginationParams validates and normalizes pagination parameters
-func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil || limit <= 0 {
-		limit = DefaultNotificationLimit
-	}
-	if limit > MaxNotificationLimit {
-		limit = MaxNotificationLimit
-	}
-
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil || offset < 0 {
-		offset = DefaultOffset
-	}
-
-	return limit, offset, nil
-}
-
 // @Summary Get all notifications
 // @Description Retrieves all user notifications with pagination
 // @Tags notifications
@@ -126,13 +100,9 @@ func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	// Parse and validate pagination parameters
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(DefaultOffset))
-
-	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
-	if err != nil {
-		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+	// Parse and validate pagination parameters (common helper)
+	limit, offset, ok := bindPagination(c)
+	if !ok {
 		return
 	}
 
@@ -280,13 +250,9 @@ func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	// Parse and validate pagination parameters
-	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
-	offsetStr := c.DefaultQuery("offset", strconv.Itoa(DefaultOffset))
-
-	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
-	if err != nil {
-		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+	// Parse and validate pagination parameters (common helper)
+	limit, offset, ok := bindPagination(c)
+	if !ok {
 		return
 	}
 

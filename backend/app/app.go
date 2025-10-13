@@ -268,18 +268,22 @@ func (app *App) registerHandlers() {
 			usersGroup := adminGroup.Group("/users")
 			{
 				usersGroup.GET("", app.handlers.ListUsersHandler)
+				usersGroup.GET("/paginated", app.handlers.ListUsersPaginatedHandler)
 				usersGroup.DELETE("/:user_id", app.handlers.DeleteUsersHandler)
 				usersGroup.POST("/:user_id/credit", app.handlers.CreditUserHandler)
 			}
 			usersGroup.POST("/mail", app.handlers.SendMailToAllUsersHandler)
 
 			adminGroup.GET("/invoices", app.handlers.ListAllInvoicesHandler)
+			adminGroup.GET("/invoices/paginated", app.handlers.ListAllInvoicesPaginatedHandler)
 			adminGroup.GET("/pending-records", app.handlers.ListPendingRecordsHandler)
+			adminGroup.GET("/pending-records/paginated", app.handlers.ListPendingRecordsPaginatedHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{
 				vouchersGroup.POST("/generate", app.handlers.GenerateVouchersHandler)
 				vouchersGroup.GET("", app.handlers.ListVouchersHandler)
+				vouchersGroup.GET("/paginated", app.handlers.ListVouchersPaginatedHandler)
 
 			}
 
@@ -306,7 +310,9 @@ func (app *App) registerHandlers() {
 				authGroup.PUT("/change_password", app.handlers.ChangePasswordHandler)
 				authGroup.GET("/nodes", app.handlers.ListNodesHandler)
 				authGroup.GET("/nodes/rentable", app.handlers.ListRentableNodesHandler)
+				authGroup.GET("/nodes/rentable/paginated", app.handlers.ListRentableNodesPaginatedHandler)
 				authGroup.GET("/nodes/rented", app.handlers.ListRentedNodesHandler)
+				authGroup.GET("/nodes/rented/paginated", app.handlers.ListRentedNodesPaginatedHandler)
 				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
 				authGroup.DELETE("/nodes/unreserve/:contract_id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/balance/charge", app.handlers.ChargeBalance)
@@ -314,9 +320,12 @@ func (app *App) registerHandlers() {
 				authGroup.PUT("/redeem/:voucher_code", app.handlers.RedeemVoucherHandler)
 				authGroup.GET("/invoice/:invoice_id", app.handlers.DownloadInvoiceHandler)
 				authGroup.GET("/invoice", app.handlers.ListUserInvoicesHandler)
+				authGroup.GET("/invoice/paginated", app.handlers.ListUserInvoicesPaginatedHandler)
 				authGroup.GET("/pending-records", app.handlers.ListUserPendingRecordsHandler)
+				authGroup.GET("/pending-records/paginated", app.handlers.ListUserPendingRecordsPaginatedHandler)
 				// SSH Key management
 				authGroup.GET("/ssh-keys", app.handlers.ListSSHKeysHandler)
+				authGroup.GET("/ssh-keys/paginated", app.handlers.ListSSHKeysPaginatedHandler)
 				authGroup.POST("/ssh-keys", app.handlers.AddSSHKeyHandler)
 				authGroup.DELETE("/ssh-keys/:ssh_key_id", app.handlers.DeleteSSHKeyHandler)
 			}
@@ -331,6 +340,7 @@ func (app *App) registerHandlers() {
 			{
 				deploymentGroup.POST("", app.handlers.HandleDeployCluster)
 				deploymentGroup.GET("", app.handlers.HandleListDeployments)
+				deploymentGroup.GET("/paginated", app.handlers.HandleListDeploymentsPaginated)
 				deploymentGroup.DELETE("", app.handlers.HandleDeleteAllDeployments)
 				deploymentGroup.GET("/:name", app.handlers.HandleGetDeployment)
 				deploymentGroup.GET("/:name/kubeconfig", app.handlers.HandleGetKubeconfig)

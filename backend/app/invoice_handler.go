@@ -10,8 +10,9 @@ import (
 
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Get all invoices
@@ -38,6 +39,39 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 	})
 }
 
+// @Summary Get all invoices (paginated)
+// @Description Returns a paginated list of all invoices
+// @Tags admin
+// @ID get-all-invoices-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{invoices=[]models.Invoice,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /invoices/paginated [get]
+func (h *Handler) ListAllInvoicesPaginatedHandler(c *gin.Context) {
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	invoices, total, err := h.db.ListInvoicesPaginated(limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, "Invoices are retrieved successfully", PaginatedData[models.Invoice]{
+		Items:  invoices,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 // @Summary Get invoices
 // @Description Returns a list of invoices for a user
 // @Tags invoices
@@ -61,6 +95,39 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Invoices are retrieved successfully", map[string]interface{}{
 		"invoices": invoices,
+	})
+}
+
+// @Summary Get invoices (paginated)
+// @Description Returns a paginated list of invoices for a user
+// @Tags invoices
+// @ID get-invoices-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{invoices=[]models.Invoice,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security UserMiddleware
+// @Router /user/invoice/paginated [get]
+func (h *Handler) ListUserInvoicesPaginatedHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	invoices, total, err := h.db.ListUserInvoicesPaginated(userID, limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+	Success(c, http.StatusOK, "Invoices are retrieved successfully", PaginatedData[models.Invoice]{
+		Items:  invoices,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 

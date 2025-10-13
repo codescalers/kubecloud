@@ -17,10 +17,12 @@ type DB interface {
 	UpdateUserByID(user *User) error
 	UpdatePassword(email string, hashedPassword []byte) error
 	ListAllUsers() ([]User, error)
+	ListUsersPaginated(limit, offset int) ([]User, int64, error)
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error
 	CreateVoucher(voucher *Voucher) error
 	ListAllVouchers() ([]Voucher, error)
+	ListVouchersPaginated(limit, offset int) ([]Voucher, int64, error)
 	GetVoucherByCode(code string) (Voucher, error)
 	RedeemVoucher(code string) error
 	CreateTransaction(transaction *Transaction) error
@@ -29,6 +31,8 @@ type DB interface {
 	GetInvoice(id int) (Invoice, error)
 	ListUserInvoices(userID int) ([]Invoice, error)
 	ListInvoices() ([]Invoice, error)
+	ListUserInvoicesPaginated(userID, limit, offset int) ([]Invoice, int64, error)
+	ListInvoicesPaginated(limit, offset int) ([]Invoice, int64, error)
 	UpdateInvoicePDF(id int, data []byte) error
 	CreateUserNode(userNode *UserNodes) error
 	DeleteUserNode(contractID uint64) error
@@ -39,6 +43,7 @@ type DB interface {
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)
+	ListUserSSHPaginated(userID, limit, offset int) ([]SSHKey, int64, error)
 	DeleteSSHKey(sshKeyID int, userID int) error
 	GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error)
 	// Notification methods
@@ -53,6 +58,7 @@ type DB interface {
 	// Cluster methods
 	CreateCluster(userID int, cluster *Cluster) error
 	ListUserClusters(userID int) ([]Cluster, error)
+	ListUserClustersPaginated(userID, limit, offset int) ([]Cluster, int64, error)
 	GetClusterByName(userID int, projectName string) (Cluster, error)
 	UpdateCluster(cluster *Cluster) error
 	DeleteCluster(userID int, projectName string) error
@@ -62,6 +68,8 @@ type DB interface {
 	ListAllPendingRecords() ([]PendingRecord, error)
 	ListOnlyPendingRecords() ([]PendingRecord, error)
 	ListUserPendingRecords(userID int) ([]PendingRecord, error)
+	ListAllPendingRecordsPaginated(limit, offset int) ([]PendingRecord, int64, error)
+	ListUserPendingRecordsPaginated(userID, limit, offset int) ([]PendingRecord, int64, error)
 	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
 	// stats methods
 	CountAllUsers() (int64, error)

@@ -14,6 +14,14 @@ type APIResponse struct {
 	Error   string      `json:"error,omitempty"`
 }
 
+// PaginatedData is a unified container for paginated responses
+type PaginatedData[T any] struct {
+	Items  []T   `json:"items"`
+	Total  int64 `json:"total"`
+	Limit  int   `json:"limit"`
+	Offset int   `json:"offset"`
+}
+
 // Success returns data for successful requests
 func Success(c *gin.Context, status int, message string, data interface{}) {
 	c.JSON(status, APIResponse{
