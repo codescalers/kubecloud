@@ -66,7 +66,7 @@ type Server struct {
 
 // DB struct holds database file
 type DB struct {
-	File string `json:"file" validate:"required"`
+	DSN string `json:"dsn" validate:"required"`
 }
 
 // JWT Token struct holds info required for JWT Tokens
@@ -222,11 +222,6 @@ func LoadConfig() (Configuration, error) {
 			}
 		}
 		config.Loki.Labels = parsed
-	}
-
-	config.Database.File, err = expandPath(config.Database.File)
-	if err != nil {
-		return Configuration{}, fmt.Errorf("failed to expand database file path: %w", err)
 	}
 
 	config.SSH.PrivateKeyPath, err = expandPath(config.SSH.PrivateKeyPath)

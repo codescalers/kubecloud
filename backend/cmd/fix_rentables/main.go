@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"kubecloud/models"
-	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -12,28 +11,18 @@ import (
 )
 
 func main() {
-	var dbPath string
+	var dsn string
 	var tfchainURL string
-	flag.StringVar(&dbPath, "db", "", "Path to SQLite database file")
+	flag.StringVar(&dsn, "dsn", "", "Database DSN (postgres://... or sqlite:///path.db)")
 	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
 	flag.Parse()
 
-	if strings.TrimSpace(dbPath) == "" || strings.TrimSpace(tfchainURL) == "" {
-		log.Error().Msg("Both --db and --tfchain-url flags are required")
+	if strings.TrimSpace(dsn) == "" || strings.TrimSpace(tfchainURL) == "" {
+		log.Error().Msg("Both --dsn and --tfchain-url flags are required")
 		return
 	}
 
-	_, err := os.Stat(dbPath)
-	if os.IsNotExist(err) {
-		log.Error().Err(err).Msg("Database file does not exist")
-		return
-	}
-	if err != nil {
-		log.Error().Err(err).Msg("Error checking database file")
-		return
-	}
-
-	db, err := models.NewSqliteDBNoMigrate(dbPath)
+	db, err := models.NewDB(dsn)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return

@@ -2,6 +2,9 @@ package models
 
 import (
 	"context"
+	"fmt"
+	"net/url"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -67,4 +70,25 @@ type DB interface {
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
 	ListAllClusters() ([]Cluster, error)
+}
+
+func NewDB(dsn string) (DB, error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return nil, fmt.Errorf("dsn is empty")
+	}
+
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dsn: %w", err)
+	}
+
+	switch u.Scheme {
+	case "postgres":
+		return NewPostgresDB(dsn)
+	case "sqlite":
+		return NewSqliteDB(u.Path)
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
+	}
 }

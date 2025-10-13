@@ -24,7 +24,7 @@ func loadConfig(configPath string) {
 
 	config = internal.Configuration{
 		Database: internal.DB{
-			File: viper.GetString("database.file"),
+			DSN: viper.GetString("database.dsn"),
 		},
 		TFChainURL: viper.GetString("tfchain_url"),
 		SystemAccount: internal.GridAccount{
@@ -45,17 +45,7 @@ func main() {
 	flag.Parse()
 	loadConfig(*configPath)
 
-	_, err := os.Stat(config.Database.File)
-	if os.IsNotExist(err) {
-		log.Error().Err(err).Msg("Database file does not exist")
-		return
-	}
-	if err != nil {
-		log.Error().Err(err).Msg("Error checking database file")
-		return
-	}
-
-	db, err := models.NewSqliteDB(config.Database.File)
+	db, err := models.NewDB(config.Database.DSN)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
