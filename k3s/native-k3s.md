@@ -47,10 +47,12 @@ Run the Flannel interface creation script:
 
 ### 4. Update CRD Manifests
 
-Run the CRD manifest update script, only needed on the k3s server node.
+Run the CRD manifest update script, only needed on the k3s server node. it will be removed on other nodes
+
+**⚠️ Important:** Provide a `$TOKEN` if your mnemonic is encrypted. else leave empty 
 
 ```bash
-./update-crd-manifest.sh
+./patch-crd-manifest.sh
 ```
 
 This will modify the manifest files to match your environment configuration.
@@ -81,10 +83,3 @@ kubectl get nodes
 # Check cluster info
 kubectl cluster-info
 ```
-
-## Troubleshooting
-
-- Ensure WireGuard connectivity between VMs before starting K3s
-- Check K3s logs: `journalctl -u k3s` (if running as a service)
-- Verify the data directory has sufficient space
-- Confirm all environment variables are correctly set
