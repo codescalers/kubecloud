@@ -427,8 +427,8 @@ spec:
           value: ${MNEMONIC}
         - name: NETWORK
           value: ${NETWORK}
-        - name: K3S_TOKEN
-          value: ${K3S_TOKEN}
+        - name: TOKEN
+          value: ${TOKEN}
         image: omarabdul3ziz/tfgw-crd:latest
         livenessProbe:
           httpGet:
