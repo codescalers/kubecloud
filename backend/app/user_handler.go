@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
@@ -954,7 +953,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 	}
 
 	if err := h.db.CreateSSHKey(&sshKey); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if isUniqueViolation(err) {
 			Error(c, http.StatusBadRequest, "Duplicate SSH key", "SSH key name or public key already exists for this user.")
 			return
 		}
@@ -1130,4 +1129,19 @@ func isUserRegistered(user models.User) bool {
 		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
 		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
 		len(strings.TrimSpace(user.Mnemonic)) > 0
+}
+
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	e := strings.ToLower(err.Error())
+	if strings.Contains(e, "23505") {
+		return true
+	}
+	if strings.Contains(e, "unique") || strings.Contains(e, "duplicate") || strings.Contains(e, "constraint failed") {
+		return true
+	}
+	return false
 }
