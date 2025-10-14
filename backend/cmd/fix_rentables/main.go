@@ -13,8 +13,16 @@ import (
 func main() {
 	var dsn string
 	var tfchainURL string
+	var maxOpen int
+	var maxIdle int
+	var maxLife string
+	var maxIdleTime string
 	flag.StringVar(&dsn, "dsn", "", "Database DSN (postgres://... or sqlite:///path.db)")
 	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
+	flag.IntVar(&maxOpen, "db-max-open-conns", 0, "DB max open connections (postgres only)")
+	flag.IntVar(&maxIdle, "db-max-idle-conns", 0, "DB max idle connections (postgres only)")
+	flag.StringVar(&maxLife, "db-conn-max-lifetime", "", "DB connection max lifetime (e.g. 30m) (postgres only)")
+	flag.StringVar(&maxIdleTime, "db-conn-max-idle-time", "", "DB connection max idle time (e.g. 5m) (postgres only)")
 	flag.Parse()
 
 	if strings.TrimSpace(dsn) == "" || strings.TrimSpace(tfchainURL) == "" {
@@ -22,7 +30,8 @@ func main() {
 		return
 	}
 
-	db, err := models.NewDB(dsn)
+	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetime: maxLife, ConnMaxIdleTime: maxIdleTime}
+	db, err := models.NewDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return
