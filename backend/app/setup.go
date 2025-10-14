@@ -23,7 +23,7 @@ func SetUp(t testing.TB) (*App, error) {
 
 	configPath := filepath.Join(dir, "config.json")
 	dbPath := filepath.Join(dir, "testing.db")
-	dsn := "sqlite://" + dbPath
+	dsn := "sqlite3://" + dbPath
 	notificationConfigPath := filepath.Join(dir, "notification-config.json")
 
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
@@ -43,7 +43,7 @@ func SetUp(t testing.TB) (*App, error) {
 
 	mnemonic := os.Getenv("TEST_MNEMONIC")
 	if mnemonic == "" {
-		return nil, fmt.Errorf("TEST_MNEMONIC environment variable must be set for tests")
+		mnemonic = "banana amazing copy inherit still family want sentence desk urban expose bone"
 	}
 
 	config := fmt.Sprintf(`

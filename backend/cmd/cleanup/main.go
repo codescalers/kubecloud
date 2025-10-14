@@ -4,6 +4,7 @@ import (
 	"flag"
 	"kubecloud/internal"
 	"kubecloud/models"
+	"net/url"
 	"os"
 
 	moneycollector "kubecloud/cmd/cleanup/moneycollector"
@@ -24,7 +25,11 @@ func loadConfig(configPath string) {
 
 	config = internal.Configuration{
 		Database: internal.DB{
-			DSN: viper.GetString("database.dsn"),
+			DSN:             viper.GetString("database.dsn"),
+			MaxOpenConns:    viper.GetInt("database.max_open_conns"),
+			MaxIdleConns:    viper.GetInt("database.max_idle_conns"),
+			ConnMaxLifetime: viper.GetString("database.conn_max_lifetime"),
+			ConnMaxIdleTime: viper.GetString("database.conn_max_idle_time"),
 		},
 		TFChainURL: viper.GetString("tfchain_url"),
 		SystemAccount: internal.GridAccount{
@@ -52,6 +57,16 @@ func main() {
 		return
 	}
 	defer db.Close()
+
+	// Apply optional DB pool tuning from config only for postgres
+	if u, perr := url.Parse(config.Database.DSN); perr == nil && u.Scheme == "postgres" {
+		models.ConfigureSQLPool(db, models.DBPoolConfig{
+			MaxOpenConns:    config.Database.MaxOpenConns,
+			MaxIdleConns:    config.Database.MaxIdleConns,
+			ConnMaxLifetime: config.Database.ConnMaxLifetime,
+			ConnMaxIdleTime: config.Database.ConnMaxIdleTime,
+		})
+	}
 
 	substrateClient, err := substrate.NewManager(config.TFChainURL).Substrate()
 	if err != nil {

@@ -3,6 +3,7 @@ module kubecloud
 go 1.24.3
 
 require (
+    github.com/jackc/pgconn v1.14.3
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.8

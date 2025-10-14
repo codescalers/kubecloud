@@ -3,9 +3,7 @@ package internal
 import (
 	"fmt"
 	"kubecloud/internal/logger"
-	"os"
-	"os/user"
-	"path/filepath"
+	"kubecloud/internal/utils"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -67,6 +65,11 @@ type Server struct {
 // DB struct holds database file
 type DB struct {
 	DSN string `json:"dsn" validate:"required"`
+	// Optional connection pool settings (Postgres)
+	MaxOpenConns    int    `json:"max_open_conns"`
+	MaxIdleConns    int    `json:"max_idle_conns"`
+	ConnMaxLifetime string `json:"conn_max_lifetime"`
+	ConnMaxIdleTime string `json:"conn_max_idle_time"`
 }
 
 // JWT Token struct holds info required for JWT Tokens
@@ -224,22 +227,22 @@ func LoadConfig() (Configuration, error) {
 		config.Loki.Labels = parsed
 	}
 
-	config.SSH.PrivateKeyPath, err = expandPath(config.SSH.PrivateKeyPath)
+	config.SSH.PrivateKeyPath, err = utils.ExpandPath(config.SSH.PrivateKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH private key path: %w", err)
 	}
 
-	config.SSH.PublicKeyPath, err = expandPath(config.SSH.PublicKeyPath)
+	config.SSH.PublicKeyPath, err = utils.ExpandPath(config.SSH.PublicKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH public key path: %w", err)
 	}
 
-	config.Logger.LogDir, err = expandPath(config.Logger.LogDir)
+	config.Logger.LogDir, err = utils.ExpandPath(config.Logger.LogDir)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
 	}
 
-	notificationFilePath, err := expandPath(config.NotificationConfigPath)
+	notificationFilePath, err := utils.ExpandPath(config.NotificationConfigPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand notification config path: %w", err)
 	}
@@ -261,54 +264,4 @@ func LoadConfig() (Configuration, error) {
 	}
 
 	return config, nil
-}
-
-func expandPath(path string) (string, error) {
-	if path == "" {
-		return os.Getwd()
-	}
-
-	path = os.ExpandEnv(path)
-	var err error
-	if strings.HasPrefix(path, "~") {
-		path, err = expandTilde(path)
-		if err != nil {
-			return "", fmt.Errorf("failed to expand tilde: %w", err)
-		}
-	}
-
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
-	return filepath.Clean(absPath), nil
-}
-
-func expandTilde(path string) (string, error) {
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	if path == "~" {
-		return homeDir, nil
-	}
-	if strings.HasPrefix(path, "~/") {
-		return filepath.Join(homeDir, path[2:]), nil
-	}
-	parts := strings.SplitN(path, "/", 2)
-	username := parts[0][1:]
-
-	user, err := user.Lookup(username)
-	if err != nil {
-		return "", fmt.Errorf("user %s not found: %w", username, err)
-	}
-
-	if len(parts) == 1 {
-		return user.HomeDir, nil
-	}
-	return filepath.Join(user.HomeDir, parts[1]), nil
-
 }

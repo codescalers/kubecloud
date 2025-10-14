@@ -12,6 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -1136,12 +1140,20 @@ func isUniqueViolation(err error) bool {
 		return false
 	}
 
-	e := strings.ToLower(err.Error())
-	if strings.Contains(e, "23505") {
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
 		return true
 	}
-	if strings.Contains(e, "unique") || strings.Contains(e, "duplicate") || strings.Contains(e, "constraint failed") {
-		return true
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code == "23505"
+	}
+
+	var sqlLiteErr sqlite3.Error
+	if errors.As(err, &sqlLiteErr) {
+		if sqlLiteErr.Code == sqlite3.ErrConstraint {
+			return sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintUnique || sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
+		}
 	}
 	return false
 }
