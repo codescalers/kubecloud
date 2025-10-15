@@ -18,25 +18,18 @@ func GetKubeconfigViaSSH(privateKey string, node *kubedeployer.Node) (string, er
 	}
 
 	logger.GetLogger().Debug().Str("ip", ip).Str("node", node.Name).Msg("Attempting SSH connection")
-	commands := []string{
-		"kubectl config view --minify --raw",
-		"cat /etc/rancher/k3s/k3s.yaml",
-		"cat ~/.kube/config",
+	command := "cat /etc/rancher/k3s/k3s.yaml"
+	kubeconfig, err := executeSSHCommand(privateKey, ip, command)
+	if err == nil && strings.Contains(kubeconfig, "apiVersion") && strings.Contains(kubeconfig, "clusters") {
+		processedKubeconfig, processErr := processKubeconfig(kubeconfig, ip)
+		if processErr != nil {
+			logger.GetLogger().Warn().Err(processErr).Str("ip", ip).Msg("Failed to process kubeconfig, returning original")
+			return kubeconfig, nil
+		}
+		return processedKubeconfig, nil
 	}
-
-	for _, cmd := range commands {
-		kubeconfig, err := executeSSHCommand(privateKey, ip, cmd)
-		if err == nil && strings.Contains(kubeconfig, "apiVersion") && strings.Contains(kubeconfig, "clusters") {
-			processedKubeconfig, processErr := processKubeconfig(kubeconfig, ip)
-			if processErr != nil {
-				logger.GetLogger().Warn().Err(processErr).Str("ip", ip).Msg("Failed to process kubeconfig, returning original")
-				return kubeconfig, nil
-			}
-			return processedKubeconfig, nil
-		}
-		if err != nil {
-			logger.GetLogger().Debug().Err(err).Str("ip", ip).Str("command", cmd).Msg("Command failed, trying next")
-		}
+	if err != nil {
+		logger.GetLogger().Debug().Err(err).Str("ip", ip).Str("command", command).Msg("Command failed, trying next")
 	}
 
 	return "", fmt.Errorf("failed to retrieve kubeconfig from node %s at IP %s", node.Name, ip)

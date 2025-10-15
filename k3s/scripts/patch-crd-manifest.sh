@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-dir="${K3S_DATA_DIR:-/var/lib/rancher/k3s}"
+dir="/var/lib/rancher/k3s"
 manifest="$dir/server/manifests/tfgw-crd.yaml"
 
 # If K3S_URL found, remove manifest and exit. it is an agent node
