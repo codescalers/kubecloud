@@ -1,0 +1,2 @@
+exec: /scripts/patch-crd-manifest.sh
+oneshot: true

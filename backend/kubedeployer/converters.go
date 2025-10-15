@@ -96,6 +96,7 @@ func deploymentFromNode(
 	if node.Type != NodeTypeLeader {
 		vm.EnvVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", leaderIP)
 	} else {
+		vm.EnvVars["TOKEN"] = token
 		vm.EnvVars["MNEMONIC"] = encryptedMnemonic
 		vm.EnvVars["NETWORK"] = gridNet
 	}
