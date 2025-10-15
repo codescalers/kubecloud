@@ -213,14 +213,14 @@ EOF
 
 **Verify TFGW status:**
 ```bash
-kubectl get tfgw test-gateway
+kubectl get tfgw my-tfgw
 
 # Expected output:
 # NAME           HOST   BACKENDS            FQDN
-# test-gateway   test   ["http://..."]      test.gw123.dev.grid.tf
+# my-tfgw   test   ["http://..."]      omar.gent02.dev.grid.tf
 ```
 
 **Cleanup:**
 ```bash
-kubectl delete tfgw test-gateway
+kubectl delete tfgw my-tfgw
 ```
