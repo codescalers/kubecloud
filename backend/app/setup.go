@@ -23,7 +23,7 @@ func SetUp(t testing.TB) (*App, error) {
 
 	configPath := filepath.Join(dir, "config.json")
 	dbPath := filepath.Join(dir, "testing.db")
-	workflowPath := filepath.Join(dir, "workflow_testing.db")
+	dsn := "sqlite3://" + dbPath
 	notificationConfigPath := filepath.Join(dir, "notification-config.json")
 
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
@@ -43,7 +43,7 @@ func SetUp(t testing.TB) (*App, error) {
 
 	mnemonic := os.Getenv("TEST_MNEMONIC")
 	if mnemonic == "" {
-		return nil, fmt.Errorf("TEST_MNEMONIC environment variable must be set for tests")
+		return nil, fmt.Errorf("TEST_MNEMONIC environment variable is not set")
 	}
 
 	config := fmt.Sprintf(`
@@ -53,7 +53,7 @@ func SetUp(t testing.TB) (*App, error) {
     "port": "3000"
   },
   "database": {
-    "file": "%s"
+    "dsn": "%s"
   },
   "jwt_token": {
     "secret": "secret",
@@ -96,7 +96,6 @@ func SetUp(t testing.TB) (*App, error) {
     "address": "Address",
     "governorate": "Cairo Governorate"
   },
-  "workflow_db_file": "%s",
   "ssh": {
     "private_key_path": "%s",
     "public_key_path": "%s"
@@ -113,7 +112,7 @@ func SetUp(t testing.TB) (*App, error) {
   "reserved_node_health_check_timeout_in_minutes": 1,
   "reserved_node_health_check_workers_num": 10
 }
-`, dbPath, mnemonic, redisHost, workflowPath, privateKeyPath, publicKeyPath, notificationConfigPath)
+`, dsn, mnemonic, redisHost, privateKeyPath, publicKeyPath, notificationConfigPath)
 
 	err = os.WriteFile(configPath, []byte(config), 0644)
 	if err != nil {
@@ -163,7 +162,6 @@ func SetUp(t testing.TB) (*App, error) {
 		_ = os.Remove(publicKeyPath)
 		_ = os.Remove(configPath)
 		_ = os.Remove(dbPath)
-		_ = os.Remove(workflowPath)
 		_ = os.Remove(notificationConfigPath)
 
 		// Reset viper to avoid config leakage between tests

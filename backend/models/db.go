@@ -2,6 +2,10 @@ package models
 
 import (
 	"context"
+	"fmt"
+	"kubecloud/internal/utils"
+	"net/url"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -75,4 +79,29 @@ type DB interface {
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
 	ListAllClusters() ([]Cluster, error)
+}
+
+func NewDB(dsn string, cfg DBPoolConfig) (DB, error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return nil, fmt.Errorf("dsn is empty")
+	}
+
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse dsn: %w", err)
+	}
+
+	switch u.Scheme {
+	case "postgres":
+		return NewPostgresDB(dsn, cfg)
+	case "sqlite", "sqlite3":
+		path, err := utils.ExpandPath(u.Path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to expand path: %w", err)
+		}
+		return NewSqliteDB(path)
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
+	}
 }

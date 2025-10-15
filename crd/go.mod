@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/onsi/ginkgo/v2 v2.22.1
 	github.com/onsi/gomega v1.36.2
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.0
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.1-0.20250928103205-8e21ff3fcf2f
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
 	github.com/threefoldtech/zosbase v0.1.10
 	k8s.io/apimachinery v0.33.0

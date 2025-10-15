@@ -33,19 +33,20 @@ services:
     depends_on:
       - redis-db
       - mycelium
-    working_dir: /opt/project
+      - postgres
+    working_dir: /app
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
-      - ./backend/notification-config.json:/opt/project/notification-config.json
-      - ./backend/logs:/opt/project/logs
+      - ./backend/notification-config.json:/app/notification-config.json
+      - ./backend/app/logs:/app/logs
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
       - REDIS_HOST=redis-db
       - REDIS_PORT=6379
       - APP_ENV=dev
-      - HOSTNAME=backend-1 
+      - HOSTNAME=backend-1
       - TEMPLATE_DIR=/app/internal/templates/notifications
     command: ["/myceliumcloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
@@ -128,13 +129,25 @@ services:
       - loki
     networks:
       - app-network
-
-
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=myceliumcloud
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  mycelium-data: 
+  mycelium-data:
   prometheus-data:
   loki-data:
+  postgres-data:

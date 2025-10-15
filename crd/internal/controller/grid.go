@@ -2,6 +2,11 @@ package controller
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -34,7 +39,6 @@ func deployGateway(pluginClient deployer.TFPluginClient, gw GWRequest) (workload
 	}
 
 	gateway.NodeID = node
-	// gateway.NodeID = 14 // TODO: remove this after testing
 	if err := pluginClient.GatewayNameDeployer.Deploy(context.TODO(), &gateway); err != nil {
 		return workloads.GatewayNameProxy{}, fmt.Errorf("failed to deploy gateway on node %d: %w", node, err)
 	}
@@ -66,4 +70,45 @@ func selectNode(pluginClient deployer.TFPluginClient) (uint32, error) {
 	}
 
 	return uint32(nodes[0].NodeID), nil
+}
+
+func generateSessionId() (string, error) {
+	b := make([]byte, 6)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+	sessionID := fmt.Sprintf("tfgwCRD-%s", base64.URLEncoding.EncodeToString(b))
+	return sessionID, nil
+}
+
+// decrypt decrypts an encrypted base64 string with a string key
+func decrypt(key, encryptedText string) (string, error) {
+	hash := sha256.Sum256([]byte(key)) // valid 32 bytes for AES-256
+	key = string(hash[:])
+
+	data, err := base64.StdEncoding.DecodeString(encryptedText)
+	if err != nil {
+		return "", err
+	}
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := aesGCM.NonceSize()
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+
+	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }

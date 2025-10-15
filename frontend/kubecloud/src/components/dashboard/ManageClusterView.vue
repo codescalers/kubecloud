@@ -73,12 +73,12 @@
                   <tr>
                     <th>Name</th>
                     <th>Type</th>
+                    <th>Node ID</th>
                     <th>CPU</th>
                     <th>RAM</th>
                     <th>Storage</th>
                     <th>IP</th>
                     <th>Mycelium IP</th>
-                    <th>Planetary IP</th>
                     <th>Contract ID</th>
                     <th>Actions</th>
                   </tr>
@@ -88,6 +88,7 @@
 
                     <td>{{ node.original_name }}</td>
                     <td>{{ node.type }}</td>
+                    <td>{{ node.node_id }}</td>
                     <td>{{ node.cpu }}</td>
                     <td>{{ Math.round(node.memory / 1024) }} GB</td>
                     <td>{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
@@ -100,17 +101,6 @@
                       <span v-if="node.mycelium_ip" class="full-ip-cell">
                         {{ node.mycelium_ip }}
                       </span>
-                      <span v-else>-</span>
-                    </td>
-                    <td>
-                      <v-tooltip activator="parent" location="top" v-if="node.planetary_ip">
-                        <template #activator="{ props }">
-                          <span class="truncate-cell" v-bind="props">
-                            {{ node.planetary_ip }}
-                          </span>
-                        </template>
-                        <span>{{ node.planetary_ip }}</span>
-                      </v-tooltip>
                       <span v-else>-</span>
                     </td>
                     <td>{{ node.contract_id || '-' }}</td>

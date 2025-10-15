@@ -777,3 +777,30 @@ func VerifyClusterReadyStep() ewf.StepFn {
 		return nil
 	}
 }
+
+func VerifyClusterInDBStep(db models.DB) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		existingCluster, err := db.GetClusterByName(config.UserID, cluster.ProjectName)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)
+			}
+			return nil
+		}
+
+		if existingCluster.ID == 0 {
+			return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)
+		}
+		return nil
+	}
+}

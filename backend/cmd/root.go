@@ -33,8 +33,9 @@ func addFlags() error {
 	}
 
 	// === Database ===
-	if err := bindStringFlag(rootCmd, "database.file", "", "Database file path"); err != nil {
-		return fmt.Errorf("failed to bind database.file flag: %w", err)
+	// DSN-only database configuration (Postgres)
+	if err := bindStringFlag(rootCmd, "database.dsn", "", "Database DSN"); err != nil {
+		return fmt.Errorf("failed to bind database.dsn flag: %w", err)
 	}
 
 	// === JWT Token ===

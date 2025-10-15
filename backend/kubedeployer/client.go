@@ -8,6 +8,7 @@ import (
 
 type Client struct {
 	GridClient deployer.TFPluginClient
+	mnemonic   string
 }
 
 func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
@@ -29,6 +30,7 @@ func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
 
 	return &Client{
 		GridClient: tfplugin,
+		mnemonic:   mnemonic,
 	}, nil
 }
 

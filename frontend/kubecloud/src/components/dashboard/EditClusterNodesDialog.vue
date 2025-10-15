@@ -18,13 +18,16 @@
                 <v-text-field validate-on="eager" :rules="[RULES.ram]" v-model.number="addFormRam" label="RAM (GB)" type="number" min="1" />
                 <v-text-field validate-on="eager" :rules="[RULES.storage]" v-model.number="addFormStorage" label="Storage (GB)" type="number" min="1" />
                 <NodeSelect
-                :loading="nodesLoading"
+                :loading="nodesLoading || validatingNode"
                 v-model="addFormNodeId"
+                @update:modelValue="val => validateNode(val)"
                 :items="availableNodesWithName"
                 label="Select Node"
                 :get-node-resources="node => ({ cpu: getTotalCPU(node), ram: getAvailableRAM(node), storage: getAvailableStorage(node) })"
                 :cpu-label="'CPU'"
                 :gpu-icon="'mdi-nvidia'"
+                :error="!!nodeValidationError"
+                :error-messages="nodeValidationError"
               />
               <v-select v-model="addFormRole" :items="['master', 'worker']" label="Role" />
               <div class="ssh-key-section" style="margin-top: 1.5rem; width: 100%;">
@@ -59,7 +62,7 @@
         </template>
         <template #actions>
           <div >
-            <v-btn variant="outlined" color="primary" :loading="submitting" :disabled="!canAssignToNode || submitting || !formValid" @click="confirmAddForm" class="mr-3">Add Node</v-btn>
+            <v-btn variant="outlined" color="primary" :loading="submitting" :disabled="!canAssignToNode || submitting || !formValid || validatingNode" @click="confirmAddForm" class="mr-3">Add Node</v-btn>
             <v-btn variant="outlined" @click="emit('update:modelValue', false)">Cancel</v-btn>
           </div>
         </template>
@@ -74,6 +77,7 @@ import type { RawNode } from '../../types/rawNode';
 import BaseDialogCard from './BaseDialogCard.vue';
 import { userService } from '../../utils/userService';
 import { ROOTFS } from '../../composables/useDeployCluster';
+import useNodeStoragePool  from '../../composables/useNodeStoragePool';
 import NodeSelect from '../ui/NodeSelect.vue';
 import { RULES, createUniqueNodeNameRule } from "../../utils/validation";
 import { useNodes } from '../../composables/useNodes';
@@ -87,6 +91,7 @@ const props = defineProps<{
 const emit = defineEmits(['update:modelValue', 'nodes-updated', 'remove-node']);
 // Initialize composables
 const { nodes, loading: nodesLoading, fetchNodes } = useNodes()
+const { validateNodeStoragePool, createStoragePoolError, failedToCheckStoragePoolError } = useNodeStoragePool()
 const notificationStore = useNotificationStore()
 
 
@@ -114,7 +119,12 @@ const sshKeysLoading = ref(false);
 const sshKeysError = ref('');
 const formValid = ref(false);
 const submitting = ref(false);
-const form = ref<any>(null)
+const form = ref<any>(null);
+
+const nodeValidationError = ref('');
+const validatingNode = ref(false);
+
+
 const names = computed(() => clusterNodes.value.map((node: any) => node.original_name));
 const nameRules = computed(() => [
   createUniqueNodeNameRule(names.value, addFormName.value)
@@ -141,7 +151,26 @@ async function handleAddNode(payload: any) {
   }
 }
 
-
+async function validateNode(nodeId: number | null) {
+  try {
+    nodeValidationError.value = ''
+    validatingNode.value = true
+    if (!nodeId || !availableNodesWithName.value.find((node: RawNode) => node.nodeId === nodeId)) return
+    const isValid = await validateNodeStoragePool(addFormStorage.value, nodeId)
+    if (!isValid) {
+      nodeValidationError.value = createStoragePoolError(nodeId)
+      return
+    }
+  } catch (error) {
+    console.error(error)
+    nodeValidationError.value = failedToCheckStoragePoolError().message
+  } finally {
+    validatingNode.value = false
+  }
+}
+watch(addFormStorage, () => {
+  validateNode(addFormNodeId.value)
+})
 
 
 // Reset form fields to default values
@@ -152,6 +181,8 @@ function resetForm() {
   addFormRam.value = 4
   addFormStorage.value = 25
   addFormSshKeys.value = sshKeys.value.length > 0 ? [sshKeys.value[0].ID] : []
+  nodeValidationError.value = ''
+  validatingNode.value = false
 }
 
 watch(() => names.value, async () => {

@@ -108,14 +108,14 @@ func main() {
 
 		// Loki Logs
 		rowPanel("Loki Logs", id+23, y+66),
-		map[string]interface{}{
+		map[string]any{
 			"id":    id + 24,
 			"type":  "logs",
 			"title": "Application Logs",
-			"targets": []map[string]interface{}{
+			"targets": []map[string]any{
 				{
-					"expr":     `{job="app-logs"}`,
-					"refId":    "A",
+					"expr":       `{job="app-logs"}`,
+					"refId":      "A",
 					"datasource": "Loki",
 				},
 			},
@@ -128,7 +128,7 @@ func main() {
 		},
 	}
 
-	dashboard := map[string]interface{}{
+	dashboard := map[string]any{
 		"id":                    nil,
 		"title":                 "Mycelium Cloud Dashboard",
 		"editable":              true,
@@ -138,7 +138,7 @@ func main() {
 			"from": "now-1h",
 			"to":   "now",
 		},
-		"timepicker": map[string]interface{}{
+		"timepicker": map[string]any{
 			"hidden": false,
 		},
 		"panels":        panels,

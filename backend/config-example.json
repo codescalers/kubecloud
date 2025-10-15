@@ -4,7 +4,7 @@
     "port": "8080"
   },
   "database": {
-    "file": "./users.db"
+    "dsn": "postgres://postgres:postgres@postgres:5432/myceliumcloud?sslmode=disable"
   },
   "jwt_token": {
     "secret": "your-jwt-secret-key-here-make-it-long-and-secure",

@@ -24,7 +24,11 @@ func loadConfig(configPath string) {
 
 	config = internal.Configuration{
 		Database: internal.DB{
-			File: viper.GetString("database.file"),
+			DSN:                    viper.GetString("database.dsn"),
+			MaxOpenConns:           viper.GetInt("database.max_open_conns"),
+			MaxIdleConns:           viper.GetInt("database.max_idle_conns"),
+			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
+			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
 		TFChainURL: viper.GetString("tfchain_url"),
 		SystemAccount: internal.GridAccount{
@@ -44,18 +48,14 @@ func main() {
 	configPath := flag.String("config", "../../config.json", "Path to config file")
 	flag.Parse()
 	loadConfig(*configPath)
-
-	_, err := os.Stat(config.Database.File)
-	if os.IsNotExist(err) {
-		log.Error().Err(err).Msg("Database file does not exist")
-		return
-	}
-	if err != nil {
-		log.Error().Err(err).Msg("Error checking database file")
-		return
+	dbPoolConfig := models.DBPoolConfig{
+		MaxOpenConns:           config.Database.MaxOpenConns,
+		MaxIdleConns:           config.Database.MaxIdleConns,
+		ConnMaxLifetimeMinutes: config.Database.ConnMaxLifetimeMinutes,
+		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
-	db, err := models.NewSqliteDB(config.Database.File)
+	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")

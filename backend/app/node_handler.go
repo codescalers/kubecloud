@@ -698,3 +698,75 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	})
 
 }
+
+type Pool struct {
+	Name string `json:"name"`
+	// free space in bytes
+	Free uint64 `json:"free"`
+	// type of the disk wither ssd or hdd
+	Type string `json:"type"`
+}
+
+type NodeStoragePoolResponse struct {
+	Pools []Pool `json:"pools"`
+}
+
+// @Summary Get node storage pool
+// @Description Returns node storage pool
+// @Tags nodes
+// @ID get-node-storage-pool
+// @Accept json
+// @Produce json
+// @Param node_id path string true "Node ID"
+// @Success 200 {object} APIResponse{data=NodeStoragePoolResponse} "Node storage pool is retrieved successfully"
+// @Failure 400 {object} APIResponse "Bad Request or Invalid params"
+// @Failure 404 {object} APIResponse "Node not found"
+// @Failure 500 {object} APIResponse "Internal Server Error"
+// @Router /nodes/{node_id}/storage-pool [get]
+func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
+	nodeIDParam := c.Param("node_id")
+	if nodeIDParam == "" {
+		Error(c, http.StatusBadRequest, "Node ID is required", "")
+		return
+	}
+
+	nodeID, err := strconv.ParseUint(nodeIDParam, 10, 32)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing node id")
+		return
+	}
+
+	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
+	if err != nil {
+		Error(c, http.StatusNotFound, "failed to get node", "")
+		return
+	}
+	if len(res) == 0 {
+		Error(c, http.StatusNotFound, "Node not found", "")
+		return
+	}
+
+	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, uint32(nodeID))
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	storagePool, err := nc.Pools(c.Request.Context())
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	var pools []Pool
+	for _, pool := range storagePool {
+		pools = append(pools, Pool{
+			Name: pool.Name,
+			Free: uint64(pool.Size - pool.Used),
+			Type: string(pool.Type),
+		})
+	}
+
+	Success(c, http.StatusOK, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
+}

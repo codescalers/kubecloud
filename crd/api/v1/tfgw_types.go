@@ -20,6 +20,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Condition types for TFGW
+const (
+	// ConditionTypeReady indicates whether the TFGW is ready
+	ConditionTypeReady = "Ready"
+
+	// ConditionTypeError indicates whether there is an error with the TFGW
+	ConditionTypeError = "Error"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -42,6 +51,9 @@ type TFGWStatus struct {
 
 	FQDN    string `json:"fqdn"`
 	Message string `json:"message"`
+
+	// Conditions represent the latest available observations of an object's state
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

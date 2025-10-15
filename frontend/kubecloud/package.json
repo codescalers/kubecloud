@@ -21,6 +21,7 @@
     "@mdi/font": "^7.4.47",
     "@stripe/stripe-js": "^7.4.0",
     "date-fns": "^4.1.0",
+    "marked": "^16.3.0",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.4.1",
     "three": "^0.177.0",

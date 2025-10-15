@@ -250,6 +250,13 @@ definitions:
     - root_size
     - type
     type: object
+  app.NodeStoragePoolResponse:
+    properties:
+      pools:
+        items:
+          $ref: '#/definitions/app.Pool'
+        type: array
+    type: object
   app.NodesWithDiscount:
     properties:
       certificationType:
@@ -375,6 +382,17 @@ definitions:
       user_id:
         type: integer
       username:
+        type: string
+    type: object
+  app.Pool:
+    properties:
+      free:
+        description: free space in bytes
+        type: integer
+      name:
+        type: string
+      type:
+        description: type of the disk wither ssd or hdd
         type: string
     type: object
   app.RedeemVoucherResponse:
@@ -1252,6 +1270,87 @@ paths:
       summary: Get all invoices
       tags:
       - admin
+  /nodes:
+    get:
+      consumes:
+      - application/json
+      description: List all nodes from the grid proxy (no user-specific filtering)
+      operationId: list-all-grid-nodes
+      parameters:
+      - description: 'Filter by healthy nodes (default: false)'
+        in: query
+        name: healthy
+        type: boolean
+      - description: 'Limit the number of nodes returned (default: 50)'
+        in: query
+        name: size
+        type: integer
+      - description: 'page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All grid nodes retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesResponse'
+              type: object
+        "400":
+          description: Invalid filter parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: List all grid nodes
+      tags:
+      - nodes
+  /nodes/{node_id}/storage-pool:
+    get:
+      consumes:
+      - application/json
+      description: Returns node storage pool
+      operationId: get-node-storage-pool
+      parameters:
+      - description: Node ID
+        in: path
+        name: node_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Node storage pool is retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.NodeStoragePoolResponse'
+              type: object
+        "400":
+          description: Bad Request or Invalid params
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "404":
+          description: Node not found
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: Get node storage pool
+      tags:
+      - nodes
   /notifications:
     delete:
       consumes:
@@ -1534,48 +1633,6 @@ paths:
       summary: Get unread notifications
       tags:
       - notifications
-  /nodes:
-    get:
-      consumes:
-      - application/json
-      description: List all nodes from the grid proxy (no user-specific filtering)
-      operationId: list-all-grid-nodes
-      parameters:
-      - description: 'Filter by healthy nodes (default: false)'
-        in: query
-        name: healthy
-        type: boolean
-      - description: 'Limit the number of nodes returned (default: 50)'
-        in: query
-        name: size
-        type: integer
-      - description: 'page number (default: 1)'
-        in: query
-        name: page
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: All grid nodes retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/app.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/app.ListNodesResponse'
-              type: object
-        "400":
-          description: Invalid filter parameters
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-      summary: List all grid nodes
-      tags:
-      - nodes
   /pending-records:
     get:
       consumes:

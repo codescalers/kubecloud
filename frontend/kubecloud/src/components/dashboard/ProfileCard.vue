@@ -26,16 +26,6 @@
             <v-text-field :model-value="user.verified ? 'Yes' : 'No'" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
           </div>
         </div>
-        <div class="profile-row">
-          <div class="profile-col">
-            <label class="profile-label">Last Updated</label>
-            <v-text-field :model-value="formatDate(user.updated_at)" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
-          </div>
-          <div class="profile-col">
-            <label class="profile-label">Account Status</label>
-            <v-text-field :model-value="user.verified ? 'Active' : 'Pending Verification'" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
-          </div>
-        </div>
         <v-divider class="my-4"></v-divider>
         <div class="change-password-section">
           <h4 class="section-title">Change Password</h4>

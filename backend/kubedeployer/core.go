@@ -50,6 +50,8 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		leaderIP,
 		cluster.Token,
 		masterPubKey,
+		c.mnemonic,
+		c.GridClient.Network,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create VM for node: %v", err)

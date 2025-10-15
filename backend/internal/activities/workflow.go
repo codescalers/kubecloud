@@ -19,7 +19,7 @@ var workflowsDescriptions = map[string]string{
 	constants.WorkflowRemoveNode:               "Removing Node",
 	constants.WorkflowDeleteCluster:            "Deleting Cluster",
 	constants.WorkflowDeleteAllClusters:        "Deleting All Clusters",
-	constants.WorkflowRollbackFailedDeployment: "Rollback Deployment",
+	constants.WorkflowRollbackFailedDeployment: "Rollback",
 	constants.WorkflowUserRegistration:         "User Registration",
 	constants.WorkflowUserVerification:         "User Verification",
 	constants.WorkflowChargeBalance:            "Charge Balance",
@@ -56,6 +56,7 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
+	engine.Register(constants.StepVerifyClusterInDB, VerifyClusterInDBStep(db))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -123,6 +124,7 @@ func RegisterEWFWorkflows(
 
 	trackClusterHealthWFTemplate := newKubecloudWorkflowTemplate(notificationService)
 	trackClusterHealthWFTemplate.Steps = []ewf.Step{
+		{Name: constants.StepVerifyClusterInDB, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepFetchKubeconfig, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepVerifyClusterReady, RetryPolicy: standardRetryPolicy},
 	}

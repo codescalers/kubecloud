@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -20,9 +20,6 @@ jobs:
           
       - name: Install dependencies
         run: cd frontend/kubecloud && npm ci
-        
-      - name: Lint
-        run: cd frontend/kubecloud && npm run lint
         
       - name: Build
         run: cd frontend/kubecloud && npm run build

@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,6 +84,10 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 		if err == nil {
 			return
 		}
+		if errors.Is(err, ewf.ErrFailWorkflowNow) {
+			logger.GetLogger().Warn().Str("workflow_name", wf.Name).Msg("Cluster not found in database")
+			return
+		}
 		config, cfgErr := getConfig(wf.State)
 		if cfgErr != nil {
 			logger.GetLogger().Error().Err(cfgErr).Str("workflow_name", wf.Name).Msg("Failed to get config from state")
@@ -95,7 +100,7 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 			Status:  "failed",
 			Error:   err.Error(),
 		}, map[string]string{
-			"workflow_name": wf.Name,
+			"workflow_name": getWorkflowDescription(wf.Name),
 			"timestamp":     time.Now().UTC().Format(TimestampFormat),
 		})
 		cluster, errCluster := statemanager.GetCluster(wf.State)

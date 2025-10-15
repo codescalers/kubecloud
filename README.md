@@ -112,15 +112,16 @@ The frontend development server will start on `http://localhost:5173` (default V
 1. **Download Mycelium binary** from [https://github.com/threefoldtech/mycelium](https://github.com/threefoldtech/mycelium):
 
 ```bash
-wget https://github.com/threefoldtech/mycelium/releases/latest/download/mycelium-linux-amd64
-chmod +x mycelium-linux-amd64
-sudo mv mycelium-linux-amd64 /usr/local/bin/mycelium
+wget https://github.com/threefoldtech/mycelium/releases/latest/download/mycelium-private-x86_64-unknown-linux-musl.tar.gz
+tar -xzf mycelium-private-x86_64-unknown-linux-musl.tar.gz
+sudo chmod +x mycelium-private
+sudo mv mycelium-private /usr/local/bin/mycelium
 ```
 
 1. **Start Mycelium** (in a separate terminal):
 
 ```bash
-mycelium --peers "tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651"
+sudo mycelium --peers tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651
 ```
 
 1. **Start Backend** (in another terminal):

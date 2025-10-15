@@ -1,4 +1,4 @@
-package internal
+package utils
 
 import (
 	"os"
@@ -138,7 +138,7 @@ func TestExpandPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := expandPath(tt.input)
+			result, err := ExpandPath(tt.input)
 
 			if tt.hasError {
 				assert.Error(t, err, "expandPath(%q) expected error, got nil", tt.input)

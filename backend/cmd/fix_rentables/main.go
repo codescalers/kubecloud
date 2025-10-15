@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"kubecloud/models"
-	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -12,28 +11,27 @@ import (
 )
 
 func main() {
-	var dbPath string
+	var dsn string
 	var tfchainURL string
-	flag.StringVar(&dbPath, "db", "", "Path to SQLite database file")
+	var maxOpen int
+	var maxIdle int
+	var maxLife int
+	var maxIdleTime int
+	flag.StringVar(&dsn, "dsn", "", "Database DSN (postgres://... or sqlite:///path.db)")
 	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
+	flag.IntVar(&maxOpen, "db-max-open-conns", 0, "DB max open connections (postgres only)")
+	flag.IntVar(&maxIdle, "db-max-idle-conns", 0, "DB max idle connections (postgres only)")
+	flag.IntVar(&maxLife, "db-conn-max-lifetime", 0, "DB connection max lifetime (e.g. 30m) (postgres only)")
+	flag.IntVar(&maxIdleTime, "db-conn-max-idle-time", 0, "DB connection max idle time (e.g. 5m) (postgres only)")
 	flag.Parse()
 
-	if strings.TrimSpace(dbPath) == "" || strings.TrimSpace(tfchainURL) == "" {
-		log.Error().Msg("Both --db and --tfchain-url flags are required")
+	if strings.TrimSpace(dsn) == "" || strings.TrimSpace(tfchainURL) == "" {
+		log.Error().Msg("Both --dsn and --tfchain-url flags are required")
 		return
 	}
 
-	_, err := os.Stat(dbPath)
-	if os.IsNotExist(err) {
-		log.Error().Err(err).Msg("Database file does not exist")
-		return
-	}
-	if err != nil {
-		log.Error().Err(err).Msg("Error checking database file")
-		return
-	}
-
-	db, err := models.NewSqliteDBNoMigrate(dbPath)
+	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetimeMinutes: maxLife, ConnMaxIdleTimeMinutes: maxIdleTime}
+	db, err := models.NewDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return

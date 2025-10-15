@@ -3,9 +3,8 @@ package internal
 import (
 	"fmt"
 	"kubecloud/internal/logger"
-	"os"
-	"os/user"
-	"path/filepath"
+	"kubecloud/internal/utils"
+	"net/url"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -68,7 +67,12 @@ type Server struct {
 
 // DB struct holds database file
 type DB struct {
-	File string `json:"file" validate:"required"`
+	DSN string `json:"dsn" validate:"required,dsn"`
+	// Optional connection pool settings (Postgres)
+	MaxOpenConns           int `json:"max_open_conns" validate:"min=0"`
+	MaxIdleConns           int `json:"max_idle_conns" validate:"min=0"`
+	ConnMaxLifetimeMinutes int `json:"conn_max_lifetime_minutes" validate:"min=0"`
+	ConnMaxIdleTimeMinutes int `json:"conn_max_idle_time_minutes" validate:"min=0"`
 }
 
 // JWT Token struct holds info required for JWT Tokens
@@ -215,6 +219,10 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
+	// custom validators
+	v := validator.New()
+	registerConfigValidators(v)
+
 	if labelsRaw := viper.GetString("loki.labels"); labelsRaw != "" {
 		parsed := make(map[string]string)
 		pairs := strings.Split(labelsRaw, ",")
@@ -226,27 +234,22 @@ func LoadConfig() (Configuration, error) {
 		config.Loki.Labels = parsed
 	}
 
-	config.Database.File, err = expandPath(config.Database.File)
-	if err != nil {
-		return Configuration{}, fmt.Errorf("failed to expand database file path: %w", err)
-	}
-
-	config.SSH.PrivateKeyPath, err = expandPath(config.SSH.PrivateKeyPath)
+	config.SSH.PrivateKeyPath, err = utils.ExpandPath(config.SSH.PrivateKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH private key path: %w", err)
 	}
 
-	config.SSH.PublicKeyPath, err = expandPath(config.SSH.PublicKeyPath)
+	config.SSH.PublicKeyPath, err = utils.ExpandPath(config.SSH.PublicKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH public key path: %w", err)
 	}
 
-	config.Logger.LogDir, err = expandPath(config.Logger.LogDir)
+	config.Logger.LogDir, err = utils.ExpandPath(config.Logger.LogDir)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
 	}
 
-	notificationFilePath, err := expandPath(config.NotificationConfigPath)
+	notificationFilePath, err := utils.ExpandPath(config.NotificationConfigPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand notification config path: %w", err)
 	}
@@ -257,8 +260,7 @@ func LoadConfig() (Configuration, error) {
 		config.Notification = NotificationConfig{}
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(config); err != nil {
+	if err := v.Struct(config); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			for _, ve := range validationErrors {
 				return Configuration{}, fmt.Errorf("validation error on field '%s': %s", ve.Namespace(), ve.Tag())
@@ -270,52 +272,42 @@ func LoadConfig() (Configuration, error) {
 	return config, nil
 }
 
-func expandPath(path string) (string, error) {
-	if path == "" {
-		return os.Getwd()
+func registerConfigValidators(v *validator.Validate) {
+	if v == nil {
+		return
 	}
 
-	path = os.ExpandEnv(path)
-	var err error
-	if strings.HasPrefix(path, "~") {
-		path, err = expandTilde(path)
-		if err != nil {
-			return "", fmt.Errorf("failed to expand tilde: %w", err)
+	// dsn validator for supported schemes
+	_ = v.RegisterValidation("dsn", func(fl validator.FieldLevel) bool {
+		dsn := strings.TrimSpace(fl.Field().String())
+		if dsn == "" {
+			return false
 		}
-	}
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return false
+		}
+		switch u.Scheme {
+		case "postgres":
+			return true
+		case "sqlite", "sqlite3":
+			return strings.TrimSpace(u.Path) != ""
+		default:
+			return false
+		}
+	})
 
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
-	return filepath.Clean(absPath), nil
-}
-
-func expandTilde(path string) (string, error) {
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	if path == "~" {
-		return homeDir, nil
-	}
-	if strings.HasPrefix(path, "~/") {
-		return filepath.Join(homeDir, path[2:]), nil
-	}
-	parts := strings.SplitN(path, "/", 2)
-	username := parts[0][1:]
-
-	user, err := user.Lookup(username)
-	if err != nil {
-		return "", fmt.Errorf("user %s not found: %w", username, err)
-	}
-
-	if len(parts) == 1 {
-		return user.HomeDir, nil
-	}
-	return filepath.Join(user.HomeDir, parts[1]), nil
-
+	// if MaxOpenConns>0, MaxIdleConns must be <= MaxOpenConns
+	v.RegisterStructValidation(func(sl validator.StructLevel) {
+		val, ok := sl.Current().Interface().(DB)
+		if !ok {
+			return
+		}
+		if val.MaxOpenConns <= 0 {
+			return
+		}
+		if val.MaxIdleConns > val.MaxOpenConns {
+			sl.ReportError(val.MaxIdleConns, "MaxIdleConns", "max_idle_conns", "lteMaxOpenConns", "")
+		}
+	}, DB{})
 }

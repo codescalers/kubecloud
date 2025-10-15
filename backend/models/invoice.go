@@ -11,7 +11,7 @@ type Invoice struct {
 	Nodes     []NodeItem `json:"nodes" gorm:"foreignKey:invoice_id"`
 	Tax       float64    `json:"tax"`
 	CreatedAt time.Time  `json:"created_at"`
-	FileData  []byte     `json:"-" gorm:"type:blob;column:file_data"`
+	FileData  []byte     `json:"-" gorm:"type:bytea;column:file_data"`
 }
 
 type NodeItem struct {

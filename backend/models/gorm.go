@@ -3,11 +3,10 @@ package models
 import (
 	"context"
 	"fmt"
+	"gorm.io/gorm"
 	"strings"
 	"sync"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // GormDB struct implements db interface with gorm
