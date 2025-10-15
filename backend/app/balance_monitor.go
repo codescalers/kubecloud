@@ -51,6 +51,13 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 				continue
 			}
 
+			failedRecords, err := h.db.ListFailedTransferRecords()
+			if err != nil {
+				continue
+			}
+
+			records = append(records, failedRecords...)
+
 			if err := h.settlePendingPayments(records); err != nil {
 				logger.GetLogger().Error().Err(err).Send()
 			}
@@ -85,7 +92,13 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 					continue
 				}
 
-				if user.CreditedBalance+user.CreditCardBalance-user.Debt > zeroTFTBalanceValue {
+				zeroUSDMillicentBalanceValue, err := internal.FromTFTtoUSDMillicent(h.substrateClient, zeroTFTBalanceValue)
+				if err != nil {
+					logger.GetLogger().Error().Err(err).Msgf("failed to convert TFT to USD millicent")
+					continue
+				}
+
+				if user.CreditedBalance+user.CreditCardBalance-user.Debt > zeroUSDMillicentBalanceValue {
 					continue
 				}
 
@@ -101,7 +114,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 		case <-fundUserTFTBalanceTicker.C:
 			for _, user := range users {
-				if err = h.fundUsersToClaimDiscount(ctx, user, discount(h.config.AppliedDiscount)); err != nil {
+				if err := h.fundUserToFulfillDiscount(ctx, user, []types.Node{}, []kubedeployer.Node{}, discount(h.config.AppliedDiscount)); err != nil {
 					logger.GetLogger().Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
 				}
 			}
@@ -222,43 +235,39 @@ func (h *Handler) withdrawTFTsFromUser(userID int, userMnemonic string, amountTo
 	return nil
 }
 
-func (h *Handler) fundUsersToClaimDiscount(ctx context.Context, user models.User, configuredDiscount discount) error {
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, []types.Node{}, []kubedeployer.Node{}, configuredDiscount)
+func (h *Handler) fundUserToFulfillDiscount(ctx context.Context, user models.User, addedRentedNodes []types.Node, addedSharedNodes []kubedeployer.Node, discount discount) error {
+	// calculate resources usage in USD applying discount
+	// I took the cluster nodes since only the new node is in cluster.Nodes
+	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, addedRentedNodes, addedSharedNodes, discount)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msgf("Failed to calculate resources usage in USD for user %d", user.ID)
 		return err
 	}
 
 	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
 		return err
 	}
 
 	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
 		return err
 	}
 
 	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
 		return err
 	}
 
+	// fund user to fulfill discount
 	// make sure no old payments will fund more than needed
-	if totalPendingTFTAmount < dailyUsageInTFT &&
-		userTFTBalance < dailyUsageInTFT &&
-		dailyUsageInTFT > 0 &&
-		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
+	if totalPendingTFTAmount+userTFTBalance < dailyUsageInTFT &&
+		dailyUsageInTFT > 0 {
 		if err := h.db.CreateTransferRecord(&models.TransferRecord{
 			UserID:    user.ID,
 			Username:  user.Username,
-			TFTAmount: dailyUsageInTFT - userTFTBalance,
+			TFTAmount: dailyUsageInTFT - userTFTBalance - totalPendingTFTAmount,
 			Operation: models.DepositOperation,
 		}); err != nil {
-			logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 			return err
 		}
 	}
@@ -297,7 +306,7 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 			uint64(node.TotalResources.HRU),
 			uint64(node.TotalResources.SRU),
 			len(node.PublicConfig.Ipv4) > 0,
-			len(node.CertificationType) > 0,
+			node.CertificationType == nodeCertified,
 		)
 		if err != nil {
 			return 0, err
@@ -323,6 +332,18 @@ func (h *Handler) calculateResourcesUsageInUSDApplyingDiscount(
 		proxyNode, err := h.proxyClient.Node(ctx, node.NodeID)
 		if err != nil {
 			return 0, err
+		}
+
+		if proxyNode.Rented {
+			twinID, err := h.substrateClient.GetTwinByPubKey(userIdentity.PublicKey())
+			if err != nil {
+				return 0, err
+			}
+
+			if proxyNode.RentedByTwinID == uint(twinID) {
+				// skip rented nodes as they are already calculated
+				continue
+			}
 		}
 
 		resourcesCost, err := calculator.CalculateCost(

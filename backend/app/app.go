@@ -361,7 +361,7 @@ func (app *App) registerHandlers() {
 
 func (app *App) StartBackgroundWorkers(ctx context.Context) {
 	go app.handlers.MonthlyInvoicesHandler()
-	go app.handlers.TrackUserDebt(app.gridClient)
+	go app.handlers.TrackUserDebt(ctx, app.gridClient)
 	go app.handlers.MonitorSystemBalanceAndHandleSettlement(ctx)
 	go app.handlers.DeductBalanceBasedOnUsage()
 	go app.handlers.TrackClusterHealth()

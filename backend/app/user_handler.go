@@ -712,7 +712,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} models.User "User is retrieved successfully"
+// @Success 200 {object} APIResponse{data=models.User} "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]

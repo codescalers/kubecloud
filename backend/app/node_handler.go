@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/kubedeployer"
-	"kubecloud/models"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -292,51 +291,10 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	// add newly rented node
 	rentedNodes = append(rentedNodes, node)
 
-	// calculate resources usage in USD applying discount
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(c.Request.Context(), userID, user.Mnemonic, rentedNodes, []kubedeployer.Node{}, discount(h.config.AppliedDiscount))
-	if err != nil {
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, rentedNodes, []kubedeployer.Node{}, discount(h.config.AppliedDiscount)); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
-	}
-
-	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	// fund user to fulfill discount
-	// make sure no old payments will fund more than needed
-	if totalPendingTFTAmount < dailyUsageInTFT &&
-		userTFTBalance < dailyUsageInTFT &&
-		dailyUsageInUSDMillicent > 0 &&
-		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
-		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    userID,
-			Username:  user.Username,
-			TFTAmount: dailyUsageInTFT - userTFTBalance,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowReserveNode)

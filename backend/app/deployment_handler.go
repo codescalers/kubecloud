@@ -8,7 +8,6 @@ import (
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
-	"kubecloud/models"
 	"net/http"
 	"os"
 
@@ -322,51 +321,10 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	// calculate resources usage in USD applying discount
-	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(c.Request.Context(), user.ID, user.Mnemonic, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount))
-	if err != nil {
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount)); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
-	}
-
-	dailyUsageInTFT, err := internal.FromUSDMillicentToTFT(h.substrateClient, dailyUsageInUSDMillicent)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(user.ID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	// fund user to fulfill discount
-	// make sure no old payments will fund more than needed
-	if totalPendingTFTAmount < dailyUsageInTFT &&
-		userTFTBalance < dailyUsageInTFT &&
-		dailyUsageInUSDMillicent > 0 &&
-		user.CreditCardBalance+user.CreditedBalance-user.Debt < dailyUsageInUSDMillicent {
-		if err := h.db.CreateTransferRecord(&models.TransferRecord{
-			UserID:    user.ID,
-			Username:  user.Username,
-			TFTAmount: dailyUsageInTFT - userTFTBalance,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-			InternalServerError(c)
-			return
-		}
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
@@ -564,6 +522,19 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID)})
 			return
 		}
+	}
+
+	user, err := h.db.GetUserByID(config.UserID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount)); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)

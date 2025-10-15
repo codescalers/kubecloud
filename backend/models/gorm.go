@@ -3,10 +3,11 @@ package models
 import (
 	"context"
 	"fmt"
-	"gorm.io/gorm"
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // GormDB struct implements db interface with gorm
@@ -80,6 +81,10 @@ func (s *GormDB) Ping(ctx context.Context) error {
 
 // RegisterUser registers a new user to the system
 func (s *GormDB) RegisterUser(user *User) error {
+	if err := s.UpdateUserLastCalcTime(user.ID, time.Now()); err != nil {
+		return err
+	}
+
 	return s.db.Create(user).Error
 }
 
@@ -113,7 +118,7 @@ func (s *GormDB) DeductUserBalance(user *User, amount uint64) error {
 			Error
 	}
 
-	if user.CreditCardBalance >= amount-user.CreditedBalance {
+	if user.CreditedBalance > 0 && user.CreditCardBalance >= amount-user.CreditedBalance {
 		return s.db.Model(&User{}).
 			Where("id = ?", user.ID).
 			UpdateColumn("credited_balance", gorm.Expr("credited_balance - ?", user.CreditedBalance)).
@@ -396,26 +401,28 @@ func (s *GormDB) CreateCluster(userID int, cluster *Cluster) error {
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
 
-	clusterDate, err := cluster.GetClusterResult()
+	clusterData, err := cluster.GetClusterResult()
 	if err != nil {
 		return err
 	}
 
-	for _, node := range clusterDate.Nodes {
-		if err := s.CreateUserContractData(
-			&UserContractData{
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			contractData := &UserContractData{
 				UserID:     userID,
 				ContractID: node.ContractID,
 				NodeID:     node.NodeID,
 				Type:       ContractTypeDeployed,
 				CreatedAt:  time.Now(),
-			},
-		); err != nil {
-			return err
-		}
-	}
+			}
 
-	return s.db.Create(cluster).Error
+			if err := tx.Create(contractData).Error; err != nil {
+				return fmt.Errorf("failed to create contract data for node %d: %w", node.NodeID, err)
+			}
+		}
+
+		return tx.Create(cluster).Error
+	})
 }
 
 // ListUserClusters returns all clusters for a specific user
@@ -434,6 +441,57 @@ func (s *GormDB) GetClusterByName(userID int, projectName string) (Cluster, erro
 
 // UpdateCluster updates an existing cluster
 func (s *GormDB) UpdateCluster(cluster *Cluster) error {
+	existingCluster, err := s.GetClusterByName(cluster.UserID, cluster.ProjectName)
+	if err != nil {
+		return fmt.Errorf("failed to get existing cluster: %w", err)
+	}
+
+	existingClusterData, err := existingCluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse existing cluster data: %w", err)
+	}
+
+	newClusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse new cluster data: %w", err)
+	}
+
+	existingNodes := make(map[uint64]struct{})
+	for _, node := range existingClusterData.Nodes {
+		if node.ContractID != 0 {
+			existingNodes[node.ContractID] = struct{}{}
+		}
+	}
+
+	for _, node := range newClusterData.Nodes {
+		if node.ContractID != 0 {
+			if _, exists := existingNodes[node.ContractID]; !exists {
+				// This is a new node, create a contract for it
+				if err := s.CreateUserContractData(
+					&UserContractData{
+						UserID:     cluster.UserID,
+						ContractID: node.ContractID,
+						NodeID:     node.NodeID,
+						Type:       ContractTypeDeployed,
+						CreatedAt:  time.Now(),
+					},
+				); err != nil {
+					return fmt.Errorf("failed to create contract for new node: %w", err)
+				}
+			}
+			// Remove from existing nodes map to track what is processed
+			delete(existingNodes, node.ContractID)
+		}
+	}
+
+	// Handle removed nodes - delete contracts for nodes that exist in old but not in new
+	for contractID := range existingNodes {
+		if err := s.DeleteUserContract(contractID); err != nil {
+			return fmt.Errorf("failed to delete contract for removed node: %w", err)
+		}
+	}
+
+	// Update the cluster record
 	cluster.UpdatedAt = time.Now()
 	return s.db.Model(&Cluster{}).
 		Where("user_id = ? AND project_name = ?", cluster.UserID, cluster.ProjectName).
@@ -452,13 +510,18 @@ func (s *GormDB) DeleteCluster(userID int, projectName string) error {
 		return err
 	}
 
-	for _, node := range clusterData.Nodes {
-		if err := s.DeleteUserContract(node.ContractID); err != nil {
-			return err
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			if err := tx.Model(&UserContractData{}).
+				Where("contract_id = ?", node.ContractID).
+				Update("deleted_at", time.Now()).Error; err != nil {
+				return fmt.Errorf("failed to delete contract for node %d: %w", node.NodeID, err)
+			}
 		}
-	}
 
-	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
+		return tx.Where("user_id = ? AND project_name = ?", userID, projectName).
+			Delete(&Cluster{}).Error
+	})
 }
 
 // DeleteAllUserClusters deletes all clusters for a specific user
@@ -498,7 +561,7 @@ func (s *GormDB) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, erro
 	var totalAmount uint64
 	err := s.db.Model(&TransferRecord{}).
 		Select("SUM(tft_amount)").
-		Where("user_id = ? AND state = ? AND state = ?", userID, PendingState, PendingState).
+		Where("user_id = ? AND state = ?", userID, PendingState).
 		Scan(&totalAmount).Error
 	if err != nil {
 		return 0, err
@@ -514,6 +577,11 @@ func (s *GormDB) ListUserTransferRecords(userID int) ([]TransferRecord, error) {
 func (s *GormDB) ListPendingTransferRecords() ([]TransferRecord, error) {
 	var TransferRecords []TransferRecord
 	return TransferRecords, s.db.Where("state = ?", PendingState).Find(&TransferRecords).Error
+}
+
+func (s *GormDB) ListFailedTransferRecords() ([]TransferRecord, error) {
+	var TransferRecords []TransferRecord
+	return TransferRecords, s.db.Where("state = ?", FailedState).Find(&TransferRecords).Error
 }
 
 func (s *GormDB) UpdateTransferRecordState(recordID int, state state, failure string) error {
