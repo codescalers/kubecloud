@@ -24,11 +24,11 @@ func loadConfig(configPath string) {
 
 	config = internal.Configuration{
 		Database: internal.DB{
-			DSN:             viper.GetString("database.dsn"),
-			MaxOpenConns:    viper.GetInt("database.max_open_conns"),
-			MaxIdleConns:    viper.GetInt("database.max_idle_conns"),
-			ConnMaxLifetime: viper.GetString("database.conn_max_lifetime"),
-			ConnMaxIdleTime: viper.GetString("database.conn_max_idle_time"),
+			DSN:                    viper.GetString("database.dsn"),
+			MaxOpenConns:           viper.GetInt("database.max_open_conns"),
+			MaxIdleConns:           viper.GetInt("database.max_idle_conns"),
+			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
+			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
 		TFChainURL: viper.GetString("tfchain_url"),
 		SystemAccount: internal.GridAccount{
@@ -49,10 +49,10 @@ func main() {
 	flag.Parse()
 	loadConfig(*configPath)
 	dbPoolConfig := models.DBPoolConfig{
-		MaxOpenConns:    config.Database.MaxOpenConns,
-		MaxIdleConns:    config.Database.MaxIdleConns,
-		ConnMaxLifetime: config.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: config.Database.ConnMaxIdleTime,
+		MaxOpenConns:           config.Database.MaxOpenConns,
+		MaxIdleConns:           config.Database.MaxIdleConns,
+		ConnMaxLifetimeMinutes: config.Database.ConnMaxLifetimeMinutes,
+		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
 	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)

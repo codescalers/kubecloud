@@ -43,7 +43,7 @@ func SetUp(t testing.TB) (*App, error) {
 
 	mnemonic := os.Getenv("TEST_MNEMONIC")
 	if mnemonic == "" {
-		mnemonic = "banana amazing copy inherit still family want sentence desk urban expose bone"
+		return nil, fmt.Errorf("TEST_MNEMONIC environment variable is not set")
 	}
 
 	config := fmt.Sprintf(`

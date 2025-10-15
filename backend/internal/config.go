@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/utils"
+	"net/url"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -64,12 +65,12 @@ type Server struct {
 
 // DB struct holds database file
 type DB struct {
-	DSN string `json:"dsn" validate:"required"`
+	DSN string `json:"dsn" validate:"required,dsn"`
 	// Optional connection pool settings (Postgres)
-	MaxOpenConns    int    `json:"max_open_conns"`
-	MaxIdleConns    int    `json:"max_idle_conns"`
-	ConnMaxLifetime string `json:"conn_max_lifetime"`
-	ConnMaxIdleTime string `json:"conn_max_idle_time"`
+	MaxOpenConns           int `json:"max_open_conns" validate:"min=0"`
+	MaxIdleConns           int `json:"max_idle_conns" validate:"min=0"`
+	ConnMaxLifetimeMinutes int `json:"conn_max_lifetime_minutes" validate:"min=0"`
+	ConnMaxIdleTimeMinutes int `json:"conn_max_idle_time_minutes" validate:"min=0"`
 }
 
 // JWT Token struct holds info required for JWT Tokens
@@ -216,6 +217,10 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
+	// custom validators
+	v := validator.New()
+	registerConfigValidators(v)
+
 	if labelsRaw := viper.GetString("loki.labels"); labelsRaw != "" {
 		parsed := make(map[string]string)
 		pairs := strings.Split(labelsRaw, ",")
@@ -253,8 +258,7 @@ func LoadConfig() (Configuration, error) {
 		config.Notification = NotificationConfig{}
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(config); err != nil {
+	if err := v.Struct(config); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			for _, ve := range validationErrors {
 				return Configuration{}, fmt.Errorf("validation error on field '%s': %s", ve.Namespace(), ve.Tag())
@@ -264,4 +268,44 @@ func LoadConfig() (Configuration, error) {
 	}
 
 	return config, nil
+}
+
+func registerConfigValidators(v *validator.Validate) {
+	if v == nil {
+		return
+	}
+
+	// dsn validator for supported schemes
+	_ = v.RegisterValidation("dsn", func(fl validator.FieldLevel) bool {
+		dsn := strings.TrimSpace(fl.Field().String())
+		if dsn == "" {
+			return false
+		}
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return false
+		}
+		switch u.Scheme {
+		case "postgres":
+			return true
+		case "sqlite", "sqlite3":
+			return strings.TrimSpace(u.Path) != ""
+		default:
+			return false
+		}
+	})
+
+	// if MaxOpenConns>0, MaxIdleConns must be <= MaxOpenConns
+	v.RegisterStructValidation(func(sl validator.StructLevel) {
+		val, ok := sl.Current().Interface().(DB)
+		if !ok {
+			return
+		}
+		if val.MaxOpenConns <= 0 {
+			return
+		}
+		if val.MaxIdleConns > val.MaxOpenConns {
+			sl.ReportError(val.MaxIdleConns, "MaxIdleConns", "max_idle_conns", "lteMaxOpenConns", "")
+		}
+	}, DB{})
 }

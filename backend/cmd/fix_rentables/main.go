@@ -15,14 +15,14 @@ func main() {
 	var tfchainURL string
 	var maxOpen int
 	var maxIdle int
-	var maxLife string
-	var maxIdleTime string
+	var maxLife int
+	var maxIdleTime int
 	flag.StringVar(&dsn, "dsn", "", "Database DSN (postgres://... or sqlite:///path.db)")
 	flag.StringVar(&tfchainURL, "tfchain-url", "", "TFChain WebSocket/HTTP URL")
 	flag.IntVar(&maxOpen, "db-max-open-conns", 0, "DB max open connections (postgres only)")
 	flag.IntVar(&maxIdle, "db-max-idle-conns", 0, "DB max idle connections (postgres only)")
-	flag.StringVar(&maxLife, "db-conn-max-lifetime", "", "DB connection max lifetime (e.g. 30m) (postgres only)")
-	flag.StringVar(&maxIdleTime, "db-conn-max-idle-time", "", "DB connection max idle time (e.g. 5m) (postgres only)")
+	flag.IntVar(&maxLife, "db-conn-max-lifetime", 0, "DB connection max lifetime (e.g. 30m) (postgres only)")
+	flag.IntVar(&maxIdleTime, "db-conn-max-idle-time", 0, "DB connection max idle time (e.g. 5m) (postgres only)")
 	flag.Parse()
 
 	if strings.TrimSpace(dsn) == "" || strings.TrimSpace(tfchainURL) == "" {
@@ -30,7 +30,7 @@ func main() {
 		return
 	}
 
-	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetime: maxLife, ConnMaxIdleTime: maxIdleTime}
+	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetimeMinutes: maxLife, ConnMaxIdleTimeMinutes: maxIdleTime}
 	db, err := models.NewDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")

@@ -7,10 +7,10 @@ import (
 )
 
 type DBPoolConfig struct {
-	MaxOpenConns    int    `json:"max_open_conns"`
-	MaxIdleConns    int    `json:"max_idle_conns"`
-	ConnMaxLifetime string `json:"conn_max_lifetime"`
-	ConnMaxIdleTime string `json:"conn_max_idle_time"`
+	MaxOpenConns           int `json:"max_open_conns"`
+	MaxIdleConns           int `json:"max_idle_conns"`
+	ConnMaxLifetimeMinutes int `json:"conn_max_lifetime_minutes"`
+	ConnMaxIdleTimeMinutes int `json:"conn_max_idle_time_minutes"`
 }
 
 // NewPostgresDB returns a models.DB using Postgres as the backend (with AutoMigrate)
@@ -54,14 +54,10 @@ func ConfigureSQLPool(storage DB, cfg DBPoolConfig) {
 	if cfg.MaxIdleConns >= 0 {
 		sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	}
-	if cfg.ConnMaxLifetime != "" {
-		if d, err := time.ParseDuration(cfg.ConnMaxLifetime); err == nil {
-			sqlDB.SetConnMaxLifetime(d)
-		}
+	if cfg.ConnMaxLifetimeMinutes > 0 {
+		sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetimeMinutes) * time.Minute)
 	}
-	if cfg.ConnMaxIdleTime != "" {
-		if d, err := time.ParseDuration(cfg.ConnMaxIdleTime); err == nil {
-			sqlDB.SetConnMaxIdleTime(d)
-		}
+	if cfg.ConnMaxIdleTimeMinutes > 0 {
+		sqlDB.SetConnMaxIdleTime(time.Duration(cfg.ConnMaxIdleTimeMinutes) * time.Minute)
 	}
 }

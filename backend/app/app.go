@@ -72,10 +72,10 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	)
 
 	dbPoolConfig := models.DBPoolConfig{
-		MaxOpenConns:    config.Database.MaxOpenConns,
-		MaxIdleConns:    config.Database.MaxIdleConns,
-		ConnMaxLifetime: config.Database.ConnMaxLifetime,
-		ConnMaxIdleTime: config.Database.ConnMaxIdleTime,
+		MaxOpenConns:           config.Database.MaxOpenConns,
+		MaxIdleConns:           config.Database.MaxIdleConns,
+		ConnMaxLifetimeMinutes: config.Database.ConnMaxLifetimeMinutes,
+		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
 	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)

@@ -1146,6 +1146,7 @@ func isUniqueViolation(err error) bool {
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
+		// 23505 is the code for unique constraint violation
 		return pgErr.Code == "23505"
 	}
 
