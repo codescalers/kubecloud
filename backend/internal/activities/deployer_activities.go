@@ -394,7 +394,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
+func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -404,6 +404,16 @@ func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageServ
 		projectName, ok := state["project_name"].(string)
 		if !ok {
 			return fmt.Errorf("missing or invalid 'project_name' in state")
+		}
+
+		cluster, err := db.GetClusterByName(config.UserID, projectName)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to get cluster by name: %w", err)
+		}
+		if cluster.ID != 0 {
+			if err := fileStorage.DeleteKubeconfigFile(config.UserID, cluster.ID, projectName); err != nil {
+				logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Int("cluster_id", cluster.ID).Str("project_name", projectName).Msg("Failed to delete kubeconfig during cluster removal")
+			}
 		}
 
 		cluster, err := db.GetClusterByName(config.UserID, projectName)
@@ -510,7 +520,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 	}
 }
 
-func DeleteAllUserClustersStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
+func DeleteAllUserClustersStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -672,10 +682,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, fileStorage, fileStorage, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db, fileStorage, metrics, fileStorage))
+	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db, fileStorage, fileStorage, metrics, fileStorage))
 	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db, fileStorage, metrics, fileStorage))
+	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db, fileStorage, fileStorage, metrics, fileStorage))
 
 	deployWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
