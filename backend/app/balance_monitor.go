@@ -92,22 +92,11 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 					continue
 				}
 
-				zeroUSDMillicentBalanceValue, err := internal.FromTFTtoUSDMillicent(h.substrateClient, zeroTFTBalanceValue)
-				if err != nil {
-					logger.GetLogger().Error().Err(err).Msgf("failed to convert TFT to USD millicent")
+				if user.CreditedBalance+user.CreditCardBalance-user.Debt <= 0 {
 					continue
 				}
 
-				if user.CreditedBalance+user.CreditCardBalance-user.Debt > zeroUSDMillicentBalanceValue {
-					continue
-				}
-
-				if err := h.db.CreateTransferRecord(&models.TransferRecord{
-					UserID:    user.ID,
-					Username:  user.Username,
-					TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * TFTUnitFactor,
-					Operation: models.DepositOperation,
-				}); err != nil {
+				if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
 					logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
 				}
 			}
@@ -137,14 +126,14 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 				continue
 			}
 
-			if userTFTBalance <= transferFees {
+			if userTFTBalance <= uint64(h.config.MinimumTFTAmountInWallet)*TFTUnitFactor+transferFees {
 				continue
 			}
 
 			transferRecord := models.TransferRecord{
 				UserID:    user.ID,
 				Username:  user.Username,
-				TFTAmount: userTFTBalance,
+				TFTAmount: userTFTBalance - transferFees - uint64(h.config.MinimumTFTAmountInWallet)*TFTUnitFactor,
 				Operation: models.WithdrawOperation,
 				State:     models.SuccessState,
 			}
@@ -152,7 +141,6 @@ func (h *Handler) resetUsersTFTsWithNoUSDBalance(users []models.User) error {
 			if err = h.withdrawTFTsFromUser(user.ID, user.Mnemonic, userTFTBalance); err != nil {
 				logger.GetLogger().Error().Err(err).Msgf("Failed to withdraw all TFTs for user %d", user.ID)
 
-				// TODO: handle retries
 				transferRecord.State = models.FailedState
 				transferRecord.Failure = err.Error()
 			}
@@ -236,6 +224,11 @@ func (h *Handler) withdrawTFTsFromUser(userID int, userMnemonic string, amountTo
 }
 
 func (h *Handler) fundUserToFulfillDiscount(ctx context.Context, user models.User, addedRentedNodes []types.Node, addedSharedNodes []kubedeployer.Node, discount discount) error {
+	if user.CreditCardBalance+user.CreditedBalance-user.Debt <= 0 {
+		// user has no USD balance, skip
+		return nil
+	}
+
 	// calculate resources usage in USD applying discount
 	// I took the cluster nodes since only the new node is in cluster.Nodes
 	dailyUsageInUSDMillicent, err := h.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, addedRentedNodes, addedSharedNodes, discount)

@@ -81,11 +81,11 @@ func (s *GormDB) Ping(ctx context.Context) error {
 
 // RegisterUser registers a new user to the system
 func (s *GormDB) RegisterUser(user *User) error {
-	if err := s.UpdateUserLastCalcTime(user.ID, time.Now()); err != nil {
+	if err := s.db.Create(user).Error; err != nil {
 		return err
 	}
 
-	return s.db.Create(user).Error
+	return s.UpdateUserLastCalcTime(user.ID, time.Now())
 }
 
 // GetUserByEmail returns user by its email if found
@@ -560,7 +560,7 @@ func (s *GormDB) ListTransferRecords() ([]TransferRecord, error) {
 func (s *GormDB) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error) {
 	var totalAmount uint64
 	err := s.db.Model(&TransferRecord{}).
-		Select("SUM(tft_amount)").
+		Select("COALESCE(SUM(tft_amount), 0)").
 		Where("user_id = ? AND state = ?", userID, PendingState).
 		Scan(&totalAmount).Error
 	if err != nil {

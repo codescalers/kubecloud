@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 
 	"kubecloud/internal/constants"
@@ -672,19 +674,6 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	millicentAmount := internal.FromUSDToUSDMillicent(request.Amount)
-
-	if err := h.db.CreateTransferRecord(&models.TransferRecord{
-		UserID:    userID,
-		Username:  user.Username,
-		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
-		Operation: models.DepositOperation,
-	}); err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowChargeBalance)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
@@ -696,10 +685,26 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"user_id":            userID,
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
-		"amount":             millicentAmount,
+		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	if err := h.ewfEngine.RunSync(context.Background(), wf); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
 
 	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
@@ -793,16 +798,16 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.CreateTransferRecord(&models.TransferRecord{
-		UserID:    userID,
-		Username:  user.Username,
-		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
-		Operation: models.DepositOperation,
-	}); err != nil {
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
+	}
 
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("error settling and funding user after charging USD balance")
+		InternalServerError(c)
+		return
 	}
 
 	Success(c, http.StatusOK, fmt.Sprintf("Voucher with value %v$ is redeemed successfully.", voucher.Value), RedeemVoucherResponse{
@@ -1033,4 +1038,35 @@ func isUniqueViolation(err error) bool {
 		}
 	}
 	return false
+}
+
+func (h *Handler) settleAndFundUserAfterChargedUSDBalance(ctx context.Context, user *models.User) error {
+	if err := h.settleUserUsage(user); err != nil {
+		return err
+	}
+
+	return h.fundUserToFulfillDiscount(ctx, *user, []types.Node{}, []kubedeployer.Node{}, discount(h.config.AppliedDiscount))
+}
+
+func (h *Handler) createTransferRecordToChargeUserWithMinTFTAmount(userID int, username, userMnemonic string) error {
+	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(userID)
+	if err != nil {
+		return err
+	}
+
+	if userTFTBalance+totalPendingTFTAmount >= zeroTFTBalanceValue {
+		return nil
+	}
+
+	return h.db.CreateTransferRecord(&models.TransferRecord{
+		UserID:    userID,
+		Username:  username,
+		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * TFTUnitFactor,
+		Operation: models.DepositOperation,
+	})
 }

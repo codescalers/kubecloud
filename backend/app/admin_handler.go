@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"kubecloud/internal/activities"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/notification"
 
@@ -344,13 +345,31 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.CreateTransferRecord(&models.TransferRecord{
-		UserID:    id,
-		Username:  user.Username,
-		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet),
-		Operation: models.DepositOperation,
-	}); err != nil {
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("error settling and funding user after charging USD balance")
+		InternalServerError(c)
+		return
+	}
+
+	notificationPayload := notification.MergePayload(notification.CommonPayload{
+		Message: fmt.Sprintf("Admin %s has credited your account with %v$ successfully", user.Username, request.AmountUSD),
+		Subject: "Admin Credited Your Account",
+		Status:  "succeeded",
+	}, map[string]string{
+		"workflow_name":   "Admin Credit Your Account",
+		"timestamp":       time.Now().Local().Format(activities.TimestampFormat),
+		"amount":          fmt.Sprintf("%.2f", request.AmountUSD),
+		"updated_balance": fmt.Sprintf("%v", user.CreditedBalance),
+	})
+	notificationObj := models.NewNotification(user.ID, models.NotificationTypeBilling, notificationPayload, models.WithSeverity(models.NotificationSeveritySuccess))
+	if err := h.notificationService.Send(c.Request.Context(), notificationObj); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for user credit")
 		InternalServerError(c)
 		return
 	}

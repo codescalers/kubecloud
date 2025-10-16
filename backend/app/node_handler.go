@@ -280,18 +280,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	// fund user to fulfill discount
-	rentedNodes, _, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	// add newly rented node
-	rentedNodes = append(rentedNodes, node)
-
-	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, rentedNodes, []kubedeployer.Node{}, discount(h.config.AppliedDiscount)); err != nil {
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []proxyTypes.Node{node}, []kubedeployer.Node{}, discount(h.config.AppliedDiscount)); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal"
@@ -65,41 +66,45 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	})
 }
 
-func (h *Handler) MonthlyInvoicesHandler() {
+func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
 	for {
-		now := time.Now()
-		monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
-		if now.Day() != monthLastDay.Day() {
-			// sleep till last day of month
-			time.Sleep(monthLastDay.Sub(now))
-		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			now := time.Now()
+			monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
+			if now.Day() != monthLastDay.Day() {
+				// sleep till last day of month
+				time.Sleep(monthLastDay.Sub(now))
+			}
 
-		// Check if invoices for the current month have already been created
-		if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
-			// Sleep until the first day of the next month to avoid running multiple times on the last day
-			nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
-			sleepDuration := nextMonth.Sub(now)
-			time.Sleep(sleepDuration)
-			continue
-		}
+			// Check if invoices for the current month have already been created
+			if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
+				// Sleep until the first day of the next month to avoid running multiple times on the last day
+				nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
+				sleepDuration := nextMonth.Sub(now)
+				time.Sleep(sleepDuration)
+				continue
+			}
 
-		users, err := h.db.ListAllUsers()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-		}
-		for _, user := range users {
-			if err = h.createUserInvoice(user); err != nil {
+			users, err := h.db.ListAllUsers()
+			if err != nil {
 				logger.GetLogger().Error().Err(err).Send()
 			}
+			for _, user := range users {
+				if err = h.createUserInvoice(user); err != nil {
+					logger.GetLogger().Error().Err(err).Send()
+				}
+			}
+
+			// Update the last processed month and year
+			lastProcessedMonth = now.Month()
+			lastProcessedYear = now.Year()
 		}
-
-		// Update the last processed month and year
-		lastProcessedMonth = now.Month()
-		lastProcessedYear = now.Year()
-
 	}
 }
 

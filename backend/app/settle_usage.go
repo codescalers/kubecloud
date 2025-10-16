@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"kubecloud/internal"
 	"kubecloud/internal/logger"
+	"kubecloud/models"
 	"math"
 	"strconv"
 	"time"
@@ -15,34 +17,42 @@ type DiscountPackage struct {
 	Discount        int
 }
 
-// DeductBalanceBasedOnUsage deducts the user balance based on the usage
+// DeductUSDBalanceBasedOnUsage deducts the user balance based on the usage
 // This function is called every 24 hours
-func (h *Handler) DeductBalanceBasedOnUsage() {
+func (h *Handler) DeductUSDBalanceBasedOnUsage(ctx context.Context) {
 	usageDeductionTicker := time.NewTicker(24 * time.Hour)
 	defer usageDeductionTicker.Stop()
 
-	for range usageDeductionTicker.C {
-		users, err := h.db.ListAllUsers()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to list users")
-			continue
-		}
-
-		for _, user := range users {
-			usageInUSDMillicent, err := h.getUserDailyUsageInUSD(user.ID)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-usageDeductionTicker.C:
+			users, err := h.db.ListAllUsers()
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Msgf("Failed to get usage for user %d", user.ID)
+				logger.GetLogger().Error().Err(err).Msg("Failed to list users")
 				continue
 			}
 
-			if err := h.db.DeductUserBalance(&user, usageInUSDMillicent); err != nil {
-				logger.GetLogger().Error().Err(err).Msgf("Failed to deduct balance for user %d", user.ID)
+			for _, user := range users {
+				if err := h.settleUserUsage(&user); err != nil {
+					logger.GetLogger().Error().Err(err).Msgf("Failed to settle daily usage for user %d", user.ID)
+				}
 			}
 		}
 	}
 }
 
-func (h *Handler) getUserDailyUsageInUSD(userID int) (uint64, error) {
+func (h *Handler) settleUserUsage(user *models.User) error {
+	usageInUSDMillicent, err := h.getUserLatestUsageInUSD(user.ID)
+	if err != nil {
+		return err
+	}
+
+	return h.db.DeductUserBalance(user, usageInUSDMillicent)
+}
+
+func (h *Handler) getUserLatestUsageInUSD(userID int) (uint64, error) {
 	now := time.Now()
 	// Define the end of the day (next day at 00:00)
 	endOfDay := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.Local)
@@ -138,7 +148,7 @@ func getDiscountPackage(discountInput discount) DiscountPackage {
 
 	discountPackages := map[discount]DiscountPackage{
 		"none": {
-			DurationInMonth: 0,
+			DurationInMonth: oneDayMargin * 3,
 			Discount:        0,
 		},
 		"default": {

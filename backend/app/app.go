@@ -360,10 +360,10 @@ func (app *App) registerHandlers() {
 }
 
 func (app *App) StartBackgroundWorkers(ctx context.Context) {
-	go app.handlers.MonthlyInvoicesHandler()
+	go app.handlers.MonthlyInvoicesHandler(ctx)
 	go app.handlers.TrackUserDebt(ctx, app.gridClient)
 	go app.handlers.MonitorSystemBalanceAndHandleSettlement(ctx)
-	go app.handlers.DeductBalanceBasedOnUsage()
+	go app.handlers.DeductUSDBalanceBasedOnUsage(ctx)
 	go app.handlers.TrackClusterHealth()
 	// Start command socket
 	go app.startCommandSocket()
