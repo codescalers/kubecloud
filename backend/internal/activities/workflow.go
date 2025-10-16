@@ -43,6 +43,7 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationService *notification.NotificationService,
 	proxyClient proxy.Client,
+	fileStorage *internal.FileStorageService,
 ) {
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))
@@ -152,7 +153,7 @@ func RegisterEWFWorkflows(
 	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(constants.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, notificationService, config)
+	registerDeploymentActivities(engine, metrics, db, notificationService, config, fileStorage)
 
 	notificationTemplate := ewf.WorkflowTemplate{
 		Steps: []ewf.Step{

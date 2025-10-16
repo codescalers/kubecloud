@@ -56,6 +56,7 @@ type Handler struct {
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
+	fileStorage         *internal.FileStorageService
 	appContext          context.Context
 }
 
@@ -68,6 +69,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
 	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient,
+	fileStorage *internal.FileStorageService,
 	appContext context.Context) *Handler {
 
 	return &Handler{
@@ -90,6 +92,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
+		fileStorage:         fileStorage,
 		appContext:          appContext,
 	}
 }

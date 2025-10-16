@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/models"
 	"net/http"
+	"os"
 	"strconv"
 
 	"time"
@@ -157,38 +158,41 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 		return
 	}
 
-	// Creating pdf for invoice if it doesn't have it
-	if len(invoice.FileData) == 0 {
-		user, err := h.db.GetUserByID(userID)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to retrieve user")
-			InternalServerError(c)
-			return
-		}
-
-		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to create invoice PDF")
-			InternalServerError(c)
-			return
-		}
-
-		invoice.FileData = pdfContent
-		if err := h.db.UpdateInvoicePDF(id, invoice.FileData); err != nil {
-			reqLog.Error().Err(err).Msg("failed to update invoice PDF")
-			InternalServerError(c)
-			return
-		}
-	}
-
 	if userID != invoice.UserID {
-		Error(c, http.StatusNotFound, "User is not authorized to download this invoice", "")
+		Error(c, http.StatusForbidden, "User is not authorized to download this invoice", "")
 		return
 	}
 
-	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID)))
+	data, err := h.fileStorage.ReadInvoiceFile(userID, invoice.ID)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Generate on-demand and persist, then read again
+			user, uErr := h.db.GetUserByID(userID)
+			if uErr != nil {
+				logger.GetLogger().Error().Err(uErr).Send()
+				InternalServerError(c)
+				return
+			}
+			pdfContent, gErr := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
+			if gErr != nil {
+				logger.GetLogger().Error().Err(gErr).Send()
+				InternalServerError(c)
+				return
+			}
+			if _, wErr := h.fileStorage.WriteInvoiceFile(userID, invoice.ID, pdfContent); wErr != nil {
+				logger.GetLogger().Error().Err(wErr).Msg("failed to write invoice pdf to storage")
+			}
+			data = pdfContent
+		} else {
+			logger.GetLogger().Error().Err(err).Msg("failed to read invoice pdf from storage")
+			InternalServerError(c)
+			return
+		}
+	}
+	fileName := h.fileStorage.InvoiceFileName(userID, invoice.ID)
+	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	c.Writer.Header().Set("Content-Type", "application/pdf")
-	c.Data(http.StatusOK, "application/pdf", invoice.FileData)
+	c.Data(http.StatusOK, "application/pdf", data)
 
 }
 
@@ -258,20 +262,27 @@ func (h *Handler) createUserInvoice(user models.User) error {
 		CreatedAt: time.Now(),
 	}
 
-	file, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
-	if err != nil {
-		return err
-	}
-
-	invoice.FileData = file
 	if err = h.db.CreateInvoice(&invoice); err != nil {
 		return err
 	}
 
+	file, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
+	if err != nil {
+		return err
+	}
+	if _, err := h.fileStorage.WriteInvoiceFile(user.ID, invoice.ID, file); err != nil {
+		return err
+	}
+
 	subject, body := mailservice.InvoiceMailContent(totalInvoiceCostUSD, h.config.Currency, invoice.ID)
+	// read back for attachment
+	data, err := h.fileStorage.ReadInvoiceFile(user.ID, invoice.ID)
+	if err != nil {
+		return err
+	}
 	err = h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body, mailservice.Attachment{
-		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
-		Data:     invoice.FileData,
+		FileName: h.fileStorage.InvoiceFileName(user.ID, invoice.ID),
+		Data:     data,
 	})
 	if err != nil {
 		return err

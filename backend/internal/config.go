@@ -5,6 +5,7 @@ import (
 	"kubecloud/internal/logger"
 	"kubecloud/internal/utils"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/go-playground/validator"
@@ -50,6 +51,7 @@ type Configuration struct {
 	// Notification configuration
 	NotificationConfigPath string             `json:"notification_config_path"`
 	Notification           NotificationConfig `json:"-"`
+	FileStoragePath        string             `json:"file_storage_path" validate:"required"`
 }
 
 type SSHConfig struct {
@@ -237,6 +239,22 @@ func LoadConfig() (Configuration, error) {
 	config.Logger.LogDir, err = utils.ExpandPath(config.Logger.LogDir)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
+	}
+
+	config.FileStoragePath, err = utils.ExpandPath(config.FileStoragePath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand file storage base directory path: %w", err)
+	}
+	if _, err := os.Stat(config.FileStoragePath); os.IsNotExist(err) {
+		return Configuration{}, fmt.Errorf("file storage base directory does not exist: %w", err)
+	}
+
+	config.FileStoragePath, err = utils.ExpandPath(config.FileStoragePath)
+	if err != nil {
+		return Configuration{}, fmt.Errorf("failed to expand file storage base directory path: %w", err)
+	}
+	if _, err := os.Stat(config.FileStoragePath); os.IsNotExist(err) {
+		return Configuration{}, fmt.Errorf("file storage base directory does not exist: %w", err)
 	}
 
 	notificationFilePath, err := utils.ExpandPath(config.NotificationConfigPath)

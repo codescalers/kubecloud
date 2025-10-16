@@ -162,6 +162,12 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to create system identity: %w", err)
 	}
 
+	// Initialize file storage service
+	fileStorage, err := internal.NewFileStorageService(config.FileStoragePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init file storage service: %w", err)
+	}
+
 	sshPublicKeyBytes, err := os.ReadFile(config.SSH.PublicKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read SSH public key from %s: %w", config.SSH.PublicKeyPath, err)
@@ -209,7 +215,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient, appCtx)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient, fileStorage, appCtx)
 
 	app := &App{
 		router:              router,
@@ -236,6 +242,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		app.metrics,
 		app.notificationService,
 		gridProxy,
+		fileStorage,
 	)
 
 	app.registerHandlers()
