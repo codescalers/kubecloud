@@ -610,47 +610,6 @@ func TestGetUserHandler(t *testing.T) {
 
 }
 
-func TestGetUserBalanceHandler(t *testing.T) {
-	app, err := SetUp(t)
-	require.NoError(t, err)
-	router := app.router
-	t.Run("Test Get balance successfully", func(t *testing.T) {
-
-		user := CreateTestUser(t, app, "balanceuser@example.com", "Balance User", []byte("securepassword"), true, false, true, 0, time.Now())
-
-		assert.NoError(t, err)
-		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
-		req, _ := http.NewRequest("GET", "/api/v1/user/balance", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		var result map[string]interface{}
-		err = json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Equal(t, "Balance is fetched", result["message"])
-		assert.NotNil(t, result["data"])
-		data := result["data"].(map[string]interface{})
-		assert.Contains(t, data, "balance_usd")
-		assert.Contains(t, data, "debt_usd")
-	})
-
-	t.Run("Test Get balance for non-existing user", func(t *testing.T) {
-
-		token := GetAuthToken(t, app, 999, "notfound@example.com", "Not Found", false)
-		req, _ := http.NewRequest("GET", "/api/v1/user/balance", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNotFound, resp.Code)
-		var result map[string]interface{}
-		err = json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Contains(t, result["message"], "User is not found")
-	})
-
-}
-
 func TestRedeemVoucherHandler(t *testing.T) {
 	app, err := SetUp(t)
 	require.NoError(t, err)
@@ -674,13 +633,11 @@ func TestRedeemVoucherHandler(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusAccepted, resp.Code)
+		assert.Equal(t, http.StatusOK, resp.Code)
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "Voucher is redeemed successfully. Money transfer in progress.", result["message"])
-		assert.NotNil(t, result["data"])
-		assert.NotEmpty(t, result["data"].(map[string]interface{})["workflow_id"])
+		assert.Equal(t, "Voucher with value 50$ is redeemed successfully.", result["message"])
 	})
 
 	t.Run("Test redeem non-existing voucher", func(t *testing.T) {
@@ -892,62 +849,6 @@ func TestAddSSHKeyHandler(t *testing.T) {
 		resp2 := httptest.NewRecorder()
 		router.ServeHTTP(resp2, req2)
 		assert.Equal(t, http.StatusBadRequest, resp2.Code)
-	})
-
-}
-
-func TestListUserPendingRecordsHandler(t *testing.T) {
-	app, err := SetUp(t)
-	require.NoError(t, err)
-	router := app.router
-	user := CreateTestUser(t, app, "pendinguser@example.com", "Pending User", []byte("securepassword"), true, false, false, 0, time.Now())
-	token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
-	t.Run("Test list user pending records successfully", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "/api/v1/user/pending-records", nil)
-		assert.NoError(t, err)
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		var result map[string]interface{}
-		err = json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Equal(t, "Pending records are retrieved successfully", result["message"])
-		assert.NotNil(t, result["data"])
-	})
-
-	t.Run("Test list user pending records with no records", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "/api/v1/user/pending-records", nil)
-		assert.NoError(t, err)
-
-		req.Header.Set("Authorization", "Bearer "+token)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		var result map[string]interface{}
-		err = json.Unmarshal(resp.Body.Bytes(), &result)
-		assert.NoError(t, err)
-		assert.Equal(t, "Pending records are retrieved successfully", result["message"])
-		assert.NotNil(t, result["data"])
-	})
-
-	t.Run("Test list user pending records with no token", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "/api/v1/user/pending-records", nil)
-		assert.NoError(t, err)
-
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusUnauthorized, resp.Code)
-	})
-
-	t.Run("Test list user pending records with invalid token", func(t *testing.T) {
-		req, err := http.NewRequest("GET", "/api/v1/user/pending-records", nil)
-		assert.NoError(t, err)
-
-		req.Header.Set("Authorization", "Bearer invalidtoken")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	})
 
 }

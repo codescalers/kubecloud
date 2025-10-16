@@ -2,6 +2,13 @@ package models
 
 import "time"
 
+type ContractType string
+
+const (
+	ContractTypeRented   ContractType = "rented"
+	ContractTypeDeployed ContractType = "deployed"
+)
+
 // User represents a user in the system
 type User struct {
 	ID                int       `gorm:"primaryKey;autoIncrement;column:id"`
@@ -32,11 +39,13 @@ type SSHKey struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// UserNodes model holds info of reserved nodes of user
-type UserNodes struct {
-	ID         int       `gorm:"primaryKey;autoIncrement;column:id"`
-	UserID     int       `gorm:"user_id" binding:"required"`
-	ContractID uint64    `gorm:"contract_id" binding:"required"`
-	NodeID     uint32    `gorm:"node_id;index:idx_user_node_id,unique" binding:"required"`
-	CreatedAt  time.Time `json:"created_at"`
+// UserContractData model holds info of contracts of user
+type UserContractData struct {
+	ID         int          `gorm:"primaryKey;autoIncrement;column:id"`
+	UserID     int          `gorm:"user_id" binding:"required"`
+	ContractID uint64       `gorm:"contract_id" binding:"required"`
+	NodeID     uint32       `gorm:"node_id" binding:"required"`
+	Type       ContractType `gorm:"type" binding:"required"`
+	CreatedAt  time.Time    `json:"created_at"`
+	DeletedAt  time.Time    `json:"deleted_at"`
 }

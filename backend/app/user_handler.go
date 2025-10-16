@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"net/http"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 
 	"kubecloud/internal/constants"
@@ -152,13 +154,6 @@ type ChargeBalanceResponse struct {
 	Email      string `json:"email"`
 }
 
-// UserBalanceResponse struct holds the response data for user balance
-type UserBalanceResponse struct {
-	BalanceUSD        float64 `json:"balance_usd"`
-	DebtUSD           float64 `json:"debt_usd"`
-	PendingBalanceUSD float64 `json:"pending_balance_usd"`
-}
-
 // SSHKeyInput struct for adding SSH keys
 type SSHKeyInput struct {
 	Name      string `json:"name" binding:"required"`
@@ -183,11 +178,6 @@ type RedeemVoucherResponse struct {
 	VoucherCode string  `json:"voucher_code"`
 	Amount      float64 `json:"amount"`
 	Email       string  `json:"email"`
-}
-
-type GetUserResponse struct {
-	models.User
-	PendingBalanceUSD float64 `json:"pending_balance_usd"`
 }
 
 // RegisterHandler registers user to the system
@@ -696,12 +686,25 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
 		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
-		"mnemonic":           user.Mnemonic,
-		"username":           user.Username,
-		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	if err := h.ewfEngine.RunSync(context.Background(), wf); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
 
 	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
@@ -714,7 +717,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} GetUserResponse "User is retrieved successfully"
+// @Success 200 {object} APIResponse{data=models.User} "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
@@ -729,85 +732,8 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 		return
 	}
 
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
-		InternalServerError(c)
-		return
-	}
-
-	var tftPendingAmount uint64
-	for _, record := range pendingRecords {
-		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-	}
-
-	usdMillicentPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd millicent")
-		InternalServerError(c)
-		return
-	}
-
-	userResponse := GetUserResponse{
-		User:              user,
-		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
-	}
-
 	Success(c, http.StatusOK, "User is retrieved successfully", gin.H{
-		"user": userResponse,
-	})
-}
-
-// @Summary Get user balance
-// @Description Retrieves the user's balance in USD
-// @Tags users
-// @ID get-user-balance
-// @Produce json
-// @Success 200 {object} UserBalanceResponse "Balance fetched successfully"
-// @Failure 404 {object} APIResponse "User is not found"
-// @Failure 500 {object} APIResponse
-// @Router /user/balance [get]
-// GetUserBalance returns user's balance in usd
-func (h *Handler) GetUserBalance(c *gin.Context) {
-	userID := c.GetInt("user_id")
-
-	user, err := h.db.GetUserByID(userID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		Error(c, http.StatusNotFound, "User is not found", "")
-		return
-	}
-
-	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
-		InternalServerError(c)
-		return
-	}
-
-	var tftPendingAmount uint64
-	for _, record := range pendingRecords {
-		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-	}
-
-	usdPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd millicent")
-		InternalServerError(c)
-		return
-	}
-
-	Success(c, http.StatusOK, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        internal.FromUSDMilliCentToUSD(usdMillicentBalance),
-		DebtUSD:           internal.FromUSDMilliCentToUSD(user.Debt),
-		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdPendingAmount),
+		"user": user,
 	})
 }
 
@@ -864,23 +790,27 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRedeemVoucher)
-	if err != nil {
+	millicentAmount := internal.FromUSDToUSDMillicent(voucher.Value)
+	user.CreditedBalance += millicentAmount
+	if err := h.db.UpdateUserByID(&user); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
-	wf.State = map[string]interface{}{
-		"user_id":       user.ID,
-		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic":      user.Mnemonic,
-		"username":      user.Username,
-		"transfer_mode": models.RedeemVoucherMode,
-	}
-	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusAccepted, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
-		WorkflowID:  wf.UUID,
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("error settling and funding user after charging USD balance")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, fmt.Sprintf("Voucher with value %v$ is redeemed successfully.", voucher.Value), RedeemVoucherResponse{
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
 		Email:       user.Email,
@@ -1078,55 +1008,6 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 	Success(c, http.StatusOK, "Status returned successfully", workflow.Status)
 }
 
-// @Summary List user pending records
-// @Description Returns user pending records in the system
-// @Tags users
-// @ID list-user-pending-records
-// @Accept json
-// @Produce json
-// @Success 200 {array} PendingRecordsResponse
-// @Failure 500 {object} APIResponse
-// @Security BearerAuth
-// @Router /user/pending-records [get]
-// ListUserPendingRecordsHandler returns user pending records in the system
-func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
-	userID := c.GetInt("user_id")
-
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
-		InternalServerError(c)
-		return
-	}
-
-	var pendingRecordsResponse []PendingRecordsResponse
-	for _, record := range pendingRecords {
-		usdMillicentAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
-			InternalServerError(c)
-			return
-		}
-
-		usdMillicentTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
-			InternalServerError(c)
-			return
-		}
-
-		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
-			PendingRecord:        record,
-			USDAmount:            internal.FromUSDMilliCentToUSD(usdMillicentAmount),
-			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdMillicentTransferredAmount),
-		})
-	}
-
-	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
-		"pending_records": pendingRecordsResponse,
-	})
-}
-
 func isUserRegistered(user models.User) bool {
 	return user.Sponsored &&
 		user.Verified &&
@@ -1157,4 +1038,35 @@ func isUniqueViolation(err error) bool {
 		}
 	}
 	return false
+}
+
+func (h *Handler) settleAndFundUserAfterChargedUSDBalance(ctx context.Context, user *models.User) error {
+	if err := h.settleUserUsage(user); err != nil {
+		return err
+	}
+
+	return h.fundUserToFulfillDiscount(ctx, *user, []types.Node{}, []kubedeployer.Node{}, discount(h.config.AppliedDiscount))
+}
+
+func (h *Handler) createTransferRecordToChargeUserWithMinTFTAmount(userID int, username, userMnemonic string) error {
+	userTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	totalPendingTFTAmount, err := h.db.CalculateTotalPendingTFTAmountPerUser(userID)
+	if err != nil {
+		return err
+	}
+
+	if userTFTBalance+totalPendingTFTAmount >= zeroTFTBalanceValue {
+		return nil
+	}
+
+	return h.db.CreateTransferRecord(&models.TransferRecord{
+		UserID:    userID,
+		Username:  username,
+		TFTAmount: uint64(h.config.MinimumTFTAmountInWallet) * TFTUnitFactor,
+		Operation: models.DepositOperation,
+	})
 }

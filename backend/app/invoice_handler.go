@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal"
@@ -10,8 +11,9 @@ import (
 
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Get all invoices
@@ -64,41 +66,45 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	})
 }
 
-func (h *Handler) MonthlyInvoicesHandler() {
+func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
 	for {
-		now := time.Now()
-		monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
-		if now.Day() != monthLastDay.Day() {
-			// sleep till last day of month
-			time.Sleep(monthLastDay.Sub(now))
-		}
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			now := time.Now()
+			monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
+			if now.Day() != monthLastDay.Day() {
+				// sleep till last day of month
+				time.Sleep(monthLastDay.Sub(now))
+			}
 
-		// Check if invoices for the current month have already been created
-		if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
-			// Sleep until the first day of the next month to avoid running multiple times on the last day
-			nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
-			sleepDuration := nextMonth.Sub(now)
-			time.Sleep(sleepDuration)
-			continue
-		}
+			// Check if invoices for the current month have already been created
+			if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
+				// Sleep until the first day of the next month to avoid running multiple times on the last day
+				nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
+				sleepDuration := nextMonth.Sub(now)
+				time.Sleep(sleepDuration)
+				continue
+			}
 
-		users, err := h.db.ListAllUsers()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-		}
-		for _, user := range users {
-			if err = h.createUserInvoice(user); err != nil {
+			users, err := h.db.ListAllUsers()
+			if err != nil {
 				logger.GetLogger().Error().Err(err).Send()
 			}
+			for _, user := range users {
+				if err = h.createUserInvoice(user); err != nil {
+					logger.GetLogger().Error().Err(err).Send()
+				}
+			}
+
+			// Update the last processed month and year
+			lastProcessedMonth = now.Month()
+			lastProcessedYear = now.Year()
 		}
-
-		// Update the last processed month and year
-		lastProcessedMonth = now.Month()
-		lastProcessedYear = now.Year()
-
 	}
 }
 
@@ -173,34 +179,32 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 }
 
 func (h *Handler) createUserInvoice(user models.User) error {
-	records, err := h.db.ListUserNodes(user.ID)
+	now := time.Now()
+
+	contracts, err := h.db.ListAllContractsInPeriod(user.ID, now.AddDate(0, -1, 0), now)
 	if err != nil {
 		return err
 	}
 
-	if len(records) == 0 {
+	if len(contracts) == 0 {
 		return nil
 	}
-
-	now := time.Now()
 
 	var nodeItems []models.NodeItem
 	var totalInvoiceCostUSD float64
 
-	for _, record := range records {
-		billReports, err := internal.ListContractBillReportsPerMonth(h.graphqlClient, record.ContractID, now)
+	for _, record := range contracts {
+		// get bill reports for the last month
+		billReports, err := internal.ListContractBillReports(h.graphqlClient, record.ContractID, now.AddDate(0, -1, 0), now)
 		if err != nil {
 			return err
 		}
 
-		totalAmountTFT, err := internal.AmountBilledPerMonth(billReports)
+		totalAmountBilledInUSDMillicent, err := h.calculateTotalUsageOfReportsInUSDMillicent(billReports.Reports)
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := internal.FromTFTtoUSDMillicent(h.substrateClient, totalAmountTFT)
-		if err != nil {
-			return err
-		}
+
 		rentRecordStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 		if record.CreatedAt.After(rentRecordStart) {
 			rentRecordStart = record.CreatedAt
@@ -217,7 +221,7 @@ func (h *Handler) createUserInvoice(user models.User) error {
 			totalHours = GetHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountBilledInUSDMillicent)
 
 		nodeItems = append(nodeItems, models.NodeItem{
 			NodeID:        record.NodeID,

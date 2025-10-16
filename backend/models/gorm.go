@@ -3,10 +3,11 @@ package models
 import (
 	"context"
 	"fmt"
-	"gorm.io/gorm"
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // GormDB struct implements db interface with gorm
@@ -29,11 +30,12 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		Transaction{},
 		Invoice{},
 		NodeItem{},
-		UserNodes{},
+		UserContractData{},
 		&Notification{},
 		&SSHKey{},
 		&Cluster{},
-		&PendingRecord{},
+		&TransferRecord{},
+		&UserUsageCalculationTime{},
 	)
 	if err != nil {
 		return nil, err
@@ -43,8 +45,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		return nil, err
 	}
 
-	gormDB := &GormDB{db: db}
-	return gormDB, gormDB.UpdatePendingRecordsWithUsername()
+	return &GormDB{db: db}, nil
 }
 
 func NewGormStorageNoMigrate(dialector gorm.Dialector) (DB, error) {
@@ -54,28 +55,6 @@ func NewGormStorageNoMigrate(dialector gorm.Dialector) (DB, error) {
 	}
 
 	return &GormDB{db: db}, nil
-}
-
-// TODO: TO BE REMOVED
-func (s *GormDB) UpdatePendingRecordsWithUsername() error {
-	var pendingRecords []PendingRecord
-	if err := s.db.Find(&pendingRecords).Where("username IS NULL").Error; err != nil {
-		return fmt.Errorf("failed to find pending records: %w", err)
-	}
-
-	for _, record := range pendingRecords {
-		user, err := s.GetUserByID(record.UserID)
-		if err != nil {
-			return fmt.Errorf("failed to get user by ID %d: %w", record.UserID, err)
-		}
-
-		// Update the record with the username
-		if err := s.db.Model(&record).Update("username", user.Username).Error; err != nil {
-			return fmt.Errorf("failed to update pending record with username: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func (s *GormDB) GetDB() *gorm.DB {
@@ -102,7 +81,11 @@ func (s *GormDB) Ping(ctx context.Context) error {
 
 // RegisterUser registers a new user to the system
 func (s *GormDB) RegisterUser(user *User) error {
-	return s.db.Create(user).Error
+	if err := s.db.Create(user).Error; err != nil {
+		return err
+	}
+
+	return s.UpdateUserLastCalcTime(user.ID, time.Now())
 }
 
 // GetUserByEmail returns user by its email if found
@@ -125,6 +108,36 @@ func (s *GormDB) UpdateUserByID(user *User) error {
 	return s.db.Model(&User{}).
 		Where("id = ?", user.ID).
 		Updates(user).Error
+}
+
+func (s *GormDB) DeductUserBalance(user *User, amount uint64) error {
+	if user.CreditedBalance >= amount {
+		return s.db.Model(&User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credited_balance", gorm.Expr("credited_balance - ?", amount)).
+			Error
+	}
+
+	if user.CreditedBalance > 0 && user.CreditCardBalance >= amount-user.CreditedBalance {
+		return s.db.Model(&User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credited_balance", gorm.Expr("credited_balance - ?", user.CreditedBalance)).
+			UpdateColumn("credit_card_balance", gorm.Expr("credit_card_balance - ?", amount-user.CreditedBalance)).
+			Error
+	}
+
+	if user.CreditCardBalance >= amount {
+		return s.db.Model(&User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credit_card_balance", gorm.Expr("credit_card_balance - ?", amount)).
+			Error
+	}
+
+	// if credit card balance is not enough, add debt
+	return s.db.Model(&User{}).
+		Where("id = ?", user.ID).
+		UpdateColumn("debt", gorm.Expr("debt + ?", amount)).
+		Error
 }
 
 // UpdatePassword updates password of user by its email
@@ -290,31 +303,59 @@ func (s *GormDB) UpdateInvoicePDF(id int, data []byte) error {
 	return s.db.Model(&Invoice{}).Where("id = ?", id).Updates(map[string]interface{}{"file_data": data}).Error
 }
 
-// CreateUserNode creates new node record for user
-func (s *GormDB) CreateUserNode(userNode *UserNodes) error {
-	return s.db.Create(&userNode).Error
+// CreateUserContractData creates new contract record for user
+func (s *GormDB) CreateUserContractData(contractData *UserContractData) error {
+	return s.db.Create(&contractData).Error
 }
 
-// DeleteUserNode deletes a node record for user by its contract ID
-func (s *GormDB) DeleteUserNode(contractID uint64) error {
-	return s.db.Where("contract_id = ?", contractID).Delete(&UserNodes{}).Error
+// DeleteUserContract updates deleted time of a contract record for user by its contract ID
+func (s *GormDB) DeleteUserContract(contractID uint64) error {
+	return s.db.Where("contract_id = ?", contractID).Update("deleted_at", time.Now()).Error
 }
 
-// ListUserNodes returns all nodes records for user by its ID
-func (s *GormDB) ListUserNodes(userID int) ([]UserNodes, error) {
-	var userNodes []UserNodes
-	return userNodes, s.db.Where("user_id = ?", userID).Find(&userNodes).Error
+// ListUserRentedNodes returns all nodes records for user by its ID
+func (s *GormDB) ListUserRentedNodes(userID int) ([]UserContractData, error) {
+	var userNodes []UserContractData
+	return userNodes, s.db.Where("user_id = ? and type = ? and deleted_at = ?", userID, ContractTypeRented, time.Time{}).Find(&userNodes).Error
+}
+
+// ListAllContractsInPeriod returns all contracts that existed during the specified time period.
+// This includes:
+// 1. Contracts created before or during the period end date
+// 2. AND either not deleted (deleted_at is zero time) OR deleted after the period start date
+// If userID is provided (non-zero), it will only return contracts for that specific user.
+// If userID is 0, it will return contracts for all users.
+func (s *GormDB) ListAllContractsInPeriod(userID int, start, end time.Time) ([]UserContractData, error) {
+	var userNodes []UserContractData
+
+	// Query for contracts that:
+	// - Were created on or before the end date of the period
+	// - AND are either not deleted (deleted_at is zero) OR were deleted after the start of the period
+	query := s.db.Where("created_at <= ?", end).
+		Where("(deleted_at = ? OR deleted_at >= ?)", time.Time{}, start)
+
+	// If userID is provided (non-zero), filter by that user
+	if userID > 0 {
+		query = query.Where("user_id = ?", userID)
+	}
+
+	return userNodes, query.Find(&userNodes).Error
 }
 
 // ListAllReservedNodes returns all reserved nodes from all users
-func (s *GormDB) ListAllReservedNodes() ([]UserNodes, error) {
-	var userNodes []UserNodes
-	return userNodes, s.db.Find(&userNodes).Error
+func (s *GormDB) ListAllReservedNodes() ([]UserContractData, error) {
+	var userNodes []UserContractData
+	return userNodes, s.db.Where("type = ? and deleted_at = ?", ContractTypeRented, time.Time{}).Find(&userNodes).Error
 }
 
-func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
-	var userNode UserNodes
-	return userNode, s.db.Where("node_id = ?", nodeID).First(&userNode).Error
+func (s *GormDB) GetUserNodeByNodeID(nodeID uint64) (UserContractData, error) {
+	var userNode UserContractData
+	return userNode, s.db.Where("node_id = ? and deleted_at = ?", nodeID, time.Time{}).First(&userNode).Error
+}
+
+func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserContractData, error) {
+	var userNode UserContractData
+	return userNode, s.db.Where("contract_id = ? and deleted_at = ?", contractID, time.Time{}).First(&userNode).Error
 }
 
 // CreateNotification creates a new notification
@@ -359,7 +400,29 @@ func (s *GormDB) CreateCluster(userID int, cluster *Cluster) error {
 	cluster.CreatedAt = time.Now()
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
-	return s.db.Create(cluster).Error
+
+	clusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			contractData := &UserContractData{
+				UserID:     userID,
+				ContractID: node.ContractID,
+				NodeID:     node.NodeID,
+				Type:       ContractTypeDeployed,
+				CreatedAt:  time.Now(),
+			}
+
+			if err := tx.Create(contractData).Error; err != nil {
+				return fmt.Errorf("failed to create contract data for node %d: %w", node.NodeID, err)
+			}
+		}
+
+		return tx.Create(cluster).Error
+	})
 }
 
 // ListUserClusters returns all clusters for a specific user
@@ -378,6 +441,57 @@ func (s *GormDB) GetClusterByName(userID int, projectName string) (Cluster, erro
 
 // UpdateCluster updates an existing cluster
 func (s *GormDB) UpdateCluster(cluster *Cluster) error {
+	existingCluster, err := s.GetClusterByName(cluster.UserID, cluster.ProjectName)
+	if err != nil {
+		return fmt.Errorf("failed to get existing cluster: %w", err)
+	}
+
+	existingClusterData, err := existingCluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse existing cluster data: %w", err)
+	}
+
+	newClusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse new cluster data: %w", err)
+	}
+
+	existingNodes := make(map[uint64]struct{})
+	for _, node := range existingClusterData.Nodes {
+		if node.ContractID != 0 {
+			existingNodes[node.ContractID] = struct{}{}
+		}
+	}
+
+	for _, node := range newClusterData.Nodes {
+		if node.ContractID != 0 {
+			if _, exists := existingNodes[node.ContractID]; !exists {
+				// This is a new node, create a contract for it
+				if err := s.CreateUserContractData(
+					&UserContractData{
+						UserID:     cluster.UserID,
+						ContractID: node.ContractID,
+						NodeID:     node.NodeID,
+						Type:       ContractTypeDeployed,
+						CreatedAt:  time.Now(),
+					},
+				); err != nil {
+					return fmt.Errorf("failed to create contract for new node: %w", err)
+				}
+			}
+			// Remove from existing nodes map to track what is processed
+			delete(existingNodes, node.ContractID)
+		}
+	}
+
+	// Handle removed nodes - delete contracts for nodes that exist in old but not in new
+	for contractID := range existingNodes {
+		if err := s.DeleteUserContract(contractID); err != nil {
+			return fmt.Errorf("failed to delete contract for removed node: %w", err)
+		}
+	}
+
+	// Update the cluster record
 	cluster.UpdatedAt = time.Now()
 	return s.db.Model(&Cluster{}).
 		Where("user_id = ? AND project_name = ?", cluster.UserID, cluster.ProjectName).
@@ -386,40 +500,93 @@ func (s *GormDB) UpdateCluster(cluster *Cluster) error {
 
 // DeleteCluster deletes a cluster by name for a specific user
 func (s *GormDB) DeleteCluster(userID int, projectName string) error {
-	return s.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
+	cluster, err := s.GetClusterByName(userID, projectName)
+	if err != nil {
+		return err
+	}
+
+	clusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			if err := tx.Model(&UserContractData{}).
+				Where("contract_id = ?", node.ContractID).
+				Update("deleted_at", time.Now()).Error; err != nil {
+				return fmt.Errorf("failed to delete contract for node %d: %w", node.NodeID, err)
+			}
+		}
+
+		return tx.Where("user_id = ? AND project_name = ?", userID, projectName).
+			Delete(&Cluster{}).Error
+	})
 }
 
 // DeleteAllUserClusters deletes all clusters for a specific user
 func (s *GormDB) DeleteAllUserClusters(userID int) error {
+	clusters, err := s.ListUserClusters(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, cluster := range clusters {
+		clusterData, err := cluster.GetClusterResult()
+		if err != nil {
+			return err
+		}
+
+		for _, node := range clusterData.Nodes {
+			if err := s.DeleteUserContract(node.ContractID); err != nil {
+				return err
+			}
+		}
+	}
+
 	return s.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
 }
 
-func (s *GormDB) CreatePendingRecord(record *PendingRecord) error {
+func (s *GormDB) CreateTransferRecord(record *TransferRecord) error {
 	record.CreatedAt = time.Now()
 	return s.db.Create(record).Error
 }
 
-func (s *GormDB) ListAllPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, s.db.Find(&pendingRecords).Error
+func (s *GormDB) ListTransferRecords() ([]TransferRecord, error) {
+	var TransferRecords []TransferRecord
+	return TransferRecords, s.db.Find(&TransferRecords).Error
 }
 
-func (s *GormDB) ListOnlyPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, s.db.Where("tft_amount > transferred_tft_amount").Find(&pendingRecords).Error
+func (s *GormDB) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error) {
+	var totalAmount uint64
+	err := s.db.Model(&TransferRecord{}).
+		Select("COALESCE(SUM(tft_amount), 0)").
+		Where("user_id = ? AND state = ?", userID, PendingState).
+		Scan(&totalAmount).Error
+	if err != nil {
+		return 0, err
+	}
+	return totalAmount, nil
 }
 
-func (s *GormDB) ListUserPendingRecords(userID int) ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, s.db.Where("user_id = ?", userID).Find(&pendingRecords).Error
+func (s *GormDB) ListUserTransferRecords(userID int) ([]TransferRecord, error) {
+	var TransferRecords []TransferRecord
+	return TransferRecords, s.db.Where("user_id = ?", userID).Find(&TransferRecords).Error
 }
 
-func (s *GormDB) UpdatePendingRecordTransferredAmount(id int, amount uint64) error {
-	return s.db.Model(&PendingRecord{}).
-		Where("id = ?", id).
-		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
-		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
-		Error
+func (s *GormDB) ListPendingTransferRecords() ([]TransferRecord, error) {
+	var TransferRecords []TransferRecord
+	return TransferRecords, s.db.Where("state = ?", PendingState).Find(&TransferRecords).Error
+}
+
+func (s *GormDB) ListFailedTransferRecords() ([]TransferRecord, error) {
+	var TransferRecords []TransferRecord
+	return TransferRecords, s.db.Where("state = ?", FailedState).Find(&TransferRecords).Error
+}
+
+func (s *GormDB) UpdateTransferRecordState(recordID int, state state, failure string) error {
+	return s.db.Model(&TransferRecord{}).Where("id = ?", recordID).Updates(
+		map[string]interface{}{"state": state, "failure": failure, "updated_at": time.Now()}).Error
 }
 
 // CountAllUsers returns the total number of users in the system
@@ -441,9 +608,42 @@ func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 	return clusters, s.db.Find(&clusters).Error
 }
 
-func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
-	var userNode UserNodes
-	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
+// GetUserLastCalcTime returns the last calculation time for a user
+func (s *GormDB) GetUserLastCalcTime(userID int) (time.Time, error) {
+	var calcTime UserUsageCalculationTime
+	err := s.db.Where("user_id = ?", userID).First(&calcTime).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// If no record exists, return zero time
+			return time.Time{}, nil
+		}
+		return time.Time{}, err
+	}
+	return calcTime.LastCalcTime, nil
+}
+
+// UpdateUserLastCalcTime updates the last calculation time for a user
+func (s *GormDB) UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error {
+	var calcTime UserUsageCalculationTime
+	err := s.db.Where("user_id = ?", userID).First(&calcTime).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Create a new record if one doesn't exist
+			calcTime = UserUsageCalculationTime{
+				UserID:       userID,
+				LastCalcTime: lastCalcTime,
+				UpdatedAt:    time.Now(),
+			}
+			return s.db.Create(&calcTime).Error
+		}
+		return err
+	}
+
+	// Update existing record
+	calcTime.LastCalcTime = lastCalcTime
+	calcTime.UpdatedAt = time.Now()
+	return s.db.Save(&calcTime).Error
 }
 
 func migrateNotifications(db *gorm.DB) error {

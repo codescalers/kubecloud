@@ -19,7 +19,7 @@ import (
 )
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{constants.WorkflowChargeBalance, constants.WorkflowAdminCreditBalance, constants.WorkflowRedeemVoucher}
+	billingWf := []string{constants.WorkflowChargeBalance}
 	deployWf := []string{constants.WorkflowDeleteAllClusters, constants.WorkflowDeleteCluster, constants.WorkflowRemoveNode, constants.WorkflowAddNode, constants.WorkflowRollbackFailedDeployment}
 	nodesWf := []string{constants.WorkflowReserveNode, constants.WorkflowUnreserveNode}
 	userWf := []string{constants.WorkflowUserVerification, constants.WorkflowUserRegistration}
@@ -302,46 +302,6 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 		}
 	}
 
-	if wf.Name == constants.WorkflowAdminCreditBalance {
-		adminID, ok := wf.State["admin_id"].(int)
-		if !ok {
-			logger.GetLogger().Error().Msg("Missing or invalid 'admin_id' in workflow state")
-			return nil
-		}
-		payloadData := notification.CommonPayload{
-			Message: fmt.Sprintf("User %d was credited successfully money transferred successfully to their account", userID),
-			Subject: "Money transfer to user's account succeeded",
-			Status:  "succeeded",
-		}
-		severity := models.NotificationSeveritySuccess
-		if err != nil {
-			severity = models.NotificationSeverityError
-			payloadData.Message = fmt.Sprintf("Money transfer to user %d's account failed", userID)
-			payloadData.Subject = "Money transfer to user's account failed"
-			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
-				"workflow_name": getWorkflowDescription(wf.Name),
-				"timestamp":     time.Now().Local().Format(TimestampFormat),
-			}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
-			return []*models.Notification{adminNotif}
-		}
-		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
-			"workflow_name": getWorkflowDescription(wf.Name),
-			"timestamp":     time.Now().Local().Format(TimestampFormat),
-		}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
-		// also notify the user about success
-		userPayload := notification.MergePayload(notification.CommonPayload{
-			Message: fmt.Sprintf("Funds were credited to your account. Amount added: $%.2f.", amountUSD),
-			Subject: "Your Account Has Been Credited",
-			Status:  "succeeded",
-		}, map[string]string{
-			"workflow_name": getWorkflowDescription(wf.Name),
-			"timestamp":     time.Now().Local().Format(TimestampFormat),
-			"amount":        fmt.Sprintf("%.2f", amountUSD),
-		})
-		userNotif := models.NewNotification(userID, models.NotificationTypeBilling, userPayload, models.WithSeverity(severity), models.WithChannels(notification.ChannelEmail))
-		return []*models.Notification{adminNotif, userNotif}
-	}
-
 	var payload map[string]string
 
 	// Extract amount and balance from workflow state
@@ -364,12 +324,6 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
 		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
-
-		if wf.Name == constants.WorkflowRedeemVoucher {
-			status = "voucher_redeemed"
-			subject = "Voucher Redeemed"
-			message = "Voucher redeemed successfully."
-		}
 	}
 	payloadData := map[string]string{
 		"workflow_name": getWorkflowDescription(wf.Name),

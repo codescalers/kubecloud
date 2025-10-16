@@ -51,8 +51,8 @@ func main() {
 	defer substrateClient.Close()
 
 	// Get all user_nodes records
-	var allRecords []models.UserNodes
-	if err := db.GetDB().Order("created_at DESC, id DESC").Find(&allRecords).Error; err != nil {
+	allRecords, err := db.ListAllReservedNodes()
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to get user_nodes records")
 		return
 	}

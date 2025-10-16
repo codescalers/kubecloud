@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/kubedeployer"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -276,6 +277,12 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	//TODO: check price in month constant
 	if usdMillicentBalance-user.Debt < internal.FromUSDToUSDMillicent(node.PriceUsd)/24/30 {
 		Error(c, http.StatusBadRequest, "You should at least have enough balance for one hour", "")
+		return
+	}
+
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []proxyTypes.Node{node}, []kubedeployer.Node{}, discount(h.config.AppliedDiscount)); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
 		return
 	}
 

@@ -33,8 +33,10 @@ type Configuration struct {
 	Invoice                                 InvoiceCompanyData `json:"invoice"`
 	SSH                                     SSHConfig          `json:"ssh" validate:"required,dive"`
 	Debug                                   bool               `json:"debug"`
-	MonitorBalanceIntervalInMinutes         int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
+	SettleTransferRecordsIntervalInMinutes  int                `json:"settle_transfer_records_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours    int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	AppliedDiscount                         string             `json:"applied_discount" validate:"required"`
+	MinimumTFTAmountInWallet                int                `json:"minimum_tft_amount_in_wallet" default:"10" validate:"required,gt=0"`
 	ClusterHealthCheckIntervalInHours       int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckIntervalInHours  int                `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckTimeoutInMinutes int                `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`

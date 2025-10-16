@@ -281,7 +281,7 @@ func (app *App) registerHandlers() {
 			usersGroup.POST("/mail", app.handlers.SendMailToAllUsersHandler)
 
 			adminGroup.GET("/invoices", app.handlers.ListAllInvoicesHandler)
-			adminGroup.GET("/pending-records", app.handlers.ListPendingRecordsHandler)
+			adminGroup.GET("/transfer-records", app.handlers.ListTransferRecordsHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{
@@ -317,11 +317,9 @@ func (app *App) registerHandlers() {
 				authGroup.POST("/nodes/:node_id", app.handlers.ReserveNodeHandler)
 				authGroup.DELETE("/nodes/unreserve/:contract_id", app.handlers.UnreserveNodeHandler)
 				authGroup.POST("/balance/charge", app.handlers.ChargeBalance)
-				authGroup.GET("/balance", app.handlers.GetUserBalance)
 				authGroup.PUT("/redeem/:voucher_code", app.handlers.RedeemVoucherHandler)
 				authGroup.GET("/invoice/:invoice_id", app.handlers.DownloadInvoiceHandler)
 				authGroup.GET("/invoice", app.handlers.ListUserInvoicesHandler)
-				authGroup.GET("/pending-records", app.handlers.ListUserPendingRecordsHandler)
 				// SSH Key management
 				authGroup.GET("/ssh-keys", app.handlers.ListSSHKeysHandler)
 				authGroup.POST("/ssh-keys", app.handlers.AddSSHKeyHandler)
@@ -361,22 +359,22 @@ func (app *App) registerHandlers() {
 	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
 
-func (app *App) StartBackgroundWorkers() {
-	go app.handlers.MonthlyInvoicesHandler()
-	go app.handlers.TrackUserDebt(app.gridClient)
-	go app.handlers.MonitorSystemBalanceAndHandleSettlement()
+func (app *App) StartBackgroundWorkers(ctx context.Context) {
+	go app.handlers.MonthlyInvoicesHandler(ctx)
+	go app.handlers.TrackUserDebt(ctx, app.gridClient)
+	go app.handlers.MonitorSystemBalanceAndHandleSettlement(ctx)
+	go app.handlers.DeductUSDBalanceBasedOnUsage(ctx)
 	go app.handlers.TrackClusterHealth()
+	// Start command socket
+	go app.startCommandSocket()
 	go app.handlers.TrackReservedNodeHealth(app.notificationService, app.handlers.proxyClient)
 }
 
 // Run starts the server
-func (app *App) Run() error {
-	app.StartBackgroundWorkers()
-
-	// Start command socket
-	go app.startCommandSocket()
-
+func (app *App) Run(ctx context.Context) error {
+	app.StartBackgroundWorkers(ctx)
 	app.handlers.ewfEngine.ResumeRunningWorkflows()
+
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
 		Handler: app.router,

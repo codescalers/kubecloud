@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal/utils"
 	"net/url"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -19,6 +20,7 @@ type DB interface {
 	GetUserByEmail(email string) (User, error)
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
+	DeductUserBalance(user *User, amount uint64) error
 	UpdatePassword(email string, hashedPassword []byte) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
@@ -34,12 +36,17 @@ type DB interface {
 	ListUserInvoices(userID int) ([]Invoice, error)
 	ListInvoices() ([]Invoice, error)
 	UpdateInvoicePDF(id int, data []byte) error
-	CreateUserNode(userNode *UserNodes) error
-	DeleteUserNode(contractID uint64) error
-	ListUserNodes(userID int) ([]UserNodes, error)
-	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
-	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
-	ListAllReservedNodes() ([]UserNodes, error)
+	// Contract methods
+	CreateUserContractData(contractData *UserContractData) error
+	DeleteUserContract(contractID uint64) error
+	ListUserRentedNodes(userID int) ([]UserContractData, error)
+	GetUserNodeByNodeID(nodeID uint64) (UserContractData, error)
+	GetUserNodeByContractID(contractID uint64) (UserContractData, error)
+	ListAllReservedNodes() ([]UserContractData, error)
+	ListAllContractsInPeriod(userID int, start, end time.Time) ([]UserContractData, error)
+	// Usage calculation time methods
+	GetUserLastCalcTime(userID int) (time.Time, error)
+	UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)
@@ -61,12 +68,14 @@ type DB interface {
 	UpdateCluster(cluster *Cluster) error
 	DeleteCluster(userID int, projectName string) error
 	DeleteAllUserClusters(userID int) error
-	// pending records methods
-	CreatePendingRecord(record *PendingRecord) error
-	ListAllPendingRecords() ([]PendingRecord, error)
-	ListOnlyPendingRecords() ([]PendingRecord, error)
-	ListUserPendingRecords(userID int) ([]PendingRecord, error)
-	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
+	// Transfer records methods
+	CreateTransferRecord(record *TransferRecord) error
+	ListTransferRecords() ([]TransferRecord, error)
+	ListUserTransferRecords(userID int) ([]TransferRecord, error)
+	ListPendingTransferRecords() ([]TransferRecord, error)
+	ListFailedTransferRecords() ([]TransferRecord, error)
+	UpdateTransferRecordState(recordID int, state state, failure string) error
+	CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error)
 	// stats methods
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)

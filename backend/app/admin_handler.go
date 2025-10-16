@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"kubecloud/internal/constants"
+	"kubecloud/internal/activities"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/notification"
 
@@ -47,12 +46,6 @@ type CreditUserResponse struct {
 	User      string  `json:"user"`
 	AmountUSD float64 `json:"amount"`
 	Memo      string  `json:"memo"`
-}
-
-type PendingRecordsResponse struct {
-	models.PendingRecord
-	USDAmount            float64 `json:"usd_amount"`
-	TransferredUSDAmount float64 `json:"transferred_usd_amount"`
 }
 
 // AdminMailInput represents the form data for sending emails to all users
@@ -338,80 +331,77 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAdminCreditBalance)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
 	if err := h.db.CreateTransaction(&transaction); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to create credit transaction")
 		InternalServerError(c)
 		return
 	}
 
-	wf.State = map[string]interface{}{
-		"user_id":       user.ID,
-		"amount":        internal.FromUSDToUSDMillicent(request.AmountUSD),
-		"mnemonic":      user.Mnemonic,
-		"username":      user.Username,
-		"transfer_mode": models.AdminCreditMode,
-		"admin_id":      adminID,
+	millicentAmount := internal.FromUSDToUSDMillicent(request.AmountUSD)
+	user.CreditedBalance += millicentAmount
+	if err := h.db.UpdateUserByID(&user); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
 	}
-	h.ewfEngine.RunAsync(context.Background(), wf)
 
-	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	if err := h.createTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.settleAndFundUserAfterChargedUSDBalance(c.Request.Context(), &user); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("error settling and funding user after charging USD balance")
+		InternalServerError(c)
+		return
+	}
+
+	notificationPayload := notification.MergePayload(notification.CommonPayload{
+		Message: fmt.Sprintf("Admin %s has credited your account with %v$ successfully", user.Username, request.AmountUSD),
+		Subject: "Admin Credited Your Account",
+		Status:  "succeeded",
+	}, map[string]string{
+		"workflow_name":   "Admin Credit Your Account",
+		"timestamp":       time.Now().Local().Format(activities.TimestampFormat),
+		"amount":          fmt.Sprintf("%.2f", request.AmountUSD),
+		"updated_balance": fmt.Sprintf("%v", user.CreditedBalance),
+	})
+	notificationObj := models.NewNotification(user.ID, models.NotificationTypeBilling, notificationPayload, models.WithSeverity(models.NotificationSeveritySuccess))
+	if err := h.notificationService.Send(c.Request.Context(), notificationObj); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for user credit")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusCreated, fmt.Sprintf("User is credited with %v$ successfully", request.AmountUSD), CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
 	})
 }
 
-// @Summary List pending records
-// @Description Returns all pending records in the system
+// @Summary List transfer records
+// @Description Returns all transfer records in the system
 // @Tags admin
-// @ID list-pending-records
+// @ID list-transfer-records
 // @Accept json
 // @Produce json
-// @Success 200 {array} PendingRecordsResponse
+// @Success 200 {array} []models.TransferRecord
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
-// @Router /pending-records [get]
-// ListPendingRecordsHandler returns all pending records in the system
-func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
-	pendingRecords, err := h.db.ListAllPendingRecords()
+// @Router /transfer-records [get]
+// ListTransferRecordsHandler returns all transfer records in the system
+func (h *Handler) ListTransferRecordsHandler(c *gin.Context) {
+	transferRecords, err := h.db.ListTransferRecords()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
+		logger.GetLogger().Error().Err(err).Msg("failed to list all transfer records")
 		InternalServerError(c)
 		return
 	}
 
-	var pendingRecordsResponse []PendingRecordsResponse
-	for _, record := range pendingRecords {
-		usdAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
-			InternalServerError(c)
-			return
-		}
-
-		usdTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
-			InternalServerError(c)
-			return
-		}
-
-		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
-			PendingRecord:        record,
-			USDAmount:            internal.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdTransferredAmount),
-		})
-	}
-
-	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
-		"pending_records": pendingRecordsResponse,
+	Success(c, http.StatusOK, "Transfer records are retrieved successfully", map[string]any{
+		"transfer_records": transferRecords,
 	})
 }
 

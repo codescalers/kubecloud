@@ -53,10 +53,11 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 			return fmt.Errorf("failed to create rent contract: %w", err)
 		}
 
-		err = db.CreateUserNode(&models.UserNodes{
+		err = db.CreateUserContractData(&models.UserContractData{
 			UserID:     userID,
 			ContractID: contractID,
 			NodeID:     nodeID,
+			Type:       models.ContractTypeRented,
 			CreatedAt:  time.Now(),
 		})
 		if err != nil {
@@ -91,7 +92,7 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
 
-		err = db.DeleteUserNode(contractIDUint64)
+		err = db.DeleteUserContract(contractIDUint64)
 		if err != nil {
 			return fmt.Errorf("failed to delete user node: %w", err)
 		}

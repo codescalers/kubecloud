@@ -14,6 +14,7 @@ import (
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
@@ -313,6 +314,19 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
+	user, err := h.db.GetUserByID(config.UserID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount)); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
 	_, err = h.db.GetClusterByName(config.UserID, projectName)
 	if err == nil {
@@ -508,6 +522,19 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID)})
 			return
 		}
+	}
+
+	user, err := h.db.GetUserByID(config.UserID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	if err := h.fundUserToFulfillDiscount(c.Request.Context(), user, []types.Node{}, cluster.Nodes, discount(h.config.AppliedDiscount)); err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)

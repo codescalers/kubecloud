@@ -23,8 +23,6 @@ var workflowsDescriptions = map[string]string{
 	constants.WorkflowUserRegistration:         "User Registration",
 	constants.WorkflowUserVerification:         "User Verification",
 	constants.WorkflowChargeBalance:            "Charge Balance",
-	constants.WorkflowAdminCreditBalance:       "Admin Credit Balance",
-	constants.WorkflowRedeemVoucher:            "Redeem Voucher",
 	constants.WorkflowReserveNode:              "Reserve Node",
 	constants.WorkflowUnreserveNode:            "Unreserve Node",
 	constants.WorkflowTrackClusterHealth:       "Cluster Health Check",
@@ -51,12 +49,10 @@ func RegisterEWFWorkflows(
 	engine.Register(constants.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(constants.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
 	engine.Register(constants.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
-	engine.Register(constants.StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic))
-	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db))
+	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db, notificationService))
 	engine.Register(constants.StepCreateIdentity, CreateIdentityStep())
 	engine.Register(constants.StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(constants.StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(constants.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
 	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
@@ -108,23 +104,8 @@ func RegisterEWFWorkflows(
 	chargeBalanceTemplate.Steps = []ewf.Step{
 		{Name: constants.StepCreatePaymentIntent, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: constants.StepUpdateCreditCardBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(constants.WorkflowChargeBalance, &chargeBalanceTemplate)
-
-	adminCreditBalanceTemplate := newKubecloudWorkflowTemplate(notificationService)
-	adminCreditBalanceTemplate.Steps = []ewf.Step{
-		{Name: constants.StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	engine.RegisterTemplate(constants.WorkflowAdminCreditBalance, &adminCreditBalanceTemplate)
-
-	redeemVoucherTemplate := newKubecloudWorkflowTemplate(notificationService)
-	redeemVoucherTemplate.Steps = []ewf.Step{
-		{Name: constants.StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	engine.RegisterTemplate(constants.WorkflowRedeemVoucher, &redeemVoucherTemplate)
 
 	reserveNodeTemplate := newKubecloudWorkflowTemplate(notificationService)
 	reserveNodeTemplate.Steps = []ewf.Step{

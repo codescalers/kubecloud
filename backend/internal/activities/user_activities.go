@@ -360,66 +360,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
-	return func(ctx context.Context, state ewf.State) error {
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
-		}
-
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
-		}
-
-		usernameVal, ok := state["username"]
-		if !ok {
-			return fmt.Errorf("missing 'username' in state")
-		}
-		username, ok := usernameVal.(string)
-		if !ok {
-			return fmt.Errorf("'username' in state is not a string")
-		}
-
-		transferModeVal, ok := state["transfer_mode"]
-		if !ok {
-			return fmt.Errorf("missing 'transfer_mode' in state")
-		}
-		transferMode, ok := transferModeVal.(string)
-		if !ok {
-			return fmt.Errorf("'transfer_mode' in state is not a string")
-		}
-
-		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("error converting usd")
-			return err
-		}
-
-		if err = db.CreatePendingRecord(&models.PendingRecord{
-			UserID:       userID,
-			Username:     username,
-			TFTAmount:    requestedTFTs,
-			TransferMode: transferMode,
-		}); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-			return err
-		}
-
-		return nil
-	}
-}
-
-func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditCardBalanceStep(db models.DB, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -450,46 +391,6 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 		}
 
 		state["mnemonic"] = user.Mnemonic
-		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
-		if netBalance < 0 {
-			netBalance = 0
-		}
-		state["net_balance"] = uint64(netBalance)
-
-		return nil
-	}
-}
-
-func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
-	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
-		}
-
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
-		}
-
-		user, err := db.GetUserByID(userID)
-		if err != nil {
-			return fmt.Errorf("user is not found: %w", err)
-		}
-
-		user.CreditedBalance += amount
-		if err := db.UpdateUserByID(&user); err != nil {
-			return fmt.Errorf("error updating user: %w", err)
-		}
-
 		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
 		if netBalance < 0 {
 			netBalance = 0
