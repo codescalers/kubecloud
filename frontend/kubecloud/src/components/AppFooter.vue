@@ -129,17 +129,23 @@
 @media (max-width: 900px) {
   .footer-content {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 1.5rem;
     padding: 0 1.2rem;
   }
 
   .footer-links {
     gap: 0.7rem;
+    justify-content: center;
   }
 
   .footer-title {
     font-size: 1rem;
+  }
+
+  .footer-brand {
+    justify-content: center;
+    width: 100%;
   }
 }
 
@@ -150,7 +156,7 @@
 
   .footer-content {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 1rem;
     padding: 0 0.5rem;
   }
@@ -158,6 +164,7 @@
   .footer-links {
     gap: 0.7rem;
     flex-wrap: wrap;
+    justify-content: center;
   }
 
   .footer-title {
