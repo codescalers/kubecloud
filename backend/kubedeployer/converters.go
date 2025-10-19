@@ -89,16 +89,16 @@ func deploymentFromNode(
 	vm.EnvVars["K3S_URL"] = ""
 	vm.EnvVars["K3S_TOKEN"] = token
 
+	vm.EnvVars["TOKEN"] = token
+	vm.EnvVars["MNEMONIC"] = encryptedMnemonic
+	vm.EnvVars["NETWORK"] = gridNet
+
 	if node.Type == NodeTypeMaster || node.Type == NodeTypeLeader {
 		vm.EnvVars["MASTER"] = "true"
 		vm.EnvVars["HA"] = "true"
 	}
 	if node.Type != NodeTypeLeader {
 		vm.EnvVars["K3S_URL"] = fmt.Sprintf("https://%s:6443", leaderIP)
-	} else {
-		vm.EnvVars["TOKEN"] = token
-		vm.EnvVars["MNEMONIC"] = encryptedMnemonic
-		vm.EnvVars["NETWORK"] = gridNet
 	}
 	if vm.EnvVars["K3S_FLANNEL_IFACE"] == "" {
 		vm.EnvVars["K3S_FLANNEL_IFACE"] = K3S_IFACE
