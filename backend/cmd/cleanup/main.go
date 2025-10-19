@@ -38,9 +38,26 @@ func loadConfig(configPath string) {
 		MailSender: internal.MailSender{
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
+
+		EncryptionPassphrase: viper.GetString("encryption_passphrase"),
+		EncryptionSalt:       viper.GetString("encryption_salt"),
+		Argon2: internal.Argon2Config{
+			Time:    uint32(viper.GetInt("argon2.time")),
+			Memory:  uint32(viper.GetInt("argon2.memory")),
+			Threads: uint8(viper.GetInt("argon2.threads")),
+		},
 	}
 	if config.MailSender.MaxConcurrentSends == 0 {
 		config.MailSender.MaxConcurrentSends = 10
+	}
+	if config.Argon2.Time < 1 {
+		config.Argon2.Time = 1
+	}
+	if config.Argon2.Memory < 8192 {
+		config.Argon2.Memory = 65536
+	}
+	if config.Argon2.Threads < 1 {
+		config.Argon2.Threads = 4
 	}
 }
 
@@ -70,7 +87,8 @@ func main() {
 	}
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
+	cryptoManager := internal.NewCryptoManager(config)
+	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient, cryptoManager)
 	moneyCollector.CollectMoney()
 
 }

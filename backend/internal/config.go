@@ -44,6 +44,11 @@ type Configuration struct {
 	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`
 	KYCChallengeDomain string `json:"kyc_challenge_domain" validate:"required"`
 
+	// Encryption config
+	EncryptionPassphrase string       `json:"encryption_passphrase" validate:"required"`
+	EncryptionSalt       string       `json:"encryption_salt" validate:"required"`
+	Argon2               Argon2Config `json:"argon2"`
+
 	Logger LoggerConfig `json:"logger"`
 	Loki   LokiConfig   `json:"loki"`
 
@@ -190,6 +195,13 @@ func loadNotificationConfig(configPath string) (NotificationConfig, error) {
 	}
 
 	return notificationConfig, nil
+}
+
+// Argon2Config holds the configuration for Argon2 key derivation
+type Argon2Config struct {
+	Time    uint32 `json:"time" validate:"required,gt=0"`
+	Memory  uint32 `json:"memory" validate:"required,gt=8"`
+	Threads uint8  `json:"threads" validate:"required,gt=0"`
 }
 
 // LoadConfig load configurations

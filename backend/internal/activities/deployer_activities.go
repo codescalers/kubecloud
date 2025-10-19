@@ -245,7 +245,7 @@ func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
+func StoreDeploymentStep(db models.DB, crypto *internal.CryptoManager, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
@@ -257,15 +257,24 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			return err
 		}
 
-		dbCluster := &models.Cluster{
-			ProjectName: cluster.ProjectName,
-		}
-
 		kubeconfig, ok := state["kubeconfig"].(string)
 		if !ok || kubeconfig == "" {
-			logger.GetLogger().Warn().Str("project_name", cluster.ProjectName).Msg("No kubeconfig found in state to store")
-		} else {
-			dbCluster.Kubeconfig = kubeconfig
+			return fmt.Errorf("kubeconfig not found in state")
+		}
+
+		// Encrypt kubeconfig at rest
+		user, err := db.GetUserByID(config.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to get user for encryption: %w", err)
+		}
+		encryptedKubeconfig, err := crypto.Encrypt(kubeconfig, user.AccountAddress)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt kubeconfig: %w", err)
+		}
+
+		dbCluster := &models.Cluster{
+			ProjectName: cluster.ProjectName,
+			Kubeconfig:  encryptedKubeconfig,
 		}
 
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
@@ -573,7 +582,7 @@ func createDeployerWorkflowTemplate(notificationService *notification.Notificati
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration, cryptoMgr *internal.CryptoManager) {
 
 	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(constants.StepDeployNode, DeployNodeStep(metrics))
@@ -581,8 +590,8 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
 	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics))
-	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, cryptoMgr, metrics))
+	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath, cryptoMgr))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
 	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
@@ -668,7 +677,7 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	return config, nil
 }
 
-func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
+func FetchKubeconfigStep(db models.DB, privateKeyPath string, cryptoMgr *internal.CryptoManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		if kubeconfig, ok := state["kubeconfig"].(string); ok && kubeconfig != "" {
 			return nil
@@ -690,8 +699,19 @@ func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
 			return fmt.Errorf("failed to query cluster from database: %w", err)
 		}
 
-		if existingCluster.ID != 0 && existingCluster.Kubeconfig != "" {
-			state["kubeconfig"] = existingCluster.Kubeconfig
+		if existingCluster.ID != 0 && len(existingCluster.Kubeconfig) > 0 {
+			// Decrypt the kubeconfig
+			user, err := db.GetUserByID(config.UserID)
+			if err != nil {
+				return fmt.Errorf("failed to get user for kubeconfig decryption: %w", err)
+			}
+
+			decryptedKubeconfig, err := cryptoMgr.Decrypt(existingCluster.Kubeconfig, user.AccountAddress)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt kubeconfig: %w", err)
+			}
+
+			state["kubeconfig"] = decryptedKubeconfig
 			return nil
 		}
 

@@ -52,9 +52,11 @@ type Handler struct {
 	kycClient           *internal.KYCClient
 	sponsorKeyPair      subkey.KeyPair
 	sponsorAddress      string
+	cryptoManager       *internal.CryptoManager
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
+	cryptoMgr           *internal.CryptoManager
 }
 
 // NewHandler create new handler
@@ -65,7 +67,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient, cryptoManager *internal.CryptoManager) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
@@ -85,9 +87,11 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		kycClient:           kycClient,
 		sponsorKeyPair:      sponsorKeyPair,
 		sponsorAddress:      sponsorAddress,
+		cryptoManager:       cryptoManager,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
+		cryptoMgr:           cryptoManager,
 	}
 }
 
@@ -691,12 +695,19 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to decrypt user mnemonic")
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = ewf.State{
 		"user_id":            userID,
 		"stripe_customer_id": user.StripeCustomerID,
 		"payment_method_id":  paymentMethod.ID,
 		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
-		"mnemonic":           user.Mnemonic,
+		"mnemonic":           decryptedMnemonic,
 		"username":           user.Username,
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
@@ -778,7 +789,14 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, decryptedMnemonic)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -870,10 +888,18 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
+
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = map[string]interface{}{
 		"user_id":       user.ID,
 		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic":      user.Mnemonic,
+		"mnemonic":      decryptedMnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.RedeemVoucherMode,
 	}
@@ -1132,7 +1158,7 @@ func isUserRegistered(user models.User) bool {
 		user.Verified &&
 		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
 		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
-		len(strings.TrimSpace(user.Mnemonic)) > 0
+		len(user.Mnemonic) > 0
 }
 
 func isUniqueViolation(err error) bool {

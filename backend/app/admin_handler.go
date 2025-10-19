@@ -108,8 +108,23 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
+			if len(user.Mnemonic) == 0 || len(user.AccountAddress) == 0 {
+				mu.Lock()
+				usersWithBalance = append(usersWithBalance, UserResponse{User: user, Balance: 0})
+				mu.Unlock()
+				return
+			}
 
-			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+			decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+			if err != nil {
+				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to decrypt user mnemonic")
+				mu.Lock()
+				multiErr = multierror.Append(multiErr, fmt.Errorf("user %d: failed to decrypt mnemonic", user.ID))
+				mu.Unlock()
+				return
+			}
+
+			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, decryptedMnemonic)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
 				mu.Lock()
@@ -351,10 +366,17 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = map[string]interface{}{
 		"user_id":       user.ID,
 		"amount":        internal.FromUSDToUSDMillicent(request.AmountUSD),
-		"mnemonic":      user.Mnemonic,
+		"mnemonic":      decryptedMnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,

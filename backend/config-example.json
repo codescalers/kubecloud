@@ -60,6 +60,13 @@
   "reserved_node_health_check_workers_num": 10,
   "kyc_verifier_api_url": "kyc-url",
   "kyc_challenge_domain": "kyc-domain",
+  "encryption_passphrase": "${ENCRYPTION_PASSPHRASE}",
+  "encryption_salt": "${ENCRYPTION_SALT}",
+  "argon2": {
+    "time": 1,
+    "memory": 65536,
+    "threads": 4
+  },
   "logger": {
     "log_dir": "./app/logs",
     "max_size": 512,

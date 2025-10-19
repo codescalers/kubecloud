@@ -13,17 +13,19 @@ type MoneyCollector struct {
 	db              models.DB
 	config          internal.Configuration
 	substrateClient *substrate.Substrate
+	cryptoManager   *internal.CryptoManager
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate, cryptoManager *internal.CryptoManager) *MoneyCollector {
 	return &MoneyCollector{
 		db:              db,
 		config:          config,
 		substrateClient: substrateClient,
+		cryptoManager:   cryptoManager,
 	}
 }
 
@@ -49,16 +51,23 @@ func (m *MoneyCollector) CollectMoney() {
 			balanceConcurrencyLimiter <- struct{}{}
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
-			if user.Mnemonic == "" {
+			if len(user.Mnemonic) == 0 || len(user.AccountAddress) == 0 {
 				return
 			}
-			balance, err := internal.GetUserTFTBalance(m.substrateClient, user.Mnemonic)
+
+			decryptedMnemonic, err := m.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+			if err != nil {
+				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to decrypt user mnemonic")
+				return
+			}
+
+			balance, err := internal.GetUserTFTBalance(m.substrateClient, decryptedMnemonic)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return
 			}
 			if balance > MinBalanceThreshold {
-				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(decryptedMnemonic)
 				if err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to load user identity")
 					return
@@ -66,11 +75,10 @@ func (m *MoneyCollector) CollectMoney() {
 				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
 				if err := m.substrateClient.Transfer(userIdentity, balance-MinBalanceThreshold, substrate.AccountID(system.PublicKey())); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
+					return
 				}
-				return
 			}
 		}(user)
-
 	}
 	wg.Wait()
 	log.Info().Msg("MoneyCollector: finished")

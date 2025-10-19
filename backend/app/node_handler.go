@@ -266,7 +266,15 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 	// validate user has enough balance for reserving node
-	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, decryptedMnemonic)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -288,7 +296,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	wf.State = map[string]interface{}{
 		"user_id":       userID,
-		"mnemonic":      user.Mnemonic,
+		"mnemonic":      decryptedMnemonic,
 		"node_id":       nodeID,
 		"target_status": constants.NodeRented,
 	}
@@ -431,9 +439,16 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
 	wf.State = map[string]interface{}{
 		"user_id":       userID,
-		"mnemonic":      user.Mnemonic,
+		"mnemonic":      decryptedMnemonic,
 		"contract_id":   contractID,
 		"node_id":       userNode.NodeID,
 		"target_status": constants.NodeRentable,
@@ -537,7 +552,12 @@ func (h *Handler) getTwinIDFromUserID(userID int) (uint64, error) {
 		return 0, err
 	}
 
-	identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		return 0, fmt.Errorf("failed to decrypt user mnemonic: %w", err)
+	}
+
+	identity, err := substrate.NewIdentityFromSr25519Phrase(decryptedMnemonic)
 	if err != nil {
 		return 0, err
 	}

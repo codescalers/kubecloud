@@ -5,8 +5,9 @@ import (
 	"kubecloud/models"
 	"time"
 
-	"github.com/pkg/errors"
 	"kubecloud/internal/logger"
+
+	"github.com/pkg/errors"
 )
 
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
@@ -77,7 +78,12 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 		return errors.Wrapf(err, "failed to get user for pending record ID %d", recordID)
 	}
 
-	err = internal.TransferTFTs(h.substrateClient, amountToTransfer, user.Mnemonic, h.systemIdentity)
+	decryptedMnemonic, err := h.cryptoManager.Decrypt(user.Mnemonic, user.AccountAddress)
+	if err != nil {
+		return errors.Wrapf(err, "failed to decrypt user mnemonic for pending record ID %d", recordID)
+	}
+
+	err = internal.TransferTFTs(h.substrateClient, amountToTransfer, decryptedMnemonic, h.systemIdentity)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to transfer TFTs for pending record ID %d", recordID)
 	}

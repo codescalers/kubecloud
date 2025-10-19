@@ -141,7 +141,7 @@ func UpdateCodeStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB) ewf.StepFn {
+func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB, crypto *internal.CryptoManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -157,19 +157,30 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
-		if len(strings.TrimSpace(existingUser.Mnemonic)) > 0 {
-			state["mnemonic"] = existingUser.Mnemonic
+		if len(existingUser.Mnemonic) > 0 {
+
+			decryptedMnemonic, err := crypto.Decrypt(existingUser.Mnemonic, existingUser.AccountAddress)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt existing mnemonic: %w", err)
+			}
+			state["mnemonic"] = decryptedMnemonic
 			return nil
 		}
 
-		mnemonic, _, err := internal.SetupUserOnTFChain(client, config)
+		mnemonic, address, _, err := internal.SetupUserOnTFChain(client, config)
 		if err != nil {
 			return err
 		}
 
+		encryptedMnemonic, err := crypto.Encrypt(mnemonic, address)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt mnemonic: %w", err)
+		}
+
 		if err := db.UpdateUserByID(&models.User{
-			ID:       userID,
-			Mnemonic: mnemonic,
+			ID:             userID,
+			Mnemonic:       encryptedMnemonic,
+			AccountAddress: address,
 		}); err != nil {
 			return fmt.Errorf("failed to update user mnemonic: %w", err)
 		}
@@ -419,7 +430,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 	}
 }
 
-func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditCardBalanceStep(db models.DB, crypto *internal.CryptoManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -449,18 +460,22 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
-		state["mnemonic"] = user.Mnemonic
+		decryptedMnemonic, err := crypto.Decrypt(user.Mnemonic, user.AccountAddress)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt user mnemonic: %w", err)
+		}
+
+		state["mnemonic"] = decryptedMnemonic
 		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
 		if netBalance < 0 {
 			netBalance = 0
 		}
 		state["net_balance"] = uint64(netBalance)
-
 		return nil
 	}
 }
 
-func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditedBalanceStep(db models.DB, crypto *internal.CryptoManager) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {

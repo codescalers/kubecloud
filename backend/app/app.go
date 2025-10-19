@@ -50,6 +50,9 @@ type App struct {
 
 // NewApp create new instance of the app with all configs
 func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
+
+	cryptoMgr := internal.NewCryptoManager(config)
+
 	// Disable gin's default logging since we're using zerolog
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)
@@ -82,6 +85,11 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to create user storage")
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
+	}
+
+	if err := cryptoMgr.EnsureMnemonicsEncrypted(ctx, db); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("mnemonic encryption initializer failed")
+		return nil, fmt.Errorf("mnemonic encryption initializer failed: %w", err)
 	}
 
 	gridProxy := proxy.NewRetryingClient(proxy.NewClient(config.GridProxyURL))
@@ -214,7 +222,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
 		substrateClient, graphqlClient, firesquidClient, redisClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient, cryptoMgr)
 
 	app := &App{
 		router:              router,
@@ -242,6 +250,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		app.metrics,
 		app.notificationService,
 		gridProxy,
+		cryptoMgr,
 	)
 
 	app.registerHandlers()

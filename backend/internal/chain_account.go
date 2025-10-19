@@ -11,42 +11,43 @@ import (
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
-	"github.com/tyler-smith/go-bip39"
 	"kubecloud/internal/logger"
+
+	"github.com/tyler-smith/go-bip39"
 )
 
-// SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
-func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnemonic string, twinID uint32, err error) {
+// SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, address, twin ID
+func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnemonic string, address string, twinID uint32, err error) {
 	mnemonic, err = GenerateMnemonic()
 	if err != nil {
-		return "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
+		return "", "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
 	}
 
 	identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
 	if err != nil {
-		return "", 0, fmt.Errorf("identity creation failed: %w", err)
+		return "", "", 0, fmt.Errorf("identity creation failed: %w", err)
 	}
 
 	// Activate account with activation service
 	if err := ActivateAccount(identity.Address(), config.ActivationServiceURL); err != nil {
-		return "", 0, fmt.Errorf("activation failed: %w", err)
+		return "", "", 0, fmt.Errorf("activation failed: %w", err)
 	}
 
 	// Wait a few seconds for account activation to complete
 	time.Sleep(7 * time.Second)
 
 	if err := client.AcceptTermsAndConditions(identity, config.TermsANDConditions.DocumentLink, config.TermsANDConditions.DocumentHash); err != nil {
-		return "", 0, fmt.Errorf("accept terms failed: %w", err)
+		return "", "", 0, fmt.Errorf("accept terms failed: %w", err)
 	}
 
 	// Create Twin
 	twinID, err = client.CreateTwin(identity, "", []byte{})
 	if err != nil {
-		return "", 0, fmt.Errorf("create twin failed: %w", err)
+		return "", "", 0, fmt.Errorf("create twin failed: %w", err)
 	}
 
 	logger.GetLogger().Debug().Msgf("Twin created with ID %d for %s", twinID, identity.Address())
-	return mnemonic, twinID, nil
+	return mnemonic, identity.Address(), twinID, nil
 }
 
 // GenerateMnemonic generate mnemonic for each user

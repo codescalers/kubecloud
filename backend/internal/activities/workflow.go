@@ -42,21 +42,22 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationService *notification.NotificationService,
 	proxyClient proxy.Client,
+	cryptoMgr *internal.CryptoManager,
 ) {
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))
 	engine.Register(constants.StepUpdateCode, UpdateCodeStep(db))
-	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, db))
+	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, db, cryptoMgr))
 	engine.Register(constants.StepCreateStripeCustomer, CreateStripeCustomerStep(db))
 	engine.Register(constants.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
 	engine.Register(constants.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
 	engine.Register(constants.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
 	engine.Register(constants.StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic))
-	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db))
+	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db, cryptoMgr))
 	engine.Register(constants.StepCreateIdentity, CreateIdentityStep())
 	engine.Register(constants.StepReserveNode, ReserveNodeStep(db, substrate))
 	engine.Register(constants.StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(constants.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
+	engine.Register(constants.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db, cryptoMgr))
 	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
 	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
 	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
@@ -151,7 +152,7 @@ func RegisterEWFWorkflows(
 	trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(constants.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, notificationService, config)
+	registerDeploymentActivities(engine, metrics, db, notificationService, config, cryptoMgr)
 
 	notificationTemplate := newKubecloudWorkflowTemplate(notificationService)
 	notificationTemplate.Steps = []ewf.Step{

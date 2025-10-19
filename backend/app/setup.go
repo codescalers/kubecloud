@@ -108,7 +108,14 @@ func SetUp(t testing.TB) (*App, error) {
   "cluster_health_check_interval_in_hours": 1,
   "reserved_node_health_check_interval_in_hours": 1,
   "reserved_node_health_check_timeout_in_minutes": 1,
-  "reserved_node_health_check_workers_num": 10
+  "reserved_node_health_check_workers_num": 10,
+  "encryption_passphrase": "test-encryption-passphrase-for-testing-only",
+  "encryption_salt": "test-salt-for-testing-environment",
+  "argon2": {
+    "time": 1,
+    "memory": 1024,
+    "threads": 1
+  }
 }
 `, dsn, mnemonic, redisHost, privateKeyPath, publicKeyPath, notificationConfigPath)
 
@@ -179,14 +186,15 @@ func GetAuthToken(t *testing.T, app *App, id int, email, username string, isAdmi
 func CreateTestUser(t *testing.T, app *App, email, username string, hashedPassword []byte, verified, admin bool, mnemonicRequired bool, code int, updatedAt time.Time) *models.User {
 	mnemonic := ""
 	sponseeAddress := ""
+	var encryptedBytes []byte
 	if !mnemonicRequired {
-		mnemonic = ""
+		// no mnemonic needed in tests; leave encryptedBytes nil
 	} else {
-		mnemonic, _, err := internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
+		var err error
+		mnemonic, sponseeAddress, _, err = internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
 		require.NoError(t, err)
-		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
-		require.NoError(t, err)
-		sponseeAddress, err = internal.AccountAddressFromKeypair(sponseeKeyPair)
+
+		encryptedBytes, err = app.handlers.cryptoManager.Encrypt(mnemonic, sponseeAddress)
 		require.NoError(t, err)
 	}
 	user := &models.User{
@@ -197,7 +205,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		Admin:          admin,
 		Code:           code,
 		UpdatedAt:      updatedAt,
-		Mnemonic:       mnemonic,
+		Mnemonic:       encryptedBytes,
 		AccountAddress: sponseeAddress,
 	}
 	err := app.handlers.db.RegisterUser(user)
