@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	K3S_FLIST      = "https://hub.threefold.me/omarabdulaziz.3bot/omarabdul3ziz-k3s-optional_encrypt.flist"
+	K3S_FLIST      = "https://hub.threefold.me/omarabdulaziz.3bot/omarabdul3ziz-k3s-opt_crypto.flist"
 	K3S_ENTRYPOINT = "/sbin/zinit init"
 	K3S_DATA_DIR   = "/mnt/data"
 	K3S_IFACE      = "flannel-br"

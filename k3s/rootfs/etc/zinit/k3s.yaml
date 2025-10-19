@@ -1,4 +1,3 @@
 exec: /scripts/entrypoint.sh
 after:
   - create_flannel_iface
-  - patch_crd
