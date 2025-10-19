@@ -480,6 +480,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/nodes": {
+            "get": {
+                "description": "List all nodes from the grid proxy (no user-specific filtering)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List all grid nodes",
+                "operationId": "list-all-grid-nodes",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by healthy nodes (default: false)",
+                        "name": "healthy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of nodes returned (default: 50)",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All grid nodes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter parameters",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/nodes/{node_id}/storage-pool": {
             "get": {
                 "description": "Returns node storage pool",
@@ -1001,112 +1069,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/nodes": {
-            "get": {
-                "description": "List all nodes from the grid proxy (no user-specific filtering)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nodes"
-                ],
-                "summary": "List all grid nodes",
-                "operationId": "list-all-grid-nodes",
-                "parameters": [
-                    {
-                        "type": "boolean",
-                        "description": "Filter by healthy nodes (default: false)",
-                        "name": "healthy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit the number of nodes returned (default: 50)",
-                        "name": "size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "All grid nodes retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/app.ListNodesResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid filter parameters",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/pending-records": {
-            "get": {
-                "security": [
-                    {
-                        "AdminMiddleware": []
-                    }
-                ],
-                "description": "Returns all pending records in the system",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "List pending records",
-                "operationId": "list-pending-records",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/app.PendingRecordsResponse"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/stats": {
             "get": {
                 "security": [
@@ -1221,6 +1183,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/transfer-records": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns all transfer records in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List transfer records",
+                "operationId": "list-transfer-records",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/models.TransferRecord"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/twins/{twin_id}/account": {
             "get": {
                 "description": "Retrieve the account ID associated with a specific twin ID",
@@ -1304,40 +1307,19 @@ const docTemplate = `{
                     "200": {
                         "description": "User is retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.GetUserResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User is not found",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/balance": {
-            "get": {
-                "description": "Retrieves the user's balance in USD",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get user balance",
-                "operationId": "get-user-balance",
-                "responses": {
-                    "200": {
-                        "description": "Balance fetched successfully",
-                        "schema": {
-                            "$ref": "#/definitions/app.UserBalanceResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.User"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "404": {
@@ -1959,44 +1941,6 @@ const docTemplate = `{
                         "description": "No nodes are available for rent.",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/pending-records": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns user pending records in the system",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "List user pending records",
-                "operationId": "list-user-pending-records",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/app.PendingRecordsResponse"
-                            }
                         }
                     },
                     "500": {
@@ -2931,70 +2875,6 @@ const docTemplate = `{
                 }
             }
         },
-        "app.GetUserResponse": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "account_address": {
-                    "type": "string"
-                },
-                "admin": {
-                    "type": "boolean"
-                },
-                "code": {
-                    "type": "integer"
-                },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
-                    "type": "integer"
-                },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "pending_balance_usd": {
-                    "type": "number"
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
-                }
-            }
-        },
         "app.KubeconfigResponse": {
             "type": "object",
             "properties": {
@@ -3251,39 +3131,36 @@ const docTemplate = `{
                 }
             }
         },
-        "app.PendingRecordsResponse": {
+        "app.NotificationResponse": {
+            "description": "A notification response",
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
-                },
-                "tft_amount": {
-                    "description": "TFTs are multiplied by 1e7",
-                    "type": "integer"
-                },
-                "transfer_mode": {
                     "type": "string"
                 },
-                "transferred_tft_amount": {
-                    "type": "integer"
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 },
-                "transferred_usd_amount": {
-                    "type": "number"
-                },
-                "updated_at": {
+                "read_at": {
                     "type": "string"
                 },
-                "usd_amount": {
-                    "type": "number"
+                "severity": {
+                    "$ref": "#/definitions/models.NotificationSeverity"
                 },
-                "user_id": {
-                    "type": "integer"
+                "status": {
+                    "$ref": "#/definitions/models.NotificationStatus"
                 },
-                "username": {
+                "task_id": {
                     "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.NotificationType"
                 }
             }
         },
@@ -3505,20 +3382,6 @@ const docTemplate = `{
                 }
             }
         },
-        "app.UserBalanceResponse": {
-            "type": "object",
-            "properties": {
-                "balance_usd": {
-                    "type": "number"
-                },
-                "debt_usd": {
-                    "type": "number"
-                },
-                "pending_balance_usd": {
-                    "type": "number"
-                }
-            }
-        },
         "app.UserResponse": {
             "type": "object",
             "required": [
@@ -3618,7 +3481,6 @@ const docTemplate = `{
         },
         "gridtypes.Unit": {
             "type": "integer",
-            "format": "int64",
             "enum": [
                 1024,
                 1048576,
@@ -3662,7 +3524,6 @@ const docTemplate = `{
                     }
                 },
                 "tax": {
-                    "description": "TODO:",
                     "type": "number"
                 },
                 "total": {
@@ -3731,13 +3592,15 @@ const docTemplate = `{
                 "deployment",
                 "billing",
                 "user",
-                "connected"
+                "connected",
+                "node"
             ],
             "x-enum-varnames": [
                 "NotificationTypeDeployment",
                 "NotificationTypeBilling",
                 "NotificationTypeUser",
-                "NotificationTypeConnected"
+                "NotificationTypeConnected",
+                "NotificationTypeNode"
             ]
         },
         "models.SSHKey": {
@@ -3772,6 +3635,100 @@ const docTemplate = `{
                 }
             }
         },
+        "models.TransferRecord": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "failure": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operation": {
+                    "$ref": "#/definitions/models.operation"
+                },
+                "state": {
+                    "$ref": "#/definitions/models.state"
+                },
+                "tft_amount": {
+                    "description": "TFTs are multiplied by 1e7",
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "admin": {
+                    "type": "boolean"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "credit_card_balance": {
+                    "description": "millicent, money from credit card",
+                    "type": "integer"
+                },
+                "credited_balance": {
+                    "description": "millicent, manually added by admin or from vouchers",
+                    "type": "integer"
+                },
+                "debt": {
+                    "description": "millicent",
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sponsored": {
+                    "type": "boolean"
+                },
+                "ssh_key": {
+                    "type": "string"
+                },
+                "stripe_customer_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.Voucher": {
             "type": "object",
             "required": [
@@ -3800,6 +3757,30 @@ const docTemplate = `{
                     "type": "number"
                 }
             }
+        },
+        "models.operation": {
+            "type": "string",
+            "enum": [
+                "withdraw",
+                "deposit"
+            ],
+            "x-enum-varnames": [
+                "WithdrawOperation",
+                "DepositOperation"
+            ]
+        },
+        "models.state": {
+            "type": "string",
+            "enum": [
+                "failed",
+                "success",
+                "pending"
+            ],
+            "x-enum-varnames": [
+                "FailedState",
+                "SuccessState",
+                "PendingState"
+            ]
         },
         "types.BIOS": {
             "type": "object",
@@ -4062,6 +4043,9 @@ const docTemplate = `{
                 },
                 "vendor": {
                     "type": "string"
+                },
+                "vram": {
+                    "type": "integer"
                 }
             }
         },

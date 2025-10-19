@@ -121,50 +121,6 @@ definitions:
     - expire_after_days
     - value
     type: object
-  app.GetUserResponse:
-    properties:
-      account_address:
-        type: string
-      admin:
-        type: boolean
-      code:
-        type: integer
-      credit_card_balance:
-        description: millicent, money from credit card
-        type: integer
-      credited_balance:
-        description: millicent, manually added by admin or from vouchers
-        type: integer
-      debt:
-        description: millicent
-        type: integer
-      email:
-        type: string
-      id:
-        type: integer
-      password:
-        items:
-          type: integer
-        type: array
-      pending_balance_usd:
-        type: number
-      sponsored:
-        type: boolean
-      ssh_key:
-        type: string
-      stripe_customer_id:
-        type: string
-      updated_at:
-        type: string
-      username:
-        type: string
-      verified:
-        type: boolean
-    required:
-    - email
-    - password
-    - username
-    type: object
   app.KubeconfigResponse:
     properties:
       kubeconfig:
@@ -360,30 +316,6 @@ definitions:
       type:
         $ref: '#/definitions/models.NotificationType'
     type: object
-  app.PendingRecordsResponse:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      tft_amount:
-        description: TFTs are multiplied by 1e7
-        type: integer
-      transfer_mode:
-        type: string
-      transferred_tft_amount:
-        type: integer
-      transferred_usd_amount:
-        type: number
-      updated_at:
-        type: string
-      usd_amount:
-        type: number
-      user_id:
-        type: integer
-      username:
-        type: string
-    type: object
   app.Pool:
     properties:
       free:
@@ -528,15 +460,6 @@ definitions:
       workflow_id:
         type: string
     type: object
-  app.UserBalanceResponse:
-    properties:
-      balance_usd:
-        type: number
-      debt_usd:
-        type: number
-      pending_balance_usd:
-        type: number
-    type: object
   app.UserResponse:
     properties:
       account_address:
@@ -609,7 +532,6 @@ definitions:
     - 1048576
     - 1073741824
     - 1099511627776
-    format: int64
     type: integer
     x-enum-varnames:
     - Kilobyte
@@ -634,7 +556,6 @@ definitions:
           $ref: '#/definitions/models.NodeItem'
         type: array
       tax:
-        description: 'TODO:'
         type: number
       total:
         type: number
@@ -686,12 +607,14 @@ definitions:
     - billing
     - user
     - connected
+    - node
     type: string
     x-enum-varnames:
     - NotificationTypeDeployment
     - NotificationTypeBilling
     - NotificationTypeUser
     - NotificationTypeConnected
+    - NotificationTypeNode
   models.SSHKey:
     properties:
       created_at:
@@ -715,6 +638,70 @@ definitions:
     - public_key
     - userID
     type: object
+  models.TransferRecord:
+    properties:
+      created_at:
+        type: string
+      failure:
+        type: string
+      id:
+        type: integer
+      operation:
+        $ref: '#/definitions/models.operation'
+      state:
+        $ref: '#/definitions/models.state'
+      tft_amount:
+        description: TFTs are multiplied by 1e7
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  models.User:
+    properties:
+      account_address:
+        type: string
+      admin:
+        type: boolean
+      code:
+        type: integer
+      credit_card_balance:
+        description: millicent, money from credit card
+        type: integer
+      credited_balance:
+        description: millicent, manually added by admin or from vouchers
+        type: integer
+      debt:
+        description: millicent
+        type: integer
+      email:
+        type: string
+      id:
+        type: integer
+      password:
+        items:
+          type: integer
+        type: array
+      sponsored:
+        type: boolean
+      ssh_key:
+        type: string
+      stripe_customer_id:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+      verified:
+        type: boolean
+    required:
+    - email
+    - password
+    - username
+    type: object
   models.Voucher:
     properties:
       code:
@@ -735,6 +722,24 @@ definitions:
     - expires_at
     - value
     type: object
+  models.operation:
+    enum:
+    - withdraw
+    - deposit
+    type: string
+    x-enum-varnames:
+    - WithdrawOperation
+    - DepositOperation
+  models.state:
+    enum:
+    - failed
+    - success
+    - pending
+    type: string
+    x-enum-varnames:
+    - FailedState
+    - SuccessState
+    - PendingState
   types.BIOS:
     properties:
       vendor:
@@ -907,6 +912,8 @@ definitions:
         type: integer
       vendor:
         type: string
+      vram:
+        type: integer
     type: object
   types.NodePower:
     properties:
@@ -1633,30 +1640,6 @@ paths:
       summary: Get unread notifications
       tags:
       - notifications
-  /pending-records:
-    get:
-      consumes:
-      - application/json
-      description: Returns all pending records in the system
-      operationId: list-pending-records
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/app.PendingRecordsResponse'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-      security:
-      - AdminMiddleware: []
-      summary: List pending records
-      tags:
-      - admin
   /stats:
     get:
       consumes:
@@ -1729,6 +1712,32 @@ paths:
       summary: Set maintenance mode
       tags:
       - admin
+  /transfer-records:
+    get:
+      consumes:
+      - application/json
+      description: Returns all transfer records in the system
+      operationId: list-transfer-records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/models.TransferRecord'
+              type: array
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List transfer records
+      tags:
+      - admin
   /twins/{twin_id}/account:
     get:
       consumes:
@@ -1784,7 +1793,12 @@ paths:
         "200":
           description: User is retrieved successfully
           schema:
-            $ref: '#/definitions/app.GetUserResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
         "404":
           description: User is not found
           schema:
@@ -1794,28 +1808,6 @@ paths:
           schema:
             $ref: '#/definitions/app.APIResponse'
       summary: Get user details
-      tags:
-      - users
-  /user/balance:
-    get:
-      description: Retrieves the user's balance in USD
-      operationId: get-user-balance
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Balance fetched successfully
-          schema:
-            $ref: '#/definitions/app.UserBalanceResponse'
-        "404":
-          description: User is not found
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-      summary: Get user balance
       tags:
       - users
   /user/balance/charge:
@@ -2214,30 +2206,6 @@ paths:
       summary: Unreserve node
       tags:
       - nodes
-  /user/pending-records:
-    get:
-      consumes:
-      - application/json
-      description: Returns user pending records in the system
-      operationId: list-user-pending-records
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/app.PendingRecordsResponse'
-            type: array
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/app.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: List user pending records
-      tags:
-      - users
   /user/redeem/{voucher_code}:
     put:
       description: Redeems a voucher for the user
