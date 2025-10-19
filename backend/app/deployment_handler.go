@@ -120,7 +120,7 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 // @Produce json
 // @Param limit query int false "Limit"
 // @Param offset query int false "Offset"
-// @Success 200 {object} APIResponse{data=PaginatedData[object]} "Deployments retrieved successfully"
+// @Success 200 {object} APIResponse{data=PaginatedData[DeploymentResponse]} "Deployments retrieved successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments/paginated [get]

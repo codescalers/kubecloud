@@ -142,6 +142,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/deployments/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves a paginated list of deployments for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deployments"
+                ],
+                "summary": "List deployments (paginated)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deployments retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.PaginatedData-app_DeploymentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/deployments/{name}": {
             "get": {
                 "security": [
@@ -473,6 +536,158 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/invoices/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns a paginated list of all invoices",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get all invoices (paginated)",
+                "operationId": "get-all-invoices-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "invoices": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/models.Invoice"
+                                                    }
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/nodes": {
+            "get": {
+                "description": "List all nodes from the grid proxy (no user-specific filtering)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List all grid nodes",
+                "operationId": "list-all-grid-nodes",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter by healthy nodes (default: false)",
+                        "name": "healthy",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of nodes returned (default: 50)",
+                        "name": "size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All grid nodes retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid filter parameters",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -1001,74 +1216,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/nodes": {
-            "get": {
-                "description": "List all nodes from the grid proxy (no user-specific filtering)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "nodes"
-                ],
-                "summary": "List all grid nodes",
-                "operationId": "list-all-grid-nodes",
-                "parameters": [
-                    {
-                        "type": "boolean",
-                        "description": "Filter by healthy nodes (default: false)",
-                        "name": "healthy",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit the number of nodes returned (default: 50)",
-                        "name": "size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "page number (default: 1)",
-                        "name": "page",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "All grid nodes retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/app.ListNodesResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid filter parameters",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/pending-records": {
             "get": {
                 "security": [
@@ -1096,6 +1243,90 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/app.PendingRecordsResponse"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pending-records/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns pending records with pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List pending records (paginated)",
+                "operationId": "list-pending-records-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                },
+                                                "pending_records": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/app.PendingRecordsResponse"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
@@ -1599,6 +1830,90 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/invoice/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "UserMiddleware": []
+                    }
+                ],
+                "description": "Returns a paginated list of invoices for a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "invoices"
+                ],
+                "summary": "Get invoices (paginated)",
+                "operationId": "get-invoices-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "invoices": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/models.Invoice"
+                                                    }
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/invoice/{invoice_id}": {
             "get": {
                 "security": [
@@ -1811,6 +2126,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/nodes/rentable/paginated": {
+            "get": {
+                "description": "Retrieves a paginated list of rentable nodes from the grid proxy with discount price",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List rentable nodes (paginated)",
+                "operationId": "list-rentable-nodes-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of nodes returned (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid pagination parameters",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/nodes/rented": {
             "get": {
                 "security": [
@@ -1830,6 +2207,67 @@ const docTemplate = `{
                 ],
                 "summary": "List reserved nodes",
                 "operationId": "list-reserved-nodes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/nodes/rented/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "UserMiddleware": []
+                    }
+                ],
+                "description": "Returns a paginated list of reserved nodes for a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nodes"
+                ],
+                "summary": "List reserved nodes (paginated)",
+                "operationId": "list-reserved-nodes-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of nodes returned (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1997,6 +2435,90 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/app.PendingRecordsResponse"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/pending-records/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns user pending records with pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List user pending records (paginated)",
+                "operationId": "list-user-pending-records-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                },
+                                                "pending_records": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/app.PendingRecordsResponse"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
                         }
                     },
                     "500": {
@@ -2315,6 +2837,90 @@ const docTemplate = `{
                 }
             }
         },
+        "/user/ssh-keys/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists SSH keys for the authenticated user with pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List user SSH keys (paginated)",
+                "operationId": "list-ssh-keys-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                },
+                                                "ssh_keys": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/models.SSHKey"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/user/ssh-keys/{ssh_key_id}": {
             "delete": {
                 "security": [
@@ -2483,6 +3089,90 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns a paginated list of users with total count",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Get users (paginated)",
+                "operationId": "get-users-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit the number of users returned (default: 20, max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination (default: 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                },
+                                                "users": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/app.UserResponse"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid pagination parameters",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -2685,6 +3375,90 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid request format",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vouchers/paginated": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns vouchers with pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List vouchers (paginated)",
+                "operationId": "list-vouchers-paginated",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/app.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "offset": {
+                                                    "type": "integer"
+                                                },
+                                                "vouchers": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/definitions/models.Voucher"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/app.APIResponse"
                         }
@@ -3251,6 +4025,59 @@ const docTemplate = `{
                 }
             }
         },
+        "app.NotificationResponse": {
+            "description": "A notification response",
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "read_at": {
+                    "type": "string"
+                },
+                "severity": {
+                    "$ref": "#/definitions/models.NotificationSeverity"
+                },
+                "status": {
+                    "$ref": "#/definitions/models.NotificationStatus"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.NotificationType"
+                }
+            }
+        },
+        "app.PaginatedData-app_DeploymentResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app.DeploymentResponse"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "app.PendingRecordsResponse": {
             "type": "object",
             "properties": {
@@ -3731,13 +4558,15 @@ const docTemplate = `{
                 "deployment",
                 "billing",
                 "user",
-                "connected"
+                "connected",
+                "node"
             ],
             "x-enum-varnames": [
                 "NotificationTypeDeployment",
                 "NotificationTypeBilling",
                 "NotificationTypeUser",
-                "NotificationTypeConnected"
+                "NotificationTypeConnected",
+                "NotificationTypeNode"
             ]
         },
         "models.SSHKey": {
@@ -4062,6 +4891,9 @@ const docTemplate = `{
                 },
                 "vendor": {
                     "type": "string"
+                },
+                "vram": {
+                    "type": "integer"
                 }
             }
         },
