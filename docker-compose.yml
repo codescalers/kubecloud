@@ -32,6 +32,7 @@ services:
       - ./backend/config.json:/app/config.json
       - ./backend/notification-config.json:/app/notification-config.json
       - ./backend/app/logs:/app/logs
+      - backend-filestorage:/app/mycelium-cloud-files
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
@@ -147,3 +148,4 @@ volumes:
   prometheus-data:
   loki-data:
   postgres-data:
+  backend-filestorage:
