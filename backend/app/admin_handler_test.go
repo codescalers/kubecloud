@@ -36,10 +36,7 @@ func TestListUsersHandler(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "Users are retrieved successfully", usersResp["message"])
 
-		data, ok := usersResp["data"].(map[string]interface{})
-		assert.True(t, ok)
-		usersRaw, ok := data["users"]
-		assert.True(t, ok)
+		usersRaw := usersResp["data"]
 		usersBytes, err := json.Marshal(usersRaw)
 		assert.NoError(t, err)
 
