@@ -8,9 +8,8 @@
         </div>
       </div>
     </div>
-    <PendingRecordsTable 
-      :pendingRecords="pendingRecords" 
-      :showUserID="true"
+    <TransferRecordsTable
+      :transferRecords="transferRecords"
       :loading="loading"
     />
   </div>
@@ -18,25 +17,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { type PendingRecord } from '../../utils/userService'
-import PendingRecordsTable from './PendingRecordsTable.vue'
+import { type TransferRecord } from '../../utils/adminService'
+import TransferRecordsTable from './TransferRecordsTable.vue'
 import { useNotificationStore } from '../../stores/notifications'
 import { adminService } from '../../utils/adminService'
 
-const pendingRecords = ref<PendingRecord[]>([])
+const transferRecords = ref<TransferRecord[]>([])
 const notificationStore = useNotificationStore()
 
 onMounted(async () => {
-  await loadPendingRecords()
+  await loadTransferRecords()
 })
 
 const loading = ref(false)
 
-async function loadPendingRecords() {
+async function loadTransferRecords() {
   loading.value = true
   try {
-    const response = await adminService.listPendingRecords()
-    pendingRecords.value = response || []
+    const response = await adminService.listTransferRecords()
+    transferRecords.value = response || []
   } catch (error) {
     console.error('Failed to load payments:', error)
     notificationStore.error('Error', 'Failed to load payments')

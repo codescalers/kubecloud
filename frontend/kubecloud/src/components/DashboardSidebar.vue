@@ -64,11 +64,6 @@ const navigationItems = [
     icon: 'mdi-receipt'
   },
   {
-    key: 'payments',
-    title: 'Payments',
-    icon: 'mdi-clock-outline'
-  },
-  {
     key: 'vouchers',
     title: 'Vouchers',
     icon: 'mdi-ticket-percent'

@@ -86,11 +86,6 @@ const router = createRouter({
       meta: { requiresGuest: true }
     },
     {
-      path: '/pending-requests',
-      name: 'pending-requests',
-      component: () => import('../views/PendingRecordsView.vue')
-    },
-    {
       path: '/maintenance',
       name: 'maintenance',
       component: () => import('../components/MaintenanceView.vue')
@@ -126,39 +121,36 @@ async function handleMaintenanceCheck(to: RouteLocationNormalizedGeneric, next: 
       return false // Continue with normal routing on error
     }
   }
-  
   if (to.path === '/maintenance' && !maintenanceStore.isMaintenanceMode) {
     next('/')
-    return true   
+    return true
   }
-  
   if (maintenanceStore.isMaintenanceMode) {
     // Allow access to maintenance page itself
     if (to.path === '/maintenance') {
       next()
-      return true 
+      return true
     }
     if (maintenanceStore.isRouteAllowed(to.path)) {
       next()
-      return true 
+      return true
     }
     next('/maintenance')
-    return true 
+    return true
   }
-  
-  return false 
+  return false
 }
 
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
   const maintenanceStore = useMaintenanceStore()
-  
+
   // Handle maintenance mode checks
   const maintenanceHandled = await handleMaintenanceCheck(to, next)
   if (maintenanceHandled) {
     return
   }
-  
+
   // Check if user is authenticated
   const isAuthenticated = userStore.isLoggedIn
 

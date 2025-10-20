@@ -1,7 +1,6 @@
 import router from "@/router"
 import { api } from "./api"
 import type { ApiResponse } from "./authService"
-import type { PendingRecord } from "./userService"
 
 // Types for admin requests and responses
 export interface User {
@@ -73,6 +72,21 @@ export interface Invoice {
   nodes: any[]
   tax: number
   created_at: string
+}
+
+export type RecordOperation = 'withdraw' | 'deposit'
+export type RecordState = 'pending' | 'success' | 'failed'
+
+export interface TransferRecord {
+  created_at: string,
+  failure: string,
+  id: number,
+  operation: RecordOperation,
+  state: RecordState,
+  tft_amount: number,
+  updated_at: string,
+  user_id: number,
+  username: string
 }
 
 // Admin service class
@@ -151,14 +165,14 @@ export class AdminService {
     return response.data.data.invoices
   }
 
-      // List all pending records (requires admin auth)
-  async listPendingRecords(): Promise<PendingRecord[]> {
-    const response = await api.get<ApiResponse<{ pending_records: PendingRecord[] }>>('/v1/pending-records', {
+  // List all transfer records (requires admin auth)
+  async listTransferRecords(): Promise<TransferRecord[]> {
+    const response = await api.get<ApiResponse<{ transfer_records: TransferRecord[] }>>('/v1/transfer-records', {
       requiresAuth: true,
       showNotifications: true,
-      errorMessage: 'Failed to load payments'
+      errorMessage: 'Failed to load transfer records'
     })
-    return response.data.data.pending_records
+    return response.data.data.transfer_records
   }
 
   // Send a system email to all users (requires admin auth)
