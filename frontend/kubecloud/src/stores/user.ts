@@ -23,7 +23,6 @@ export const useUserStore = defineStore('user',
     const isLoading = ref(false)
     const error = ref<string | null>(null)
     const netBalance = ref(0)
-    const pendingBalance = ref(0)
     const balanceInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
     // Computed properties
@@ -177,8 +176,6 @@ export const useUserStore = defineStore('user',
       isLoading,
       error,
       netBalance,
-      pendingBalance,
-
       // Computed
       isAdmin,
       isLoggedIn,

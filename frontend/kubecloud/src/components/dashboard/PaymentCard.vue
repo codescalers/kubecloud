@@ -10,10 +10,6 @@
         <span>Current Balance:</span>
         <span class="balance-value">${{ userStore.netBalance.toFixed(2) }}</span>
       </div>
-      <div class="balance-row" v-if="userStore.pendingBalance > 0">
-        <span class="pending-balance-text">Pending Balance:</span>
-        <span class="pending-balance-value">${{ userStore.pendingBalance.toFixed(2) }}</span>
-      </div>
       </div>
       <div class="amount-row">
         <span>Amount:</span>
