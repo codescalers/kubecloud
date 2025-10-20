@@ -87,6 +87,7 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 				return fmt.Errorf("failed to prepare cluster: %w", err)
 			}
 		}
+		statemanager.StoreCluster(state, cluster)
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
