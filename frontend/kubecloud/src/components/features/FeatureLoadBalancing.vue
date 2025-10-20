@@ -1,28 +1,50 @@
 <template>
-  <section class="feature-panel load-balancing">
-    <div class="feature-content-row">
-      <div class="feature-content feature-content-overlay">
-        <h2 class="feature-title">Effortless Load Balancing & Scaling</h2>
-        <p class="feature-description">
-          Mycelium Cloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
-        </p>
-        <div class="feature-benefits">
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Auto-scaling</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Built-in load balancing</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">High availability</v-chip>
-        </div>
-      </div>
-      <div class="feature-animation-with-glow">
-        <div class="feature-animation-glow"></div>
-        <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
-          <div v-if="hoveredNode" class="node-label" :style="nodeLabelStyle">
-            {{ hoveredNode.type }}
+  <v-container class="py-8" fluid>
+    <v-row align="center" justify="center" class="mx-auto" style="min-height: 60vh; max-width: 1440px;">
+      <!-- Left: Text -->
+       <v-col cols="12" md="4" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
+        <div>
+          <div class="text-h4 font-weight-medium mb-4">Effortless Load Balancing & Scaling</div>
+          <div class="subtitle" style="color:#60a5fa">
+            Mycelium Cloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
+          </div>
+          <div class="mt-4 d-flex flex-wrap">
+            <v-chip class="ma-1" size="small">Auto-scaling</v-chip>
+            <v-chip class="ma-1" size="small">Built-in load balancing</v-chip>
+            <v-chip class="ma-1" size="small">High availability</v-chip>
           </div>
         </div>
-      </div>
-    </div>
-  </section>
+      </v-col>
+      <!-- Right: Canvas / Animation -->
+      <v-col cols="12" md="8" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
+        <v-responsive class="w-100" :aspect-ratio="16/9">
+          <div class="w-100 h-100 position-relative">
+            <div style="position:absolute;left:50%;top:50%;width:85%;height:85%;transform:translate(-50%,-50%);background:radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 80%);filter:blur(32px);"></div>
+            <canvas ref="threeCanvas" class="w-100 h-100" style="display:block;background:transparent;border-radius:16px" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
+            <v-chip
+              v-if="hoveredNode"
+              size="small"
+              class="elevation-2"
+              :style="{
+                position: 'absolute',
+                left: nodeLabelStyle.left,
+                top: nodeLabelStyle.top,
+                transform: 'translate(-50%, -120%)',
+                'pointer-events': 'none',
+                'user-select': 'none',
+                color: nodeLabelStyle.color,
+                'border-color': nodeLabelStyle.borderColor,
+                'border-width': '1px',
+                'border-style': 'solid'
+              }"
+            >
+              {{ hoveredNode?.type }}
+            </v-chip>
+          </div>
+        </v-responsive>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -380,143 +402,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.feature-panel {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.feature-content-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1600px;
-  gap: 1.5rem;
-  padding: 3rem 1rem;
-  position: relative;
-}
-.feature-animation-with-glow {
-  position: relative;
-  width: 60vw;
-  min-width: 400px;
-  max-width: 900px;
-  height: 600px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-.feature-animation-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 90%;
-  height: 90%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.18) 0%, transparent 80%);
-  z-index: 0;
-  pointer-events: none;
-  filter: blur(32px);
-}
-.feature-animation {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.three-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: transparent;
-  border-radius: 16px;
-}
-.feature-content {
-  flex: 1 1 350px;
-  min-width: 260px;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2rem 1.5rem;
-  background: none;
-  backdrop-filter: none;
-  border-radius: 0;
-  color: #fff;
-  box-shadow: none;
-  margin-left: 0;
-  z-index: 2;
-}
-.feature-title {
-  font-size: 1.7rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
-.feature-description {
-  font-size: 1.1rem;
-  font-weight: 400;
-  color: #60a5fa;
-}
-.feature-benefits {
-  margin: 1.2rem 0 0 0;
-  color: #b6d6ff;
-  font-size: 1rem;
-  line-height: 1.7;
-  display: flex;
-  gap: 0.2rem;
-}
-@media (max-width: 1200px) {
-  .feature-animation-with-glow {
-    width: 90vw;
-    max-width: 100vw;
-    height: 400px;
-    min-width: 0;
-  }
-  .feature-content {
-    margin-left: -40px;
-    max-width: 340px;
-  }
-}
-@media (max-width: 900px) {
-  .feature-content-row {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 2rem 0.5rem;
-  }
-  .feature-animation-with-glow {
-    width: 100vw;
-    max-width: 100vw;
-    height: 320px;
-    min-width: 0;
-    justify-content: center;
-  }
-  .feature-content {
-    align-items: center;
-    text-align: center;
-    margin-left: 0;
-    max-width: 100vw;
-    padding: 1.5rem 0.5rem;
-  }
-}
-.node-label {
-  position: absolute;
-  background: rgba(30, 41, 59, 0.92);
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 0.25rem 0.7rem;
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 20;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
-  border: 1px solid;
-  transform: translate(-50%, -120%);
-  user-select: none;
+.subtitle{
+  font-size: 1.1rem
 }
 </style>
+

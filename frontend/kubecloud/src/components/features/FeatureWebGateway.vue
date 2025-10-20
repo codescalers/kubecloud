@@ -1,27 +1,66 @@
 <template>
-  <section class="feature-panel web-gateway">
-    <div class="feature-content-row">
-      <div class="feature-content feature-content-overlay">
-        <h2 class="feature-title">Simple Web Gateway Access</h2>
-        <p class="feature-description">
-          Expose any service to the public web with a simple Kubernetes resource. No complex Ingress controllers. Domain and prefix-based routing is built-in.
-        </p>
-        <div class="feature-benefits">
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Simple configuration</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Built-in routing</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">No ingress controllers</v-chip>
-        </div>
-      </div>
-      <div class="feature-animation-with-glow">
-        <div class="feature-animation-glow"></div>
-        <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
-          <div v-if="hoveredNode" class="node-label" :style="{ left: hoveredNode.pos.x + 'px', top: hoveredNode.pos.y + 'px' }">
-            {{ hoveredNode.type }}
+  <section
+    class="d-flex align-center justify-center position-relative overflow-hidden mx-auto px-6"
+    style="min-height: 60vh; max-width: 1440px;"
+  >
+    <v-container class="py-12" fluid>
+      <v-row class="align-center justify-center flex-column flex-md-row text-sm-center text-md-start" no-gutters>
+        <!-- Left: Text -->
+        <v-col cols="12" md="4" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
+          <h2 class="text-h4 text-white mb-3">Simple Web Gateway Access</h2>
+          <p class="subtitle mb-4" style="color: #60a5fa;">
+            Expose any service to the public web with a simple Kubernetes resource. No complex Ingress controllers. Domain and prefix-based routing is built-in.
+          </p>
+          <div class="d-flex flex-wrap justify-center justify-md-start mt-2" style="gap: 8px; color: #b6d6ff;">
+            <v-chip class="ma-1" size="small">Simple configuration</v-chip>
+            <v-chip class="ma-1" size="small">Built-in routing</v-chip>
+            <v-chip class="ma-1" size="small">No ingress controllers</v-chip>
           </div>
-        </div>
-      </div>
-    </div>
+        </v-col>
+
+        <!-- Right: Canvas / Animation -->
+        <v-col cols="12" md="8" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
+          <v-responsive class="w-100" :aspect-ratio="16/9">
+            <div
+              class="position-absolute"
+              style="left: 50%; top: 50%; width: 80%; height: 80%; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(96, 165, 250, 0.18) 0%, transparent 80%); filter: blur(32px); pointer-events: none; z-index: 0;"
+            ></div>
+            <div class="position-absolute d-flex align-center justify-center" style="inset: 0; z-index: 1;">
+              <canvas
+                ref="threeCanvas"
+                class="w-100 h-100 d-block"
+                style="background: transparent;"
+                @mousemove="onCanvasMouseMove"
+                @mouseleave="onCanvasMouseLeave"
+              ></canvas>
+              <div
+                v-if="hoveredNode"
+                class="position-absolute text-white"
+                :style="{
+                  left: hoveredNode.pos.x + 'px',
+                  top: hoveredNode.pos.y + 'px',
+                  background: 'rgba(30, 41, 59, 0.92)',
+                  color: '#8ecfff',
+                  fontSize: '1rem',
+                  fontWeight: 500,
+                  padding: '0.25rem 0.7rem',
+                  borderRadius: '8px',
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  whiteSpace: 'nowrap',
+                  boxShadow: '0 2px 8px rgba(96, 165, 250, 0.12)',
+                  border: '1px solid #60a5fa33',
+                  transform: 'translate(-50%, -120%)',
+                  userSelect: 'none'
+                }"
+              >
+                {{ hoveredNode.type }}
+              </div>
+            </div>
+          </v-responsive>
+        </v-col>
+      </v-row>
+    </v-container>
   </section>
 </template>
 
@@ -484,145 +523,3 @@ function createPulseMesh() {
 }
 </script>
 
-
-<style scoped>
-.feature-panel {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.feature-content-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1600px;
-  gap: 1.5rem;
-  padding: 3rem 1rem;
-  position: relative;
-}
-.feature-animation-with-glow {
-  position: relative;
-  width: 60vw;
-  min-width: 400px;
-  max-width: 900px;
-  height: 600px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-.feature-animation-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 90%;
-  height: 90%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.18) 0%, transparent 80%);
-  z-index: 0;
-  pointer-events: none;
-  filter: blur(32px);
-}
-.feature-animation {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.three-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: transparent;
-}
-.feature-content {
-  flex: 1 1 350px;
-  min-width: 260px;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2rem 1.5rem;
-  background: none;
-  backdrop-filter: none;
-  border-radius: 0;
-  color: #fff;
-  box-shadow: none;
-  margin-left: 0;
-  z-index: 2;
-}
-.feature-title {
-  font-size: 1.7rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
-.feature-description {
-  font-size: 1.1rem;
-  font-weight: 400;
-  color: #60a5fa;
-}
-.feature-benefits {
-  margin: 1.2rem 0 0 0;
-  color: #b6d6ff;
-  font-size: 1rem;
-  line-height: 1.7;
-  display: flex;
-  gap: 0.2rem;
-}
-@media (max-width: 1200px) {
-  .feature-animation-with-glow {
-    width: 90vw;
-    max-width: 100vw;
-    height: 400px;
-    min-width: 0;
-  }
-  .feature-content {
-    margin-left: -40px;
-    max-width: 340px;
-  }
-}
-@media (max-width: 900px) {
-  .feature-content-row {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 2rem 0.5rem;
-  }
-  .feature-animation-with-glow {
-    width: 100vw;
-    max-width: 100vw;
-    height: 320px;
-    min-width: 0;
-    justify-content: center;
-  }
-  .feature-content {
-    align-items: center;
-    text-align: center;
-    margin-left: 0;
-    max-width: 100vw;
-    padding: 1.5rem 0.5rem;
-  }
-}
-.node-label {
-  position: absolute;
-  background: rgba(30, 41, 59, 0.92);
-  color: #8ecfff;
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 0.25rem 0.7rem;
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 20;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
-  border: 1px solid #60a5fa33;
-  transform: translate(-50%, -120%);
-  user-select: none;
-}
-</style>

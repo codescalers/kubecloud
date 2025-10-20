@@ -5,7 +5,7 @@
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">Powerful Features</h1>
-          <p class="hero-description">
+          <p class="hero-description px-6">
             Everything you need to build, deploy, and scale your applications with confidence.
           </p>
         </div>
