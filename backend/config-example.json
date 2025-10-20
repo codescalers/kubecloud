@@ -74,5 +74,6 @@
       "host": ""
     }
   },
-  "notification_config_path": "./notification-config-example.json"
+  "notification_config_path": "./notification-config-example.json",
+  "applied_discount": "gold"
 }
