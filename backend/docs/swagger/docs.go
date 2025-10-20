@@ -3009,7 +3009,7 @@ const docTemplate = `{
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/types.Node"
+                        "$ref": "#/definitions/app.NodeWithBaselineCapacity"
                     }
                 },
                 "total": {
@@ -3129,9 +3129,144 @@ const docTemplate = `{
                 }
             }
         },
+        "app.NodeWithBaselineCapacity": {
+            "type": "object",
+            "properties": {
+                "baseline_capacity": {
+                    "description": "baseline_capacity: capacity excluding system (node) overhead",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.Capacity"
+                        }
+                    ]
+                },
+                "certificationType": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "cpu_benchmark": {
+                    "$ref": "#/definitions/types.CpuBenchmark"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "dedicated": {
+                    "type": "boolean"
+                },
+                "dmi": {
+                    "$ref": "#/definitions/types.Dmi"
+                },
+                "extraFee": {
+                    "type": "integer"
+                },
+                "farmId": {
+                    "type": "integer"
+                },
+                "farmName": {
+                    "type": "string"
+                },
+                "farm_free_ips": {
+                    "type": "integer"
+                },
+                "farmingPolicyId": {
+                    "type": "integer"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "gpus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.NodeGPU"
+                    }
+                },
+                "gridVersion": {
+                    "type": "integer"
+                },
+                "healthy": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inDedicatedFarm": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "$ref": "#/definitions/types.Location"
+                },
+                "nodeId": {
+                    "type": "integer"
+                },
+                "num_gpu": {
+                    "type": "integer"
+                },
+                "power": {
+                    "$ref": "#/definitions/types.NodePower"
+                },
+                "price_usd": {
+                    "type": "number"
+                },
+                "publicConfig": {
+                    "$ref": "#/definitions/types.PublicConfig"
+                },
+                "rentContractId": {
+                    "type": "integer"
+                },
+                "rentable": {
+                    "type": "boolean"
+                },
+                "rented": {
+                    "type": "boolean"
+                },
+                "rentedByTwinId": {
+                    "type": "integer"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "speed": {
+                    "$ref": "#/definitions/types.Speed"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_resources": {
+                    "$ref": "#/definitions/types.Capacity"
+                },
+                "twinId": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "integer"
+                },
+                "uptime": {
+                    "type": "integer"
+                },
+                "used_resources": {
+                    "$ref": "#/definitions/types.Capacity"
+                }
+            }
+        },
         "app.NodesWithDiscount": {
             "type": "object",
             "properties": {
+                "baseline_capacity": {
+                    "description": "baseline_capacity: capacity excluding system (node) overhead",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/types.Capacity"
+                        }
+                    ]
+                },
                 "certificationType": {
                     "type": "string"
                 },
@@ -3955,125 +4090,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
-                }
-            }
-        },
-        "types.Node": {
-            "type": "object",
-            "properties": {
-                "certificationType": {
-                    "type": "string"
-                },
-                "city": {
-                    "type": "string"
-                },
-                "country": {
-                    "type": "string"
-                },
-                "cpu_benchmark": {
-                    "$ref": "#/definitions/types.CpuBenchmark"
-                },
-                "created": {
-                    "type": "integer"
-                },
-                "dedicated": {
-                    "type": "boolean"
-                },
-                "dmi": {
-                    "$ref": "#/definitions/types.Dmi"
-                },
-                "extraFee": {
-                    "type": "integer"
-                },
-                "farmId": {
-                    "type": "integer"
-                },
-                "farmName": {
-                    "type": "string"
-                },
-                "farm_free_ips": {
-                    "type": "integer"
-                },
-                "farmingPolicyId": {
-                    "type": "integer"
-                },
-                "features": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "gpus": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/types.NodeGPU"
-                    }
-                },
-                "gridVersion": {
-                    "type": "integer"
-                },
-                "healthy": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "inDedicatedFarm": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "$ref": "#/definitions/types.Location"
-                },
-                "nodeId": {
-                    "type": "integer"
-                },
-                "num_gpu": {
-                    "type": "integer"
-                },
-                "power": {
-                    "$ref": "#/definitions/types.NodePower"
-                },
-                "price_usd": {
-                    "type": "number"
-                },
-                "publicConfig": {
-                    "$ref": "#/definitions/types.PublicConfig"
-                },
-                "rentContractId": {
-                    "type": "integer"
-                },
-                "rentable": {
-                    "type": "boolean"
-                },
-                "rented": {
-                    "type": "boolean"
-                },
-                "rentedByTwinId": {
-                    "type": "integer"
-                },
-                "serialNumber": {
-                    "type": "string"
-                },
-                "speed": {
-                    "$ref": "#/definitions/types.Speed"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "total_resources": {
-                    "$ref": "#/definitions/types.Capacity"
-                },
-                "twinId": {
-                    "type": "integer"
-                },
-                "updatedAt": {
-                    "type": "integer"
-                },
-                "uptime": {
-                    "type": "integer"
-                },
-                "used_resources": {
-                    "$ref": "#/definitions/types.Capacity"
                 }
             }
         },

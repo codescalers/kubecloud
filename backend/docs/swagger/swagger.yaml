@@ -174,7 +174,7 @@ definitions:
     properties:
       nodes:
         items:
-          $ref: '#/definitions/types.Node'
+          $ref: '#/definitions/app.NodeWithBaselineCapacity'
         type: array
       total:
         type: integer
@@ -257,8 +257,95 @@ definitions:
           $ref: '#/definitions/app.Pool'
         type: array
     type: object
+  app.NodeWithBaselineCapacity:
+    properties:
+      baseline_capacity:
+        allOf:
+        - $ref: '#/definitions/types.Capacity'
+        description: 'baseline_capacity: capacity excluding system (node) overhead'
+      certificationType:
+        type: string
+      city:
+        type: string
+      country:
+        type: string
+      cpu_benchmark:
+        $ref: '#/definitions/types.CpuBenchmark'
+      created:
+        type: integer
+      dedicated:
+        type: boolean
+      dmi:
+        $ref: '#/definitions/types.Dmi'
+      extraFee:
+        type: integer
+      farm_free_ips:
+        type: integer
+      farmId:
+        type: integer
+      farmName:
+        type: string
+      farmingPolicyId:
+        type: integer
+      features:
+        items:
+          type: string
+        type: array
+      gpus:
+        items:
+          $ref: '#/definitions/types.NodeGPU'
+        type: array
+      gridVersion:
+        type: integer
+      healthy:
+        type: boolean
+      id:
+        type: string
+      inDedicatedFarm:
+        type: boolean
+      location:
+        $ref: '#/definitions/types.Location'
+      nodeId:
+        type: integer
+      num_gpu:
+        type: integer
+      power:
+        $ref: '#/definitions/types.NodePower'
+      price_usd:
+        type: number
+      publicConfig:
+        $ref: '#/definitions/types.PublicConfig'
+      rentContractId:
+        type: integer
+      rentable:
+        type: boolean
+      rented:
+        type: boolean
+      rentedByTwinId:
+        type: integer
+      serialNumber:
+        type: string
+      speed:
+        $ref: '#/definitions/types.Speed'
+      status:
+        type: string
+      total_resources:
+        $ref: '#/definitions/types.Capacity'
+      twinId:
+        type: integer
+      updatedAt:
+        type: integer
+      uptime:
+        type: integer
+      used_resources:
+        $ref: '#/definitions/types.Capacity'
+    type: object
   app.NodesWithDiscount:
     properties:
+      baseline_capacity:
+        allOf:
+        - $ref: '#/definitions/types.Capacity'
+        description: 'baseline_capacity: capacity excluding system (node) overhead'
       certificationType:
         type: string
       city:
@@ -815,85 +902,6 @@ definitions:
         type: string
       type:
         type: string
-    type: object
-  types.Node:
-    properties:
-      certificationType:
-        type: string
-      city:
-        type: string
-      country:
-        type: string
-      cpu_benchmark:
-        $ref: '#/definitions/types.CpuBenchmark'
-      created:
-        type: integer
-      dedicated:
-        type: boolean
-      dmi:
-        $ref: '#/definitions/types.Dmi'
-      extraFee:
-        type: integer
-      farm_free_ips:
-        type: integer
-      farmId:
-        type: integer
-      farmName:
-        type: string
-      farmingPolicyId:
-        type: integer
-      features:
-        items:
-          type: string
-        type: array
-      gpus:
-        items:
-          $ref: '#/definitions/types.NodeGPU'
-        type: array
-      gridVersion:
-        type: integer
-      healthy:
-        type: boolean
-      id:
-        type: string
-      inDedicatedFarm:
-        type: boolean
-      location:
-        $ref: '#/definitions/types.Location'
-      nodeId:
-        type: integer
-      num_gpu:
-        type: integer
-      power:
-        $ref: '#/definitions/types.NodePower'
-      price_usd:
-        type: number
-      publicConfig:
-        $ref: '#/definitions/types.PublicConfig'
-      rentContractId:
-        type: integer
-      rentable:
-        type: boolean
-      rented:
-        type: boolean
-      rentedByTwinId:
-        type: integer
-      serialNumber:
-        type: string
-      speed:
-        $ref: '#/definitions/types.Speed'
-      status:
-        type: string
-      total_resources:
-        $ref: '#/definitions/types.Capacity'
-      twinId:
-        type: integer
-      updatedAt:
-        type: integer
-      uptime:
-        type: integer
-      used_resources:
-        $ref: '#/definitions/types.Capacity'
     type: object
   types.NodeGPU:
     properties:

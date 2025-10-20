@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/threefoldtech/zosbase/pkg/gridtypes"
 	"gorm.io/gorm"
 )
 
@@ -27,14 +28,26 @@ var (
 	}
 )
 
+// system overhead reserved by the node itself (in bytes for memory/storage)
+const (
+	systemOverheadMRU uint64 = 2 * 1024 * 1024 * 1024  // 2 GiB
+	systemOverheadSRU uint64 = 20 * 1024 * 1024 * 1024 // 20 GiB
+)
+
+type NodeWithBaselineCapacity struct {
+	proxyTypes.Node
+	// baseline_capacity: capacity excluding system (node) overhead
+	AvailableCapacity proxyTypes.Capacity `json:"baseline_capacity"`
+}
+
 // ListNodesResponse holds the response for reserved nodes
 type ListNodesResponse struct {
-	Total int               `json:"total"`
-	Nodes []proxyTypes.Node `json:"nodes"`
+	Total int                        `json:"total"`
+	Nodes []NodeWithBaselineCapacity `json:"nodes"`
 }
 
 type NodesWithDiscount struct {
-	proxyTypes.Node
+	NodeWithBaselineCapacity
 	DiscountPrice float64 `json:"discount_price"`
 }
 
@@ -102,9 +115,15 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 		return
 	}
 
+	// map to API type with available capacity after subtracting system overhead
+	out := make([]NodeWithBaselineCapacity, 0, len(nodes))
+	for _, n := range nodes {
+		out = append(out, toNodeWithBaselineCapacity(n))
+	}
+
 	Success(c, http.StatusOK, "All grid nodes retrieved successfully", ListNodesResponse{
 		Total: count,
-		Nodes: nodes,
+		Nodes: out,
 	})
 }
 
@@ -188,9 +207,14 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 		}
 	}
 
+	result := make([]NodeWithBaselineCapacity, 0, len(allNodes))
+	for _, n := range allNodes {
+		result = append(result, toNodeWithBaselineCapacity(n))
+	}
+
 	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesResponse{
 		Total: rentedNodesCount + availableNodesCount - duplicatesCount,
-		Nodes: allNodes,
+		Nodes: result,
 	})
 }
 
@@ -334,8 +358,8 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 	var nodesWithDiscount []NodesWithDiscount
 	for _, node := range nodes {
 		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
-			Node:          node,
-			DiscountPrice: node.PriceUsd * 0.5,
+			NodeWithBaselineCapacity: toNodeWithBaselineCapacity(node),
+			DiscountPrice:            node.PriceUsd * 0.5,
 		})
 	}
 	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
@@ -366,8 +390,8 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 	var nodesWithDiscount []NodesWithDiscount
 	for _, node := range nodes {
 		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
-			Node:          node,
-			DiscountPrice: node.PriceUsd * 0.5,
+			NodeWithBaselineCapacity: toNodeWithBaselineCapacity(node),
+			DiscountPrice:            node.PriceUsd * 0.5,
 		})
 	}
 	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
@@ -709,4 +733,23 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 	}
 
 	Success(c, http.StatusOK, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
+}
+
+// computeBaselineCapacity returns Total - SystemOverhead (saturated at zero)
+func computeBaselineCapacity(n proxyTypes.Node) proxyTypes.Capacity {
+	total := n.TotalResources
+
+	return proxyTypes.Capacity{
+		CRU: total.CRU,
+		MRU: total.MRU - gridtypes.Unit(systemOverheadMRU),
+		SRU: total.SRU - gridtypes.Unit(systemOverheadSRU),
+		HRU: total.HRU,
+	}
+}
+
+func toNodeWithBaselineCapacity(n proxyTypes.Node) NodeWithBaselineCapacity {
+	return NodeWithBaselineCapacity{
+		Node:              n,
+		AvailableCapacity: computeBaselineCapacity(n),
+	}
 }
