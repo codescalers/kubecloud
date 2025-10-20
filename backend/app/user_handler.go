@@ -172,6 +172,14 @@ type VerifyRegisterUserResponse struct {
 	*internal.TokenPair
 }
 
+type GetUserResponse struct {
+	models.User
+	CreditCardBalanceInUSD float64 `json:"credit_card_balance_in_usd"`
+	CreditedBalanceInUSD   float64 `json:"credited_balance_in_usd"`
+	DebtInUSD              float64 `json:"debt_in_usd"`
+	BalanceInTFT           float64 `json:"balance_in_tft,omitempty"`
+}
+
 // RedeemVoucherResponse holds the response for redeeming a voucher
 type RedeemVoucherResponse struct {
 	WorkflowID  string  `json:"workflow_id"`
@@ -717,7 +725,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} APIResponse{data=models.User} "User is retrieved successfully"
+// @Success 200 {object} GetUserResponse "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
@@ -733,7 +741,12 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 	}
 
 	Success(c, http.StatusOK, "User is retrieved successfully", gin.H{
-		"user": user,
+		"user": GetUserResponse{
+			User:                   user,
+			CreditCardBalanceInUSD: internal.FromUSDMilliCentToUSD(user.CreditCardBalance),
+			CreditedBalanceInUSD:   internal.FromUSDMilliCentToUSD(user.CreditedBalance),
+			DebtInUSD:              internal.FromUSDMilliCentToUSD(user.Debt),
+		},
 	})
 }
 

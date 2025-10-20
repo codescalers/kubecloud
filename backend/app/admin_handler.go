@@ -23,11 +23,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserResponse struct {
-	models.User
-	Balance float64 `json:"balance"` // USD balance
-}
-
 // GenerateVouchersInput holds all data needed when creating vouchers
 type GenerateVouchersInput struct {
 	Count       int     `json:"count" binding:"required,gt=0"`
@@ -66,13 +61,18 @@ type MaintenanceModeStatus struct {
 	Enabled bool `json:"enabled"`
 }
 
+type TransferRecordsResponse struct {
+	models.TransferRecord
+	TFTAmountInWholeUnit float32 `json:"tft_amount_in_whole_unit"`
+}
+
 // @Summary Get all users
 // @Description Returns a list of all users
 // @Tags admin
 // @ID get-all-users
 // @Accept json
 // @Produce json
-// @Success 200 {array} UserResponse
+// @Success 200 {array} GetUserResponse
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /users [get]
@@ -84,7 +84,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	var usersWithBalance []UserResponse
+	var usersWithBalance []GetUserResponse
 	const maxConcurrentBalanceFetches = 20
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
 
@@ -102,7 +102,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+			balanceInTFTUnit, err := internal.GetUserTFTBalance(h.substrateClient, user.Mnemonic)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
 				mu.Lock()
@@ -111,11 +111,13 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 				return
 			}
 
-			balanceUSD := internal.FromUSDMilliCentToUSD(balance)
 			mu.Lock()
-			usersWithBalance = append(usersWithBalance, UserResponse{
-				User:    user,
-				Balance: balanceUSD,
+			usersWithBalance = append(usersWithBalance, GetUserResponse{
+				User:                   user,
+				CreditCardBalanceInUSD: internal.FromUSDMilliCentToUSD(user.CreditCardBalance),
+				CreditedBalanceInUSD:   internal.FromUSDMilliCentToUSD(user.CreditedBalance),
+				DebtInUSD:              internal.FromUSDMilliCentToUSD(user.Debt),
+				BalanceInTFT:           float64(balanceInTFTUnit) / TFTUnitFactor,
 			})
 			mu.Unlock()
 		}(user)
@@ -387,7 +389,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 // @ID list-transfer-records
 // @Accept json
 // @Produce json
-// @Success 200 {array} []models.TransferRecord
+// @Success 200 {array} []TransferRecordsResponse
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /transfer-records [get]
@@ -400,8 +402,16 @@ func (h *Handler) ListTransferRecordsHandler(c *gin.Context) {
 		return
 	}
 
+	var transferRecordsResponse []TransferRecordsResponse
+	for _, transferRecord := range transferRecords {
+		transferRecordsResponse = append(transferRecordsResponse, TransferRecordsResponse{
+			TransferRecord:       transferRecord,
+			TFTAmountInWholeUnit: float32(transferRecord.TFTAmount) / TFTUnitFactor,
+		})
+	}
+
 	Success(c, http.StatusOK, "Transfer records are retrieved successfully", map[string]any{
-		"transfer_records": transferRecords,
+		"transfer_records": transferRecordsResponse,
 	})
 }
 
