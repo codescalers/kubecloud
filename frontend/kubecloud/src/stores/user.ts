@@ -18,6 +18,10 @@ export interface User {
   balance_usd?: number
   pending_balance_usd?: number
   balance: number
+  credit_card_balance: number
+  credited_balance: number
+  credit_card_balance_in_usd: number
+  credited_balance_in_usd: number
 }
 
 export interface AuthState {
@@ -25,6 +29,9 @@ export interface AuthState {
   token: string | null
   isLoading: boolean
   error: string | null
+}
+function calculateNetBalance(user: User) {
+  return user.credit_card_balance_in_usd + user.credited_balance_in_usd
 }
 
 export const useUserStore = defineStore('user',
@@ -60,6 +67,8 @@ export const useUserStore = defineStore('user',
     const loadUser = async () => {
       const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
       user.value = userRes.data.data.user
+      netBalance.value = calculateNetBalance(user.value)
+      return user.value
     }
 
     const login = async (email: string, password: string) => {
@@ -177,9 +186,7 @@ export const useUserStore = defineStore('user',
     }
 
     const updateNetBalance = async () => {
-      const balance = await userService.fetchBalance()
-      netBalance.value = balance.balance
-      pendingBalance.value = balance.pending_balance
+      netBalance.value = calculateNetBalance(await loadUser() )
     }
 
     return {

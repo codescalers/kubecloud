@@ -52,10 +52,7 @@ onMounted(async () => {
     }
 
     // Fetch initial data
-    const [invoices] = await Promise.all([
-      userService.listUserInvoices(),
-      userStore.updateNetBalance(),
-    ])
+    const invoices = await userService.listUserInvoices()
 
     // Process invoices
     billingHistory.value = invoices.map(inv => ({
