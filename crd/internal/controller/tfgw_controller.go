@@ -64,11 +64,6 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// updating status trigger another reconcile, avoid by checking the status
-	if meta.IsStatusConditionTrue(tfgw.Status.Conditions, ingressv1.ConditionTypeReady) {
-		return ctrl.Result{}, nil
-	}
-
 	mne := os.Getenv("MNEMONIC")
 	net := os.Getenv("NETWORK")
 	if net == "" || mne == "" {
@@ -162,6 +157,13 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				return ctrl.Result{}, err
 			}
 		}
+		return ctrl.Result{}, nil
+	}
+
+	// MUST be after deletion check to avoid skipping deletion,
+	// updating status trigger another reconcile, avoid by checking the status
+	if meta.IsStatusConditionTrue(tfgw.Status.Conditions, ingressv1.ConditionTypeReady) {
+		klog.Infof("TFGW %s is already ready, skipping reconcile and closing grid plugin", tfgw.Name)
 		return ctrl.Result{}, nil
 	}
 
