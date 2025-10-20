@@ -158,6 +158,22 @@ func (s *GormDB) ListAllUsers() ([]User, error) {
 	return users, nil
 }
 
+// ListUsersPaginated lists users with limit/offset and returns total count
+func (s *GormDB) ListUsersPaginated(limit, offset int) ([]User, int64, error) {
+	var users []User
+	var total int64
+
+	if err := s.db.Model(&User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	q := s.db.Order("id DESC").Limit(limit).Offset(offset).Find(&users)
+	if q.Error != nil {
+		return nil, 0, q.Error
+	}
+	return users, total, nil
+}
+
 // ListAdmins gets all admins
 func (s *GormDB) ListAdmins() ([]User, error) {
 	var admins []User
@@ -190,6 +206,18 @@ func (s *GormDB) ListAllVouchers() ([]Voucher, error) {
 		return nil, err
 	}
 	return vouchers, nil
+}
+
+func (s *GormDB) ListVouchersPaginated(limit, offset int) ([]Voucher, int64, error) {
+	var vouchers []Voucher
+	var total int64
+	if err := s.db.Model(&Voucher{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Order("id DESC").Limit(limit).Offset(offset).Find(&vouchers).Error; err != nil {
+		return nil, 0, err
+	}
+	return vouchers, total, nil
 }
 
 // GetVoucherByCode returns voucher by its code
@@ -286,6 +314,44 @@ func (s *GormDB) ListInvoices() ([]Invoice, error) {
 	return invoices, nil
 }
 
+func (s *GormDB) ListUserInvoicesPaginated(userID, limit, offset int) ([]Invoice, int64, error) {
+	var invoices []Invoice
+	var total int64
+	if err := s.db.Model(&Invoice{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Where("user_id = ?", userID).Order("id DESC").Limit(limit).Offset(offset).Find(&invoices).Error; err != nil {
+		return nil, 0, err
+	}
+	for idx := range invoices {
+		inv, err := s.GetInvoice(invoices[idx].ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		invoices[idx] = inv
+	}
+	return invoices, total, nil
+}
+
+func (s *GormDB) ListInvoicesPaginated(limit, offset int) ([]Invoice, int64, error) {
+	var invoices []Invoice
+	var total int64
+	if err := s.db.Model(&Invoice{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Order("id DESC").Limit(limit).Offset(offset).Find(&invoices).Error; err != nil {
+		return nil, 0, err
+	}
+	for idx := range invoices {
+		inv, err := s.GetInvoice(invoices[idx].ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		invoices[idx] = inv
+	}
+	return invoices, total, nil
+}
+
 func (s *GormDB) UpdateInvoicePDF(id int, data []byte) error {
 	return s.db.Model(&Invoice{}).Where("id = ?", id).Updates(map[string]interface{}{"file_data": data}).Error
 }
@@ -335,6 +401,18 @@ func (s *GormDB) ListUserSSHKeys(userID int) ([]SSHKey, error) {
 	return sshKeys, nil
 }
 
+func (s *GormDB) ListUserSSHPaginated(userID, limit, offset int) ([]SSHKey, int64, error) {
+	var sshKeys []SSHKey
+	var total int64
+	if err := s.db.Model(&SSHKey{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Where("user_id = ?", userID).Order("id DESC").Limit(limit).Offset(offset).Find(&sshKeys).Error; err != nil {
+		return nil, 0, err
+	}
+	return sshKeys, total, nil
+}
+
 // DeleteSSHKey deletes an SSH key by ID for a specific user
 func (s *GormDB) DeleteSSHKey(sshKeyID int, userID int) error {
 	result := s.db.Where("id = ? AND user_id = ?", sshKeyID, userID).Delete(&SSHKey{})
@@ -367,6 +445,19 @@ func (s *GormDB) ListUserClusters(userID int) ([]Cluster, error) {
 	var clusters []Cluster
 	query := s.db.Where("user_id = ?", userID).Find(&clusters)
 	return clusters, query.Error
+}
+
+func (s *GormDB) ListUserClustersPaginated(userID, limit, offset int) ([]Cluster, int64, error) {
+	var clusters []Cluster
+	var total int64
+	if err := s.db.Model(&Cluster{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	q := s.db.Where("user_id = ?", userID).Order("id DESC").Limit(limit).Offset(offset).Find(&clusters)
+	if q.Error != nil {
+		return nil, 0, q.Error
+	}
+	return clusters, total, nil
 }
 
 // GetClusterByName returns a cluster by name for a specific user
@@ -402,6 +493,30 @@ func (s *GormDB) CreatePendingRecord(record *PendingRecord) error {
 func (s *GormDB) ListAllPendingRecords() ([]PendingRecord, error) {
 	var pendingRecords []PendingRecord
 	return pendingRecords, s.db.Find(&pendingRecords).Error
+}
+
+func (s *GormDB) ListAllPendingRecordsPaginated(limit, offset int) ([]PendingRecord, int64, error) {
+	var records []PendingRecord
+	var total int64
+	if err := s.db.Model(&PendingRecord{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Order("id DESC").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
+		return nil, 0, err
+	}
+	return records, total, nil
+}
+
+func (s *GormDB) ListUserPendingRecordsPaginated(userID, limit, offset int) ([]PendingRecord, int64, error) {
+	var records []PendingRecord
+	var total int64
+	if err := s.db.Model(&PendingRecord{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := s.db.Where("user_id = ?", userID).Order("id DESC").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
+		return nil, 0, err
+	}
+	return records, total, nil
 }
 
 func (s *GormDB) ListOnlyPendingRecords() ([]PendingRecord, error) {

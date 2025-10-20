@@ -338,9 +338,70 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
-		Total: count,
-		Nodes: nodesWithDiscount,
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", PaginatedData[NodesWithDiscount]{
+		Items:  nodesWithDiscount,
+		Total:  int64(count),
+		Limit:  int(limit.Size),
+		Offset: (int(limit.Page) - 1) * int(limit.Size),
+	})
+}
+
+// @Summary List rentable nodes (paginated)
+// @Description Retrieves a paginated list of rentable nodes from the grid proxy with discount price
+// @Tags nodes
+// @ID list-rentable-nodes-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit the number of nodes returned (default: 20, max: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} APIResponse{data=ListNodesWithDiscountResponse}
+// @Failure 400 {object} APIResponse "Invalid pagination parameters"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /user/nodes/rentable/paginated [get]
+func (h *Handler) ListRentableNodesPaginatedHandler(c *gin.Context) {
+	healthy := true
+	rentable := true
+	filter := proxyTypes.NodeFilter{
+		Healthy:  &healthy,
+		Rentable: &rentable,
+		Features: zos3NodeFeatures,
+	}
+
+	limitVal, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	// Translate limit/offset -> size/page
+	page := 1
+	if limitVal > 0 {
+		page = (offset / limitVal) + 1
+	}
+
+	limit := proxyTypes.DefaultLimit()
+	limit.Randomize = true
+	limit.RetCount = true
+	limit.Size = uint64(limitVal)
+	limit.Page = uint64(page)
+
+	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Send()
+		InternalServerError(c)
+		return
+	}
+
+	var nodesWithDiscount []NodesWithDiscount
+	for _, node := range nodes {
+		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
+			Node:          node,
+			DiscountPrice: node.PriceUsd * 0.5,
+		})
+	}
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", PaginatedData[NodesWithDiscount]{
+		Items:  nodesWithDiscount,
+		Total:  int64(count),
+		Limit:  limitVal,
+		Offset: offset,
 	})
 }
 
@@ -373,6 +434,68 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
 		Nodes: nodesWithDiscount,
+	})
+}
+
+// @Summary List reserved nodes (paginated)
+// @Description Returns a paginated list of reserved nodes for a user
+// @Tags nodes
+// @ID list-reserved-nodes-paginated
+// @Accept json
+// @Produce json
+// @Security UserMiddleware
+// @Param limit query int false "Limit the number of nodes returned (default: 20, max: 100)"
+// @Param offset query int false "Offset for pagination (default: 0)"
+// @Success 200 {object} APIResponse{data=ListNodesWithDiscountResponse}
+// @Failure 500 {object} APIResponse
+// @Router /user/nodes/rented/paginated [get]
+func (h *Handler) ListRentedNodesPaginatedHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	limitVal, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+
+	twinID, err := h.getTwinIDFromUserID(userID)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	healthy := true
+	filter := proxyTypes.NodeFilter{
+		RentedBy: &twinID,
+		Healthy:  &healthy,
+		Features: zos3NodeFeatures,
+	}
+
+	page := 1
+	if limitVal > 0 {
+		page = (offset / limitVal) + 1
+	}
+	limit := proxyTypes.DefaultLimit()
+	limit.RetCount = true
+	limit.Size = uint64(limitVal)
+	limit.Page = uint64(page)
+
+	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	if err != nil {
+		InternalServerError(c)
+		return
+	}
+
+	var nodesWithDiscount []NodesWithDiscount
+	for _, node := range nodes {
+		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
+			Node:          node,
+			DiscountPrice: node.PriceUsd * 0.5,
+		})
+	}
+	Success(c, http.StatusOK, "Nodes are retrieved successfully", PaginatedData[NodesWithDiscount]{
+		Items:  nodesWithDiscount,
+		Total:  int64(count),
+		Limit:  limitVal,
+		Offset: offset,
 	})
 }
 

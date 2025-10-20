@@ -916,6 +916,43 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "SSH keys retrieved successfully", sshKeys)
 }
 
+// @Summary List user SSH keys (paginated)
+// @Description Lists SSH keys for the authenticated user with pagination
+// @Tags users
+// @ID list-ssh-keys-paginated
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{ssh_keys=[]models.SSHKey,count=int,limit=int,offset=int}}
+// @Failure 401 {object} APIResponse "Unauthorized"
+// @Failure 500 {object} APIResponse
+// @Router /user/ssh-keys/paginated [get]
+func (h *Handler) ListSSHKeysPaginatedHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	if userID == 0 {
+		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
+		return
+	}
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	sshKeys, total, err := h.db.ListUserSSHPaginated(userID, limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to list SSH keys")
+		InternalServerError(c)
+		return
+	}
+	Success(c, http.StatusOK, "SSH keys retrieved successfully", PaginatedData[models.SSHKey]{
+		Items:  sshKeys,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 // @Summary Add SSH key
 // @Description Adds a new SSH key for the authenticated user
 // @Tags users
@@ -1124,6 +1161,61 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
 		"pending_records": pendingRecordsResponse,
+	})
+}
+
+// @Summary List user pending records (paginated)
+// @Description Returns user pending records with pagination
+// @Tags users
+// @ID list-user-pending-records-paginated
+// @Accept json
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Success 200 {object} APIResponse{data=object{pending_records=[]PendingRecordsResponse,count=int,limit=int,offset=int}}
+// @Failure 400 {object} APIResponse
+// @Failure 500 {object} APIResponse
+// @Security BearerAuth
+// @Router /user/pending-records/paginated [get]
+func (h *Handler) ListUserPendingRecordsPaginatedHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	limit, offset, ok := bindPagination(c)
+	if !ok {
+		return
+	}
+	records, total, err := h.db.ListUserPendingRecordsPaginated(userID, limit, offset)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
+		InternalServerError(c)
+		return
+	}
+
+	var pendingRecordsResponse []PendingRecordsResponse
+	for _, record := range records {
+		usdMillicentAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
+			InternalServerError(c)
+			return
+		}
+		usdMillicentTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
+			InternalServerError(c)
+			return
+		}
+		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
+			PendingRecord:        record,
+			USDAmount:            internal.FromUSDMilliCentToUSD(usdMillicentAmount),
+			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdMillicentTransferredAmount),
+		})
+	}
+
+	Success(c, http.StatusOK, "Pending records are retrieved successfully", PaginatedData[PendingRecordsResponse]{
+		Items:  pendingRecordsResponse,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	})
 }
 

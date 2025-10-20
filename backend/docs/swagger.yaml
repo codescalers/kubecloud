@@ -360,6 +360,19 @@ definitions:
       type:
         $ref: '#/definitions/models.NotificationType'
     type: object
+  app.PaginatedData-app_DeploymentResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/app.DeploymentResponse'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   app.PendingRecordsResponse:
     properties:
       created_at:
@@ -686,12 +699,14 @@ definitions:
     - billing
     - user
     - connected
+    - node
     type: string
     x-enum-varnames:
     - NotificationTypeDeployment
     - NotificationTypeBilling
     - NotificationTypeUser
     - NotificationTypeConnected
+    - NotificationTypeNode
   models.SSHKey:
     properties:
       created_at:
@@ -907,6 +922,8 @@ definitions:
         type: integer
       vendor:
         type: string
+      vram:
+        type: integer
     type: object
   types.NodePower:
     properties:
@@ -1246,6 +1263,44 @@ paths:
       summary: Remove node from deployment
       tags:
       - deployments
+  /deployments/paginated:
+    get:
+      description: Retrieves a paginated list of deployments for the authenticated
+        user
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deployments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.PaginatedData-app_DeploymentResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List deployments (paginated)
+      tags:
+      - deployments
   /invoices:
     get:
       consumes:
@@ -1268,6 +1323,57 @@ paths:
       security:
       - AdminMiddleware: []
       summary: Get all invoices
+      tags:
+      - admin
+  /invoices/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of all invoices
+      operationId: get-all-invoices-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    invoices:
+                      items:
+                        $ref: '#/definitions/models.Invoice'
+                      type: array
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Get all invoices (paginated)
       tags:
       - admin
   /nodes:
@@ -1657,6 +1763,57 @@ paths:
       summary: List pending records
       tags:
       - admin
+  /pending-records/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns pending records with pagination
+      operationId: list-pending-records-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                    pending_records:
+                      items:
+                        $ref: '#/definitions/app.PendingRecordsResponse'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List pending records (paginated)
+      tags:
+      - admin
   /stats:
     get:
       consumes:
@@ -2010,6 +2167,57 @@ paths:
       summary: Download invoice
       tags:
       - invoices
+  /user/invoice/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of invoices for a user
+      operationId: get-invoices-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    invoices:
+                      items:
+                        $ref: '#/definitions/models.Invoice'
+                      type: array
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - UserMiddleware: []
+      summary: Get invoices (paginated)
+      tags:
+      - invoices
   /user/login:
     post:
       consumes:
@@ -2151,6 +2359,45 @@ paths:
       summary: List rentable nodes
       tags:
       - nodes
+  /user/nodes/rentable/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of rentable nodes from the grid proxy
+        with discount price
+      operationId: list-rentable-nodes-paginated
+      parameters:
+      - description: 'Limit the number of nodes returned (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesWithDiscountResponse'
+              type: object
+        "400":
+          description: Invalid pagination parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      summary: List rentable nodes (paginated)
+      tags:
+      - nodes
   /user/nodes/rented:
     get:
       consumes:
@@ -2176,6 +2423,42 @@ paths:
       security:
       - UserMiddleware: []
       summary: List reserved nodes
+      tags:
+      - nodes
+  /user/nodes/rented/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of reserved nodes for a user
+      operationId: list-reserved-nodes-paginated
+      parameters:
+      - description: 'Limit the number of nodes returned (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ListNodesWithDiscountResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - UserMiddleware: []
+      summary: List reserved nodes (paginated)
       tags:
       - nodes
   /user/nodes/unreserve/{contract_id}:
@@ -2236,6 +2519,57 @@ paths:
       security:
       - BearerAuth: []
       summary: List user pending records
+      tags:
+      - users
+  /user/pending-records/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns user pending records with pagination
+      operationId: list-user-pending-records-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                    pending_records:
+                      items:
+                        $ref: '#/definitions/app.PendingRecordsResponse'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List user pending records (paginated)
       tags:
       - users
   /user/redeem/{voucher_code}:
@@ -2481,6 +2815,57 @@ paths:
       summary: Delete SSH key
       tags:
       - users
+  /user/ssh-keys/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Lists SSH keys for the authenticated user with pagination
+      operationId: list-ssh-keys-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                    ssh_keys:
+                      items:
+                        $ref: '#/definitions/models.SSHKey'
+                      type: array
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List user SSH keys (paginated)
+      tags:
+      - users
   /users:
     get:
       consumes:
@@ -2627,6 +3012,57 @@ paths:
       summary: Send mail to all users
       tags:
       - admin
+  /users/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns a paginated list of users with total count
+      operationId: get-users-paginated
+      parameters:
+      - description: 'Limit the number of users returned (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                    users:
+                      items:
+                        $ref: '#/definitions/app.UserResponse'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Invalid pagination parameters
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Get users (paginated)
+      tags:
+      - admin
   /vouchers:
     get:
       consumes:
@@ -2684,6 +3120,57 @@ paths:
       security:
       - AdminMiddleware: []
       summary: Generate vouchers
+      tags:
+      - admin
+  /vouchers/paginated:
+    get:
+      consumes:
+      - application/json
+      description: Returns vouchers with pagination
+      operationId: list-vouchers-paginated
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      type: integer
+                    limit:
+                      type: integer
+                    offset:
+                      type: integer
+                    vouchers:
+                      items:
+                        $ref: '#/definitions/models.Voucher'
+                      type: array
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List vouchers (paginated)
       tags:
       - admin
   /workflow/{workflow_id}:
