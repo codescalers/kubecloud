@@ -167,6 +167,7 @@ export const useUserStore = defineStore('user',
 
     const updateNetBalance = async () => {
       netBalance.value = calculateNetBalance(await loadUser() )
+      return netBalance.value
     }
 
     return {
