@@ -1210,7 +1210,7 @@ const docTemplate = `{
                             "items": {
                                 "type": "array",
                                 "items": {
-                                    "$ref": "#/definitions/models.TransferRecord"
+                                    "$ref": "#/definitions/app.TransferRecordsResponse"
                                 }
                             }
                         }
@@ -1307,19 +1307,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User is retrieved successfully",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/app.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/models.User"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/app.GetUserResponse"
                         }
                     },
                     "404": {
@@ -2346,7 +2334,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/app.UserResponse"
+                                "$ref": "#/definitions/app.GetUserResponse"
                             }
                         }
                     },
@@ -2875,6 +2863,79 @@ const docTemplate = `{
                 }
             }
         },
+        "app.GetUserResponse": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "admin": {
+                    "type": "boolean"
+                },
+                "balance_in_tft": {
+                    "type": "number"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "credit_card_balance": {
+                    "description": "millicent, money from credit card",
+                    "type": "integer"
+                },
+                "credit_card_balance_in_usd": {
+                    "type": "number"
+                },
+                "credited_balance": {
+                    "description": "millicent, manually added by admin or from vouchers",
+                    "type": "integer"
+                },
+                "credited_balance_in_usd": {
+                    "type": "number"
+                },
+                "debt": {
+                    "description": "millicent",
+                    "type": "integer"
+                },
+                "debt_in_usd": {
+                    "type": "number"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sponsored": {
+                    "type": "boolean"
+                },
+                "ssh_key": {
+                    "type": "string"
+                },
+                "stripe_customer_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
         "app.KubeconfigResponse": {
             "type": "object",
             "properties": {
@@ -3351,6 +3412,42 @@ const docTemplate = `{
                 }
             }
         },
+        "app.TransferRecordsResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "failure": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operation": {
+                    "$ref": "#/definitions/models.operation"
+                },
+                "state": {
+                    "$ref": "#/definitions/models.state"
+                },
+                "tft_amount": {
+                    "description": "TFTs are multiplied by 1e7",
+                    "type": "integer"
+                },
+                "tft_amount_in_whole_unit": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "app.TwinResponse": {
             "type": "object",
             "properties": {
@@ -3379,71 +3476,6 @@ const docTemplate = `{
                 },
                 "workflow_id": {
                     "type": "string"
-                }
-            }
-        },
-        "app.UserResponse": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "account_address": {
-                    "type": "string"
-                },
-                "admin": {
-                    "type": "boolean"
-                },
-                "balance": {
-                    "description": "USD balance",
-                    "type": "number"
-                },
-                "code": {
-                    "type": "integer"
-                },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
-                    "type": "integer"
-                },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
                 }
             }
         },
@@ -3632,100 +3664,6 @@ const docTemplate = `{
                 "userID": {
                     "description": "User owner",
                     "type": "integer"
-                }
-            }
-        },
-        "models.TransferRecord": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "failure": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "operation": {
-                    "$ref": "#/definitions/models.operation"
-                },
-                "state": {
-                    "$ref": "#/definitions/models.state"
-                },
-                "tft_amount": {
-                    "description": "TFTs are multiplied by 1e7",
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "account_address": {
-                    "type": "string"
-                },
-                "admin": {
-                    "type": "boolean"
-                },
-                "code": {
-                    "type": "integer"
-                },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
-                    "type": "integer"
-                },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
                 }
             }
         },
