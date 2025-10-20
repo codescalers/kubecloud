@@ -1,37 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService, type LoginRequest, type RegisterRequest } from '@/utils/authService'
-import { api, createWorkflowStatusChecker } from '@/utils/api'
+import { api } from '@/utils/api'
 import type { ApiResponse, VerifyCodeRequest } from '@/utils/authService'
-import { userService } from '@/utils/userService'
 import { useNotificationStore } from './notifications'
-import { WorkflowStatus } from '@/types/ewf'
-import router from '@/router'
-
-export interface User {
-  id: number
-  username: string
-  email: string
-  admin: boolean
-  verified: boolean
-  updated_at: string
-  balance_usd?: number
-  pending_balance_usd?: number
-  balance: number
-  credit_card_balance: number
-  credited_balance: number
-  credit_card_balance_in_usd: number
-  credited_balance_in_usd: number
-}
+import type { User } from '@/types/user'
+import { calculateNetBalance } from '@/utils/dateUtils'
 
 export interface AuthState {
   user: User | null
   token: string | null
   isLoading: boolean
   error: string | null
-}
-function calculateNetBalance(user: User) {
-  return user.credit_card_balance_in_usd + user.credited_balance_in_usd
 }
 
 export const useUserStore = defineStore('user',

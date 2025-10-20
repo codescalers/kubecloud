@@ -1,19 +1,9 @@
 import router from "@/router"
 import { api } from "./api"
 import type { ApiResponse } from "./authService"
+import type { User } from "@/types/user"
 
 // Types for admin requests and responses
-export interface User {
-  id: number
-  username: string
-  email: string
-  admin: boolean
-  verified: boolean
-  balance: number
-  created_at: string
-  updated_at: string
-}
-
 export interface Voucher {
   id: number
   voucher: string
