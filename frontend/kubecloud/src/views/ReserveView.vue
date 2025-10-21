@@ -247,7 +247,7 @@ const reserveNode = async (node: NormalizedNode) => {
   reservingNodeIds.value.push(node.nodeId)
   try {
     // Fetch user balance
-    const { balance } = await userService.fetchBalance()
+    const balance = await userStore.updateNetBalance()
     // Calculate daily price (assuming monthly price divided by 30)
     const basePrice = Number(node.discount_price ?? node.price_usd ?? 0)
     const extraFee = Number(node.extraFee ?? 0) / 1000

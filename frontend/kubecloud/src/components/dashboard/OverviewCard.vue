@@ -65,11 +65,9 @@ const props = defineProps<Props>()
 const router = useRouter()
 const userStore = useUserStore()
 const netBalance = ref(userStore.netBalance)
-const pendingBalance = ref(userStore.pendingBalance)
 
 watchEffect(() => {
   netBalance.value = userStore.netBalance
-  pendingBalance.value = userStore.pendingBalance
 })
 
 // Computed data for stats
@@ -83,7 +81,6 @@ const statsData = computed(() => {
     {
       icon: 'mdi-currency-usd',
       value: `$${netBalance.value.toFixed(2)}`,
-      subvalue: pendingBalance.value > 0 ? `+$${pendingBalance.value.toFixed(2)} pending` : '',
       label: 'Balance'
     },
     {

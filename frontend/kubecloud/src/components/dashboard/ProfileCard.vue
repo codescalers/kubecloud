@@ -19,7 +19,7 @@
         <div class="profile-row">
           <div class="profile-col">
             <label class="profile-label">Balance</label>
-            <v-text-field :model-value="`$${userStore.netBalance.toFixed(2)}${userStore.pendingBalance > 0 ? ` (+$${userStore.pendingBalance.toFixed(2)} pending)` : ''}`" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
+            <v-text-field :model-value="`$${userStore.netBalance.toFixed(2)}`" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
           </div>
           <div class="profile-col">
             <label class="profile-label">Verified</label>

@@ -57,6 +57,9 @@ onMounted(async () => {
       return
     }
     userStore.initializeAuth()
+    if(userStore.isLoggedIn){
+      await userStore.loadUser()
+    }
     await notificationStore.loadNotifications()
   } catch (error) {
     console.error('Failed to initialize application:', error)

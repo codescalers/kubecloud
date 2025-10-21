@@ -20,29 +20,40 @@
           { title: 'ID', key: 'id', width: '80px' },
           { title: 'Name', key: 'username' },
           { title: 'Email', key: 'email' },
-          { title: 'Balance', key: 'balance' },
+          { title: 'Balance (USD)', key: 'balance_in_usd' },
+          { title: 'Balance (TFT)', key: 'balance_in_tft' },
+          { title: 'Admin', key: 'admin' },
           { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
         ]"
         :items="users"
         :items-per-page="pageSize"
         :page="currentPage"
+        :sort-by="[{ key: 'id', order: 'asc' }]"
         @update:page="$emit('update:currentPage', $event)"
         class="admin-table"
         density="comfortable"
       >
-        <template #item.balance="{ item }">
-          ${{ item.balance.toFixed(2) }}
+        <template #item.balance_in_usd="{ item }">
+          ${{ +calculateNetBalance(item).toFixed(2) }}
+        </template>
+        <template #item.balance_in_tft="{ item }">
+          {{ +item.balance_in_tft.toFixed(2) }}
+        </template>
+        <template #item.admin="{ item }">
+          <v-checkbox v-if="item.admin" style=" display: flex; align-items: center;" :model-value="item.admin" disabled></v-checkbox>
         </template>
         <template #item.actions="{ item }">
           <div style="display: flex; gap: var(--space-4); align-items: center;">
-            <v-btn size="small" variant="outlined" class="action-btn" :disabled="!item.verified" @click="$emit('creditUser', item)">
-              <v-icon icon="mdi-cash-plus" size="16" class="mr-1"></v-icon>
-              Credit Balance
-            </v-btn>
-            <v-btn size="small" variant="outlined" class="action-btn" @click="$emit('deleteUser', item.id)">
-              <v-icon icon="mdi-delete" size="16" class="mr-1"></v-icon>
-              Remove
-            </v-btn>
+            <v-tooltip location="bottom" text="Credit user">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" size="small" icon="mdi-cash-plus" :disabled="!item.verified" @click="$emit('creditUser', item)"></v-btn>
+              </template>
+            </v-tooltip>
+            <v-tooltip location="bottom" text="Delete user">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" size="small" icon="mdi-delete" @click="$emit('deleteUser', item.id)"></v-btn>
+              </template>
+            </v-tooltip>
           </div>
         </template>
       </v-data-table>
@@ -52,8 +63,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { User } from '../stores/user'
+import type { User } from '../types/user'
 
+import { calculateNetBalance } from '../utils/dateUtils'
 const props = defineProps({
   users: Array as () => User[],
   searchQuery: String,

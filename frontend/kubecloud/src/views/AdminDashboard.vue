@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent, type Ref, watch } from 'vue'
-import { adminService, type User, type Voucher, type GenerateVouchersRequest, type Invoice } from '../utils/adminService'
+import { adminService, type Voucher, type GenerateVouchersRequest, type Invoice } from '../utils/adminService'
 import { statsService, type SystemStats} from '../utils/statsService'
 import AdminUsersTable from '../components/AdminUsersTable.vue'
 import AdminStatsCards from '../components/AdminStatsCards.vue'
@@ -9,8 +9,9 @@ import AdminVouchersSection from '../components/AdminVouchersTable.vue'
 import AdminClustersSection from '../components/AdminClustersSection.vue'
 import AdminSystemSection from '../components/AdminSystemCard.vue'
 import AdminInvoicesTable from '../components/AdminInvoicesTable.vue'
-import AdminPendingRecordsCard from '../components/dashboard/AdminPendingRecordsCard.vue'
+import AdminPendingRecordsCard from '../components/dashboard/AdminTransferRecordsCard.vue'
 import AdminEmailsCard from '../components/dashboard/AdminEmailsCard.vue'
+import type { User } from '../types/user'
 
 const AdminSidebar = defineAsyncComponent(() => import('../components/AdminSidebar.vue'))
 const selected = ref('overview')
@@ -37,7 +38,7 @@ const currentPage = ref(1)
 const pageSize = 5
 const filteredUsers = computed(() => {
   if (!searchQuery.value) return users.value
-  return users.value.filter(u =>
+  return users.value.filter((u: User) =>
     u.username.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
@@ -163,7 +164,7 @@ async function loadStats() {
             @generateVouchers="generateVouchers"
           />
           <AdminInvoicesTable v-else-if="selected === 'invoices'" :invoices="invoices" />
-          <AdminPendingRecordsCard v-else-if="selected === 'payments'" />
+          <AdminPendingRecordsCard v-else-if="selected === 'transfers'" />
           <AdminEmailsCard v-else-if="selected === 'emails'" />
           <v-dialog v-model="creditDialog" max-width="600" persistent>
             <v-card class="pa-4" style="background: rgba(16,24,39,0.98); border-radius: 18px;">

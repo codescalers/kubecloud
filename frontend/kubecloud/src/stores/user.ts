@@ -1,24 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authService, type LoginRequest, type RegisterRequest } from '@/utils/authService'
-import { api, createWorkflowStatusChecker } from '@/utils/api'
+import { api } from '@/utils/api'
 import type { ApiResponse, VerifyCodeRequest } from '@/utils/authService'
-import { userService } from '@/utils/userService'
 import { useNotificationStore } from './notifications'
-import { WorkflowStatus } from '@/types/ewf'
-import router from '@/router'
-
-export interface User {
-  id: number
-  username: string
-  email: string
-  admin: boolean
-  verified: boolean
-  updated_at: string
-  balance_usd?: number
-  pending_balance_usd?: number
-  balance: number
-}
+import type { User } from '@/types/user'
+import { calculateNetBalance } from '@/utils/dateUtils'
 
 export interface AuthState {
   user: User | null
@@ -36,7 +23,6 @@ export const useUserStore = defineStore('user',
     const isLoading = ref(false)
     const error = ref<string | null>(null)
     const netBalance = ref(0)
-    const pendingBalance = ref(0)
     const balanceInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
     // Computed properties
@@ -60,6 +46,8 @@ export const useUserStore = defineStore('user',
     const loadUser = async () => {
       const userRes = await api.get<ApiResponse<{ user: User }>>('/v1/user/', { requiresAuth: true, showNotifications: false })
       user.value = userRes.data.data.user
+      netBalance.value = calculateNetBalance(user.value)
+      return user.value
     }
 
     const login = async (email: string, password: string) => {
@@ -177,9 +165,8 @@ export const useUserStore = defineStore('user',
     }
 
     const updateNetBalance = async () => {
-      const balance = await userService.fetchBalance()
-      netBalance.value = balance.balance
-      pendingBalance.value = balance.pending_balance
+      netBalance.value = calculateNetBalance(await loadUser() )
+      return netBalance.value
     }
 
     return {
@@ -189,8 +176,6 @@ export const useUserStore = defineStore('user',
       isLoading,
       error,
       netBalance,
-      pendingBalance,
-
       // Computed
       isAdmin,
       isLoggedIn,
