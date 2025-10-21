@@ -52,6 +52,7 @@ const (
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
 
-	NodeRentable = "rentable"
-	NodeRented   = "rented"
+	NodeRentable           = "rentable"
+	NodeRented             = "rented"
+	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
