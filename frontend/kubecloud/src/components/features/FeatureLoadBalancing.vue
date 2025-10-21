@@ -2,7 +2,7 @@
   <v-container class="py-8" fluid>
     <v-row align="center" justify="center" class="mx-auto" style="min-height: 60vh; max-width: 1440px;">
       <!-- Left: Text -->
-       <v-col cols="12" md="4" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
+       <v-col cols="12" md="5" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
         <div>
           <div class="text-h4 font-weight-medium mb-4">Effortless Load Balancing & Scaling</div>
           <div class="subtitle" style="color:#60a5fa">
@@ -16,7 +16,7 @@
         </div>
       </v-col>
       <!-- Right: Canvas / Animation -->
-      <v-col cols="12" md="8" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
+      <v-col cols="12" md="7" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
         <v-responsive class="w-100" :aspect-ratio="16/9">
           <div class="w-100 h-100 position-relative">
             <div style="position:absolute;left:50%;top:50%;width:85%;height:85%;transform:translate(-50%,-50%);background:radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 80%);filter:blur(32px);"></div>

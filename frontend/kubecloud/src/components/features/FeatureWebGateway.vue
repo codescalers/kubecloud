@@ -6,7 +6,7 @@
     <v-container class="py-12" fluid>
       <v-row class="align-center justify-center flex-column flex-md-row text-sm-center text-md-start" no-gutters>
         <!-- Left: Text -->
-        <v-col cols="12" md="4" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
+        <v-col cols="12" md="5" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
           <h2 class="text-h4 text-white mb-3">Simple Web Gateway Access</h2>
           <p class="subtitle mb-4" style="color: #60a5fa;">
             Expose any service to the public web with a simple Kubernetes resource. No complex Ingress controllers. Domain and prefix-based routing is built-in.
@@ -19,7 +19,7 @@
         </v-col>
 
         <!-- Right: Canvas / Animation -->
-        <v-col cols="12" md="8" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
+        <v-col cols="12" md="7" class="position-relative d-flex align-center justify-center justify-md-end mt-8 mt-md-0 order-1 order-md-2">
           <v-responsive class="w-100" :aspect-ratio="16/9">
             <div
               class="position-absolute"

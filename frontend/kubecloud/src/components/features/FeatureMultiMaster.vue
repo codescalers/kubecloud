@@ -36,7 +36,7 @@
           <div class="subtitle" style="color:#60a5fa">
             High-availability Kubernetes clusters with multiple control plane nodes. Automatic failover, leader election, and zero-downtime upgrades built-in.
           </div>
-          <div class="mt-4 d-flex flex-wrap text-center text-lg-start">
+          <div class="d-flex flex-wrap justify-center justify-md-start mt-2" style="gap: 8px; color: #b6d6ff;">
             <v-chip class="ma-1" size="small">HA Control Plane</v-chip>
             <v-chip class="ma-1" size="small">Automatic Failover</v-chip>
             <v-chip class="ma-1" size="small">Zero-downtime Upgrades</v-chip>
@@ -127,17 +127,17 @@ function onCanvasMouseLeave() {
 
 onMounted(() => {
   if (!threeCanvas.value) return
-  
+
   // Set initial canvas size
   const canvas = threeCanvas.value
   const rect = canvas.getBoundingClientRect()
-  
+
   // Set explicit canvas size if dimensions are 0
   if (rect.width === 0 || rect.height === 0) {
     canvas.width = 800
     canvas.height = 600
   }
-  
+
   renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     alpha: true,
@@ -148,7 +148,7 @@ onMounted(() => {
   const renderHeight = rect.height > 0 ? rect.height : 600
   renderer.setSize(renderWidth, renderHeight, false)
   renderer.setClearColor(0x000000, 0) // Restore transparent background
-  
+
   scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(
     60,
@@ -168,7 +168,7 @@ onMounted(() => {
     camera.aspect = renderWidth / renderHeight
     camera.updateProjectionMatrix()
   }
-  
+
   window.addEventListener('resize', handleResize)
 
   // Place master nodes in a ring
@@ -429,9 +429,9 @@ onMounted(() => {
   function createCrownMesh() {
     // Sophisticated leader indicator: subtle ring with glow, but as a single mesh
     const ringGeometry = new THREE.TorusGeometry(0.25, 0.03, 16, 32)
-    const ringMaterial = new THREE.MeshBasicMaterial({ 
-      color: LEADER_COLOR, 
-      transparent: true, 
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      color: LEADER_COLOR,
+      transparent: true,
       opacity: 0.6
     })
     const ring = new THREE.Mesh(ringGeometry, ringMaterial)

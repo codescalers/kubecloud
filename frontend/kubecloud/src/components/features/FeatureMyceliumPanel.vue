@@ -10,7 +10,7 @@
       <!-- Left side (Canvas) -->
       <v-col
         cols="12"
-        md="8"
+        md="7"
         class="position-relative d-flex align-center justify-center justify-md-start mb-6 mb-md-0"
       >
         <v-responsive class="w-100" :aspect-ratio="16/9">
@@ -57,7 +57,7 @@
       <!-- Right side (Text) -->
       <v-col
         cols="12"
-        md="4"
+        md="5"
         class="d-flex flex-column align-center align-lg-start pa-6 text-white"
       >
         <h2 class="text-h4 text-white mb-3">Mycelium Networking</h2>
