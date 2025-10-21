@@ -61,13 +61,32 @@
           :rules="[RULES.confirmPassword(form.confirmPassword, form.password)]"
           required
         />
+        <v-checkbox
+          v-model="form.acceptTerms"
+          class="py-1"
+          :rules="[(v) => !!v || 'You must accept the terms and conditions']"
+          required
+          density="compact"
+        >
+          <template #label>
+            <span class="text-white">
+              I accept the
+                terms and conditions
+                <v-tooltip location="top" text="View terms and conditions">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" icon="mdi-open-in-new" @click.prevent="openTermsDialog" size="small" class="ml-1"></v-icon>
+                  </template>
+                </v-tooltip>
+            </span>
+          </template>
+        </v-checkbox>
         <v-btn
           type="submit"
           color="white"
           block
           size="large"
           variant="outlined"
-          :disabled="loading || !isFormValid"
+          :disabled="loading || !isFormValid || !form.acceptTerms"
         >
           <v-icon icon="mdi-account-plus" class="mr-2"></v-icon>
           {{ 'Create Account' }}
@@ -90,6 +109,9 @@
         Back to Home
       </router-link>
     </div>
+
+    <!-- Terms Dialog -->
+    <TermsDialog v-model="showTermsDialog" />
   </div>
 </template>
 
@@ -99,6 +121,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { RULES } from '../utils/validation'
 import LoadingComponent from '../components/LoadingComponent.vue'
+import TermsDialog from '../components/TermsDialog.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -109,10 +132,12 @@ const form = reactive({
   email: '',
   password: '',
   confirmPassword: '',
+  acceptTerms: false
 })
 
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const showTermsDialog = ref(false)
 
 
 const handleSignUp = async () => {
@@ -133,6 +158,10 @@ const handleSignUp = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const openTermsDialog = () => {
+  showTermsDialog.value = true
 }
 
 
