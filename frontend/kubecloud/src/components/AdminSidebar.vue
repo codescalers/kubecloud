@@ -35,7 +35,7 @@ const adminNavItems = [
   { key: 'vouchers', title: 'Vouchers', icon: 'mdi-ticket-percent' },
   { key: 'system', title: 'System', icon: 'mdi-cog' },
   { key: 'invoices', title: 'Invoices', icon: 'mdi-file-document-outline' },
-          { key: 'payments', title: 'Payments', icon: 'mdi-clock-outline' },
+  { key: 'transfers', title: 'Transfers', icon: 'mdi-swap-horizontal' },
   { key: 'emails', title: 'Emails', icon: 'mdi-email-outline' },
 ]
 
@@ -140,18 +140,18 @@ const adminNavItems = [
   .admin-sidebar-card {
     padding: 1rem;
   }
-  
+
   .sidebar-header {
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
   }
-  
+
   .sidebar-title {
     font-size: var(--font-size-base, 1rem);
   }
-  
+
   .sidebar-subtitle {
     font-size: var(--font-size-xs, 0.75rem);
   }
 }
-</style> 
+</style>

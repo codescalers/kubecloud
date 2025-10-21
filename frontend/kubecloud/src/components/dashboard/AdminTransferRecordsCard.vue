@@ -3,8 +3,8 @@
     <div class="dashboard-card-header">
       <div class="dashboard-card-title-section">
         <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Payments</h3>
-          <p class="dashboard-card-subtitle">View user payment records</p>
+          <h3 class="dashboard-card-title">Transactions</h3>
+          <p class="dashboard-card-subtitle">View transactions records</p>
         </div>
       </div>
     </div>
@@ -37,8 +37,8 @@ async function loadTransferRecords() {
     const response = await adminService.listTransferRecords()
     transferRecords.value = response || []
   } catch (error) {
-    console.error('Failed to load payments:', error)
-    notificationStore.error('Error', 'Failed to load payments')
+    console.error('Failed to load transfer records:', error)
+    notificationStore.error('Error', 'Failed to load transfer records')
   } finally {
     loading.value = false
   }

@@ -12,15 +12,15 @@
         <span>{{ item.username }}</span>
       </template>
       <template v-slot:[`item.operation`]="{ item }">
-        <span>{{ item.operation }}</span>
+        <span>{{ capitalize(item.operation) }}</span>
       </template>
       <template v-slot:[`item.state`]="{ item }">
         <v-chip :color="getStatusColor(item)" size="small" class="status-chip">
-          {{ item.state }}
+          {{ capitalize(item.state) }}
         </v-chip>
       </template>
-      <template v-slot:[`item.tft_amount`]="{ item }">
-        <span>{{ item.tft_amount.toFixed(2) }}</span>
+      <template v-slot:[`item.tft_amount_in_whole_unit`]="{ item }">
+        <span>{{ +item.tft_amount_in_whole_unit.toFixed(2) }}</span>
       </template>
       <template v-slot:[`item.created_at`]="{ item }">
         <span>{{ formatDate(item.created_at) }}</span>
@@ -37,7 +37,7 @@
 <script setup lang="ts">
 import { type RecordState, type TransferRecord } from '../../utils/adminService'
 import { formatDate } from '../../utils/uiUtils'
-
+import { capitalize } from 'vue'
 const props = defineProps({
   transferRecords: {
     type: Array as () => TransferRecord[],
@@ -58,7 +58,7 @@ const headers = [
   { title: 'Updated Date', key: 'updated_at' },
   { title: 'Operation', key: 'operation' },
   { title: 'Status', key: 'state' },
-  { title: 'TFT Amount', key: 'tft_amount' },
+  { title: 'TFT Amount', key: 'tft_amount_in_whole_unit' },
 ]
 
 

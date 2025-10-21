@@ -74,6 +74,7 @@ export interface TransferRecord {
   operation: RecordOperation,
   state: RecordState,
   tft_amount: number,
+  tft_amount_in_whole_unit: number,
   updated_at: string,
   user_id: number,
   username: string

@@ -9,7 +9,7 @@ import AdminVouchersSection from '../components/AdminVouchersTable.vue'
 import AdminClustersSection from '../components/AdminClustersSection.vue'
 import AdminSystemSection from '../components/AdminSystemCard.vue'
 import AdminInvoicesTable from '../components/AdminInvoicesTable.vue'
-import AdminPendingRecordsCard from '../components/dashboard/AdminPendingRecordsCard.vue'
+import AdminPendingRecordsCard from '../components/dashboard/AdminTransferRecordsCard.vue'
 import AdminEmailsCard from '../components/dashboard/AdminEmailsCard.vue'
 import type { User } from '../types/user'
 
@@ -164,7 +164,7 @@ async function loadStats() {
             @generateVouchers="generateVouchers"
           />
           <AdminInvoicesTable v-else-if="selected === 'invoices'" :invoices="invoices" />
-          <AdminPendingRecordsCard v-else-if="selected === 'payments'" />
+          <AdminPendingRecordsCard v-else-if="selected === 'transfers'" />
           <AdminEmailsCard v-else-if="selected === 'emails'" />
           <v-dialog v-model="creditDialog" max-width="600" persistent>
             <v-card class="pa-4" style="background: rgba(16,24,39,0.98); border-radius: 18px;">
