@@ -37,7 +37,7 @@
                   </v-btn>
                 </div>
               </template>
-              <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
+              <span>Insufficient balance. Minimum {{ getMinBalance() }} TFT required to add nodes.</span>
             </v-tooltip>
 
             <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
@@ -189,11 +189,13 @@ import { api } from '../../utils/api'
 import { formatDate } from '../../utils/dateUtils'
 import { userService } from '@/utils/userService'
 import { useUserStore } from '@/stores/user'
+import { useConfig } from '@/composables/useConfig'
 
 const userStore = useUserStore()
+const { getMinBalance } = useConfig()
 
 const haveEnoughBalance = computed(() => {
-  return userStore.netBalance >= 5
+  return userStore.netBalance >= getMinBalance()
 })
 
 

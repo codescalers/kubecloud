@@ -14,7 +14,7 @@
             </v-btn>
           </div>
         </template>
-        <span>Insufficient balance. Minimum 5 TFT required to create a cluster.</span>
+        <span>Insufficient balance. Minimum {{ getMinBalance() }} TFT required to create a cluster.</span>
       </v-tooltip>
       <v-btn
         v-if="filteredClusters.length > 0 && !isLoading"
@@ -103,7 +103,7 @@
                     <v-icon icon="mdi-plus" />
                   </v-btn>
                 </template>
-                <span v-text="haveEnoughBalance ? 'Add node' : 'Insufficient balance'"></span>
+                <span v-text="haveEnoughBalance ? 'Add node' : `Insufficient balance. Minimum ${getMinBalance()} TFT required`"></span>
               </v-tooltip>
               <v-tooltip location="top">
                 <template #activator="{ props }">
@@ -176,6 +176,7 @@ import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
 import { useUserStore } from '@/stores/user'
+import { useConfig } from '@/composables/useConfig'
 
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
 
@@ -211,9 +212,10 @@ const sortOptions = [
 ]
 
   const userStore = useUserStore()
+  const { getMinBalance } = useConfig()
 
-  const haveEnoughBalance = computed(() => {
-    return userStore.netBalance >= 5
+  const haveEnoughBalance = computed(() => {    
+    return userStore.netBalance >= getMinBalance()
   })
 
 const error = computed(() => clusterStore.error)
