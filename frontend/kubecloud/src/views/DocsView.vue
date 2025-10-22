@@ -1,83 +1,108 @@
 <template>
-  <div class="mt-16">
-    <v-container fluid class="pb-12">
-      <div class="text-center pa-8 mt-16">
-        <h1 class="text-h3 font-weight-bold mb-2">Documentation</h1>
-        <p class="text-h6 text-medium-emphasis">Find guides, and tutorials to get the most out of Mycelium Cloud.</p>
-      </div>
+  <section class="docs-section">
+    <v-container fluid class="pt-16" style="max-width:1600px">
+      <!-- Hero Section -->
+      <v-container fluid class="d-flex align-center justify-center pt-16 pt-md-20">
+        <v-row justify="center" class="text-center">
+          <v-col cols="12" sm="10" md="8" lg="6">
+            <h1 class="text-h3 text-md-h2 font-weight-medium mb-4 text-white">
+              Documentation
+            </h1>
+            <p class="text-h6 text-blue-lighten-2 line-height-1-7 opacity-92">
+              Find guides, and tutorials to get the most out of Mycelium Cloud.
+            </p>
+          </v-col>
+        </v-row>
+      </v-container>
 
-      <v-row>
-        <!-- Sidebar -->
-        <v-col cols="12" md="3" lg="2">
-          <v-card class="elevation-0 rounded-xl border pa-6 sidebar-card" flat style="position: sticky; top: 80px; max-height: calc(100vh - 80px); overflow: auto; background: transparent;">
-            <!-- Documentation Navigation -->
-            <div class="mb-6">
-              <h3 class="text-h6 font-weight-bold mb-4 text-primary">Documentation</h3>
-              <v-list nav density="comfortable" class="pa-0">
-                <v-list-item
-                  v-for="doc in docs"
-                  :key="doc.slug"
-                  :active="currentDoc === doc.slug"
-                  @click="loadDocument(doc.slug)"
-                  class="rounded-lg mb-2"
-                >
-                  <template v-slot:prepend>
-                    <v-icon :icon="doc.icon" size="20" color="primary" class="mr-3"></v-icon>
-                  </template>
-                  <v-list-item-title class="text-body-1 font-weight-medium">{{ doc.title }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </div>
-
-            <!-- Table of Contents -->
-            <div v-if="toc.length > 0" class="toc-section">
-              <v-divider class="my-6"></v-divider>
-              <div class="mb-4">
-                <h4 class="text-subtitle-2 font-weight-bold text-uppercase text-primary">Table of Contents</h4>
+      <!-- Main Content -->
+      <v-container fluid class="pb-12" style="max-width: 1600px;">
+        <v-row>
+          <!-- Sidebar -->
+          <v-col cols="12" md="3" lg="3" class="mb-6 mb-md-0">
+            <v-card 
+              class="sidebar-card elevation-0 rounded-xl pa-6" 
+              flat
+            >
+              <!-- Documentation Navigation -->
+              <div class="mb-6">
+                <h3 class="text-h6 font-weight-bold mb-4 text-primary">Documentation</h3>
+                <v-list nav density="comfortable" class="pa-0">
+                  <v-list-item
+                    v-for="doc in docs"
+                    :key="doc.slug"
+                    :active="currentDoc === doc.slug"
+                    @click="loadDocument(doc.slug)"
+                    class="rounded-lg mb-2"
+                    variant="tonal"
+                  >
+                    <template v-slot:prepend>
+                      <v-icon :icon="doc.icon" size="20" color="primary"></v-icon>
+                    </template>
+                    <v-list-item-title class="text-body-2 font-weight-medium">
+                      {{ doc.title }}
+                    </v-list-item-title>
+                  </v-list-item>
+                </v-list>
               </div>
-              <v-list density="comfortable" class="pa-0">
-                <v-list-item
-                  v-for="item in toc"
-                  :key="item.id"
-                  @click="scrollToHeading(item.id)"
-                  class="py-2 rounded toc-item"
-                >
-                  <v-list-item-title class="text-body-2">{{ item.text }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </div>
-          </v-card>
-        </v-col>
 
-        <!-- Main Content -->
-        <v-col cols="12" md="9" lg="10" class="pa-0">
-          <v-container fluid>
-            <!-- Loading State -->
-            <v-card v-if="loading" class="pa-8 text-center mb-6" variant="tonal">
-              <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
-              <v-card-text class="text-h6">Loading documentation...</v-card-text>
+              <!-- Table of Contents -->
+              <div v-if="toc.length > 0">
+                <v-divider class="my-6"></v-divider>
+                <div class="mb-4">
+                  <h4 class="text-subtitle-2 font-weight-bold text-uppercase text-primary">
+                    Table of Contents
+                  </h4>
+                </div>
+                <v-list density="comfortable" class="pa-0">
+                  <v-list-item
+                    v-for="item in toc"
+                    :key="item.id"
+                    @click="scrollToHeading(item.id)"
+                    class="py-2 rounded"
+                    variant="text"
+                  >
+                    <v-list-item-title class="text-body-2">{{ item.text }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </div>
             </v-card>
+          </v-col>
 
-            <!-- Error State -->
-            <v-card v-else-if="error" class="pa-8 text-center mb-6" variant="tonal" color="error">
-              <v-icon icon="mdi-alert-circle" size="48" class="mb-4"></v-icon>
-              <v-card-title class="mb-2">Error Loading Documentation</v-card-title>
-              <v-card-text class="mb-4">{{ error }}</v-card-text>
-              <v-btn @click="loadDocument(currentDoc)" color="primary">Retry</v-btn>
-            </v-card>
+          <!-- Main Content -->
+          <v-col cols="12" md="9" lg="9" class="pa-0">
+            <v-container fluid>
+              <!-- Loading State -->
+              <v-card v-if="loading" class="pa-8 text-center mb-6 rounded-xl" variant="tonal">
+                <v-progress-circular 
+                  indeterminate 
+                  color="primary" 
+                  size="64" 
+                  class="mb-4"
+                ></v-progress-circular>
+                <v-card-text class="text-h6">Loading documentation...</v-card-text>
+              </v-card>
 
-            <!-- Content -->
-            <div v-else-if="renderedMarkdown">
-              <!-- Markdown Content -->
-              <v-card class="pa-8 mb-8 rounded-xl" variant="tonal">
+              <!-- Error State -->
+              <v-card v-else-if="error" class="pa-8 text-center mb-6 rounded-xl" variant="tonal" color="error">
+                <v-icon icon="mdi-alert-circle" size="48" class="mb-4"></v-icon>
+                <v-card-title class="mb-2">Error Loading Documentation</v-card-title>
+                <v-card-text class="mb-4">{{ error }}</v-card-text>
+                <v-btn @click="loadDocument(currentDoc)" color="primary" variant="tonal">
+                  Retry
+                </v-btn>
+              </v-card>
+
+              <!-- Content -->
+              <v-card v-else-if="renderedMarkdown" class="pa-8 mb-8 rounded-xl" variant="tonal">
                 <div class="markdown-content" v-html="renderedMarkdown"></div>
               </v-card>
-            </div>
-          </v-container>
-        </v-col>
-      </v-row>
+            </v-container>
+          </v-col>
+        </v-row>
+      </v-container>
     </v-container>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -231,18 +256,18 @@ watch(renderedMarkdown, async () => {
 
 .markdown-content h1 { 
   font-size: 1.875rem; 
-  font-weight: 700; 
+  font-weight: 600; 
   margin-top: 0;
 }
 
 .markdown-content h2 { 
-  font-size: 1.5rem; 
-  font-weight: 700; 
+  font-size: 1.3rem; 
+  font-weight: 600; 
 }
 
 .markdown-content p { 
   margin: 0.75rem 0 1.5rem 0; 
-  font-size: 1.125rem;
+  font-size: 1rem;
 }
 
 .markdown-content ul,
@@ -253,6 +278,7 @@ watch(renderedMarkdown, async () => {
 
 .markdown-content li {
   margin: 0.5rem 0;
+  font-size: 1rem;
 }
 
 .markdown-content table { 

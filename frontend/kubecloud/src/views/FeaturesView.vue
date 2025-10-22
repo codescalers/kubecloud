@@ -6,7 +6,7 @@
         <v-container class="py-16">
           <v-row justify="center">
             <v-col cols="12" md="10" lg="8" class="text-center">
-              <h1 class="text-h4 text-md-h2 font-weight-medium mb-8 text-white">
+              <h1 class="text-h4 text-md-h2 font-weight-medium mb-4 text-white">
                 Powerful Features
               </h1>
               <p class="text-h6 text-blue-lighten-2 line-height-1-7 opacity-92">
