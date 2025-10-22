@@ -110,8 +110,7 @@ const nameField = ref()
 const lastCopiedId = ref<number | null>(null)
 const isGeneratingKey = ref(false)
 
-const isValidSshKey = (key: string): boolean =>
-  /^(ssh-(rsa|ed25519|dss|ecdsa)|ecdsa-sha2-nistp\d+|sk-ecdsa-sha2-nistp\d+|sk-ssh-ed25519) [A-Za-z0-9+/=]+( [^@\s]+@[^@\s]+)?$/.test(key.trim())
+const isValidSshKey = (key: string): boolean => /^(ssh-rsa|ssh-dss|ecdsa-[a-zA-Z0-9-]+|ssh-ed25519)\s+(\S+)+\S/.test(key.trim())
 
 const isDuplicateKey = computed(() => {
   const val = newKey.value.public_key.trim()
