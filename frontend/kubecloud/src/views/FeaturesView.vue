@@ -9,7 +9,7 @@
               <h1 class="text-h4 text-md-h2 font-weight-medium mb-8 text-white">
                 Powerful Features
               </h1>
-              <p class="text-h6 text-md-h5 text-blue-lighten-2 line-height-1-7 opacity-92">
+              <p class="text-h6 text-blue-lighten-2 line-height-1-7 opacity-92">
                 Everything you need to build, deploy, and scale your applications with confidence.
               </p>
             </v-col>
@@ -40,6 +40,15 @@ import FeatureLoadBalancing from '../components/features/FeatureLoadBalancing.vu
   justify-content: center;
   position: relative;
   z-index: 2;
+}
+
+.hero-subtitle {
+  font-size: clamp(1.2rem, 2vw, 1.3rem);
+  color: #60a5fa;
+  opacity: 0.95;
+  max-width: 500px;
+  line-height: 1.5;
+  font-weight: 400;
 }
 
 @media (max-width: 900px) {
