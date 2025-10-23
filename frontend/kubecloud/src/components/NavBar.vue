@@ -94,7 +94,7 @@
     </div>
     <div
       id="mobile-menu"
-      class="mobile-menu"
+      class="mobile-menu text-center"
       :class="{ open: isMobileMenuOpen }"
       v-show="isMobileMenuOpen"
     >
@@ -116,7 +116,7 @@
           <button class="mobile-secondary" @click="() => { handleLogout(); closeMobileMenu() }">Sign Out</button>
         </div>
         <div v-else class="mobile-guest">
-          <router-link to="/sign-in" class="mobile-primary" @click="closeMobileMenu">Sign In</router-link>
+          <router-link to="/sign-in" class="mobile-primary mr-3" @click="closeMobileMenu">Sign In</router-link>
           <router-link to="/sign-up" class="mobile-secondary" @click="closeMobileMenu">Sign Up</router-link>
         </div>
       </div>
