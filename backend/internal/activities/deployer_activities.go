@@ -830,11 +830,11 @@ func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, file
 		return existingCluster.Kubeconfig, nil
 	}
 
-		if existingCluster.ID != 0 {
-			if data, err := fileStorage.ReadKubeconfigFile(config.UserID, existingCluster.ID, existingCluster.ProjectName); err == nil && len(data) > 0 {
-				return string(data), nil
-			}
+	if existingCluster.ID != 0 {
+		if data, err := fileStorage.ReadKubeconfigFile(config.UserID, existingCluster.ID, existingCluster.ProjectName); err == nil && len(data) > 0 {
+			return string(data), nil
 		}
+	}
 
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
