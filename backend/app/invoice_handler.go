@@ -262,14 +262,14 @@ func (h *Handler) createUserInvoice(user models.User) error {
 		CreatedAt: time.Now(),
 	}
 
-	if err = h.db.CreateInvoice(&invoice); err != nil {
-		return err
-	}
-
 	file, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
 	if err != nil {
 		return err
 	}
+	if err = h.db.CreateInvoice(&invoice); err != nil {
+		return err
+	}
+
 	if _, err := h.fileStorage.WriteInvoiceFile(user.ID, invoice.ID, file); err != nil {
 		return err
 	}

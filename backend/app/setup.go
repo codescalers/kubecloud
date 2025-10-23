@@ -25,6 +25,7 @@ func SetUp(t testing.TB) (*App, error) {
 	dbPath := filepath.Join(dir, "testing.db")
 	dsn := "sqlite3://" + dbPath
 	notificationConfigPath := filepath.Join(dir, "notification-config.json")
+	fileStoragePath := filepath.Join(dir, "file-storage")
 
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
 	publicKeyPath := privateKeyPath + ".pub"
@@ -94,12 +95,13 @@ func SetUp(t testing.TB) (*App, error) {
   "kyc_verifier_api_url": "https://kyc.dev.grid.tf",
   "kyc_challenge_domain": "kyc.dev.grid.tf",
   "notification_config_path": "%s",
+  "file_storage_path": "%s",
   "cluster_health_check_interval_in_hours": 1,
   "reserved_node_health_check_interval_in_hours": 1,
   "reserved_node_health_check_timeout_in_minutes": 1,
   "reserved_node_health_check_workers_num": 10
 }
-`, dsn, mnemonic, privateKeyPath, publicKeyPath, notificationConfigPath)
+`, dsn, mnemonic, privateKeyPath, publicKeyPath, notificationConfigPath, fileStoragePath)
 
 	err = os.WriteFile(configPath, []byte(config), 0644)
 	if err != nil {
@@ -114,6 +116,12 @@ func SetUp(t testing.TB) (*App, error) {
 	err = os.WriteFile(notificationConfigPath, notificationConfigBytes, 0644)
 	if err != nil {
 		return nil, err
+	}
+
+	// Create file storage directory
+	err = os.MkdirAll(fileStoragePath, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file storage directory: %w", err)
 	}
 
 	viper.Reset()
@@ -150,6 +158,7 @@ func SetUp(t testing.TB) (*App, error) {
 		_ = os.Remove(configPath)
 		_ = os.Remove(dbPath)
 		_ = os.Remove(notificationConfigPath)
+		_ = os.RemoveAll(fileStoragePath)
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()

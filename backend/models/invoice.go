@@ -5,13 +5,12 @@ import (
 )
 
 type Invoice struct {
-	ID     int        `json:"id" gorm:"primaryKey"`
-	UserID int        `json:"user_id" binding:"required"`
-	Total  float64    `json:"total"`
-	Nodes  []NodeItem `json:"nodes" gorm:"foreignKey:invoice_id"`
-	// TODO:
-	Tax       float64   `json:"tax"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int        `json:"id" gorm:"primaryKey"`
+	UserID    int        `json:"user_id" binding:"required"`
+	Total     float64    `json:"total"`
+	Nodes     []NodeItem `json:"nodes" gorm:"foreignKey:invoice_id"`
+	Tax       float64    `json:"tax"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 type NodeItem struct {

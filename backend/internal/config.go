@@ -248,15 +248,6 @@ func LoadConfig() (Configuration, error) {
 	if _, err := os.Stat(config.FileStoragePath); os.IsNotExist(err) {
 		return Configuration{}, fmt.Errorf("file storage base directory does not exist: %w", err)
 	}
-
-	config.FileStoragePath, err = utils.ExpandPath(config.FileStoragePath)
-	if err != nil {
-		return Configuration{}, fmt.Errorf("failed to expand file storage base directory path: %w", err)
-	}
-	if _, err := os.Stat(config.FileStoragePath); os.IsNotExist(err) {
-		return Configuration{}, fmt.Errorf("file storage base directory does not exist: %w", err)
-	}
-
 	notificationFilePath, err := utils.ExpandPath(config.NotificationConfigPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand notification config path: %w", err)

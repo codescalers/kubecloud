@@ -168,6 +168,11 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		return nil, fmt.Errorf("failed to init file storage service: %w", err)
 	}
 
+	// Migrate file data from database to file storage
+	if err := models.MigrateFileDataToStorage(db, fileStorage); err != nil {
+		logger.GetLogger().Warn().Err(err).Msg("Failed to migrate file data to storage (continuing anyway)")
+	}
+
 	sshPublicKeyBytes, err := os.ReadFile(config.SSH.PublicKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read SSH public key from %s: %w", config.SSH.PublicKeyPath, err)

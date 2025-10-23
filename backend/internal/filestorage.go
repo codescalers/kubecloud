@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 const (
@@ -14,6 +15,7 @@ const (
 
 type FileStorageService struct {
 	baseDir string
+	mu      sync.Mutex
 }
 
 func NewFileStorageService(baseDir string) (*FileStorageService, error) {
@@ -26,7 +28,7 @@ func NewFileStorageService(baseDir string) (*FileStorageService, error) {
 
 func (s *FileStorageService) ensureFileStorageSubdirs() error {
 	if strings.TrimSpace(s.baseDir) == "" {
-		return nil
+		return fmt.Errorf("file storage base directory cannot be empty")
 	}
 	if err := os.MkdirAll(filepath.Join(s.baseDir, InvoicesDir), 0o700); err != nil {
 		return fmt.Errorf("failed to create invoices directory: %w", err)
@@ -53,7 +55,7 @@ func (s *FileStorageService) buildPath(dir string, fileName string) string {
 func (s *FileStorageService) WriteInvoiceFile(userID, invoiceID int, data []byte) (string, error) {
 	fileName := s.InvoiceFileName(userID, invoiceID)
 	absPath := s.buildPath(InvoicesDir, fileName)
-	if err := os.WriteFile(absPath, data, 0o600); err != nil {
+	if err := s.atomicWriteFile(absPath, data, 0o600); err != nil {
 		return "", err
 	}
 	return fileName, nil
@@ -68,7 +70,7 @@ func (s *FileStorageService) ReadInvoiceFile(userID, invoiceID int) ([]byte, err
 func (s *FileStorageService) WriteKubeconfigFile(userID, clusterID int, projectName string, data []byte) (string, error) {
 	fileName := s.kubeconfigFileName(userID, clusterID, projectName)
 	absPath := s.buildPath(KubeconfigsDir, fileName)
-	if err := os.WriteFile(absPath, data, 0o600); err != nil {
+	if err := s.atomicWriteFile(absPath, data, 0o600); err != nil {
 		return "", err
 	}
 	return fileName, nil
@@ -92,5 +94,45 @@ func (s *FileStorageService) DeleteKubeconfigFile(userID, clusterID int, project
 	return nil
 }
 
-// Existence checks are intentionally omitted; callers should attempt the
-// operation (read/write) and handle os.IsNotExist or other errors directly.
+func (s *FileStorageService) atomicWriteFile(path string, data []byte, perm os.FileMode) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	dir := filepath.Dir(path)
+
+	tmpFile, err := os.CreateTemp(dir, ".tmp-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	defer func() {
+		if tmpFile != nil {
+			tmpFile.Close()
+			os.Remove(tmpPath)
+		}
+	}()
+
+	if _, err := tmpFile.Write(data); err != nil {
+		return fmt.Errorf("failed to write to temp file: %w", err)
+	}
+
+	if err := tmpFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
+	tmpFile = nil
+
+	if err := os.Chmod(tmpPath, perm); err != nil {
+		return fmt.Errorf("failed to set permissions: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, path); err != nil {
+		return fmt.Errorf("failed to rename temp file: %w", err)
+	}
+
+	return nil
+}
