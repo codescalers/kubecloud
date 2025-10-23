@@ -80,8 +80,8 @@
           </router-link>
           <router-link :to="'/sign-up'" custom v-slot="{ navigate, isActive }">
             <v-btn
-              variant="outlined"
-              color="white"
+              variant="flat"
+              color="blue"
               class="ml-2"
               @click="navigate"
               :class="{ 'active-link': isActive }"

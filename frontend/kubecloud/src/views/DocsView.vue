@@ -37,7 +37,7 @@
                     variant="tonal"
                   >
                     <template v-slot:prepend>
-                      <v-icon :icon="doc.icon" size="20" color="primary"></v-icon>
+                      <v-icon class="icondisplay" :icon="doc.icon" size="20" color="primary"></v-icon>
                     </template>
                     <v-list-item-title class="text-body-2 font-weight-medium">
                       {{ doc.title }}
@@ -236,6 +236,11 @@ watch(renderedMarkdown, async () => {
 </script>
 
 <style>
+
+.v-list-item__prepend{
+display:grid;
+
+}
 .markdown-content {
   font-size: 1.125rem !important; /* 18px */
   line-height: 1.8 !important;
