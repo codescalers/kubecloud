@@ -681,7 +681,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics, fileStorage, fileStorage))
 	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, fileStorage, fileStorage, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
-	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, fileStorage, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db, fileStorage, fileStorage, metrics, fileStorage))
 	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
@@ -832,8 +832,7 @@ func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, file
 
 		if existingCluster.ID != 0 {
 			if data, err := fileStorage.ReadKubeconfigFile(config.UserID, existingCluster.ID, existingCluster.ProjectName); err == nil && len(data) > 0 {
-				state["kubeconfig"] = string(data)
-				return nil
+				return string(data), nil
 			}
 		}
 
@@ -855,9 +854,9 @@ func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, file
 	return cluster.GetKubeconfig(ctx, string(privateKeyBytes))
 }
 
-func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
+func FetchKubeconfigStep(db models.DB, fileStorage *internal.FileStorageService, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		kubeconfig, err := retrieveKubeconfig(ctx, state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(ctx, state, db, fileStorage, privateKeyPath)
 		if err != nil {
 			return err
 		}
@@ -866,7 +865,7 @@ func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
 	}
 }
 
-func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
+func VerifyAddedNodeStep(db models.DB, fileStorage *internal.FileStorageService, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "verify_added_node")
 		node, err := getFromState[kubedeployer.Node](state, "node")
@@ -874,7 +873,7 @@ func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
 			return fmt.Errorf("missing or invalid 'node' in state for verification: %w", err)
 		}
 
-		kubeconfig, err := retrieveKubeconfig(ctx, state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(ctx, state, db, fileStorage, privateKeyPath)
 		if err != nil {
 			return err
 		}
