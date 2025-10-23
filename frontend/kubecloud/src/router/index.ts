@@ -158,7 +158,17 @@ router.beforeEach(async (to, _from, next) => {
   if (maintenanceHandled) {
     return
   }
-  
+
+  // Remove trailing slashes from paths (except root)
+  if (to.path !== '/' && to.path.endsWith('/')) {
+    const pathWithoutSlash = to.path.slice(0, -1)
+    return next({
+      path: pathWithoutSlash,
+      query: to.query,
+      hash: to.hash,
+    })
+  }
+
   // Check if user is authenticated
   const isAuthenticated = userStore.isLoggedIn
 
