@@ -97,17 +97,14 @@
     </div>
 
     <div v-else class="nodes-section">
-      <v-row class="nodes-grid" align="stretch">
+      <v-row class="nodes-grid">
         <v-col
-          class="node-col"
           v-for="(node, idx) in normalizedNodes"
           :key="node.id"
           cols="12"
-          sm="6"
           md="4"
-          lg="4"
         >
-          <NodeCard
+          <ReservedNodeCard
             :node="node"
             :isAuthenticated="true"
             :loading="unreservingNodes.includes(node.nodeId)"
@@ -155,7 +152,7 @@ import { useRouter } from 'vue-router'
 import { useNodeManagement } from '@/composables/useNodeManagement'
 import type { RentedNode } from '@/composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
-import NodeCard from '../NodeCard.vue'
+import ReservedNodeCard from '../ReservedNodeCard.vue'
 
 const router = useRouter()
 const {
@@ -265,6 +262,9 @@ const normalizedNodes = computed(() =>
     cpu: Math.round(node.total_resources?.cru ?? 0),
     ram: Math.round(node.total_resources?.mru ? node.total_resources.mru / (1024*1024*1024) : 0),
     storage: Math.round(node.total_resources?.sru ? node.total_resources.sru / (1024*1024*1024) : 0),
+    used_cpu: Math.round(node.used_resources?.cru ?? 0),
+    used_ram: Math.round(node.used_resources?.mru ? node.used_resources.mru / (1024*1024*1024) : 0),
+    used_storage: Math.round(node.used_resources?.sru ? node.used_resources.sru / (1024*1024*1024) : 0),
     country: node.country,
     gpu: !!node.num_gpu,
     id: node.id,
@@ -378,11 +378,22 @@ const normalizedNodes = computed(() =>
   margin-top: 2rem;
 }
 
+.nodes-grid {
+  margin: -0.75rem;
+}
 
-.node-col {
-  flex: 1 1 250px; /* Allow growing and shrinking with a basis of 250px */
-  min-width: 250px; /* Enforce the minimum width */
-  max-width: 400px;
+.nodes-grid .v-col {
+  display: flex;
+  padding: 0.75rem !important;
+  flex: 0 0 33.333333%;
+  max-width: 33.333333%;
+}
+
+@media (max-width: 959px) {
+  .nodes-grid .v-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
 }
 
 
@@ -394,9 +405,6 @@ const normalizedNodes = computed(() =>
   }
   .header-actions {
     align-self: stretch;
-  }
-  .nodes-grid {
-    gap: 1rem;
   }
 }
 </style>
