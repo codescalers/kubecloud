@@ -91,6 +91,7 @@ func TestWriteAndReadInvoiceFile(t *testing.T) {
 
 		_, err = service.WriteInvoiceFile(userID, invoiceID, updatedData)
 		assert.NoError(t, err)
+
 		readData, err := service.ReadInvoiceFile(userID, invoiceID)
 		assert.NoError(t, err)
 		assert.Equal(t, updatedData, readData)
