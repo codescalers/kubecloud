@@ -179,55 +179,75 @@ const features = [
     </section>
 
     <!-- Features Section -->
-    <section class="home-section section-padding fade-in py-24">
-      <div class="container">
-        <div class="section-header text-center mb-8">
-          <h2 class="section-title">
+    <v-container fluid class="py-16 py-md-20">
+      <v-row justify="center" class="mx-auto" style="max-width: 1200px;">
+        <v-col cols="12" class="text-center mb-6">
+          <h2 class="text-h4 text-md-h3 font-weight-medium mb-4 text-white">
             Everything You Need to Succeed
           </h2>
-          <p class="section-subtitle">
+          <p class="text-md-h6 text-boady-2 line-height-1-7 opacity-92" style="color: #60a5fa;">
             Powerful tools and features designed for modern cloud-native applications
           </p>
-        </div>
-        <v-row class="feature-cards-row max-w-5xl">
-          <v-col cols="12" md="4" v-for="feature in features" :key="feature.title" class="feature-col">
-            <div class="home-card card-enhanced fade-in">
-              <div class="home-icon">
+        </v-col>
+        
+        <v-col 
+          cols="12" 
+          md="6" 
+          lg="4" 
+          v-for="feature in features" 
+          :key="feature.title"
+          class="mb-4"
+        >
+          <v-card 
+            class="feature-card fade-in h-100 d-flex flex-column"
+            elevation="8"
+            rounded="xl"
+          >
+            <v-card-text class="text-center d-flex flex-column flex-grow-1">
+              <div class="mb-6">
                 <v-icon :icon="feature.icon" size="48" color="primary"></v-icon>
               </div>
-              <h3 class="home-title">{{ feature.title }}</h3>
-              <p class="home-description">{{ feature.description }}</p>
-            </div>
-          </v-col>
-        </v-row>
-      </div>
-    </section>
+              
+              <h2 class="text-h5 font-weight-medium mb-4 text-white">
+                {{ feature.title }}
+              </h2>
+              
+              <p class="text-body-1 text-grey-300 flex-grow-1">
+                {{ feature.description }}
+              </p>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
     <!-- CTA Section -->
-    <section class="cta-section section-padding fade-in mt-6">
+    <section class="fade-in py-16 py-md-20">
       <div class="container">
         <div class="cta-content text-center">
-          <h2 class="cta-title">
+          <h2 class="text-h4 text-md-h3 font-weight-medium text-white mb-4">
             Ready to Transform Your Kubernetes Experience?
           </h2>
-          <p class="cta-description mx-4">
+          <p class="text-md-h6 text-boady-1 opacity-92 mb-8" style="color: #60a5fa;">
             Join thousands of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
           </p>
           <v-btn
             v-if="userStore.isLoggedIn"
             variant="outlined"
             color="white"
-            size="x-large"
+            size="large"
             to="/deploy"
           >
             Deploy Cluster
           </v-btn>
           <v-btn
-            v-else
-            variant="outlined"
-            color="white"
-            size="x-large"
-            to="/deploy"
-          >
+  v-else
+  variant="flat"
+  color="blue"
+  size="large"
+  to="/deploy"
+  class="hover-btn"
+>
+
             Start Your Free Trial
           </v-btn>
         </div>
@@ -269,9 +289,6 @@ const features = [
   padding: 6rem 0rem;
 }
 
-.cta-section {
-  padding-bottom: 8rem;
-}
 
 /* Remove any margin between sections */
 .hero-globe-section + .home-section {
@@ -346,10 +363,7 @@ const features = [
   max-width: 700px;
   margin: 0 auto;
   text-align: center;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3rem;
 }
 
 .cta-title {
@@ -368,20 +382,15 @@ const features = [
   font-weight: 400;
 }
 
-.cta-btn {
-  font-size: 1.25rem;
-  padding: 1.3rem 3.5rem;
-  border-radius: 1.5rem;
-  font-weight: 400;
-  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.18);
-  background: linear-gradient(90deg, #60a5fa 0%, #38bdf8 100%);
-  color: #fff;
-  transition: box-shadow 0.2s, transform 0.2s;
+
+.hover-btn {
+  transition: all 0.3s ease;
 }
 
-.cta-btn:hover {
-  box-shadow: 0 8px 32px 0 rgba(59,130,246,0.28);
-  transform: translateY(-2px) scale(1.04);
+.hover-btn:hover {
+  background-color: #1e88e5; /* darker blue on hover */
+  transform: translateY(-2px); /* small lift */
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); /* soft glow */
 }
 
 /* Responsive Design */
@@ -544,6 +553,19 @@ const features = [
   color: #94a3b8;
   line-height: 1.2;
   font-weight: 400;
+}
+
+/* Features card styling */
+.feature-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
 }
 
 .fade-in {
