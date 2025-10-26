@@ -251,7 +251,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			models.WithSeverity(models.NotificationSeveritySuccess),
 			models.WithNoPersist(),
 		)
-		if err := h.notificationService.Send(c.Request.Context(), notif); err != nil {
+		if err := h.notificationService.Send(context.Background(), notif); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
 		}
 	}

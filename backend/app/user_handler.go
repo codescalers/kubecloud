@@ -619,7 +619,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	}
 
 	notification := models.NewNotification(c.GetInt("user_id"), models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err = h.notificationService.Send(c, notification)
+	err = h.notificationService.Send(context.Background(), notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send password changed notification")
 	}
@@ -972,7 +972,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
 	}
 	notification := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err := h.notificationService.Send(c, notification)
+	err := h.notificationService.Send(context.Background(), notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key added notification")
 	}
@@ -1043,7 +1043,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was deleted from your account.", sshKey.Name),
 	}
 	n := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}), models.WithSeverity(models.NotificationSeveritySuccess))
-	if err := h.notificationService.Send(c, n); err != nil {
+	if err := h.notificationService.Send(context.Background(), n); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 
