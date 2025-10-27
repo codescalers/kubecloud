@@ -188,6 +188,10 @@ func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 		// Save GridClient state after node deployment
 		statemanager.SaveGridClientState(state, kubeClient)
 		statemanager.StoreCluster(state, cluster)
+
+		// Store the deployed node in state for verification step
+		state["node"] = node
+
 		return nil
 	}
 }
@@ -661,13 +665,26 @@ func getFromState[T any](state ewf.State, key string) (T, error) {
 		return zero, fmt.Errorf("missing '%s' in state", key)
 	}
 
-	val, ok := value.(T)
-	if !ok {
-		var zero T
-		logger.GetLogger().Error().Msgf("Expected '%s' to be of %+v, but got %+v", key, zero, value)
-		return zero, fmt.Errorf("invalid '%s' in state", key)
+	// Try direct type assertion first (for newly created values)
+	if val, ok := value.(T); ok {
+		return val, nil
 	}
-	return val, nil
+
+	// Handle the case where value was serialized/deserialized and became a map
+	// Use JSON marshaling/unmarshaling to convert map to struct
+	valueBytes, err := json.Marshal(value)
+	if err != nil {
+		var zero T
+		return zero, fmt.Errorf("failed to marshal %s value: %w", key, err)
+	}
+
+	var result T
+	if err := json.Unmarshal(valueBytes, &result); err != nil {
+		var zero T
+		return zero, fmt.Errorf("failed to unmarshal %s: %w", key, err)
+	}
+
+	return result, nil
 }
 
 func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
@@ -761,8 +778,8 @@ func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
 
 func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		node, ok := state["node"].(kubedeployer.Node)
-		if !ok {
+		node, err := getFromState[kubedeployer.Node](state, "node")
+		if err != nil {
 			return fmt.Errorf("missing or invalid 'node' in state for verification")
 		}
 

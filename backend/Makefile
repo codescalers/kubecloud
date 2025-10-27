@@ -31,3 +31,11 @@ check-swag-deps:
 check-postman-deps:
 	@which npx > /dev/null || (echo "Error: npx not found. Please install Node.js and npm" && exit 1)
 	@npx openapi-to-postmanv2 --version > /dev/null 2>&1 || npm install -g openapi-to-postmanv2
+
+start-db: 
+	@docker run -d \
+		--name kcdb \
+		-v pgdata:/var/lib/postgresql/data \
+		-e POSTGRES_PASSWORD=password \
+		-p 5432:5432 \
+		postgres
