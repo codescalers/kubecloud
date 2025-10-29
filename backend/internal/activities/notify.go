@@ -386,9 +386,8 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 		}
 	}
 
-	status := "funds_failed"
-	subject := "Adding Funds Failed"
-	message := "Failed to add funds to your account"
+	var status, subject, message string
+
 	if err == nil {
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
@@ -400,6 +399,8 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
 		}
 	} else {
+		status = "funds_failed"
+		subject = "Adding Funds Failed"
 		message = fmt.Sprintf("Failed to add funds to your account: %s", err.Error())
 	}
 	payloadData := map[string]string{
