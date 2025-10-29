@@ -90,16 +90,21 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 		statemanager.StoreCluster(state, cluster)
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
+			nodeIDs := make([]uint32, 0, len(cluster.Nodes))
+			for _, node := range cluster.Nodes {
+				nodeIDs = append(nodeIDs, node.NodeID)
+			}
+
 			if isWorkloadAlreadyDeployedError(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("network already deployed for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("network already deployed for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("network invalid for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("network invalid for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, ewf.ErrFailWorkflowNow)
 			}
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to deploy network for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
+			return fmt.Errorf("failed to deploy network for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, err)
 		}
 
 		// Save GridClient state after network deployment
