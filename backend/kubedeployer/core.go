@@ -15,24 +15,44 @@ func (c *Cluster) GetLeaderNode() (Node, error) {
 }
 
 func (n *Node) AssignNodeIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string) error {
-	logger.GetLogger().Debug().Msgf("Assigning IP for node %s in network %s", n.Name, networkName)
+	logger.GetLogger().Debug().
+		Str("node_name", n.Name).
+		Uint32("node_id", n.NodeID).
+		Str("network", networkName).
+		Msg("Assigning IP for node")
+
 	ip, err := getIpForVm(ctx, gridClient, networkName, n.NodeID)
 	if err != nil {
 		return fmt.Errorf("failed to get IP for node %s: %v", n.Name, err)
 	}
+
 	n.IP = ip
+	logger.GetLogger().Debug().
+		Str("node_name", n.Name).
+		Uint32("node_id", n.NodeID).
+		Str("ip", ip).
+		Str("network", networkName).
+		Msg("IP assigned successfully")
+
 	return nil
 }
 
 func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, masterPubKey string) error {
-	logger.GetLogger().Debug().Msgf("Deploying node %s in cluster %s", node.Name, cluster.Name)
+	logger.GetLogger().Info().
+		Str("node_name", node.Name).
+		Uint32("node_id", node.NodeID).
+		Str("cluster", cluster.Name).
+		Str("node_type", string(node.Type)).
+		Msg("Starting node deployment")
+
 	var leaderIP string
 	if node.Type == NodeTypeLeader {
 		leaderIP = ""
+		logger.GetLogger().Debug().Str("node_name", node.Name).Msg("Deploying as leader node")
 	} else {
 		leaderNode, err := cluster.GetLeaderNode()
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msgf("Failed to get leader node for cluster %s", cluster.Name)
+			logger.GetLogger().Error().Err(err).Str("cluster", cluster.Name).Msg("Failed to get leader node")
 			return fmt.Errorf("failed to get leader node IP: %v", err)
 		}
 
@@ -57,21 +77,43 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		return fmt.Errorf("failed to create VM for node: %v", err)
 	}
 
-	logger.GetLogger().Debug().Str("node_name", node.Name).Msg("Starting deployment to grid")
+	logger.GetLogger().Debug().
+		Str("node_name", node.Name).
+		Uint32("node_id", node.NodeID).
+		Str("deployment_name", depl.Name).
+		Msg("Deploying to grid")
+
 	if err := c.GridClient.DeploymentDeployer.Deploy(ctx, &depl); err != nil {
-		logger.GetLogger().Error().Err(err).Str("node_name", node.Name).Msg("Failed to deploy node to grid")
+		logger.GetLogger().Error().
+			Err(err).
+			Str("node_name", node.Name).
+			Uint32("node_id", node.NodeID).
+			Msg("Failed to deploy node to grid")
 		return fmt.Errorf("failed to deploy node %s: %v", node.Name, err)
 	}
+
+	logger.GetLogger().Debug().
+		Str("node_name", node.Name).
+		Uint32("node_id", node.NodeID).
+		Msg("Loading deployment result from grid")
 
 	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
 	if err != nil {
 		return fmt.Errorf("failed to load deployment for node %s: %v", node.Name, err)
 	}
-	logger.GetLogger().Debug().Str("node_name", node.Name).Msg("Grid deployment successful")
+
+	logger.GetLogger().Debug().
+		Str("node_name", node.Name).
+		Uint32("node_id", node.NodeID).
+		Msg("Grid deployment successful")
 
 	res, err := nodeFromDeployment(result)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("node_name", node.Name).Msg("Failed to extract node from deployment")
+		logger.GetLogger().Error().
+			Err(err).
+			Str("node_name", node.Name).
+			Uint32("node_id", node.NodeID).
+			Msg("Failed to extract node from deployment")
 		return fmt.Errorf("failed to get node from deployment: %v", err)
 	}
 	res.OriginalName = node.OriginalName
@@ -83,7 +125,11 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		if n.Name == res.Name {
 			cluster.Nodes[i] = res
 			updated = true
-			logger.GetLogger().Debug().Str("node_name", res.Name).Msg("Updated existing node in cluster")
+			logger.GetLogger().Info().
+				Str("node_name", res.Name).
+				Uint32("node_id", res.NodeID).
+				Uint64("contract_id", res.ContractID).
+				Msg("Updated existing node in cluster")
 			break
 		}
 	}
@@ -106,11 +152,22 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 		}
 	}
 
+	logger.GetLogger().Info().
+		Str("network", cluster.Network.Name).
+		Str("cluster", cluster.Name).
+		Interface("node_ids", nodeIDs).
+		Int("node_count", len(nodeIDs)).
+		Msg("Deploying network")
+
 	var net workloads.ZNet
 	var err error
 
 	if len(cluster.Network.NodeDeploymentID) > 0 {
-		logger.GetLogger().Debug().Msgf("updating network workload for network: %s", cluster.Network.Name)
+		logger.GetLogger().Debug().
+			Str("network", cluster.Network.Name).
+			Int("existing_nodes", len(cluster.Network.Nodes)).
+			Msg("Updating existing network workload")
+
 		net = cluster.Network
 
 		for _, nodeID := range nodeIDs {
@@ -139,9 +196,17 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 			}
 		}
 
-		logger.GetLogger().Debug().Msgf("Appending nodes %v to existing network %s. Total nodes: %v", nodeIDs, cluster.Network.Name, net.Nodes)
+		logger.GetLogger().Debug().
+			Str("network", cluster.Network.Name).
+			Interface("total_nodes", net.Nodes).
+			Msg("Network update prepared")
 	} else {
-		logger.GetLogger().Debug().Msgf("Creating new network workload for network: %s", cluster.Network.Name)
+		logger.GetLogger().Debug().
+			Str("network", cluster.Network.Name).
+			Str("project", cluster.ProjectName).
+			Interface("node_ids", nodeIDs).
+			Msg("Creating new network workload")
+
 		net, err = createNetworkWorkload(cluster.Network.Name, cluster.ProjectName, nodeIDs)
 		if err != nil {
 			return fmt.Errorf("failed to create network workload: %v", err)
@@ -155,6 +220,11 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 
 	cluster.Network = net
 
+	logger.GetLogger().Info().
+		Str("network", net.Name).
+		Int("contract_count", len(net.NodeDeploymentID)).
+		Msg("Network deployed successfully")
+
 	return nil
 }
 
@@ -164,21 +234,37 @@ func (c *Client) CancelCluster(ctx context.Context, cluster Cluster) error {
 		return fmt.Errorf("failed to get cluster contract IDs: %v", err)
 	}
 
+	logger.GetLogger().Debug().
+		Str("cluster", cluster.Name).
+		Int("contract_count", len(clusterContracts)).
+		Interface("contract_ids", clusterContracts).
+		Msg("Collected cluster contracts")
+
 	if err := c.cancelNodeContracts(clusterContracts, cluster.Name); err != nil {
 		return fmt.Errorf("failed to cancel cluster contracts: %v", err)
 	}
+
+	logger.GetLogger().Info().
+		Str("cluster", cluster.Name).
+		Int("contracts_canceled", len(clusterContracts)).
+		Msg("Cluster canceled successfully")
 
 	return nil
 }
 
 func (c *Client) CancelAllContractsForUser(ctx context.Context, contractIDs []uint64) error {
 	if len(contractIDs) == 0 {
+		logger.GetLogger().Debug().Msg("No contracts to cancel for user")
 		return nil
 	}
 
 	if err := c.cancelNodeContracts(contractIDs, "user"); err != nil {
 		return fmt.Errorf("failed to cancel user contracts: %v", err)
 	}
+
+	logger.GetLogger().Info().
+		Int("contracts_canceled", len(contractIDs)).
+		Msg("User contracts canceled successfully")
 
 	return nil
 }

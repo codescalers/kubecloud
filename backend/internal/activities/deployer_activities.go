@@ -54,7 +54,7 @@ func ensureClient(state ewf.State) {
 	// Use the statemanager to get or create client
 	_, err = statemanager.GetKubeClient(state, config)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to ensure kubeclient")
+		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Msg("Failed to ensure kubeclient")
 		return
 	}
 
@@ -92,14 +92,14 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("network already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("network already deployed for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("network invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("network invalid for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
 			}
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to deploy network: %w", err)
+			return fmt.Errorf("failed to deploy network for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 
 		// Save GridClient state after network deployment
@@ -138,7 +138,7 @@ func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 
 		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to update network: %w", err)
+			return fmt.Errorf("failed to update network for cluster %s, node %s (user_id=%d): %w", cluster.Name, node.Name, config.UserID, err)
 		}
 
 		// Save GridClient state after network update
@@ -175,12 +175,12 @@ func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to assign IP for node %s: %w", node.Name, err)
+			return fmt.Errorf("failed to assign IP for node %s, cluster %s (user_id=%d): %w", node.Name, cluster.Name, config.UserID, err)
 		}
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to deploy node %s to existing cluster: %w", node.Name, err)
+			return fmt.Errorf("failed to deploy node %s to cluster %s (user_id=%d): %w", node.Name, cluster.Name, config.UserID, err)
 		}
 
 		metrics.IncrementClusterDeploymentSuccess()
@@ -223,21 +223,21 @@ func DeployNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 
 		if err := node.AssignNodeIP(ctx, kubeClient.GridClient, cluster.Network.Name); err != nil {
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to assign node IPs: %w", err)
+			return fmt.Errorf("failed to assign node IPs for node %s (user_id=%d): %w", node.Name, config.UserID, err)
 		}
 		cluster.Nodes[nodeIdx].IP = node.IP
 
 		if err := kubeClient.DeployNode(ctx, &cluster, node, config.SSHPublicKey); err != nil {
 			if isWorkloadAlreadyDeployedError(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("node already deployed for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("node %s already deployed for cluster %s (user_id=%d): %w", node.Name, cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				return fmt.Errorf("node invalid for cluster %s: %w", cluster.Name, ewf.ErrFailWorkflowNow)
+				return fmt.Errorf("node %s invalid for cluster %s (user_id=%d): %w", node.Name, cluster.Name, config.UserID, ewf.ErrFailWorkflowNow)
 			}
 			metrics.IncrementClusterDeploymentFailure()
-			return fmt.Errorf("failed to deploy node %s: %w", node.Name, err)
+			return fmt.Errorf("failed to deploy node %s to cluster %s (user_id=%d): %w", node.Name, cluster.Name, config.UserID, err)
 		}
 
 		metrics.IncrementClusterDeploymentSuccess()
@@ -274,19 +274,19 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 		}
 
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
-			return fmt.Errorf("failed to set cluster result: %w", err)
+			return fmt.Errorf("failed to set cluster result for %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 
 		existingCluster, err := db.GetClusterByName(config.UserID, cluster.ProjectName)
 		if err != nil { // cluster not found, create a new one
 			if err := db.CreateCluster(config.UserID, dbCluster); err != nil {
-				return fmt.Errorf("failed to create cluster in database: %w", err)
+				return fmt.Errorf("failed to create cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
 			}
 		} else { // cluster exists, update it
 			existingCluster.Result = dbCluster.Result
 			existingCluster.Kubeconfig = dbCluster.Kubeconfig
 			if err := db.UpdateCluster(&existingCluster); err != nil {
-				return fmt.Errorf("failed to update cluster in database: %w", err)
+				return fmt.Errorf("failed to update cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
 			}
 		}
 
@@ -320,18 +320,18 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 
 			dbCluster, err := db.GetClusterByName(config.UserID, projectName)
 			if err != nil {
-				return fmt.Errorf("failed to get cluster from database: %w", err)
+				return fmt.Errorf("failed to get cluster %s from database (user_id=%d): %w", projectName, config.UserID, err)
 			}
 
 			cluster, err = dbCluster.GetClusterResult()
 			if err != nil {
-				return fmt.Errorf("failed to get cluster result: %w", err)
+				return fmt.Errorf("failed to get cluster result for %s (user_id=%d): %w", projectName, config.UserID, err)
 			}
 			state["cluster"] = cluster
 		}
 
 		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {
-			return fmt.Errorf("failed to cancel deployment: %w", err)
+			return fmt.Errorf("failed to cancel deployment for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 
 		metrics.DecActiveClusterCount()
@@ -352,7 +352,7 @@ func RemoveClusterFromDBStep(db models.DB) ewf.StepFn {
 		}
 
 		if err := db.DeleteCluster(config.UserID, projectName); err != nil {
-			return fmt.Errorf("failed to delete cluster from database: %w", err)
+			return fmt.Errorf("failed to delete cluster %s from database (user_id=%d): %w", projectName, config.UserID, err)
 		}
 
 		return nil
@@ -368,14 +368,14 @@ func GatherAllContractIDsStep(db models.DB) ewf.StepFn {
 
 		clusters, err := db.ListUserClusters(config.UserID)
 		if err != nil {
-			return fmt.Errorf("failed to list user clusters: %w", err)
+			return fmt.Errorf("failed to list user clusters (user_id=%d): %w", config.UserID, err)
 		}
 
 		var allContractIDs []uint64
 		for _, cluster := range clusters {
 			clusterResult, err := cluster.GetClusterResult()
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+				logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Str("project_name", cluster.ProjectName).Int("user_id", config.UserID).Msg("Failed to deserialize cluster result")
 				continue
 			}
 
@@ -434,7 +434,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 		}
 
 		if err := kubeClient.CancelAllContractsForUser(ctx, contractIDs); err != nil {
-			return fmt.Errorf("failed to cancel contracts: %w", err)
+			return fmt.Errorf("failed to cancel %d contracts (user_id=%d): %w", len(contractIDs), config.UserID, err)
 		}
 
 		return nil
@@ -449,7 +449,7 @@ func DeleteAllUserClustersStep(db models.DB) ewf.StepFn {
 		}
 
 		if err := db.DeleteAllUserClusters(config.UserID); err != nil {
-			return fmt.Errorf("failed to delete all user clusters from database: %w", err)
+			return fmt.Errorf("failed to delete all user clusters from database (user_id=%d): %w", config.UserID, err)
 		}
 
 		return nil
@@ -483,7 +483,7 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 		nodeName = kubedeployer.GetNodeName(config.UserID, existingCluster.Name, nodeName)
 
 		if err := kubeClient.RemoveNode(ctx, &existingCluster, nodeName); err != nil {
-			return fmt.Errorf("failed to remove node %s from existing cluster: %w", nodeName, err)
+			return fmt.Errorf("failed to remove node %s from cluster %s (user_id=%d): %w", nodeName, existingCluster.Name, config.UserID, err)
 		}
 
 		// Save GridClient state after node removal
@@ -526,7 +526,7 @@ func closeClient(ctx context.Context, wf *ewf.Workflow, err error) {
 		kubeClient.Close()
 		delete(wf.State, "kubeclient")
 	} else {
-		logger.GetLogger().Warn().Msg("No kubeclient found in workflow state to close")
+		logger.GetLogger().Warn().Str("workflow_name", wf.Name).Msg("No kubeclient found in workflow state to close")
 	}
 
 }
@@ -544,7 +544,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
 			if rollbackErr != nil {
-				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+				logger.GetLogger().Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Failed to create rollback workflow")
 				return
 			}
 
@@ -558,7 +558,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			// wait the rollback workflow to finish before closing the client
 			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+				logger.GetLogger().Error().Err(err).Str("project_name", cluster.ProjectName).Str("workflow_name", wf.Name).Msg("Failed to run rollback workflow")
 				return
 			}
 
@@ -731,11 +731,11 @@ func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (s
 	// when updating existing cluster
 	existingCluster, err := db.GetClusterByName(config.UserID, cluster.Name)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", fmt.Errorf("failed to query cluster from database: %w", err)
+		return "", fmt.Errorf("failed to query cluster %s from database (user_id=%d): %w", cluster.Name, config.UserID, err)
 	}
 
 	if existingCluster.ID != 0 && existingCluster.Kubeconfig != "" {
-		logger.GetLogger().Debug().Msgf("Using kubeconfig from DB for cluster %s", existingCluster.ProjectName)
+		logger.GetLogger().Debug().Str("cluster", existingCluster.ProjectName).Msgf("Using kubeconfig from DB for cluster %s", existingCluster.ProjectName)
 		return existingCluster.Kubeconfig, nil
 	}
 
@@ -743,25 +743,25 @@ func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (s
 	if existingCluster.ID != 0 {
 		existingClusterResult, err := existingCluster.GetClusterResult()
 		if err != nil {
-			return "", fmt.Errorf("failed to get cluster result: %w", err)
+			return "", fmt.Errorf("failed to get cluster result for %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 		master, err = existingClusterResult.GetLeaderNode()
 		if err != nil {
-			return "", fmt.Errorf("failed to get leader node: %w", err)
+			return "", fmt.Errorf("failed to get leader node for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 	} else {
 		master, err = cluster.GetLeaderNode()
 		if err != nil {
-			return "", fmt.Errorf("failed to get leader node: %w", err)
+			return "", fmt.Errorf("failed to get leader node for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 	}
 
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read SSH private key: %w", err)
+		return "", fmt.Errorf("failed to read SSH private key (user_id=%d): %w", config.UserID, err)
 	}
 
-	logger.GetLogger().Debug().Msg("Fetching kubeconfig from leader node via SSH")
+	logger.GetLogger().Debug().Str("cluster", cluster.Name).Msg("Fetching kubeconfig from leader node via SSH")
 	return internal.GetKubeconfigViaSSH(string(privateKeyBytes), &master)
 }
 
@@ -780,7 +780,7 @@ func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		node, err := getFromState[kubedeployer.Node](state, "node")
 		if err != nil {
-			return fmt.Errorf("missing or invalid 'node' in state for verification")
+			return fmt.Errorf("missing or invalid 'node' in state for verification: %w", err)
 		}
 
 		kubeconfig, err := retrieveKubeconfig(state, db, privateKeyPath)
@@ -791,12 +791,12 @@ func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
 
 		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
 		if err != nil {
-			return fmt.Errorf("failed to parse kubeconfig: %w", err)
+			return fmt.Errorf("failed to parse kubeconfig for node %s: %w", node.Name, err)
 		}
 
 		clientset, err := kubernetes.NewForConfig(restConfig)
 		if err != nil {
-			return fmt.Errorf("failed to create kubernetes client: %w", err)
+			return fmt.Errorf("failed to create kubernetes client for node %s: %w", node.Name, err)
 		}
 
 		n, err := clientset.CoreV1().Nodes().Get(ctx, node.Name, metav1.GetOptions{})
@@ -839,17 +839,17 @@ func VerifyClusterReadyStep() ewf.StepFn {
 
 		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
 		if err != nil {
-			return fmt.Errorf("failed to parse kubeconfig: %w", err)
+			return fmt.Errorf("failed to parse kubeconfig for cluster %s: %w", cluster.Name, err)
 		}
 
 		clientset, err := kubernetes.NewForConfig(restConfig)
 		if err != nil {
-			return fmt.Errorf("failed to create kubernetes client: %w", err)
+			return fmt.Errorf("failed to create kubernetes client for cluster %s: %w", cluster.Name, err)
 		}
 
 		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to list nodes: %w", err)
+			return fmt.Errorf("failed to list nodes for cluster %s: %w", cluster.Name, err)
 		}
 
 		for _, n := range nodes.Items {
@@ -861,7 +861,7 @@ func VerifyClusterReadyStep() ewf.StepFn {
 				}
 			}
 			if !ready {
-				return fmt.Errorf("node %s is not ready", n.Name)
+				return fmt.Errorf("node %s is not ready in cluster %s", n.Name, cluster.Name)
 			}
 		}
 

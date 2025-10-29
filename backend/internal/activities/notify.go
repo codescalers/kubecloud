@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/constants"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
+	"kubecloud/kubedeployer"
 	"kubecloud/models"
 	"slices"
 	"strconv"
@@ -66,6 +67,8 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 			if err := notificationService.Send(ctx, n); err != nil {
 				logger.GetLogger().Error().
 					Str("notification_id", n.ID).
+					Str("notification_type", string(n.Type)).
+					Int("user_id", n.UserID).
 					Err(err).
 					Msg("Failed to send notification")
 			}
@@ -76,7 +79,7 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
 	config, confErr := getConfig(wf.State)
 	if confErr != nil {
-		logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state")
+		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'config' in workflow state")
 		return &models.Notification{}
 	}
 
@@ -85,11 +88,31 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 
 	if err != nil {
 		var clusterName string
+		var nodeInfo string
+		var nodeID uint32
 		message := fmt.Sprintf("%s failed", workflowDesc)
+
 		if cluster, clusterErr := statemanager.GetCluster(wf.State); clusterErr == nil {
 			clusterName = cluster.Name
 			message = fmt.Sprintf("%s for cluster '%s' failed", workflowDesc, cluster.Name)
 
+			// Add node information if available
+			if node, nodeErr := getFromState[kubedeployer.Node](wf.State, "node"); nodeErr == nil {
+				nodeInfo = node.Name
+				nodeID = node.NodeID
+				message = fmt.Sprintf("%s for cluster '%s', node '%s' (node_id=%d) failed", workflowDesc, cluster.Name, node.Name, node.NodeID)
+			}
+		}
+
+		payloadData := map[string]string{
+			"workflow_name": workflowDesc,
+			"cluster_name":  clusterName,
+			"node_name":     nodeInfo,
+			"user_id":       fmt.Sprintf("%d", config.UserID),
+			"timestamp":     time.Now().Local().Format(TimestampFormat),
+		}
+		if nodeID > 0 {
+			payloadData["node_id"] = fmt.Sprintf("%d", nodeID)
 		}
 
 		notificationPayload = notification.MergePayload(notification.CommonPayload{
@@ -97,11 +120,7 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 			Error:   err.Error(),
 			Subject: fmt.Sprintf("%s failed", workflowDesc),
 			Status:  "failed",
-		}, map[string]string{
-			"workflow_name": workflowDesc,
-			"cluster_name":  clusterName,
-			"timestamp":     time.Now().Local().Format(TimestampFormat),
-		})
+		}, payloadData)
 
 		notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, notificationPayload)
 		return notification
@@ -115,6 +134,7 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 		}, map[string]string{
 			"workflow_name": getWorkflowDescription(wf.Name),
 			"cluster_name":  cluster.Name,
+			"user_id":       fmt.Sprintf("%d", config.UserID),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		})
 
@@ -134,6 +154,7 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 			"cluster_name":  cluster.Name,
 			"node_count":    fmt.Sprintf("%d", nodeCount),
 			"total_steps":   fmt.Sprintf("%d", totalSteps),
+			"user_id":       fmt.Sprintf("%d", config.UserID),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		})
 	}
@@ -150,7 +171,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 
 	config, confErr := getConfig(state)
 	if confErr != nil {
-		logger.GetLogger().Error().Msg("Missing or invalid 'config' in workflow state for step notification")
+		logger.GetLogger().Error().Str("workflow_name", workflowName).Str("step_name", stepName).Msg("Missing or invalid 'config' in workflow state for step notification")
 		return
 	}
 
@@ -192,6 +213,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 			"workflow_name": workflowName,
 			"step_name":     stepName,
 			"cluster_name":  clusterName,
+			"user_id":       fmt.Sprintf("%d", config.UserID),
 			"current_step":  strconv.Itoa(current),
 			"total_steps":   strconv.Itoa(total),
 		},
@@ -210,7 +232,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 	)
 	err = notificationService.Send(context.Background(), notification)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to send notification")
+		logger.GetLogger().Error().Err(err).Str("workflow_name", workflowName).Str("step_name", stepName).Msg("Failed to send notification")
 	}
 }
 
@@ -286,7 +308,7 @@ func isDeployStep(stepName string) bool {
 func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, err error) []*models.Notification {
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
+		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -305,11 +327,11 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 	if wf.Name == constants.WorkflowAdminCreditBalance {
 		adminID, ok := wf.State["admin_id"].(int)
 		if !ok {
-			logger.GetLogger().Error().Msg("Missing or invalid 'admin_id' in workflow state")
+			logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'admin_id' in workflow state")
 			return nil
 		}
 		payloadData := notification.CommonPayload{
-			Message: fmt.Sprintf("User %d was credited successfully money transferred successfully to their account", userID),
+			Message: fmt.Sprintf("User %d was credited successfully money transferred successfully to their account (Amount: $%.2f)", userID, amountUSD),
 			Subject: "Money transfer to user's account succeeded",
 			Status:  "succeeded",
 		}
@@ -318,14 +340,20 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 			severity = models.NotificationSeverityError
 			payloadData.Message = fmt.Sprintf("Money transfer to user %d's account failed", userID)
 			payloadData.Subject = "Money transfer to user's account failed"
+			payloadData.Error = err.Error()
 			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
 				"workflow_name": getWorkflowDescription(wf.Name),
+				"user_id":       fmt.Sprintf("%d", userID),
+				"admin_id":      fmt.Sprintf("%d", adminID),
 				"timestamp":     time.Now().Local().Format(TimestampFormat),
 			}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
 			return []*models.Notification{adminNotif}
 		}
 		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
 			"workflow_name": getWorkflowDescription(wf.Name),
+			"user_id":       fmt.Sprintf("%d", userID),
+			"admin_id":      fmt.Sprintf("%d", adminID),
+			"amount":        fmt.Sprintf("%.2f", amountUSD),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
 		}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
 		// also notify the user about success
@@ -335,6 +363,7 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 			Status:  "succeeded",
 		}, map[string]string{
 			"workflow_name": getWorkflowDescription(wf.Name),
+			"user_id":       fmt.Sprintf("%d", userID),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
 			"amount":        fmt.Sprintf("%.2f", amountUSD),
 		})
@@ -368,11 +397,14 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 		if wf.Name == constants.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
-			message = "Voucher redeemed successfully."
+			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
 		}
+	} else {
+		message = fmt.Sprintf("Failed to add funds to your account: %s", err.Error())
 	}
 	payloadData := map[string]string{
 		"workflow_name": getWorkflowDescription(wf.Name),
+		"user_id":       fmt.Sprintf("%d", userID),
 		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 	if amountUSD > 0 {
@@ -402,7 +434,7 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
+		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -426,23 +458,23 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	var subject, message string
 	//default workflow reserve node
 	subject = "Node Reserved Successfully"
-	message = fmt.Sprintf("Node %d has been reserved successfully", nodeID)
+	message = fmt.Sprintf("Node %d has been reserved successfully (contract_id=%d)", nodeID, contractID)
 	severity := models.NotificationSeveritySuccess
 	if err == nil {
 		if wf.Name == constants.WorkflowUnreserveNode {
 			subject = "Node Unreserved Successfully"
-			message = fmt.Sprintf("Node %d has been unreserved successfully", nodeID)
+			message = fmt.Sprintf("Node %d has been unreserved successfully (contract_id=%d)", nodeID, contractID)
 		}
 	} else {
 		severity = models.NotificationSeverityError
 		subject = "Node Reservation Failed"
-		message = fmt.Sprintf("Failed to reserve node %d", nodeID)
+		message = fmt.Sprintf("Failed to reserve node %d: %s", nodeID, err.Error())
 		if wf.Name == constants.WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
-			message = fmt.Sprintf("Failed to unreserve node %d", nodeID)
+			message = fmt.Sprintf("Failed to unreserve node %d: %s", nodeID, err.Error())
 
 			if strings.Contains(err.Error(), constants.NodeHasActiveContracts) {
-				message = fmt.Sprintf("Failed to unreserve node %d. This node has active workloads on it, please remove all deployments from it first", nodeID)
+				message = fmt.Sprintf("Failed to unreserve node %d (contract_id=%d). This node has active workloads on it, please remove all deployments from it first", nodeID, contractID)
 			}
 		}
 	}
@@ -450,6 +482,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	// Build payload data
 	payloadData := map[string]string{
 		"workflow_name": getWorkflowDescription(wf.Name),
+		"user_id":       fmt.Sprintf("%d", userID),
 		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 	if nodeID > 0 {
@@ -481,7 +514,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Msg("Missing or invalid 'user_id' in workflow state")
+		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -502,15 +535,16 @@ func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 	} else {
 		severity = models.NotificationSeverityError
 		subject = "Account Verification Failed"
-		message = "Account verification process failed"
+		message = fmt.Sprintf("Account verification process failed: %s", err.Error())
 		if wf.Name == constants.WorkflowUserRegistration {
 			subject = "User Registration Failed"
-			message = "User registration process failed"
+			message = fmt.Sprintf("User registration process failed: %s", err.Error())
 		}
 	}
 
 	payloadData := map[string]string{
 		"workflow_name": getWorkflowDescription(wf.Name),
+		"user_id":       fmt.Sprintf("%d", userID),
 		"timestamp":     time.Now().Local().Format(TimestampFormat),
 	}
 
