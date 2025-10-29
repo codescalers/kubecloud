@@ -9,7 +9,6 @@ import (
 	"kubecloud/internal/notification"
 	"kubecloud/middlewares"
 	"kubecloud/models"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -373,9 +372,6 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	// Start command socket
-	go app.startCommandSocket()
-
 	app.handlers.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
@@ -428,119 +424,6 @@ func (app *App) Shutdown(ctx context.Context) error {
 	app.gridClient.Close()
 
 	logger.CloseLogger()
-
-	return nil
-}
-
-func (app *App) startCommandSocket() {
-	socketPath := "/tmp/myceliumcloud.sock"
-
-	os.Remove(socketPath)
-
-	listener, err := net.Listen("unix", socketPath)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create command socket")
-		return
-	}
-	defer listener.Close()
-	defer os.Remove(socketPath)
-
-	logger.GetLogger().Info().Str("socket", socketPath).Msg("Command socket started")
-
-	for {
-		select {
-		case <-app.appCtx.Done():
-			logger.GetLogger().Info().Msg("command socket stopping")
-			return
-		default:
-		}
-
-		if unixListener, ok := listener.(*net.UnixListener); ok {
-			if err := unixListener.SetDeadline(time.Now().Add(1 * time.Second)); err != nil {
-				logger.GetLogger().Error().Err(err).Msg("failed to set deadline on listener")
-			}
-		}
-
-		conn, err := listener.Accept()
-
-		if err == nil {
-			go app.handleSocketCommand(conn)
-			continue
-		}
-
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			continue
-		}
-
-		if app.appCtx.Err() != nil {
-			return
-		}
-
-		logger.GetLogger().Error().Err(err).Msg("socket accept error")
-		continue
-	}
-}
-
-func (app *App) handleSocketCommand(conn net.Conn) {
-	defer conn.Close()
-
-	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to set read deadline")
-		return
-	}
-
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		if _, writeErr := conn.Write([]byte("ERROR: Failed to read command\n")); writeErr != nil {
-			logger.GetLogger().Error().Err(writeErr).Msg("failed to write error response")
-		}
-		return
-	}
-
-	command := strings.TrimSpace(string(buffer[:n]))
-	logger.GetLogger().Debug().Str("command", command).Msg("Received socket command")
-
-	if command == "reload-notifications" {
-		app.handleReloadNotifications(conn)
-		return
-	}
-
-	response := fmt.Sprintf("ERROR: Unknown command '%s'\n", command)
-	if _, err := conn.Write([]byte(response)); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to write error response")
-	}
-	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
-}
-
-func (app *App) handleReloadNotifications(conn net.Conn) {
-	err := app.reloadNotificationConfig()
-
-	if err != nil {
-		response := fmt.Sprintf("ERROR: %v\n", err)
-		if _, writeErr := conn.Write([]byte(response)); writeErr != nil {
-			logger.GetLogger().Error().Err(writeErr).Msg("failed to write error response")
-		}
-		logger.GetLogger().Error().Err(err).Msg("Failed to reload notification config via socket")
-		return
-	}
-
-	if _, err := conn.Write([]byte("OK: Notification config reloaded successfully\n")); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to write success response")
-		return
-	}
-	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
-}
-
-func (app *App) reloadNotificationConfig() error {
-	cfg, err := internal.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	if err = app.notificationService.ReloadNotificationConfig(cfg.Notification); err != nil {
-		return fmt.Errorf("failed to reload notification config: %w", err)
-	}
 
 	return nil
 }
