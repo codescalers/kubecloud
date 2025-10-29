@@ -64,7 +64,16 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 }
 
 func hookStepStarted(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-	logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
+	logEvent := logger.GetLogger().Info().
+		Str("workflow_name", w.Name).
+		Str("step_name", step.Name)
+
+	// Add node_id if available
+	if node, err := getFromState[kubedeployer.Node](w.State, "node"); err == nil && node.NodeID > 0 {
+		logEvent = logEvent.Uint32("node_id", node.NodeID)
+	}
+
+	logEvent.Msg("Starting step")
 }
 
 func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
@@ -77,9 +86,28 @@ func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
 
 func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
+		logEvent := logger.GetLogger().Error().
+			Err(err).
+			Str("workflow_name", w.Name).
+			Str("step_name", step.Name)
+
+		// Add node_id if available
+		if node, nodeErr := getFromState[kubedeployer.Node](w.State, "node"); nodeErr == nil && node.NodeID > 0 {
+			logEvent = logEvent.Uint32("node_id", node.NodeID)
+		}
+
+		logEvent.Msg("Step failed")
 	} else {
-		logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
+		logEvent := logger.GetLogger().Info().
+			Str("workflow_name", w.Name).
+			Str("step_name", step.Name)
+
+		// Add node_id if available
+		if node, nodeErr := getFromState[kubedeployer.Node](w.State, "node"); nodeErr == nil && node.NodeID > 0 {
+			logEvent = logEvent.Uint32("node_id", node.NodeID)
+		}
+
+		logEvent.Msg("Step completed successfully")
 	}
 }
 func hookClusterHealthCheck(notificationService *notification.NotificationService) ewf.AfterWorkflowHook {
@@ -176,13 +204,18 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 
 		node, err := getFromState[kubedeployer.Node](wf.State, "node")
 		if err != nil {
-			logger.GetLogger().Error().Msg("missing or invalid 'node' in workflow state")
+			logger.GetLogger().Error().Err(err).Str("workflow_name", wf.Name).Msg("missing or invalid 'node' in workflow state")
 			return
 		}
 
 		rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedAddNode)
 		if rollbackErr != nil {
-			logger.GetLogger().Error().Err(rollbackErr).Msg("Failed to create rollback workflow")
+			logger.GetLogger().Error().
+				Err(rollbackErr).
+				Str("node", node.Name).
+				Uint32("node_id", node.NodeID).
+				Str("workflow_name", wf.Name).
+				Msg("Failed to create rollback workflow")
 			return
 		}
 
@@ -196,7 +229,12 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 
 		// wait the rollback workflow to finish before closing the client
 		if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to run rollback workflow")
+			logger.GetLogger().Error().
+				Err(err).
+				Str("node", node.Name).
+				Uint32("node_id", node.NodeID).
+				Str("workflow_name", wf.Name).
+				Msg("Failed to run rollback workflow")
 			return
 		}
 

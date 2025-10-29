@@ -50,7 +50,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 		// Reserve the node
 		contractID, err := substrateClient.CreateRentContract(identity, nodeID, nil)
 		if err != nil {
-			return fmt.Errorf("failed to create rent contract: %w", err)
+			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
 
 		err = db.CreateUserNode(&models.UserNodes{
@@ -60,7 +60,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 			CreatedAt:  time.Now(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create user node: %w", err)
+			return fmt.Errorf("failed to create user node record for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
 
 		state["contract_id"] = contractID
