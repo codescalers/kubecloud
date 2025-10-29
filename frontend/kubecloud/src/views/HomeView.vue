@@ -466,7 +466,6 @@ const features = [
   font-size: clamp(3rem, 7vw, 4rem);
   font-weight: 500;
   color: #fff;
-  margin-bottom: 3rem;
   letter-spacing: -1px;
   line-height: 1.1;
 }

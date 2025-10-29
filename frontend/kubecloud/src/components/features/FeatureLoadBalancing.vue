@@ -4,7 +4,7 @@
       <!-- Left: Text -->
        <v-col cols="12" md="5" class="d-flex flex-column align-center align-md-start text-white order-2 order-md-1 text-center text-md-start">
         <div>
-          <div class="text-h4 font-weight-medium mb-4">Effortless Load Balancing & Scaling</div>
+          <div class="text-h4 text-md-h3  font-weight-medium mb-4">Effortless Load Balancing & Scaling</div>
           <div class="subtitle" style="color:#60a5fa">
             Mycelium Cloud automatically balances traffic and scales your services up or down based on demand. Enjoy high availability and optimal performance with zero manual intervention.
           </div>

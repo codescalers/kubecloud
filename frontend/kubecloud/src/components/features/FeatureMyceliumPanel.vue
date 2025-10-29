@@ -58,9 +58,9 @@
       <v-col
         cols="12"
         md="5"
-        class="d-flex flex-column align-center align-lg-start pa-6 text-white"
+        class="d-flex flex-column align-center align-md-start text-white text-center text-md-start"
       >
-        <h2 class="text-h4 text-white mb-3">Mycelium Networking</h2>
+        <h2 class="text-h4 text-md-h3 text-white mb-3">Mycelium Networking</h2>
         <p class="text-body-1 mb-4" style="color: #60a5fa;">
           Ultra-fast, decentralized networking inspired by nature. Mycelium
           Networking forms a resilient, adaptive mesh that routes around

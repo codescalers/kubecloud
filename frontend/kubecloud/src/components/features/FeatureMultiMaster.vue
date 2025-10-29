@@ -32,7 +32,7 @@
        <v-col cols="12" md="5" class="d-flex flex-column align-center align-lg-start pa-6 text-white text-center text-lg-start"
        >
         <div>
-          <div class="text-h4 font-weight-medium mb-3">Multi-Master Clusters</div>
+          <div class="text-h4 text-md-h3 font-weight-medium mb-3">Multi-Master Clusters</div>
           <div class="subtitle" style="color:#60a5fa">
             High-availability Kubernetes clusters with multiple control plane nodes. Automatic failover, leader election, and zero-downtime upgrades built-in.
           </div>
