@@ -53,7 +53,7 @@ type ReserveNodeResponse struct {
 // UnreserveNodeResponse holds the response for unreserve node response
 type UnreserveNodeResponse struct {
 	WorkflowID string `json:"workflow_id"`
-	ContractID uint32 `json:"contract_id"`
+	ContractID uint64 `json:"contract_id"`
 	Email      string `json:"email"`
 }
 
@@ -406,14 +406,13 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	contractID64, err := strconv.ParseUint(contractIDParam, 10, 32)
+	contractID, err := strconv.ParseUint(contractIDParam, 10, 32)
 	if err != nil {
 		logger.GetLogger().Error().Msg("Invalid contract ID or type")
 		InternalServerError(c)
 		return
 	}
-	contractID := uint32(contractID64)
-	userNode, err := h.db.GetUserNodeByContractID(contractID64)
+	userNode, err := h.db.GetUserNodeByContractID(contractID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
