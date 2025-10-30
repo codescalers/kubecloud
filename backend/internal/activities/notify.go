@@ -443,7 +443,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 
 	// Extract node information from workflow state
 	var nodeID uint32
-	var contractID uint32
+	var contractID uint64
 
 	if nodeIDVal, ok := wf.State["node_id"]; ok {
 		if id, okID := nodeIDVal.(uint32); okID {
@@ -451,7 +451,7 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 		}
 	}
 	if contractIDVal, ok := wf.State["contract_id"]; ok {
-		if id, okID := contractIDVal.(uint32); okID {
+		if id, okID := contractIDVal.(uint64); okID {
 			contractID = id
 		}
 	}
