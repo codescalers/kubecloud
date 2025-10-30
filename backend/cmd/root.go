@@ -117,20 +117,6 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind system_account.network flag: %w", err)
 	}
 
-	// === Redis ===
-	if err := bindStringFlag(rootCmd, "redis.host", "", "Redis host"); err != nil {
-		return fmt.Errorf("failed to bind redis.host flag: %w", err)
-	}
-	if err := bindIntFlag(rootCmd, "redis.port", 6379, "Redis port"); err != nil {
-		return fmt.Errorf("failed to bind redis.port flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "redis.password", "", "Redis password"); err != nil {
-		return fmt.Errorf("failed to bind redis.password flag: %w", err)
-	}
-	if err := bindIntFlag(rootCmd, "redis.db", 0, "Redis DB number"); err != nil {
-		return fmt.Errorf("failed to bind redis.db flag: %w", err)
-	}
-
 	// === Grid ===
 	if err := bindStringFlag(rootCmd, "grid.mnemonic", "", "Grid mnemonic"); err != nil {
 		return fmt.Errorf("failed to bind grid.mnemonic flag: %w", err)

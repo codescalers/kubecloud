@@ -3,10 +3,11 @@ package models
 import (
 	"context"
 	"fmt"
-	"gorm.io/gorm"
 	"strings"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // GormDB struct implements db interface with gorm
@@ -34,6 +35,7 @@ func NewGormStorage(dialector gorm.Dialector) (DB, error) {
 		&SSHKey{},
 		&Cluster{},
 		&PendingRecord{},
+		&Settings{},
 	)
 	if err != nil {
 		return nil, err

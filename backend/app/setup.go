@@ -29,11 +29,6 @@ func SetUp(t testing.TB) (*App, error) {
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
 	publicKeyPath := privateKeyPath + ".pub"
 
-	redisHost := os.Getenv("REDIS_HOST")
-	if redisHost == "" {
-		redisHost = "localhost"
-	}
-
 	// Generate SSH key pair
 	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-f", privateKeyPath, "-N", "", "-q")
 	err := cmd.Run()
@@ -84,12 +79,6 @@ func SetUp(t testing.TB) (*App, error) {
   },
   "graphql_url": "https://graphql.dev.grid.tf/graphql",
   "firesquid_url": "https://firesquid.dev.grid.tf/graphql",
-  "redis": {
-    "host": "%s",
-    "port": 6379,
-    "password": "pass",
-    "db": 0
-  },
   "deployer_workers_num": 3,
   "invoice": {
     "name": "Name",
@@ -110,7 +99,7 @@ func SetUp(t testing.TB) (*App, error) {
   "reserved_node_health_check_timeout_in_minutes": 1,
   "reserved_node_health_check_workers_num": 10
 }
-`, dsn, mnemonic, redisHost, privateKeyPath, publicKeyPath, notificationConfigPath)
+`, dsn, mnemonic, privateKeyPath, publicKeyPath, notificationConfigPath)
 
 	err = os.WriteFile(configPath, []byte(config), 0644)
 	if err != nil {
