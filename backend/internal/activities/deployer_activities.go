@@ -510,7 +510,7 @@ func NewDynamicDeployWorkflowTemplate(engine *ewf.Engine, metrics *metrics.Metri
 		steps = append(steps, ewf.Step{Name: stepName, RetryPolicy: criticalRetryPolicy})
 	}
 
-	steps = append(steps, ewf.Step{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy})
+	steps = append(steps, ewf.Step{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy})
 	steps = append(steps, ewf.Step{Name: constants.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy})
 	steps = append(steps, ewf.Step{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy})
 
@@ -635,7 +635,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	addNodeWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
 		{Name: constants.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
 		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
@@ -644,7 +644,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: criticalRetryPolicy},
+		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
 		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
