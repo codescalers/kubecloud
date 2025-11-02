@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/activities"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
@@ -324,11 +323,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	wfName := fmt.Sprintf("deploy-%d-nodes", len(cluster.Nodes))
-	activities.NewDynamicDeployWorkflowTemplate(h.ewfEngine, h.metrics, h.notificationService, wfName, len(cluster.Nodes))
-
-	// Get the workflow
-	wf, err := h.ewfEngine.NewWorkflow(wfName)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
