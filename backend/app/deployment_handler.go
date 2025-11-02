@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
@@ -218,28 +217,6 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	var targetNode *kubedeployer.Node
-	for _, node := range clusterResult.Nodes {
-		if node.Type == kubedeployer.NodeTypeLeader {
-			targetNode = &node
-			break
-		}
-	}
-
-	if targetNode == nil {
-		for _, node := range clusterResult.Nodes {
-			if node.Type == kubedeployer.NodeTypeMaster {
-				targetNode = &node
-				break
-			}
-		}
-	}
-
-	if targetNode == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No leader or master node found in deployment"})
-		return
-	}
-
 	privateKeyBytes, err := os.ReadFile(h.config.SSH.PrivateKeyPath)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Str("key_path", h.config.SSH.PrivateKeyPath).Msg("Failed to read SSH private key")
@@ -247,9 +224,9 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), targetNode)
+	kubeconfig, err := clusterResult.GetKubeconfig(string(privateKeyBytes))
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("node_name", targetNode.Name).Msg("Failed to retrieve kubeconfig via SSH")
+		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})
 		return
 	}
