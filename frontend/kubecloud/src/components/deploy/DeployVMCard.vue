@@ -10,22 +10,28 @@
       </div>
     </div>
     <div class="vm-specs">
-      <v-chip color="primary" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-cpu-64-bit</v-icon>
-        {{ vm.vcpu }} vCPU
+      <v-chip v-if="vm.fullCapabilities" color="success" size="small" variant="outlined">
+        <v-icon size="16" class="mr-1">mdi-check</v-icon>
+        Use Full Node Capabilities
       </v-chip>
-      <v-chip color="success" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-memory</v-icon>
-        {{ vm.ram }} GB RAM
-      </v-chip>
-      <v-chip color="info" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-harddisk</v-icon>
-        {{ vm.disk }} GB Disk
-      </v-chip>
-      <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="small" class="mr-2" variant="outlined">
-        <v-icon size="16" class="mr-1">mdi-expansion-card</v-icon>
-        GPU
-      </v-chip>
+      <template v-else>
+        <v-chip color="primary" text-color="white" size="small" class="mr-2" variant="outlined">
+          <v-icon size="16" class="mr-1">mdi-cpu-64-bit</v-icon>
+          {{ vm.vcpu }} vCPU
+        </v-chip>
+        <v-chip color="success" text-color="white" size="small" class="mr-2" variant="outlined">
+          <v-icon size="16" class="mr-1">mdi-memory</v-icon>
+          {{ vm.ram }} GB RAM
+        </v-chip>
+        <v-chip color="info" text-color="white" size="small" class="mr-2" variant="outlined">
+          <v-icon size="16" class="mr-1">mdi-harddisk</v-icon>
+          {{ vm.disk }} GB Disk
+        </v-chip>
+        <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="small" class="mr-2" variant="outlined">
+          <v-icon size="16" class="mr-1">mdi-expansion-card</v-icon>
+          GPU
+        </v-chip>
+      </template>
       <div class="spec-item" style="margin-top: 0.7em;">
           <span class="spec-label">SSH Keys:</span>
           <div class="ssh-keys-chips">
