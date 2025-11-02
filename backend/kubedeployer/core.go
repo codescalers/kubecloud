@@ -107,15 +107,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		Uint32("node_id", node.NodeID).
 		Msg("Grid deployment successful")
 
-	res, err := nodeFromDeployment(result)
-	if err != nil {
-		logger.GetLogger().Error().
-			Err(err).
-			Str("node_name", node.Name).
-			Uint32("node_id", node.NodeID).
-			Msg("Failed to extract node from deployment")
-		return fmt.Errorf("failed to get node from deployment: %v", err)
-	}
+	res := nodeFromDeployment(result)
 	res.OriginalName = node.OriginalName
 	res.Type = node.Type
 
@@ -137,6 +129,88 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 	if !updated {
 		cluster.Nodes = append(cluster.Nodes, res)
 		logger.GetLogger().Debug().Str("node_name", res.Name).Msg("Added new node to cluster")
+	}
+
+	return nil
+}
+
+func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes []Node, masterPubKey string) error {
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	logger.GetLogger().Debug().Msgf("Batch deploying %d nodes in cluster %s", len(nodes), cluster.Name)
+
+	var leaderIP string
+	leaderNode, err := cluster.GetLeaderNode()
+	if err != nil {
+		logger.GetLogger().Error().Err(err).Msgf("Failed to get leader node for cluster %s", cluster.Name)
+		return fmt.Errorf("failed to get leader node IP: %v", err)
+	}
+	leaderIP = leaderNode.IP
+
+	if cluster.Token == "" {
+		cluster.Token = generateRandomString(32)
+	}
+
+	var deployments []*workloads.Deployment
+	for _, node := range nodes {
+		depl, err := deploymentFromNode(
+			node,
+			cluster.ProjectName,
+			cluster.Network.Name,
+			leaderIP,
+			cluster.Token,
+			masterPubKey,
+			c.mnemonic,
+			c.GridClient.Network,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create VM for node %s: %v", node.Name, err)
+		}
+		deployments = append(deployments, &depl)
+	}
+
+	logger.GetLogger().Debug().Msgf("Starting batch deployment of %d nodes to grid", len(deployments))
+	batchErr := c.GridClient.DeploymentDeployer.BatchDeploy(ctx, deployments)
+
+	var successCount int
+	var failedNodes []string
+
+	for i, node := range nodes {
+		if deployments[i].ContractID == 0 {
+			failedNodes = append(failedNodes, node.Name)
+			continue
+		}
+		result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
+		if err != nil {
+			logger.GetLogger().Warn().Err(err).Str("node_name", node.Name).Msg("Failed to load deployment for node")
+			failedNodes = append(failedNodes, node.Name)
+			continue
+		}
+
+		res := nodeFromDeployment(result)
+
+		res.OriginalName = nodes[i].OriginalName
+		res.Type = nodes[i].Type
+
+		for j, n := range cluster.Nodes {
+			if n.Name == res.Name {
+				cluster.Nodes[j] = res
+				logger.GetLogger().Debug().Str("node_name", res.Name).Uint64("contract_id", res.ContractID).Msg("Updated existing node in cluster")
+				break
+			}
+		}
+		successCount++
+	}
+
+	logger.GetLogger().Debug().Int("successful", successCount).Int("failed", len(failedNodes)).Int("total", len(nodes)).Msg("Batch deployment completed")
+
+	if len(failedNodes) > 0 {
+		if batchErr != nil {
+			return fmt.Errorf("failed to deploy %d nodes (%v): %v", len(failedNodes), failedNodes, batchErr)
+		}
+		return fmt.Errorf("failed to deploy %d nodes: %v", len(failedNodes), failedNodes)
 	}
 
 	return nil

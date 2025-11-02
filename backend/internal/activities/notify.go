@@ -176,14 +176,12 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 	}
 
 	clusterName := ""
-	nodesNum := 0
 	if cluster, clusterErr := statemanager.GetCluster(state); clusterErr == nil {
 		clusterName = cluster.Name
-		nodesNum = len(cluster.Nodes)
 	}
 
 	current := calculateCurrentStep(stepName)
-	total := nodesNum + 2
+	total := 4
 	progressStr := fmt.Sprintf(" (%d/%d)", current, total)
 
 	var message string
@@ -265,18 +263,12 @@ func calculateCurrentStep(stepName string) int {
 		return 1
 	}
 
-	if isDeployStep(stepName) {
-		nodeNumStr := strings.TrimPrefix(stepName, "deploy-")
-		nodeNumStr = strings.TrimSuffix(nodeNumStr, "-node")
+	if stepName == constants.StepDeployLeaderNode {
+		return 2
+	}
 
-		nodeNumStr = strings.TrimSuffix(nodeNumStr, "st")
-		nodeNumStr = strings.TrimSuffix(nodeNumStr, "nd")
-		nodeNumStr = strings.TrimSuffix(nodeNumStr, "rd")
-		nodeNumStr = strings.TrimSuffix(nodeNumStr, "th")
-
-		if nodeNum, err := strconv.Atoi(nodeNumStr); err == nil {
-			return nodeNum + 1 // +1 because network is step 1
-		}
+	if stepName == constants.StepBatchDeployAllNodes {
+		return 3
 	}
 
 	return 0
@@ -298,11 +290,12 @@ func getWorkflowDescription(workflowName string) string {
 }
 
 func isDeployWorkflow(name string) bool {
-	return strings.HasPrefix(name, "deploy-") && strings.HasSuffix(name, "-nodes")
+	return name == constants.WorkflowDeployCluster
 }
 
 func isDeployStep(stepName string) bool {
-	return strings.HasPrefix(stepName, "deploy-") && strings.HasSuffix(stepName, "-node")
+	return stepName == constants.StepDeployLeaderNode ||
+		stepName == constants.StepBatchDeployAllNodes
 }
 
 func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, err error) []*models.Notification {

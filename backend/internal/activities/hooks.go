@@ -174,28 +174,6 @@ func newKubecloudWorkflowTemplate(n *notification.NotificationService) ewf.Workf
 	}
 }
 
-func getOrdinalSuffix(n int) string {
-	switch n % 100 {
-	case 11, 12, 13:
-		return "th"
-	default:
-		switch n % 10 {
-		case 1:
-			return "st"
-		case 2:
-			return "nd"
-		case 3:
-			return "rd"
-		default:
-			return "th"
-		}
-	}
-}
-
-func getDeployNodeStepName(index int) string {
-	return fmt.Sprintf("deploy-%d%s-node", index, getOrdinalSuffix(index))
-}
-
 func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err == nil || wf.Name != constants.WorkflowAddNode {
