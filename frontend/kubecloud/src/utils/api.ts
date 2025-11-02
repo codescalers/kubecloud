@@ -2,6 +2,18 @@ import { WorkflowStatus } from '@/types/ewf'
 import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
+import GridProxyClient, { type NodeStats } from '@threefold/gridproxy_client'
+
+const nw = (window as any).__ENV__.VITE_NETWORK
+export const gridProxyClient = new GridProxyClient(
+  nw === 'dev'
+    ? 'https://gridproxy.dev.grid.tf'
+    : nw === 'qa'
+      ? 'https://gridproxy.qa.grid.tf'
+      : nw === 'test'
+        ? 'https://gridproxy.test.grid.tf'
+        : 'https://gridproxy.grid.tf',
+)
 
 export interface ApiResponse<T = any> {
   data: T

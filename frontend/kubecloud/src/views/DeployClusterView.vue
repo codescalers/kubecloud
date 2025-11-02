@@ -88,7 +88,7 @@ import type { VM } from '../composables/useDeployCluster';
 import Step1DefineVMs from '../components/deploy/Step1DefineVMs.vue';
 import Step2AssignNodes from '../components/deploy/Step2AssignNodes.vue';
 import Step3Review from '../components/deploy/Step3Review.vue';
-import { api } from '../utils/api';
+import { api, gridProxyClient } from '../utils/api';
 import type { ApiResponse } from '../utils/api';
 import { useNotificationStore } from '../stores/notifications';
 import { UserService } from '../utils/userService';
@@ -182,33 +182,36 @@ function prevStep() {
   if (step.value > 1) step.value--;
 }
 
-const clusterPayload = computed<Cluster>(() => {
+async function getClusterPayload(): Promise<Cluster> {
   const token = clusterToken.value;
 
-  function buildNode(vm: VM, type: 'master' | 'worker'): ClusterNode {
+  async function buildNode(vm: VM, type: 'master' | 'worker'): Promise<ClusterNode> {
     // Get all SSH keys for this VM and concatenate their public keys
     const sshKeyPublicKeys = vm.sshKeyIds
       .map(id => availableSshKeys.value.find(k => k.ID === id)?.public_key)
       .filter(key => key) // Remove undefined values
       .join('\n'); // Join multiple keys with newlines
 
-    const nodes = allNodes.value
-
-
     let cpu = vm.vcpu
     let ram = vm.ram
     let disk = vm.disk
 
     if (vm.fullCapabilities) {
-      const node = nodes.find(n => n.nodeId === vm.node)
-      if (!node) {
+      if (!vm.node) {
         // should never be the case
         throw new Error("Not not found")
       }
 
-      cpu = node.total_resources.cru
-      ram = Math.floor((node.total_resources.mru - node.used_resources.mru) / 1024 ** 3)
-      disk = Math.floor((node.total_resources.sru - node.used_resources.sru) / 1024 ** 3)
+      const node = await gridProxyClient.nodes.statsById(vm.node!)
+      if (!node) {
+        // should never be the case
+        throw new Error("Not not found")
+      }
+      
+
+      cpu = node.total.cru
+      ram = Math.floor((node.total.mru - node.used.mru) / 1024 ** 3)
+      disk = Math.floor((node.total.sru - node.used.sru) / 1024 ** 3)
     }
 
     const fs = vm.rootfs * 1024
@@ -228,9 +231,12 @@ const clusterPayload = computed<Cluster>(() => {
     };
   }
 
+  const masterNodes = await Promise.all(masters.value.map(vm => buildNode(vm, 'master')))
+  const workerNodes = await Promise.all(workers.value.map(vm => buildNode(vm, 'worker')))
+
   const nodes: ClusterNode[] = [
-    ...masters.value.map(vm => buildNode(vm, 'master')),
-    ...workers.value.map(vm => buildNode(vm, 'worker')),
+    ...masterNodes,
+    ...workerNodes,
   ];
 
   return {
@@ -238,7 +244,7 @@ const clusterPayload = computed<Cluster>(() => {
     token: token,
     nodes: nodes,
   };
-});
+}
 
 function navigateToDashboard() {
   localStorage.setItem('dashboard-section', 'clusters')
@@ -247,11 +253,8 @@ function navigateToDashboard() {
 
 async function onDeployCluster() {
   deploying.value = true;
-  console.log(clusterPayload.value);
-  return
-
   try {
-    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', clusterPayload.value, {
+    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', await getClusterPayload(), {
       showNotifications: false,
       loadingMessage: 'Deploying cluster...',
       errorMessage: 'Failed to deploy cluster',
