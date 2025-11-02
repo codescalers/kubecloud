@@ -28,7 +28,6 @@ type Configuration struct {
 	GraphqlURL                              string             `json:"graphql_url" validate:"required"`
 	FiresquidURL                            string             `json:"firesquid_url" validate:"required"`
 	SystemAccount                           GridAccount        `json:"system_account"`
-	Redis                                   Redis              `json:"redis" validate:"required,dive"`
 	DeployerWorkersNum                      int                `json:"deployer_workers_num" default:"1"`
 	Invoice                                 InvoiceCompanyData `json:"invoice"`
 	SSH                                     SSHConfig          `json:"ssh" validate:"required,dive"`
@@ -99,14 +98,6 @@ type TermsANDConditions struct {
 type GridAccount struct {
 	Mnemonic string `json:"mnemonic" validate:"required"`
 	Network  string `json:"network" validate:"required"`
-}
-
-// Redis struct holds Redis connection information
-type Redis struct {
-	Host     string `json:"host" validate:"required"`
-	Port     int    `json:"port" validate:"required,min=1,max=65535"`
-	Password string `json:"password"`
-	DB       int    `json:"db" validate:"min=0"`
 }
 
 // Invoice struct holds needed data for invoice file
