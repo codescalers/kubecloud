@@ -1,7 +1,7 @@
 package app
 
 import (
-	"net/http"
+	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -22,7 +22,7 @@ type Stats struct {
 // @ID get-stats
 // @Accept json
 // @Produce json
-// @Success 200 {object} Stats "System statistics retrieved successfully"
+// @Success 200 {object} APIResponse{data=Stats} "System statistics retrieved successfully"
 // @Failure 500 {object} APIResponse "Internal Server Error - Failed to retrieve statistics"
 // @Security AdminMiddleware
 // @Router /stats [get]
@@ -50,7 +50,7 @@ func (h *Handler) GetStatsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, Stats{
+	OK(c, "System statistics retrieved successfully", Stats{
 		TotalUsers:    uint32(totalUsers),
 		TotalClusters: uint32(totalClusters),
 		UpNodes:       uint32(stats.Nodes),

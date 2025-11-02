@@ -179,7 +179,7 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 		}
 	}
 
-	c.JSON(statusCode, results)
+	JSONResponse(c, statusCode, results)
 }
 
 func (h *Handler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {

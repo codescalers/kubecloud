@@ -23,7 +23,7 @@ import (
 // @ID get-all-invoices
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.Invoice
+// @Success 200 {object} APIResponse{data=[]models.Invoice}
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /invoices [get]
@@ -37,9 +37,10 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Invoices are retrieved successfully", map[string]interface{}{
+	OK(c, "Invoices are retrieved successfully", gin.H{
 		"invoices": invoices,
 	})
+
 }
 
 // @Summary Get invoices
@@ -48,7 +49,7 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 // @ID get-invoices
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.Invoice
+// @Success 200 {object} APIResponse{data=models.Invoice}
 // @Failure 500 {object} APIResponse
 // @Security UserMiddleware
 // @Router /user/invoice [get]
@@ -64,7 +65,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Invoices are retrieved successfully", map[string]interface{}{
+	OK(c, "Invoices are retrieved successfully", gin.H{
 		"invoices": invoices,
 	})
 }
@@ -136,7 +137,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 	invoiceID := c.Param("invoice_id")
 	if invoiceID == "" {
-		Error(c, http.StatusBadRequest, "Invoice ID is required", "")
+		BadRequest(c, "Invoice ID is required")
 		return
 	}
 
@@ -146,14 +147,14 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to parse invoice ID")
-		Error(c, http.StatusBadRequest, "Invalid invoice ID", err.Error())
+		BadRequest(c, "Invalid invoice ID")
 		return
 	}
 
 	invoice, err := h.db.GetInvoice(id)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve invoice")
-		Error(c, http.StatusNotFound, "Invoice is not found", "")
+		NotFound(c, "Invoice is not found")
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	}
 
 	if userID != invoice.UserID {
-		Error(c, http.StatusNotFound, "User is not authorized to download this invoice", "")
+		Forbidden(c, "User is not authorized to download this invoice")
 		return
 	}
 
