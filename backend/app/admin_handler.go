@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -251,7 +250,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			models.WithSeverity(models.NotificationSeveritySuccess),
 			models.WithNoPersist(),
 		)
-		if err := h.notificationService.Send(context.Background(), notif); err != nil {
+		if err := h.notificationService.Send(h.appContext, notif); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
 		}
 	}
@@ -359,7 +358,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,
 	}
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,

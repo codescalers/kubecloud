@@ -293,7 +293,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRented,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
@@ -439,7 +439,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRentable,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,
