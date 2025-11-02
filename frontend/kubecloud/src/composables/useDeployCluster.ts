@@ -5,6 +5,7 @@ import { ref } from 'vue';
  */
 export const ROOTFS = 5;
 export interface VM {
+  fullCapabilities?: boolean
   name: string;
   vcpu: number;
   ram: number;
@@ -26,6 +27,7 @@ export function useDeployCluster() {
 
   function createDefaultVM(namePrefix: string, count: number): VM {
     return {
+      fullCapabilities: true,
       name: `${namePrefix}${count + 1}`,
       vcpu: 2,
       ram: 4,

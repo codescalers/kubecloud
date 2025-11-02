@@ -1,13 +1,4 @@
 services:
-  redis-db:
-    image: redis:alpine
-    command: redis-server --requirepass pass
-    ports:
-      - 6379:6379
-    container_name: redis-db
-    networks:
-      - app-network
-
   mycelium:
     build:
       context: ./mycelium-peer
@@ -33,8 +24,6 @@ services:
     depends_on:
       mycelium:
         condition: service_started
-      redis-db:
-        condition: service_started
       postgres:
         condition: service_healthy
     working_dir: /app
@@ -46,8 +35,6 @@ services:
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
-      - REDIS_HOST=redis-db
-      - REDIS_PORT=6379
       - APP_ENV=dev
       - HOSTNAME=backend-1
       - TEMPLATE_DIR=/app/internal/templates/notifications

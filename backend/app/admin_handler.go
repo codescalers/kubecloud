@@ -600,7 +600,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.redis.SetMaintenanceMode(c.Request.Context(), request.Enabled); err != nil {
+	if err := h.db.SetMaintenanceMode(request.Enabled); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
@@ -621,7 +621,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
 func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
-	enabled, err := h.redis.GetMaintenanceMode(c.Request.Context())
+	enabled, err := h.db.GetMaintenanceMode()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

@@ -43,7 +43,6 @@ type Handler struct {
 	substrateClient     *substrate.Substrate
 	graphqlClient       graphql.GraphQl
 	firesquidClient     graphql.GraphQl
-	redis               *internal.RedisClient
 	sseManager          *internal.SSEManager
 	ewfEngine           *ewf.Engine
 	gridNet             string // Network name for the grid
@@ -62,7 +61,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	config internal.Configuration, mailService internal.MailService,
 	gridproxy proxy.Client, substrateClient *substrate.Substrate,
 	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
-	redis *internal.RedisClient, sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
+	sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
 	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient) *Handler {
@@ -76,7 +75,6 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		substrateClient:     substrateClient,
 		graphqlClient:       graphqlClient,
 		firesquidClient:     firesquidClient,
-		redis:               redis,
 		sseManager:          sseManager,
 		ewfEngine:           ewfEngine,
 		gridNet:             gridNet,
