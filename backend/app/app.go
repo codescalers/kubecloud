@@ -39,7 +39,6 @@ type App struct {
 	config              internal.Configuration
 	handlers            Handler
 	db                  models.DB
-	redis               *internal.RedisClient
 	sseManager          *internal.SSEManager
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
@@ -106,12 +105,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return nil, fmt.Errorf("failed to connect to firesquid client: %w", err)
-	}
-
-	redisClient, err := internal.NewRedisClient(config.Redis)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to create Redis client")
-		return nil, fmt.Errorf("failed to create Redis client: %w", err)
 	}
 
 	sseManager := internal.NewSSEManager()
@@ -212,7 +205,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
-		substrateClient, graphqlClient, firesquidClient, redisClient,
+		substrateClient, graphqlClient, firesquidClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
 		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
 
@@ -220,7 +213,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		router:              router,
 		config:              config,
 		handlers:            *handler,
-		redis:               redisClient,
 		db:                  db,
 		sseManager:          sseManager,
 		notificationService: notificationService,
@@ -407,12 +399,6 @@ func (app *App) Shutdown(ctx context.Context) error {
 
 	if app.sseManager != nil {
 		app.sseManager.Stop()
-	}
-
-	if app.redis != nil {
-		if err := app.redis.Close(); err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to close Redis connection")
-		}
 	}
 
 	if app.db != nil {
