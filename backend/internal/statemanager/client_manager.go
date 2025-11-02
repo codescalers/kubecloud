@@ -2,7 +2,6 @@ package statemanager
 
 import (
 	"fmt"
-	"sync"
 
 	"kubecloud/kubedeployer"
 
@@ -10,8 +9,6 @@ import (
 
 	"github.com/xmonader/ewf"
 )
-
-var clientCreationMutex sync.Mutex
 
 // ClientConfig represents the configuration needed to create a kubeclient
 type ClientConfig struct {
@@ -57,8 +54,6 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 	if err := ValidateConfig(config); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
-	clientCreationMutex.Lock()
-	defer clientCreationMutex.Unlock()
 
 	// Create new client
 	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug)
