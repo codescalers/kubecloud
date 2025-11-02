@@ -192,14 +192,35 @@ const clusterPayload = computed<Cluster>(() => {
       .filter(key => key) // Remove undefined values
       .join('\n'); // Join multiple keys with newlines
 
+    const nodes = allNodes.value
+
+
+    let cpu = vm.vcpu
+    let ram = vm.ram
+    let disk = vm.disk
+
+    if (vm.fullCapabilities) {
+      const node = nodes.find(n => n.nodeId === vm.node)
+      if (!node) {
+        // should never be the case
+        throw new Error("Not not found")
+      }
+
+      cpu = node.total_resources.cru
+      ram = Math.floor((node.total_resources.mru - node.used_resources.mru) / 1024 ** 3)
+      disk = Math.floor((node.total_resources.sru - node.used_resources.sru) / 1024 ** 3)
+    }
+
+    const fs = vm.rootfs * 1024
+
     return {
       name: vm.name,
       type: type === 'master' ? 'master' : 'worker',
       node_id: vm.node as number, // node is number | null, but must be number here
-      cpu: vm.vcpu,
-      memory: vm.ram * 1024, // GB to MB
-      root_size: vm.rootfs * 1024, // GB to MB
-      disk_size: vm.disk * 1024, // GB to MB
+      cpu,
+      memory: ram * 1024, // GB to MB
+      root_size: fs, // GB to MB
+      disk_size: (disk * 1024) - fs, // GB to MB
       env_vars: {
         SSH_KEY: sshKeyPublicKeys,
         K3S_TOKEN: token,
@@ -226,6 +247,9 @@ function navigateToDashboard() {
 
 async function onDeployCluster() {
   deploying.value = true;
+  console.log(clusterPayload.value);
+  return
+
   try {
     await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', clusterPayload.value, {
       showNotifications: false,
