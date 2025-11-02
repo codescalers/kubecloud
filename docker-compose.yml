@@ -24,8 +24,6 @@ services:
     depends_on:
       mycelium:
         condition: service_started
-      redis-db:
-        condition: service_started
       postgres:
         condition: service_healthy
     working_dir: /app
