@@ -54,12 +54,19 @@
             </div>
             <div class="vm-info">
               <h4 class="vm-title">{{ vm.name }}</h4>
-              <div class="vm-specs">
-                <span class="spec-chip">{{ vm.vcpu }} vCPU</span>
-                <span class="spec-chip">{{ vm.ram }}GB RAM</span>
-                <span class="spec-chip">{{ vm.disk }}GB Disk</span>
-                <span v-if="vm.gpu" class="spec-chip">GPU</span>
-              </div>
+
+              <v-chip v-if="vm.fullCapabilities" color="success" size="small" variant="outlined">
+                <v-icon size="16" class="mr-1">mdi-check</v-icon>
+                Use Full Node Capabilities
+              </v-chip>
+              <template v-else>
+                <div class="vm-specs">
+                  <span class="spec-chip">{{ vm.vcpu }} vCPU</span>
+                  <span class="spec-chip">{{ vm.ram }}GB RAM</span>
+                  <span class="spec-chip">{{ vm.disk }}GB Disk</span>
+                  <span v-if="vm.gpu" class="spec-chip">GPU</span>
+                </div>
+              </template>
             </div>
           </div>
           <NodeSelect
