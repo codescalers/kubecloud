@@ -129,7 +129,7 @@ func deploymentFromNode(
 
 func nodeFromDeployment(
 	depl workloads.Deployment,
-) (Node, error) {
+) Node {
 	vm := depl.Vms[0]
 	var node Node
 
@@ -160,7 +160,7 @@ func nodeFromDeployment(
 	node.PlanetaryIP = vm.PlanetaryIP
 	node.ContractID = depl.ContractID
 
-	return node, nil
+	return node
 }
 
 func GetProjectName(userID int, clusterName string) string {
