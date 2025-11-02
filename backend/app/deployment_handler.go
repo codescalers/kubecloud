@@ -334,7 +334,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		"cluster": cluster,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -390,7 +390,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		"project_name": projectName,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -436,7 +436,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		"config": config,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -517,7 +517,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"node":    cluster.Nodes[0],
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -603,7 +603,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"node_name": nodeName,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,

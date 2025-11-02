@@ -54,6 +54,7 @@ type Handler struct {
 	metrics             *metrics.Metrics
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
+	appContext          context.Context
 }
 
 // NewHandler create new handler
@@ -64,7 +65,8 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 	sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
 	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
 	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient) *Handler {
+	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient,
+	appContext context.Context) *Handler {
 
 	return &Handler{
 		tokenManager:        tokenManager,
@@ -86,6 +88,7 @@ func NewHandler(tokenManager internal.TokenManager, db models.DB,
 		metrics:             metrics,
 		notificationService: notificationService,
 		gridClient:          gridClient,
+		appContext:          appContext,
 	}
 }
 
@@ -238,7 +241,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 		"password": request.Password,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
@@ -306,7 +309,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			Subject: "User email verified",
 		}
 		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeveritySuccess))
-		err = h.notificationService.Send(context.Background(), notification)
+		err = h.notificationService.Send(h.appContext, notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send user registration notification")
 		}
@@ -332,7 +335,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		"user_id": user.ID,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
@@ -617,7 +620,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	}
 
 	notification := models.NewNotification(c.GetInt("user_id"), models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err = h.notificationService.Send(c, notification)
+	err = h.notificationService.Send(h.appContext, notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send password changed notification")
 	}
@@ -699,7 +702,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
@@ -875,7 +878,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		"username":      user.Username,
 		"transfer_mode": models.RedeemVoucherMode,
 	}
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
@@ -970,7 +973,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
 	}
 	notification := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err := h.notificationService.Send(c, notification)
+	err := h.notificationService.Send(h.appContext, notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key added notification")
 	}
@@ -1041,7 +1044,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was deleted from your account.", sshKey.Name),
 	}
 	n := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}), models.WithSeverity(models.NotificationSeveritySuccess))
-	if err := h.notificationService.Send(c, n); err != nil {
+	if err := h.notificationService.Send(h.appContext, n); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 

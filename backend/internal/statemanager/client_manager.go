@@ -5,8 +5,9 @@ import (
 
 	"kubecloud/kubedeployer"
 
-	"github.com/xmonader/ewf"
 	"kubecloud/internal/logger"
+
+	"github.com/xmonader/ewf"
 )
 
 // ClientConfig represents the configuration needed to create a kubeclient

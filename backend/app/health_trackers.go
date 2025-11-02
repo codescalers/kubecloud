@@ -62,7 +62,7 @@ func (h *Handler) TrackClusterHealth() {
 				},
 			}
 
-			h.ewfEngine.RunAsync(context.Background(), wf)
+			h.ewfEngine.RunAsync(h.appContext, wf)
 		}
 
 	}
@@ -181,7 +181,7 @@ func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, gri
 			models.WithChannels(notification.ChannelEmail),
 		)
 
-		if err := notificationService.Send(context.Background(), notif); err != nil {
+		if err := notificationService.Send(h.appContext, notif); err != nil {
 			logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to send consolidated notification")
 		}
 	}
