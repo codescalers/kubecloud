@@ -191,9 +191,14 @@ func (h *Handler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, job
 	defer wg.Done()
 
 	for userNode := range jobs {
+
 		node, err := grid.Node(ctx, userNode.NodeID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("Failed to get node for health check")
+			continue
+		}
+
+		if node.Rentable {
 			continue
 		}
 
