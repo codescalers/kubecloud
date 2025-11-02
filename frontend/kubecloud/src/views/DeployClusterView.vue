@@ -210,8 +210,8 @@ async function getClusterPayload(): Promise<Cluster> {
       
 
       cpu = node.total.cru
-      ram = Math.floor((node.total.mru - node.used.mru) / 1024 ** 3)
-      disk = Math.floor((node.total.sru - node.used.sru) / 1024 ** 3)
+      ram = Math.floor((node.total.mru * 0.99 - node.used.mru) / 1024 ** 3)
+      disk = Math.floor((node.total.sru * 0.995 - node.used.sru) / 1024 ** 3)
     }
 
     const fs = vm.rootfs * 1024

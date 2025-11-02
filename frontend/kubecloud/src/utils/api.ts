@@ -2,7 +2,7 @@ import { WorkflowStatus } from '@/types/ewf'
 import { useNotificationStore } from '../stores/notifications'
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
-import GridProxyClient, { type NodeStats } from '@threefold/gridproxy_client'
+import GridProxyClient from '@threefold/gridproxy_client'
 
 const nw = (window as any).__ENV__.VITE_NETWORK
 export const gridProxyClient = new GridProxyClient(
