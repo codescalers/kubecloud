@@ -4,7 +4,11 @@
       <div class="feature-animation-with-glow">
         <div class="feature-animation-glow"></div>
         <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas"></canvas>
+          <canvas ref="threeCanvas" class="three-canvas"
+            @mousemove="handleMouseMove"
+            @mouseleave="handleMouseLeave"
+            @click="handleClick"
+          ></canvas>
           <div v-if="hoveredNodeLabel" class="node-label" :style="{ left: hoveredNodeLabel.x + 'px', top: hoveredNodeLabel.y + 'px' }">
             Peer
           </div>
@@ -180,13 +184,6 @@ onMounted(() => {
   }
   growNextLine()
 
-  // Mouse events
-  if (threeCanvas.value) {
-    threeCanvas.value.addEventListener('mousemove', handleMouseMove)
-    threeCanvas.value.addEventListener('mouseleave', handleMouseLeave)
-    threeCanvas.value.addEventListener('click', handleClick)
-  }
-
   // Animate nodes with organic motion and interactivity
   function animate(time = 0) {
     animationId = requestAnimationFrame(animate)
@@ -293,11 +290,6 @@ onBeforeUnmount(() => {
   if (renderer) {
     renderer.dispose()
     renderer = null
-  }
-  if (threeCanvas.value) {
-    threeCanvas.value.removeEventListener('mousemove', handleMouseMove)
-    threeCanvas.value.removeEventListener('mouseleave', handleMouseLeave)
-    threeCanvas.value.removeEventListener('click', handleClick)
   }
 })
 </script>

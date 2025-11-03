@@ -3,8 +3,12 @@
     ref="globeContainer"
     class="globe-canvas"
     :style="{ width: width + 'px', height: height + 'px', maxWidth: '100%' }"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
+    @pointermove="onPointerMove"
+    @pointerleave="onPointerLeave"
+    @click="onPointerClick"
   >
-
     <slot />
   </div>
 </template>
@@ -178,24 +182,12 @@ onMounted(async () => {
   await createGlobe()
   resizeRenderer()
   window.addEventListener('resize', resizeRenderer)
-  globeContainer.value.addEventListener('pointerdown', onPointerDown)
-  globeContainer.value.addEventListener('pointerup', onPointerUp)
-  globeContainer.value.addEventListener('pointermove', onPointerMove)
-  globeContainer.value.addEventListener('pointerleave', onPointerLeave)
-  globeContainer.value.addEventListener('click', onPointerClick)
   animate()
 })
 
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId)
   window.removeEventListener('resize', resizeRenderer)
-  if (globeContainer.value) {
-    globeContainer.value.removeEventListener('pointerdown', onPointerDown)
-    globeContainer.value.removeEventListener('pointerup', onPointerUp)
-    globeContainer.value.removeEventListener('pointermove', onPointerMove)
-    globeContainer.value.removeEventListener('pointerleave', onPointerLeave)
-    globeContainer.value.removeEventListener('click', onPointerClick)
-  }
   if (renderer && globeContainer.value) globeContainer.value.removeChild(renderer.domElement)
   renderer = null
   scene = null
