@@ -331,6 +331,10 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("failed to get user by id")
 		InternalServerError(c)
 		return
@@ -367,7 +371,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	Accepted(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,

@@ -379,7 +379,7 @@ func TestCreditUserHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusInternalServerError, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("Test Credit user with no token", func(t *testing.T) {
@@ -548,7 +548,7 @@ func TestSetMaintenanceModeHandler(t *testing.T) {
 		var result APIResponse
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "Invalid request format", result.Message)
+		assert.Equal(t, "Bad Request", result.Message)
 	})
 
 	t.Run("Test Set maintenance mode with non-admin user", func(t *testing.T) {

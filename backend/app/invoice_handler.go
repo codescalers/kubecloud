@@ -49,7 +49,7 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 // @ID get-invoices
 // @Accept json
 // @Produce json
-// @Success 200 {object} APIResponse{data=models.Invoice}
+// @Success 200 {object} APIResponse{data=[]models.Invoice}
 // @Failure 500 {object} APIResponse
 // @Security UserMiddleware
 // @Router /user/invoice [get]

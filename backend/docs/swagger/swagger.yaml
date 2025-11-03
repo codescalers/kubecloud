@@ -463,8 +463,6 @@ definitions:
     type: object
   app.Response:
     properties:
-      message:
-        type: string
       status:
         type: string
       task_id:
@@ -986,7 +984,12 @@ paths:
         "202":
           description: Delete all deployments workflow started successfully
           schema:
-            $ref: '#/definitions/app.Response'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Response'
+              type: object
         "401":
           description: Unauthorized
           schema:
@@ -1009,7 +1012,12 @@ paths:
         "200":
           description: Deployments retrieved successfully
           schema:
-            $ref: '#/definitions/app.DeploymentListResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.DeploymentListResponse'
+              type: object
         "401":
           description: Unauthorized
           schema:
@@ -1040,7 +1048,12 @@ paths:
         "202":
           description: Deployment workflow started successfully
           schema:
-            $ref: '#/definitions/app.Response'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Response'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -1073,7 +1086,12 @@ paths:
         "202":
           description: Deployment deletion workflow started successfully
           schema:
-            $ref: '#/definitions/app.Response'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Response'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -1109,7 +1127,12 @@ paths:
         "200":
           description: Deployment details retrieved successfully
           schema:
-            $ref: '#/definitions/app.DeploymentResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.DeploymentResponse'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -1146,7 +1169,12 @@ paths:
         "200":
           description: Kubeconfig retrieved successfully
           schema:
-            $ref: '#/definitions/app.KubeconfigResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.KubeconfigResponse'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -1186,7 +1214,12 @@ paths:
         "202":
           description: Node addition workflow started successfully
           schema:
-            $ref: '#/definitions/app.Response'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Response'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -1228,7 +1261,12 @@ paths:
         "202":
           description: Node removal workflow started successfully
           schema:
-            $ref: '#/definitions/app.Response'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Response'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -1262,9 +1300,14 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Invoice'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Invoice'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -1647,11 +1690,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Pending records retrieved successfully
           schema:
-            items:
-              $ref: '#/definitions/app.PendingRecordsResponse'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.PendingRecordsResponse'
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -1673,7 +1719,12 @@ paths:
         "200":
           description: System statistics retrieved successfully
           schema:
-            $ref: '#/definitions/app.Stats'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.Stats'
+              type: object
         "500":
           description: Internal Server Error - Failed to retrieve statistics
           schema:
@@ -1695,7 +1746,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/app.APIResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.MaintenanceModeStatus'
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -1762,7 +1818,12 @@ paths:
         "200":
           description: Account ID is retrieved successfully
           schema:
-            $ref: '#/definitions/app.TwinResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.TwinResponse'
+              type: object
         "400":
           description: Bad Request or Invalid params
           schema:
@@ -1788,7 +1849,12 @@ paths:
         "200":
           description: User is retrieved successfully
           schema:
-            $ref: '#/definitions/app.GetUserResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.GetUserResponse'
+              type: object
         "404":
           description: User is not found
           schema:
@@ -1810,7 +1876,12 @@ paths:
         "200":
           description: Balance fetched successfully
           schema:
-            $ref: '#/definitions/app.UserBalanceResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.UserBalanceResponse'
+              type: object
         "404":
           description: User is not found
           schema:
@@ -1841,7 +1912,12 @@ paths:
         "202":
           description: 'workflow_id: string, email: string'
           schema:
-            $ref: '#/definitions/app.ChargeBalanceResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ChargeBalanceResponse'
+              type: object
         "400":
           description: Invalid request format or amount
           schema:
@@ -1873,7 +1949,7 @@ paths:
       produces:
       - application/json
       responses:
-        "202":
+        "200":
           description: Password updated successfully
           schema:
             $ref: '#/definitions/app.APIResponse'
@@ -1909,9 +1985,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Verification code sent successfully
           schema:
-            $ref: '#/definitions/app.RegisterResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.RegisterResponse'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -1946,7 +2027,12 @@ paths:
         "201":
           description: Verification successful
           schema:
-            $ref: '#/definitions/internal.TokenPair'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal.TokenPair'
+              type: object
         "400":
           description: Invalid request format or verification failed
           schema:
@@ -1970,9 +2056,14 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Invoice'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Invoice'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -2032,9 +2123,14 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: token pair generated
           schema:
-            $ref: '#/definitions/internal.TokenPair'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal.TokenPair'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -2109,9 +2205,14 @@ paths:
       - application/json
       responses:
         "202":
-          description: Accepted
+          description: Node reservation in progress
           schema:
-            $ref: '#/definitions/app.ReserveNodeResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.ReserveNodeResponse'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -2200,7 +2301,12 @@ paths:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/app.UnreserveNodeResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.UnreserveNodeResponse'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -2228,11 +2334,14 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Pending records returned successfully
           schema:
-            items:
-              $ref: '#/definitions/app.PendingRecordsResponse'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.PendingRecordsResponse'
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -2259,7 +2368,12 @@ paths:
           description: 'workflow_id: string, voucher_code: string, amount: float64,
             email: string'
           schema:
-            $ref: '#/definitions/app.RedeemVoucherResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.RedeemVoucherResponse'
+              type: object
         "400":
           description: Invalid voucher code, already redeemed, or expired
           schema:
@@ -2292,9 +2406,14 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: access token refreshed successfully
           schema:
-            $ref: '#/definitions/app.RefreshTokenResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.RefreshTokenResponse'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -2330,7 +2449,12 @@ paths:
         "202":
           description: 'workflow_id: string, email: string'
           schema:
-            $ref: '#/definitions/app.RegisterUserResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.RegisterUserResponse'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -2363,9 +2487,14 @@ paths:
       - application/json
       responses:
         "202":
-          description: Accepted
+          description: 'workflow_id: string, email: string, token_pair: object'
           schema:
-            $ref: '#/definitions/app.VerifyRegisterUserResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.VerifyRegisterUserResponse'
+              type: object
         "400":
           description: Invalid request
           schema:
@@ -2393,9 +2522,14 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.SSHKey'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.SSHKey'
+                  type: array
+              type: object
         "401":
           description: Unauthorized
           schema:
@@ -2427,7 +2561,12 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.SSHKey'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.SSHKey'
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -2569,7 +2708,12 @@ paths:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/app.CreditUserResponse'
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.CreditUserResponse'
+              type: object
         "400":
           description: Invalid request format or user ID
           schema:
@@ -2643,9 +2787,14 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Voucher'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Voucher'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
@@ -2674,9 +2823,14 @@ paths:
         "201":
           description: Created
           schema:
-            items:
-              $ref: '#/definitions/models.Voucher'
-            type: array
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/models.Voucher'
+                  type: array
+              type: object
         "400":
           description: Invalid request format
           schema:
@@ -2708,7 +2862,12 @@ paths:
         "200":
           description: Workflow status returned successfully
           schema:
-            type: string
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  type: string
+              type: object
         "400":
           description: Invalid request or missing workflow ID
           schema:

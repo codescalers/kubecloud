@@ -300,7 +300,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
+	Accepted(c, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
 		NodeID:     nodeID,
 		Email:      user.Email,
@@ -363,6 +363,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 // ListReservedNodeHandler list reserved nodes for user on tfchain
 func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+
 	nodes, count, err := h.getRentedNodesForUser(c.Request.Context(), userID, false)
 	if err != nil {
 		InternalServerError(c, "Failed to retrieve rented nodes")
@@ -451,7 +452,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
+	Accepted(c, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,
 		ContractID: contractID,
 		Email:      user.Email,

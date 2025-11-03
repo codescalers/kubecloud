@@ -42,17 +42,8 @@ func Created(c *gin.Context, message string, data interface{}) {
 	Success(c, http.StatusCreated, message, data)
 }
 
-// Accepted returns an accepted response for async operations (202)
-func Accepted(c *gin.Context, message string, workflowID string, status string) {
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: workflowID,
-		Status:     status,
-		Message:    message,
-	})
-}
-
-// AcceptedWithData returns an accepted response with custom data (202)
-func AcceptedWithData(c *gin.Context, message string, data interface{}) {
+// Accepted returns an accepted response with custom data (202)
+func Accepted(c *gin.Context, message string, data interface{}) {
 	Success(c, http.StatusAccepted, message, data)
 }
 

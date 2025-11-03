@@ -246,7 +246,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
+	Accepted(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      request.Email,
 	})
@@ -277,8 +277,12 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	// get user by email
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			NotFound(c, "User not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("failed to get user by email")
-		BadRequest(c, "verification failed")
+		InternalServerError(c, "Failed to get user by email")
 		return
 	}
 	logWithUser := requestLogger(c, "VerifyRegisterCode").With().Int("user_id", user.ID).Logger()
@@ -350,7 +354,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 
-	AcceptedWithData(c, "Verification is in progress", VerifyRegisterUserResponse{
+	Accepted(c, "Verification is in progress", VerifyRegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 		TokenPair:  tokenPair,
@@ -546,7 +550,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			BadRequest(c, "Invalid request format")
+			NotFound(c, "User not found")
 			return
 
 		}
@@ -718,7 +722,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
+	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 	})
@@ -913,7 +917,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	AcceptedWithData(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
+	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
@@ -928,7 +932,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} APIResponse{data= []models.SSHKey}
+// @Success 200 {object} APIResponse{data=[]models.SSHKey}
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [get]
@@ -959,7 +963,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param body body SSHKeyInput true "SSH Key Input"
-// @Success 201 {object} APIResponse{data= models.SSHKey}
+// @Success 201 {object} APIResponse{data=models.SSHKey}
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse
