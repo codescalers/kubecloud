@@ -136,7 +136,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	metrics := metrics.NewMetrics()
 	notificationConfig := config.Notification
-	mailService := internal.NewMailService(config.MailSender.SendGridKey, metrics)
+	mailService := internal.NewMailService(config.MailSender.SendGridKey, config.DevMode, metrics)
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
 	emailNotifier := notification.NewEmailNotifier(mailService, config.MailSender.Email, notificationConfig.EmailTemplatesDirPath)

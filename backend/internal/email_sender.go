@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"kubecloud/internal/logger"
 	"kubecloud/internal/metrics"
 	"mime"
 	"path/filepath"
@@ -30,20 +31,36 @@ var notifyPaymentRecordsMail []byte
 //go:embed templates/system_announcement.html
 var systemAnnouncementMail []byte
 
+type Attachment struct {
+	FileName string
+	Data     []byte
+}
+
+// MailServiceInterface defines the contract for mail services
+type MailServiceInterface interface {
+	SendMail(sender, receiver, subject, body string, attachments ...Attachment) error
+	ResetPasswordMailContent(code int, timeout int, username, host string) (string, string)
+	WelcomeMailContent(username, host string) (string, string)
+	SignUpMailContent(code int, timeout int, username, host string) (string, string)
+	NotifyAdminsMailContent(recordsNumber int, host string) (string, string)
+	InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string)
+	SystemAnnouncementMailBody(body string) string
+}
+
 // MailService struct hods all functionalities of mail service
 type MailService struct {
 	client  *sendgrid.Client
 	metrics *metrics.Metrics
 }
 
-type Attachment struct {
-	FileName string
-	Data     []byte
-}
-
 // NewMailService creates new instance of mail service
-func NewMailService(sendGridKey string, metrics *metrics.Metrics) MailService {
-	return MailService{
+func NewMailService(sendGridKey string, devMode bool, metrics *metrics.Metrics) MailServiceInterface {
+	if sendGridKey == "" && devMode {
+		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
+		return NewFakeMailService(metrics)
+	}
+	logger.GetLogger().Info().Msg("Using SendGrid mail service")
+	return &MailService{
 		client:  sendgrid.NewSendClient(sendGridKey),
 		metrics: metrics,
 	}

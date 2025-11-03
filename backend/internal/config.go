@@ -32,6 +32,7 @@ type Configuration struct {
 	Invoice                                 InvoiceCompanyData `json:"invoice"`
 	SSH                                     SSHConfig          `json:"ssh" validate:"required,dive"`
 	Debug                                   bool               `json:"debug"`
+	DevMode                                 bool               `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes         int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours    int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
 	ClusterHealthCheckIntervalInHours       int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
@@ -82,7 +83,7 @@ type JwtToken struct {
 // MailSender struct to hold sender's email, password
 type MailSender struct {
 	Email               string `json:"email" validate:"required,email"`
-	SendGridKey         string `json:"sendgrid_key" validate:"required"`
+	SendGridKey         string `json:"sendgrid_key"` // Required in production. Can be empty in dev_mode to use FakeMailService
 	TimeoutMin          int    `json:"timeout" validate:"min=2"`
 	MaxConcurrentSends  int    `json:"max_concurrent_sends" validate:"min=1"`
 	MaxAttachmentSizeMB int64  `json:"max_attachment_size_mb" validate:"min=1"`
@@ -256,6 +257,11 @@ func LoadConfig() (Configuration, error) {
 			}
 		}
 		return Configuration{}, fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	// custom validation: sendGridKey is required when NOT in dev mode
+	if !config.DevMode && config.MailSender.SendGridKey == "" {
+		return Configuration{}, fmt.Errorf("sendgrid_key is required when dev_mode is false. Set dev_mode=true to use FakeMailService for development")
 	}
 
 	return config, nil
