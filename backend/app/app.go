@@ -60,7 +60,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
-	// Add our custom logging middleware
+	// Add our custom logging middleware (includes request ID generation)
 	router.Use(middlewares.GinLoggerMiddleware())
 
 	stripe.Key = config.StripeSecret
