@@ -333,9 +333,7 @@ const normalizedNodes = computed(() =>
 }
 
 .stat-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+  display: block;
 }
 
 .stat-icon {

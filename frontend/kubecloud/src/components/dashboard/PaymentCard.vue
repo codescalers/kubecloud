@@ -1,63 +1,75 @@
 <template>
-  <div class="dashboard-card payment-card spacious">
-    <div class="dashboard-card-header">
-      <h3 class="dashboard-card-title">Add Funds</h3>
-      <p class="dashboard-card-subtitle">Add funds to your account balance</p>
-    </div>
-    <div class="dashboard-card-content">
-      <div class="balance-container">
-      <div class="balance-row">
-        <span>Current Balance:</span>
-        <span class="balance-value">${{ userStore.netBalance.toFixed(2) }}</span>
-      </div>
-      <div class="balance-row" v-if="userStore.pendingBalance > 0">
-        <span class="pending-balance-text">Pending Balance:</span>
-        <span class="pending-balance-value">${{ userStore.pendingBalance.toFixed(2) }}</span>
-      </div>
-      </div>
-      <div class="amount-row">
-        <span>Amount:</span>
-        <div class="amount-options">
-          <button
+  <v-card class="pa-6" variant="outlined" rounded="xl">
+    <v-card-title class="text-h5 font-weight-bold">Add Funds</v-card-title>
+    <v-card-subtitle class="mb-2">Add funds to your account balance</v-card-subtitle>
+    <v-divider class="mb-4"></v-divider>
+
+    <v-row class="mb-2">
+      <v-col cols="12" class="d-flex justify-space-between align-center">
+        <div class="text-body-1">Current Balance:</div>
+        <div class="text-body-1 text-success font-weight-bold">${{ userStore.netBalance.toFixed(2) }}</div>
+      </v-col>
+      <v-col v-if="userStore.pendingBalance > 0" cols="12" class="d-flex justify-space-between align-center">
+        <div class="text-body-1">Pending Balance:</div>
+        <div class="text-body-1 text-medium-emphasis font-weight-medium">${{ userStore.pendingBalance.toFixed(2) }}</div>
+      </v-col>
+    </v-row>
+
+    <v-row class="mb-4" align="center">
+      <v-col cols="12" class="d-flex align-center flex-wrap">
+        <div class="me-4">Amount:</div>
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
             v-for="preset in presets"
             :key="preset"
-            :class="{ selected: typeof amount === 'number' && amount === preset }"
+            :variant="typeof amount === 'number' && amount === preset ? 'flat' : 'tonal'"
+            :color="typeof amount === 'number' && amount === preset ? 'primary' : undefined"
+            size="large"
             @click="selectAmount(preset)"
-            type="button"
-          >{{ preset }}</button>
-          <template v-if="typeof amount !== 'string' || amount !== 'custom'">
-            <button
-              :class="{ selected: typeof amount === 'string' && amount === 'custom' }"
-              @click="selectAmount('custom')"
-              type="button"
-            >Custom</button>
-          </template>
-          <input
+          >
+            {{ preset }}
+          </v-btn>
+          <v-btn
+            :variant="typeof amount === 'string' && amount === 'custom' ? 'flat' : 'tonal'"
+            :color="typeof amount === 'string' && amount === 'custom' ? 'primary' : undefined"
+            size="large"
+            @click="selectAmount('custom')"
+          >
+            Custom
+          </v-btn>
+          <v-text-field
             v-if="typeof amount === 'string' && amount === 'custom'"
+            v-model.number="customAmount"
             type="number"
             min="1"
-            class="amount-input"
-            v-model.number="customAmount"
-            placeholder="Custom"
+            density="comfortable"
+            variant="outlined"
+            label="Custom amount"
+            hide-details="auto"
+            class="ms-2"
             @focus="selectAmount('custom')"
+            style="max-width: 140px"
           />
         </div>
-      </div>
-      <div class="card-details-row">
-        <div id="stripe-card-element" class="stripe-card-element"></div>
-      </div>
-      <v-btn
-        class="action-btn"
-        color="primary"
-        :loading="loading"
-        :disabled="loading || !isFormValid"
-        @click="chargeBalance"
-        prepend-icon="mdi-credit-card-plus"
-      >
-        Charge Balance
-      </v-btn>
-    </div>
-  </div>
+      </v-col>
+    </v-row>
+
+    <v-sheet variant="outlined" rounded="lg" class="pa-3 mb-4">
+      <div id="stripe-card-element"></div>
+    </v-sheet>
+
+    <v-btn
+      color="primary"
+      :loading="loading"
+      :disabled="loading || !isFormValid"
+      @click="chargeBalance"
+      prepend-icon="mdi-credit-card-plus"
+      size="large"
+      rounded="lg"
+    >
+      Charge Balance
+    </v-btn>
+  </v-card>
 </template>
 
 <script setup lang="ts">
@@ -147,127 +159,3 @@ function getSelectedAmount() {
 }
 </script>
 
-<style scoped>
-.dashboard-card.payment-card.spacious {
-  background: #181f35;
-  border-radius: 1.25rem;
-  border: 1.5px solid #334155;
-  max-width: 50rem;
-  margin: 0;
-  padding: 2.2rem 2.5rem 2.2rem 2.5rem;
-  box-shadow: 0 4px 32px 0 rgba(0,0,0,0.12);
-  display: flex;
-  flex-direction: column;
-}
-.balance-container {
-  margin-bottom: 1.3rem;
-  font-size: 1.1rem;
-}
-.balance-row {
-  display: flex;
-  gap: 2rem;
-  justify-content: space-between;
-  align-items: center;
-}
-.dashboard-card-header {
-  margin-bottom: 1.5rem;
-  width: 100%;
-}
-.dashboard-card-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.2rem;
-}
-.dashboard-card-subtitle {
-  font-size: 1.05rem;
-  color: #60a5fa;
-  margin-bottom: 0.5rem;
-}
-.dashboard-card-content {
-  width: 100%;
-}
-
-.balance-value {
-  color: #10B981;
-  font-weight: 700;
-  font-size: 1.2rem;
-}
-.pending-balance-value {
-  color: rgba(203, 213, 225, 0.5);
-  font-weight: 700;
-  font-size: 1rem;
-}
-.amount-row {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1.3rem;
-  gap: 0.7rem;
-}
-.amount-options {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.amount-btn,
-.amount-options button {
-  background: #232f47;
-  border: 1.5px solid #334155;
-  border-radius: 0.7rem;
-  padding: 0.5rem 1.3rem;
-  font-size: 1.1rem;
-  color: #CBD5E1;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-.amount-options button.selected,
-.amount-options button:focus {
-  background: #60a5fa;
-  color: #fff;
-  border-color: #60a5fa;
-}
-.amount-input {
-  width: 100px;
-  padding: 0.5rem 0.7rem;
-  border: 1.5px solid #334155;
-  border-radius: 0.7rem;
-  font-size: 1.1rem;
-  margin-left: 0.3rem;
-}
-.card-details-row {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.3rem;
-}
-.stripe-card-element {
-  background: #232f47;
-  border: 1.5px solid #334155;
-  border-radius: 0.7rem;
-  padding: 0.7rem 1.1rem;
-  font-size: 1.1rem;
-  color: #CBD5E1;
-  margin-bottom: 1.3rem;
-  min-height: 44px;
-  min-width: 29rem;
-  display: block;
-}
-.pending-balance-text {
-  font-size: 1rem;
-  color: rgba(203, 213, 225, 0.8);
-}
-.action-btn {
-  margin-top: 1.2rem;
-  font-size: 1.1rem;
-  border-radius: 0.7rem;
-}
-.success-message {
-  color: #10B981;
-  font-weight: 500;
-  font-size: 1rem;
-}
-.error-message {
-  color: #EF4444;
-  font-weight: 500;
-  font-size: 1rem;
-}
-</style>
