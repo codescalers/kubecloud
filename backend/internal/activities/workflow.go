@@ -34,7 +34,7 @@ func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config internal.Configuration,
 	db models.DB,
-	mail internal.MailServiceInterface,
+	mail internal.MailService,
 	substrate *substrate.Substrate,
 	kycClient *internal.KYCClient,
 	sponsorAddress string,

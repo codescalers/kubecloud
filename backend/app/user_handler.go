@@ -38,7 +38,7 @@ type Handler struct {
 	tokenManager        internal.TokenManager
 	db                  models.DB
 	config              internal.Configuration
-	mailService         internal.MailServiceInterface
+	mailService         internal.MailService
 	proxyClient         proxy.Client
 	substrateClient     *substrate.Substrate
 	graphqlClient       graphql.GraphQl
@@ -59,7 +59,7 @@ type Handler struct {
 
 // NewHandler create new handler
 func NewHandler(tokenManager internal.TokenManager, db models.DB,
-	config internal.Configuration, mailService internal.MailServiceInterface,
+	config internal.Configuration, mailService internal.MailService,
 	gridproxy proxy.Client, substrateClient *substrate.Substrate,
 	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
 	sseManager *internal.SSEManager, ewfEngine *ewf.Engine,

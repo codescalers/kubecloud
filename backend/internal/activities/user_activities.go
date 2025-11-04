@@ -79,7 +79,7 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 	}
 }
 
-func SendVerificationEmailStep(mailService internal.MailServiceInterface, config internal.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService internal.MailService, config internal.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -291,7 +291,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 	}
 }
 
-func SendWelcomeEmailStep(mailService internal.MailServiceInterface, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService internal.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 

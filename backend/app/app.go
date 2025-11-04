@@ -136,7 +136,13 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	metrics := metrics.NewMetrics()
 	notificationConfig := config.Notification
-	mailService := internal.NewMailService(config.MailSender.SendGridKey, config.DevMode, metrics)
+	var mailService internal.MailService
+	if config.DevMode && config.MailSender.SendGridKey == "" {
+		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
+		mailService = internal.NewFakeMailService(metrics)
+	} else {
+		mailService = internal.NewMailService(config.MailSender.SendGridKey, metrics)
+	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
 	emailNotifier := notification.NewEmailNotifier(mailService, config.MailSender.Email, notificationConfig.EmailTemplatesDirPath)

@@ -15,12 +15,12 @@ import (
 var emailTpls *template.Template
 
 type EmailNotifier struct {
-	mailService   internal.MailServiceInterface
+	mailService   internal.MailService
 	defaultSender string
 	templatesDir  string
 }
 
-func NewEmailNotifier(mailService internal.MailServiceInterface, defaultSender, templatesDir string) *EmailNotifier {
+func NewEmailNotifier(mailService internal.MailService, defaultSender, templatesDir string) *EmailNotifier {
 	return &EmailNotifier{
 		mailService:   mailService,
 		defaultSender: defaultSender,

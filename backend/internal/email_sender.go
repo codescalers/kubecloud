@@ -36,8 +36,8 @@ type Attachment struct {
 	Data     []byte
 }
 
-// MailServiceInterface defines the contract for mail services
-type MailServiceInterface interface {
+// MailService defines the contract for mail services
+type MailService interface {
 	SendMail(sender, receiver, subject, body string, attachments ...Attachment) error
 	ResetPasswordMailContent(code int, timeout int, username, host string) (string, string)
 	WelcomeMailContent(username, host string) (string, string)
@@ -47,27 +47,23 @@ type MailServiceInterface interface {
 	SystemAnnouncementMailBody(body string) string
 }
 
-// MailService struct hods all functionalities of mail service
-type MailService struct {
+// SendService struct hods all functionalities of mail service
+type SendGridMailService struct {
 	client  *sendgrid.Client
 	metrics *metrics.Metrics
 }
 
 // NewMailService creates new instance of mail service
-func NewMailService(sendGridKey string, devMode bool, metrics *metrics.Metrics) MailServiceInterface {
-	if sendGridKey == "" && devMode {
-		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
-		return NewFakeMailService(metrics)
-	}
+func NewMailService(sendGridKey string, metrics *metrics.Metrics) SendGridMailService {
 	logger.GetLogger().Info().Msg("Using SendGrid mail service")
-	return &MailService{
+	return SendGridMailService{
 		client:  sendgrid.NewSendClient(sendGridKey),
 		metrics: metrics,
 	}
 }
 
 // SendMail sends verification mails
-func (service *MailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
+func (service SendGridMailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
 	from := mail.NewEmail("Mycelium Cloud", sender)
 
 	if !IsValidEmail(receiver) {
@@ -101,7 +97,7 @@ func (service *MailService) SendMail(sender, receiver, subject, body string, att
 }
 
 // ResetPasswordMailContent gets the email content for reset password
-func (service *MailService) ResetPasswordMailContent(code int, timeout int, username, host string) (string, string) {
+func (service SendGridMailService) ResetPasswordMailContent(code int, timeout int, username, host string) (string, string) {
 	subject := "Reset password"
 	body := string(resetPassTemplate)
 
@@ -114,7 +110,7 @@ func (service *MailService) ResetPasswordMailContent(code int, timeout int, user
 }
 
 // WelcomeMailContent gets the email content for welcome messages
-func (service *MailService) WelcomeMailContent(username, host string) (string, string) {
+func (service SendGridMailService) WelcomeMailContent(username, host string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(welcomeMail)
 
@@ -125,7 +121,7 @@ func (service *MailService) WelcomeMailContent(username, host string) (string, s
 }
 
 // SignUpMailContent gets the email content for sign up
-func (service *MailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
+func (service SendGridMailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(signUpTemplate)
 
@@ -138,7 +134,7 @@ func (service *MailService) SignUpMailContent(code int, timeout int, username, h
 }
 
 // NotifyAdminsMailContent gets the content for notifying admins
-func (service *MailService) NotifyAdminsMailContent(recordsNumber int, host string) (string, string) {
+func (service SendGridMailService) NotifyAdminsMailContent(recordsNumber int, host string) (string, string) {
 	subject := "There're pending payment requests for you to settle"
 	body := string(notifyPaymentRecordsMail)
 
@@ -148,7 +144,7 @@ func (service *MailService) NotifyAdminsMailContent(recordsNumber int, host stri
 	return subject, body
 }
 
-func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string) {
+func (service SendGridMailService) InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string) {
 	mailBody := "We hope this message finds you well. <br>"
 	mailBody += fmt.Sprintf("Our records show that there is an outstanding invoice (%d) for %v %s associated with your account. ", invoiceID, invoiceTotal, currency)
 
@@ -161,7 +157,7 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 
 }
 
-func (service *MailService) SystemAnnouncementMailBody(body string) string {
+func (service SendGridMailService) SystemAnnouncementMailBody(body string) string {
 	template := string(systemAnnouncementMail)
 	body = strings.ReplaceAll(body, "\n", "<br>")
 	template = strings.ReplaceAll(template, "-body-", body)
