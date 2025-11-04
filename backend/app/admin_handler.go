@@ -23,6 +23,45 @@ import (
 	"gorm.io/gorm"
 )
 
+type adminService struct {
+	models.UserRepository
+	models.UserNodesRepository
+	models.PendingRecordRepository
+	models.VoucherRepository
+	models.TransactionRepository
+	models.SettingsRepository
+}
+
+func NewAdminService(
+	userRepo models.UserRepository,
+	userNodeRepo models.UserNodesRepository,
+	pendingRecordRepo models.PendingRecordRepository,
+	voucherRepo models.VoucherRepository,
+	transactionRepo models.TransactionRepository,
+	settingsRepo models.SettingsRepository,
+) adminService {
+	return adminService{
+		UserRepository:          userRepo,
+		UserNodesRepository:     userNodeRepo,
+		PendingRecordRepository: pendingRecordRepo,
+		VoucherRepository:       voucherRepo,
+		TransactionRepository:   transactionRepo,
+		SettingsRepository:      settingsRepo,
+	}
+}
+
+type adminHandler struct {
+	svc adminService
+	*appConfig
+}
+
+func newAdminHandler(svc adminService, config *appConfig) adminHandler {
+	return adminHandler{
+		svc:       svc,
+		appConfig: config,
+	}
+}
+
 type UserResponse struct {
 	models.User
 	Balance float64 `json:"balance"` // USD balance
@@ -83,8 +122,8 @@ type MaintenanceModeStatus struct {
 // @Security AdminMiddleware
 // @Router /users [get]
 // ListUsersHandler lists all users
-func (h *Handler) ListUsersHandler(c *gin.Context) {
-	users, err := h.db.ListAllUsers()
+func (h *adminHandler) ListUsersHandler(c *gin.Context) {
+	users, err := h.svc.ListAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
@@ -155,7 +194,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /users/{user_id} [delete]
 // DeleteUsersHandler deletes user from system
-func (h *Handler) DeleteUsersHandler(c *gin.Context) {
+func (h *adminHandler) DeleteUsersHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
@@ -175,7 +214,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.DeleteUserByID(id)
+	err = h.svc.DeleteUserByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "User not found", "")
@@ -202,7 +241,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /vouchers/generate [post]
 // GenerateVouchersHandler generates bulk of vouchers
-func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
+func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 	var request GenerateVouchersInput
 
 	// check on request format
@@ -225,7 +264,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			ExpiresAt: time.Now().Add(time.Duration(request.ExpireAfter) * 24 * time.Hour),
 		}
 
-		if err := h.db.CreateVoucher(&voucher); err != nil {
+		if err := h.svc.CreateVoucher(&voucher); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to create voucher")
 			InternalServerError(c)
 			return
@@ -250,7 +289,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			models.WithSeverity(models.NotificationSeveritySuccess),
 			models.WithNoPersist(),
 		)
-		if err := h.notificationService.Send(h.appContext, notif); err != nil {
+		if err := h.notificationService.Send(h.appCtx, notif); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
 		}
 	}
@@ -271,14 +310,14 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /vouchers [get]
 // ListVouchersHandler returns all vouchers in system
-func (h *Handler) ListVouchersHandler(c *gin.Context) {
-
-	vouchers, err := h.db.ListAllVouchers()
+func (h *adminHandler) ListVouchersHandler(c *gin.Context) {
+	vouchers, err := h.svc.ListAllVouchers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all vouchers")
 		InternalServerError(c)
 		return
 	}
+
 	Success(c, http.StatusOK, "Vouchers are Retrieved successfully", map[string]interface{}{
 		"vouchers": vouchers,
 	})
@@ -298,7 +337,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /users/{user_id}/credit [post]
 // CreditUserHandler lets admin credit specific user with money
-func (h *Handler) CreditUserHandler(c *gin.Context) {
+func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
@@ -319,7 +358,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	user, err := h.db.GetUserByID(id)
+	user, err := h.svc.GetUserByID(id)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -344,7 +383,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.CreateTransaction(&transaction); err != nil {
+	if err := h.svc.CreateTransaction(&transaction); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to create credit transaction")
 		InternalServerError(c)
 		return
@@ -358,7 +397,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,
 	}
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
@@ -378,8 +417,8 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /pending-records [get]
 // ListPendingRecordsHandler returns all pending records in the system
-func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
-	pendingRecords, err := h.db.ListAllPendingRecords()
+func (h *adminHandler) ListPendingRecordsHandler(c *gin.Context) {
+	pendingRecords, err := h.svc.ListAllPendingRecords()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
 		InternalServerError(c)
@@ -429,7 +468,7 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security AdminMiddleware
 // @Router /users/mail [post]
-func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
+func (h *adminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	var input AdminMailInput
 	if err := c.ShouldBind(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
@@ -450,7 +489,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		}
 	}
 
-	users, err := h.db.ListAllUsers()
+	users, err := h.svc.ListAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
@@ -504,7 +543,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
 }
 
-func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
+func (h *adminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
 	if len(fileHeaders) == 0 {
 		return nil, nil
 	}
@@ -589,7 +628,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 // @Security AdminMiddleware
 // @Router /system/maintenance/status [put]
 // SetMaintenanceModeHandler sets maintenance mode for the system
-func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
+func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 	var request MaintenanceModeStatus
 
 	// check on request format
@@ -599,7 +638,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.SetMaintenanceMode(request.Enabled); err != nil {
+	if err := h.svc.SetMaintenanceMode(request.Enabled); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
@@ -619,8 +658,8 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
-func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
-	enabled, err := h.db.GetMaintenanceMode()
+func (h *adminHandler) GetMaintenanceModeHandler(c *gin.Context) {
+	enabled, err := h.svc.GetMaintenanceMode()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

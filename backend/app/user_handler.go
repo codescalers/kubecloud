@@ -1,10 +1,8 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
 	"net/http"
@@ -18,10 +16,6 @@ import (
 	"github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 
 	"kubecloud/internal/constants"
@@ -29,66 +23,35 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
-	"github.com/vedhavyas/go-subkey"
 )
 
-// Handler struct holds configs for all handlers
-type Handler struct {
-	tokenManager        internal.TokenManager
-	db                  models.DB
-	config              internal.Configuration
-	mailService         internal.MailService
-	proxyClient         proxy.Client
-	substrateClient     *substrate.Substrate
-	graphqlClient       graphql.GraphQl
-	firesquidClient     graphql.GraphQl
-	sseManager          *internal.SSEManager
-	ewfEngine           *ewf.Engine
-	gridNet             string // Network name for the grid
-	sshPublicKey        string // SSH public key loaded at startup
-	systemIdentity      substrate.Identity
-	kycClient           *internal.KYCClient
-	sponsorKeyPair      subkey.KeyPair
-	sponsorAddress      string
-	metrics             *metrics.Metrics
-	notificationService *notification.NotificationService
-	gridClient          deployer.TFPluginClient
-	appContext          context.Context
+type userService struct {
+	models.UserRepository
+	models.VoucherRepository
+	models.PendingRecordRepository
 }
 
-// NewHandler create new handler
-func NewHandler(tokenManager internal.TokenManager, db models.DB,
-	config internal.Configuration, mailService internal.MailService,
-	gridproxy proxy.Client, substrateClient *substrate.Substrate,
-	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
-	sseManager *internal.SSEManager, ewfEngine *ewf.Engine,
-	gridNet string, sshPublicKey string, systemIdentity substrate.Identity,
-	kycClient *internal.KYCClient, sponsorKeyPair subkey.KeyPair, sponsorAddress string,
-	metrics *metrics.Metrics, notificationService *notification.NotificationService, gridClient deployer.TFPluginClient,
-	appContext context.Context) *Handler {
+func NewUserService(
+	userRepo models.UserRepository,
+	voucherRepo models.VoucherRepository,
+	pendingRecordRepo models.PendingRecordRepository,
+) userService {
+	return userService{
+		UserRepository:          userRepo,
+		VoucherRepository:       voucherRepo,
+		PendingRecordRepository: pendingRecordRepo,
+	}
+}
 
-	return &Handler{
-		tokenManager:        tokenManager,
-		db:                  db,
-		config:              config,
-		mailService:         mailService,
-		proxyClient:         gridproxy,
-		substrateClient:     substrateClient,
-		graphqlClient:       graphqlClient,
-		firesquidClient:     firesquidClient,
-		sseManager:          sseManager,
-		ewfEngine:           ewfEngine,
-		gridNet:             gridNet,
-		sshPublicKey:        sshPublicKey,
-		systemIdentity:      systemIdentity,
-		kycClient:           kycClient,
-		sponsorKeyPair:      sponsorKeyPair,
-		sponsorAddress:      sponsorAddress,
-		metrics:             metrics,
-		notificationService: notificationService,
-		gridClient:          gridClient,
-		appContext:          appContext,
+type userHandler struct {
+	svc userService
+	*appConfig
+}
+
+func newUserHandler(svc userService, config *appConfig) userHandler {
+	return userHandler{
+		svc:       svc,
+		appConfig: config,
 	}
 }
 
@@ -204,7 +167,7 @@ type GetUserResponse struct {
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register [post]
-func (h *Handler) RegisterHandler(c *gin.Context) {
+func (h *userHandler) RegisterHandler(c *gin.Context) {
 	var request RegisterInput
 
 	// check on request format
@@ -215,7 +178,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	}
 
 	// check if user previously exists
-	existingUser, getErr := h.db.GetUserByEmail(request.Email)
+	existingUser, getErr := h.svc.GetUserByEmail(request.Email)
 	if getErr != nil && getErr != gorm.ErrRecordNotFound {
 		InternalServerError(c)
 		return
@@ -241,7 +204,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 		"password": request.Password,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
@@ -261,7 +224,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register/verify [post]
-func (h *Handler) VerifyRegisterCode(c *gin.Context) {
+func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 	var request VerifyCodeInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -271,7 +234,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.db.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
@@ -296,7 +259,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			return
 		}
 
-		if err := h.db.UpdateUserByID(&models.User{
+		if err := h.svc.UpdateUserByID(&models.User{
 			ID:       user.ID,
 			Verified: true,
 		}); err != nil {
@@ -309,7 +272,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			Subject: "User email verified",
 		}
 		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeveritySuccess))
-		err = h.notificationService.Send(h.appContext, notification)
+		err = h.notificationService.Send(h.appCtx, notification)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send user registration notification")
 		}
@@ -335,7 +298,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		"user_id": user.ID,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
@@ -364,7 +327,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/login [post]
 // LoginUserHandler logs user into the system
-func (h *Handler) LoginUserHandler(c *gin.Context) {
+func (h *userHandler) LoginUserHandler(c *gin.Context) {
 	var request LoginInput
 
 	// check on request format
@@ -374,7 +337,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.db.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
@@ -397,7 +360,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	}
 	if user.Sponsored != sponsored {
 		user.Sponsored = sponsored
-		if err := h.db.UpdateUserByID(&user); err != nil {
+		if err := h.svc.UpdateUserByID(&user); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to update user sponsorship status")
 		}
 	}
@@ -425,7 +388,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/refresh [post]
 // RefreshTokenHandler handles token refresh requests
-func (h *Handler) RefreshTokenHandler(c *gin.Context) {
+func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
 	var request RefreshTokenInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -460,7 +423,7 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password [post]
 // ForgotPasswordHandler sends user verification code
-func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
+func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 	var request EmailInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -470,7 +433,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.db.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user ")
 		Error(c, http.StatusNotFound, "user lookup failed", "failed to get user")
@@ -488,7 +451,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.UpdateUserByID(
+	err = h.svc.UpdateUserByID(
 		&models.User{
 			ID:        user.ID,
 			UpdatedAt: time.Now(),
@@ -521,7 +484,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password/verify [post]
 // VerifyForgetPasswordCodeHandler verifies code sent to user when forgetting password
-func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
+func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	var request VerifyCodeInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -531,7 +494,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.db.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
@@ -580,7 +543,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/change_password [put]
 // ChangePasswordHandler changes password of user
-func (h *Handler) ChangePasswordHandler(c *gin.Context) {
+func (h *userHandler) ChangePasswordHandler(c *gin.Context) {
 	var request ChangePasswordInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -598,7 +561,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.UpdatePassword(request.Email, hashedPassword)
+	err = h.svc.UpdatePassword(request.Email, hashedPassword)
 	if err == gorm.ErrRecordNotFound {
 		logger.GetLogger().Error().Err(err).Msg("user is not found")
 		Error(c, http.StatusNotFound, "user is not found", err.Error())
@@ -620,7 +583,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	}
 
 	notification := models.NewNotification(c.GetInt("user_id"), models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err = h.notificationService.Send(h.appContext, notification)
+	err = h.notificationService.Send(h.appCtx, notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send password changed notification")
 	}
@@ -641,7 +604,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/balance/charge [post]
-func (h *Handler) ChargeBalance(c *gin.Context) {
+func (h *userHandler) ChargeBalance(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
 	var request ChargeBalanceInput
@@ -651,7 +614,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -702,7 +665,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
@@ -720,17 +683,17 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
 // GetUserHandler retrieves all data of the user
-func (h *Handler) GetUserHandler(c *gin.Context) {
+func (h *userHandler) GetUserHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
 
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
@@ -769,10 +732,10 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/balance [get]
 // GetUserBalance returns user's balance in usd
-func (h *Handler) GetUserBalance(c *gin.Context) {
+func (h *userHandler) GetUserBalance(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -786,7 +749,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
@@ -823,7 +786,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 // @Failure 404 {object} APIResponse "User or voucher are not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/redeem/{voucher_code} [put]
-func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
+func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 	voucherCodeParam := c.Param("voucher_code")
 	if voucherCodeParam == "" {
 		Error(c, http.StatusBadRequest, "Voucher Code is required", "")
@@ -831,7 +794,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	userID := c.GetInt("user_id")
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -839,7 +802,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 
 	// check voucher exists
-	voucher, err := h.db.GetVoucherByCode(voucherCodeParam)
+	voucher, err := h.svc.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Voucher is not found", "")
@@ -858,7 +821,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.RedeemVoucher(voucher.Code)
+	err = h.svc.RedeemVoucher(voucher.Code)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -878,7 +841,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		"username":      user.Username,
 		"transfer_mode": models.RedeemVoucherMode,
 	}
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
@@ -900,14 +863,14 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [get]
 // ListSSHKeysHandler lists all SSH keys for the authenticated user
-func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
+func (h *userHandler) ListSSHKeysHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
 		return
 	}
 
-	sshKeys, err := h.db.ListUserSSHKeys(userID)
+	sshKeys, err := h.svc.ListUserSSHKeys(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list SSH keys")
 		InternalServerError(c)
@@ -931,7 +894,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [post]
 // AddSSHKeyHandler adds a new SSH key for the authenticated user
-func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
+func (h *userHandler) AddSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
@@ -957,7 +920,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		PublicKey: request.PublicKey,
 	}
 
-	if err := h.db.CreateSSHKey(&sshKey); err != nil {
+	if err := h.svc.CreateSSHKey(&sshKey); err != nil {
 		if isUniqueViolation(err) {
 			Error(c, http.StatusBadRequest, "Duplicate SSH key", "SSH key name or public key already exists for this user.")
 			return
@@ -973,7 +936,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
 	}
 	notification := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err := h.notificationService.Send(h.appContext, notification)
+	err := h.notificationService.Send(h.appCtx, notification)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key added notification")
 	}
@@ -996,7 +959,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys/{ssh_key_id} [delete]
 // DeleteSSHKeyHandler deletes an SSH key for the authenticated user
-func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
+func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
@@ -1017,7 +980,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	sshKey, err := h.db.GetSSHKeyByID(keyID, userID)
+	sshKey, err := h.svc.GetSSHKeyByID(keyID, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
@@ -1028,7 +991,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.db.DeleteSSHKey(keyID, userID); err != nil {
+	if err := h.svc.DeleteSSHKey(keyID, userID); err != nil {
 		if err.Error() == fmt.Sprintf("no SSH key found with ID %d for user %d", keyID, userID) {
 			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
 			return
@@ -1044,7 +1007,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		Message: fmt.Sprintf("SSH key '%s' was deleted from your account.", sshKey.Name),
 	}
 	n := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}), models.WithSeverity(models.NotificationSeveritySuccess))
-	if err := h.notificationService.Send(h.appContext, n); err != nil {
+	if err := h.notificationService.Send(h.appCtx, n); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 
@@ -1063,7 +1026,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 // @Failure 404 {object} APIResponse "Workflow not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /workflow/{workflow_id} [get]
-func (h *Handler) GetWorkflowStatus(c *gin.Context) {
+func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
 
 	workflowID := c.Param("workflow_id")
 	if workflowID == "" {
@@ -1090,10 +1053,10 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /user/pending-records [get]
 // ListUserPendingRecordsHandler returns user pending records in the system
-func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
+func (h *userHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	pendingRecords, err := h.db.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)

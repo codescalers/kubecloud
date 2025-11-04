@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/xmonader/ewf"
 	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
 // TestSQLiteStore_SaveAndLoad tests saving and loading a workflow in SQLiteStore.
@@ -23,17 +22,14 @@ func TestGormStore_SaveAndLoad(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	db, err := gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
+	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		sqlDB.Close()
 	})
 
-	store := NewGormStore(db)
+	store := NewGormEWFRepository(sqlDB)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -78,17 +74,14 @@ func TestGormStore_LoadNotFound(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	db, err := gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
-	require.NoError(t, err)
-
-	sqlDB, err := db.DB()
+	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		sqlDB.Close()
 	})
 
-	store := NewGormStore(db)
+	store := NewGormEWFRepository(sqlDB)
 	if err != nil {
 		t.Fatalf("NewGormStore() error = %v", err)
 	}

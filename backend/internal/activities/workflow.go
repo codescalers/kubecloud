@@ -43,24 +43,29 @@ func RegisterEWFWorkflows(
 	notificationService *notification.NotificationService,
 	proxyClient proxy.Client,
 ) {
+	userRepo := models.NewGormUserRepository(db)
+	clusterRepo := models.NewGormClusterRepository(db)
+	userNodesRepo := models.NewGormUserNodesRepository(db)
+	pendingRecordRepo := models.NewGormPendingRecordRepository(db)
+
 	engine.Register(constants.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
-	engine.Register(constants.StepCreateUser, CreateUserStep(config, db))
-	engine.Register(constants.StepUpdateCode, UpdateCodeStep(db))
-	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, db))
-	engine.Register(constants.StepCreateStripeCustomer, CreateStripeCustomerStep(db))
-	engine.Register(constants.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, db))
+	engine.Register(constants.StepCreateUser, CreateUserStep(config, userRepo))
+	engine.Register(constants.StepUpdateCode, UpdateCodeStep(userRepo))
+	engine.Register(constants.StepSetupTFChain, SetupTFChainStep(substrate, config, notificationService, userRepo))
+	engine.Register(constants.StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo))
+	engine.Register(constants.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, notificationService, sponsorAddress, sponsorKeyPair, userRepo))
 	engine.Register(constants.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
 	engine.Register(constants.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, notificationService))
-	engine.Register(constants.StepCreatePendingRecord, CreatePendingRecord(substrate, db, config.SystemAccount.Mnemonic))
-	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(db))
+	engine.Register(constants.StepCreatePendingRecord, CreatePendingRecord(substrate, userRepo, pendingRecordRepo, config.SystemAccount.Mnemonic))
+	engine.Register(constants.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
 	engine.Register(constants.StepCreateIdentity, CreateIdentityStep())
-	engine.Register(constants.StepReserveNode, ReserveNodeStep(db, substrate))
-	engine.Register(constants.StepUnreserveNode, UnreserveNodeStep(db, substrate))
-	engine.Register(constants.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(db))
-	engine.Register(constants.StepSendEmailNotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelEmail]))
-	engine.Register(constants.StepSendUINotification, SendNotification(db, notificationService.GetNotifiers()[notification.ChannelUI]))
+	engine.Register(constants.StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))
+	engine.Register(constants.StepUnreserveNode, UnreserveNodeStep(userNodesRepo, substrate))
+	engine.Register(constants.StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
+	engine.Register(constants.StepSendEmailNotification, SendNotification(userRepo, notificationService.GetNotifiers()[notification.ChannelEmail]))
+	engine.Register(constants.StepSendUINotification, SendNotification(userRepo, notificationService.GetNotifiers()[notification.ChannelUI]))
 	engine.Register(constants.StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
-	engine.Register(constants.StepVerifyClusterInDB, VerifyClusterInDBStep(db))
+	engine.Register(constants.StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -151,7 +156,7 @@ func RegisterEWFWorkflows(
 	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(constants.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, db, notificationService, config)
+	registerDeploymentActivities(engine, metrics, clusterRepo, notificationService, config)
 
 	notificationTemplate := ewf.WorkflowTemplate{
 		Steps: []ewf.Step{

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"kubecloud/internal/constants"
+	"kubecloud/internal/logger"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -21,6 +24,16 @@ const (
 	HealthyStatus   = "healthy"
 	UnhealthyStatus = "unhealthy"
 )
+
+type healthHandler struct {
+	*appConfig
+}
+
+func newHealthHandler(config *appConfig) healthHandler {
+	return healthHandler{
+		appConfig: config,
+	}
+}
 
 type HealthStatus struct {
 	Status  string `json:"status"`
@@ -38,7 +51,7 @@ func healthStatusFromError(err error) HealthStatus {
 	return HealthStatus{Status: UnhealthyStatus, Message: err.Error()}
 }
 
-func (h *Handler) checkDatabase(ctx context.Context) HealthStatus {
+func (h *healthHandler) checkDatabase(ctx context.Context) HealthStatus {
 	type pinger interface {
 		Ping(ctx context.Context) error
 	}
@@ -55,22 +68,30 @@ func (h *Handler) checkDatabase(ctx context.Context) HealthStatus {
 	return healthStatusFromError(err)
 }
 
-func httpHealthCheck(ctx context.Context, url string) HealthStatus {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return healthStatusFromError(err)
+func httpHealthCheck(ctx context.Context, urls []string) HealthStatus {
+	if len(urls) == 0 {
+		return healthStatusFromError(fmt.Errorf("no URLs provided for health check"))
 	}
 
-	resp, err := healthHTTPClient.Do(req)
-	if err != nil {
-		return healthStatusFromError(err)
-	}
-	defer resp.Body.Close()
+	for _, urlStr := range urls {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
+		if err != nil {
+			continue
+		}
 
-	if resp.StatusCode != http.StatusOK {
-		return healthStatusFromError(fmt.Errorf("unexpected status: %s", resp.Status))
+		resp, err := healthHTTPClient.Do(req)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return healthStatusFromError(nil)
+		}
+		logger.GetLogger().Error().Str("url", urlStr).Int("status", resp.StatusCode).Msg("Health check failed")
 	}
-	return healthStatusFromError(nil)
+
+	return healthStatusFromError(fmt.Errorf("all URLs failed health check"))
 }
 
 func healthURL(baseURL string) (string, error) {
@@ -80,16 +101,26 @@ func healthURL(baseURL string) (string, error) {
 	return url.JoinPath(baseURL, "health")
 }
 
-func (h *Handler) checkGridProxy(ctx context.Context) HealthStatus {
-	url, err := healthURL(h.config.GridProxyURL)
-	if err != nil {
-		return healthStatusFromError(fmt.Errorf("gridproxy %s", err.Error()))
+func (h *healthHandler) checkGridProxy(ctx context.Context) HealthStatus {
+	proxyURLs := deployer.ProxyURLs[h.config.SystemAccount.Network]
+	var validURLs []string
+
+	for _, proxyURL := range proxyURLs {
+		url, err := healthURL(proxyURL)
+		if err != nil {
+			return healthStatusFromError(fmt.Errorf("gridproxy %s", err.Error()))
+		}
+
+		validURLs = append(validURLs, url)
 	}
-	return httpHealthCheck(ctx, url)
+
+	return httpHealthCheck(ctx, validURLs)
 }
 
-func (h *Handler) checkTFChainHealth(ctx context.Context) HealthStatus {
-	url := strings.Replace(h.config.TFChainURL, "wss://", "https://", 1)
+func (h *healthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
+	chainURLs := deployer.SubstrateURLs[h.config.SystemAccount.Network]
+
+	url := strings.Replace(chainURLs[0], "wss://", "https://", 1)
 	url = strings.TrimSuffix(url, "/ws")
 
 	payload := `{"id":1,"jsonrpc":"2.0","method":"system_health","params":[]}`
@@ -127,12 +158,12 @@ func (h *Handler) checkTFChainHealth(ctx context.Context) HealthStatus {
 	return healthStatusFromError(nil)
 }
 
-func (h *Handler) checkActivationService(ctx context.Context) HealthStatus {
-	url, err := healthURL(h.config.ActivationServiceURL)
+func (h *healthHandler) checkActivationService(ctx context.Context) HealthStatus {
+	url, err := healthURL(constants.ActivationServiceURLs[h.config.SystemAccount.Network])
 	if err != nil {
 		return healthStatusFromError(fmt.Errorf("activation service %s", err.Error()))
 	}
-	return httpHealthCheck(ctx, url)
+	return httpHealthCheck(ctx, []string{url})
 }
 
 func checkGraphQLClient(client interface {
@@ -142,11 +173,11 @@ func checkGraphQLClient(client interface {
 	return healthStatusFromError(err)
 }
 
-func (h *Handler) checkGraphQL(ctx context.Context) HealthStatus {
-	return checkGraphQLClient(&h.graphqlClient)
+func (h *healthHandler) checkGraphQL(ctx context.Context) HealthStatus {
+	return checkGraphQLClient(&h.graphql)
 }
 
-func (h *Handler) checkFiresquid(ctx context.Context) HealthStatus {
+func (h *healthHandler) checkFiresquid(ctx context.Context) HealthStatus {
 	return checkGraphQLClient(&h.firesquidClient)
 }
 
@@ -158,7 +189,7 @@ func (h *Handler) checkFiresquid(ctx context.Context) HealthStatus {
 // @Failure 503 {object} map[string]HealthStatus "One or more systems unhealthy"
 // @Router /health [get]
 
-func (h *Handler) HealthHandler(c *gin.Context) {
+func (h *healthHandler) HealthHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	checks := map[string]HealthChecker{
 		"database":           h.checkDatabase,
@@ -182,7 +213,7 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 	c.JSON(statusCode, results)
 }
 
-func (h *Handler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {
+func (h *healthHandler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {
 	results := make(map[string]HealthStatus, len(checks))
 	var mu sync.Mutex
 	var g errgroup.Group

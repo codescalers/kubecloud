@@ -68,20 +68,22 @@ type NotificationServiceInterface interface {
 }
 
 type NotificationService struct {
-	db        models.DB
+	models.NotificationRepository
 	notifiers map[string]Notifier
 	engine    *ewf.Engine
 	templates map[models.NotificationType]NotificationTemplate
 	mu        sync.RWMutex
 }
 
-func NewNotificationService(db models.DB, engine *ewf.Engine, notificationConfig internal.NotificationConfig) (*NotificationService, error) {
-
+func NewNotificationService(
+	db models.NotificationRepository, engine *ewf.Engine,
+	notificationConfig internal.NotificationConfig,
+) (*NotificationService, error) {
 	s := &NotificationService{
-		db:        db,
-		notifiers: make(map[string]Notifier),
-		engine:    engine,
-		templates: make(map[models.NotificationType]NotificationTemplate),
+		NotificationRepository: db,
+		notifiers:              make(map[string]Notifier),
+		engine:                 engine,
+		templates:              make(map[models.NotificationType]NotificationTemplate),
 	}
 
 	if err := s.LoadTemplatesFromConfigFile(notificationConfig); err != nil {
@@ -142,7 +144,7 @@ func (s *NotificationService) Send(ctx context.Context, notification *models.Not
 
 	// Persist to database if enabled
 	if notification.Persist {
-		if err := s.db.CreateNotification(notification); err != nil {
+		if err := s.CreateNotification(notification); err != nil {
 			return fmt.Errorf("failed to persist notification: %w", err)
 		}
 	}

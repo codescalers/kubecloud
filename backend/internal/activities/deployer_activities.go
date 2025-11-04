@@ -313,7 +313,7 @@ func BatchDeployAllNodesStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
+func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
@@ -340,15 +340,15 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			return fmt.Errorf("failed to set cluster result for %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 
-		existingCluster, err := db.GetClusterByName(config.UserID, cluster.ProjectName)
+		existingCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
 		if err != nil { // cluster not found, create a new one
-			if err := db.CreateCluster(config.UserID, dbCluster); err != nil {
+			if err := clusterRepo.CreateCluster(config.UserID, dbCluster); err != nil {
 				return fmt.Errorf("failed to create cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
 			}
 		} else { // cluster exists, update it
 			existingCluster.Result = dbCluster.Result
 			existingCluster.Kubeconfig = dbCluster.Kubeconfig
-			if err := db.UpdateCluster(&existingCluster); err != nil {
+			if err := clusterRepo.UpdateCluster(&existingCluster); err != nil {
 				return fmt.Errorf("failed to update cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
 			}
 		}
@@ -359,7 +359,7 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
+func CancelDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -381,7 +381,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 				return fmt.Errorf("missing or invalid 'project_name' in state")
 			}
 
-			dbCluster, err := db.GetClusterByName(config.UserID, projectName)
+			dbCluster, err := clusterRepo.GetClusterByName(config.UserID, projectName)
 			if err != nil {
 				return fmt.Errorf("failed to get cluster %s from database (user_id=%d): %w", projectName, config.UserID, err)
 			}
@@ -402,7 +402,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func RemoveClusterFromDBStep(db models.DB) ewf.StepFn {
+func RemoveClusterFromDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -414,7 +414,7 @@ func RemoveClusterFromDBStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("missing or invalid 'project_name' in state")
 		}
 
-		if err := db.DeleteCluster(config.UserID, projectName); err != nil {
+		if err := clusterRepo.DeleteCluster(config.UserID, projectName); err != nil {
 			return fmt.Errorf("failed to delete cluster %s from database (user_id=%d): %w", projectName, config.UserID, err)
 		}
 
@@ -422,14 +422,14 @@ func RemoveClusterFromDBStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func GatherAllContractIDsStep(db models.DB) ewf.StepFn {
+func GatherAllContractIDsStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
 			return err
 		}
 
-		clusters, err := db.ListUserClusters(config.UserID)
+		clusters, err := clusterRepo.ListUserClusters(config.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to list user clusters (user_id=%d): %w", config.UserID, err)
 		}
@@ -504,14 +504,14 @@ func BatchCancelContractsStep() ewf.StepFn {
 	}
 }
 
-func DeleteAllUserClustersStep(db models.DB) ewf.StepFn {
+func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
 			return err
 		}
 
-		if err := db.DeleteAllUserClusters(config.UserID); err != nil {
+		if err := clusterRepo.DeleteAllUserClusters(config.UserID); err != nil {
 			return fmt.Errorf("failed to delete all user clusters from database (user_id=%d): %w", config.UserID, err)
 		}
 
@@ -633,22 +633,22 @@ func createAddNodeWorkflowTemplate(notificationService *notification.Notificatio
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, db models.DB, notificationService *notification.NotificationService, config internal.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, clusterRepo models.ClusterRepository, notificationService *notification.NotificationService, config internal.Configuration) {
 	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(constants.StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
 	engine.Register(constants.StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
-	engine.Register(constants.StepRemoveCluster, CancelDeploymentStep(db, metrics))
+	engine.Register(constants.StepRemoveCluster, CancelDeploymentStep(clusterRepo, metrics))
 	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
 	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics))
-	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(clusterRepo, metrics))
+	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(clusterRepo, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
-	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db))
-	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
+	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(clusterRepo, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(clusterRepo))
+	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(clusterRepo))
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db))
+	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo))
 
 	deployWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
@@ -766,7 +766,7 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	return config, nil
 }
 
-func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (string, error) {
+func retrieveKubeconfig(state ewf.State, clusterRepo models.ClusterRepository, privateKeyPath string) (string, error) {
 	if kc, ok := state["kubeconfig"].(string); ok && kc != "" {
 		return kc, nil
 	}
@@ -782,7 +782,7 @@ func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (s
 	}
 
 	// when updating existing cluster
-	existingCluster, err := db.GetClusterByName(config.UserID, cluster.Name)
+	existingCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.Name)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", fmt.Errorf("failed to query cluster %s from database (user_id=%d): %w", cluster.Name, config.UserID, err)
 	}
@@ -818,9 +818,9 @@ func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (s
 	return internal.GetKubeconfigViaSSH(string(privateKeyBytes), &master)
 }
 
-func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
+func FetchKubeconfigStep(clusterRepo models.ClusterRepository, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		kubeconfig, err := retrieveKubeconfig(state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(state, clusterRepo, privateKeyPath)
 		if err != nil {
 			return err
 		}
@@ -829,14 +829,14 @@ func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
 	}
 }
 
-func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
+func VerifyAddedNodeStep(clusterRepo models.ClusterRepository, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		node, err := getFromState[kubedeployer.Node](state, "node")
 		if err != nil {
 			return fmt.Errorf("missing or invalid 'node' in state for verification: %w", err)
 		}
 
-		kubeconfig, err := retrieveKubeconfig(state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(state, clusterRepo, privateKeyPath)
 		if err != nil {
 			return err
 		}
@@ -926,7 +926,7 @@ func VerifyClusterReadyStep() ewf.StepFn {
 	}
 }
 
-func VerifyClusterInDBStep(db models.DB) ewf.StepFn {
+func VerifyClusterInDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -938,7 +938,7 @@ func VerifyClusterInDBStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("failed to get cluster from state: %w", err)
 		}
 
-		existingCluster, err := db.GetClusterByName(config.UserID, cluster.ProjectName)
+		existingCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)

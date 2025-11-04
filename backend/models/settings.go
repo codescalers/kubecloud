@@ -20,10 +20,18 @@ type Settings struct {
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
 
+type GormSettingsRepository struct {
+	db *gorm.DB
+}
+
+func NewGormSettingsRepository(db DB) *GormSettingsRepository {
+	return &GormSettingsRepository{db: db.GetDB()}
+}
+
 // GetSetting retrieves a setting value by name
-func (g *GormDB) GetSetting(name string) (string, error) {
+func (r *GormSettingsRepository) GetSetting(name string) (string, error) {
 	var setting Settings
-	err := g.db.Where("name = ?", name).First(&setting).Error
+	err := r.db.Where("name = ?", name).First(&setting).Error
 	if err != nil {
 		return "", err
 	}
@@ -32,27 +40,27 @@ func (g *GormDB) GetSetting(name string) (string, error) {
 }
 
 // SetSetting sets a setting value (creates or updates)
-func (g *GormDB) SetSetting(name, value string) error {
+func (r *GormSettingsRepository) SetSetting(name, value string) error {
 	setting := Settings{
 		Name:  name,
 		Value: value,
 	}
 
-	return g.db.Save(&setting).Error
+	return r.db.Save(&setting).Error
 }
 
 // SetMaintenanceMode sets the maintenance mode
-func (g *GormDB) SetMaintenanceMode(enabled bool) error {
+func (r *GormSettingsRepository) SetMaintenanceMode(enabled bool) error {
 	value := maintenanceModeDisabled
 	if enabled {
 		value = maintenanceModeEnabled
 	}
-	return g.SetSetting("maintenance_mode", value)
+	return r.SetSetting("maintenance_mode", value)
 }
 
 // GetMaintenanceMode gets the current maintenance mode status
-func (g *GormDB) GetMaintenanceMode() (bool, error) {
-	value, err := g.GetSetting("maintenance_mode")
+func (r *GormSettingsRepository) GetMaintenanceMode() (bool, error) {
+	value, err := r.GetSetting("maintenance_mode")
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil

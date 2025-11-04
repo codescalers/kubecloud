@@ -13,21 +13,10 @@ type DBPoolConfig struct {
 	ConnMaxIdleTimeMinutes int `json:"conn_max_idle_time_minutes"`
 }
 
-// NewPostgresDB returns a models.DB using Postgres as the backend (with AutoMigrate)
-func NewPostgresDB(dsn string, cfg DBPoolConfig) (DB, error) {
+// NewPostgresGormDB returns a models.DB using Postgres as the backend (with AutoMigrate)
+func NewPostgresGormDB(dsn string, cfg DBPoolConfig) (*GormDB, error) {
 	dialector := postgres.Open(dsn)
 	storage, err := NewGormStorage(dialector)
-	if err != nil {
-		return nil, err
-	}
-	ConfigureSQLPool(storage, cfg)
-	return storage, nil
-}
-
-// NewPostgresDBNoMigrate opens the Postgres database without running any schema
-func NewPostgresDBNoMigrate(dsn string, cfg DBPoolConfig) (DB, error) {
-	dialector := postgres.Open(dsn)
-	storage, err := NewGormStorageNoMigrate(dialector)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +32,7 @@ func ConfigureSQLPool(storage DB, cfg DBPoolConfig) {
 	if gdb == nil {
 		return
 	}
+
 	sqlDB, err := gdb.DB()
 	if err != nil {
 		return

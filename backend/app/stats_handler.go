@@ -4,10 +4,38 @@ import (
 	"net/http"
 
 	"kubecloud/internal/logger"
+	"kubecloud/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
+
+type statsService struct {
+	models.UserRepository
+	models.ClusterRepository
+}
+
+func NewStatsService(
+	userRepo models.UserRepository,
+	clusterRepo models.ClusterRepository,
+) statsService {
+	return statsService{
+		UserRepository:    userRepo,
+		ClusterRepository: clusterRepo,
+	}
+}
+
+type statsHandler struct {
+	svc statsService
+	*appConfig
+}
+
+func newStatsHandler(svc statsService, config *appConfig) statsHandler {
+	return statsHandler{
+		svc:       svc,
+		appConfig: config,
+	}
+}
 
 type Stats struct {
 	TotalUsers    uint32  `json:"total_users"`
@@ -29,22 +57,22 @@ type Stats struct {
 // @Security AdminMiddleware
 // @Router /stats [get]
 // GetStatsHandler retrieves and returns system statistics including total users and clusters count.
-func (h *Handler) GetStatsHandler(c *gin.Context) {
-	totalUsers, err := h.db.CountAllUsers()
+func (h *statsHandler) GetStatsHandler(c *gin.Context) {
+	totalUsers, err := h.svc.CountAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to count total users")
 		InternalServerError(c)
 		return
 	}
 
-	totalClusters, err := h.db.CountAllClusters()
+	totalClusters, err := h.svc.CountAllClusters()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to count total clusters")
 		InternalServerError(c)
 		return
 	}
 
-	stats, err := h.proxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
+	stats, err := h.gridClient.GridProxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "stansvcy"}})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)

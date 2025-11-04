@@ -21,14 +21,14 @@ func main() {
 		return
 	}
 
-	srcDB, err := models.NewDB(sourceDSN, models.DBPoolConfig{})
+	srcDB, err := models.NewGormDB(sourceDSN, models.DBPoolConfig{})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to open source db")
 		return
 	}
 	defer srcDB.Close()
 
-	dstDB, err := models.NewDB(destinationDSN, models.DBPoolConfig{})
+	dstDB, err := models.NewGormDB(destinationDSN, models.DBPoolConfig{})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to open destination db")
 		return

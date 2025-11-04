@@ -21,12 +21,7 @@ type Configuration struct {
 	Currency                                string             `json:"currency" validate:"required"`
 	StripeSecret                            string             `json:"stripe_secret" validate:"required"`
 	VoucherNameLength                       int                `json:"voucher_name_length"  validate:"required,gt=0"`
-	GridProxyURL                            string             `json:"gridproxy_url" validate:"required"`
-	TFChainURL                              string             `json:"tfchain_url" validate:"required"`
 	TermsANDConditions                      TermsANDConditions `json:"terms_and_conditions"`
-	ActivationServiceURL                    string             `json:"activation_service_url" validate:"required"`
-	GraphqlURL                              string             `json:"graphql_url" validate:"required"`
-	FiresquidURL                            string             `json:"firesquid_url" validate:"required"`
 	SystemAccount                           GridAccount        `json:"system_account"`
 	DeployerWorkersNum                      int                `json:"deployer_workers_num" default:"1"`
 	Invoice                                 InvoiceCompanyData `json:"invoice"`
@@ -38,10 +33,6 @@ type Configuration struct {
 	ReservedNodeHealthCheckIntervalInHours  int                `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckTimeoutInMinutes int                `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckWorkersNum       int                `json:"reserved_node_health_check_workers_num" validate:"required,gt=0" default:"10"`
-
-	// KYC Verifier config
-	KYCVerifierAPIURL  string `json:"kyc_verifier_api_url" validate:"required,url"`
-	KYCChallengeDomain string `json:"kyc_challenge_domain" validate:"required"`
 
 	Logger LoggerConfig `json:"logger"`
 	Loki   LokiConfig   `json:"loki"`

@@ -84,23 +84,6 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind voucher_name_length flag: %w", err)
 	}
 
-	// === URLs ===
-	if err := bindStringFlag(rootCmd, "gridproxy_url", "", "GridProxy URL"); err != nil {
-		return fmt.Errorf("failed to bind gridproxy_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "tfchain_url", "", "TFChain URL"); err != nil {
-		return fmt.Errorf("failed to bind tfchain_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "activation_service_url", "", "Activation Service URL"); err != nil {
-		return fmt.Errorf("failed to bind activation_service_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "graphql_url", "", "GraphQL URL"); err != nil {
-		return fmt.Errorf("failed to bind graphql_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "firesquid_url", "", "Firesquid URL"); err != nil {
-		return fmt.Errorf("failed to bind firesquid_url flag: %w", err)
-	}
-
 	// === Terms and Conditions ===
 	if err := bindStringFlag(rootCmd, "terms_and_conditions.document_link", "", "Terms document link"); err != nil {
 		return fmt.Errorf("failed to bind terms_and_conditions.document_link flag: %w", err)
@@ -167,14 +150,6 @@ func addFlags() error {
 
 	if err := bindIntFlag(rootCmd, "notify_admins_for_pending_records_in_hours", 1, "Number of hours to notify admins about pending records"); err != nil {
 		return fmt.Errorf("failed to bind notify_admins_for_pending_records_in_hours flag: %w", err)
-	}
-
-	// === KYC Verifier ===
-	if err := bindStringFlag(rootCmd, "kyc_verifier_api_url", "", "KYC verifier API URL"); err != nil {
-		return fmt.Errorf("failed to bind kyc_verifier_api_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "kyc_challenge_domain", "", "KYC challenge domain"); err != nil {
-		return fmt.Errorf("failed to bind kyc_challenge_domain flag: %w", err)
 	}
 
 	// === Logger Config ===
@@ -351,11 +326,8 @@ func gracefulShutdown(app *app.App) error {
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	logger.GetLogger().Info().Msg("Shutting down...")
-	if err := app.Shutdown(shutdownCtx); err != nil {
+	if err := app.Shutdown(); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Server shutdown failed")
 		return err
 	}

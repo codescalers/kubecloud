@@ -11,8 +11,10 @@ import (
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 
-	"github.com/tyler-smith/go-bip39"
+	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+
+	"github.com/tyler-smith/go-bip39"
 )
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
@@ -28,7 +30,7 @@ func SetupUserOnTFChain(client *substrate.Substrate, config Configuration) (mnem
 	}
 
 	// Activate account with activation service
-	if err := ActivateAccount(identity.Address(), config.ActivationServiceURL); err != nil {
+	if err := ActivateAccount(identity.Address(), constants.ActivationServiceURLs[config.SystemAccount.Network]); err != nil {
 		return "", 0, fmt.Errorf("activation failed: %w", err)
 	}
 

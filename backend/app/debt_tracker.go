@@ -4,13 +4,14 @@ import (
 	"kubecloud/internal"
 	"time"
 
+	"kubecloud/internal/logger"
+
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"kubecloud/internal/logger"
 )
 
-func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
+func (h *adminHandler) TrackUserDebt(gridClient deployer.TFPluginClient) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
@@ -21,14 +22,14 @@ func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
 	}
 }
 
-func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
-	users, err := h.db.ListAllUsers()
+func (h *adminHandler) updateUserDebt(gridClient deployer.TFPluginClient) error {
+	users, err := h.svc.ListAllUsers()
 	if err != nil {
 		return err
 	}
 
 	for _, user := range users {
-		userNodes, err := h.db.ListUserNodes(user.ID)
+		userNodes, err := h.svc.ListUserNodes(user.ID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			continue
@@ -58,7 +59,7 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 			continue
 		}
 		user.Debt = totalDebtUSD
-		err = h.db.UpdateUserByID(&user)
+		err = h.svc.UpdateUserByID(&user)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 		}

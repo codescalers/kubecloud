@@ -110,17 +110,23 @@ func WithPayload(payload map[string]string) NotificationOption {
 	}
 }
 
+type GormNotificationRepository struct {
+	db *gorm.DB
+}
+
+func NewGormNotificationRepository(db DB) *GormNotificationRepository {
+	return &GormNotificationRepository{db: db.GetDB()}
+}
+
 // CreateNotification creates a new notification
-func (s *GormDB) CreateNotification(notification *Notification) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	return s.db.Create(notification).Error
+func (r *GormNotificationRepository) CreateNotification(notification *Notification) error {
+	return r.db.Create(notification).Error
 }
 
 // GetUserNotifications retrieves notifications for a user with pagination
-func (s *GormDB) GetUserNotifications(userID int, limit, offset int) ([]Notification, error) {
+func (r *GormNotificationRepository) GetUserNotifications(userID int, limit, offset int) ([]Notification, error) {
 	var notifications []Notification
-	err := s.db.Where("user_id = ?", userID).
+	err := r.db.Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
@@ -129,9 +135,9 @@ func (s *GormDB) GetUserNotifications(userID int, limit, offset int) ([]Notifica
 }
 
 // MarkNotificationAsRead marks a specific notification as read
-func (s *GormDB) MarkNotificationAsRead(notificationID string, userID int) error {
+func (r *GormNotificationRepository) MarkNotificationAsRead(notificationID string, userID int) error {
 	now := time.Now()
-	result := s.db.Model(&Notification{}).
+	result := r.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{
 			"status":  NotificationStatusRead,
@@ -150,9 +156,9 @@ func (s *GormDB) MarkNotificationAsRead(notificationID string, userID int) error
 }
 
 // MarkAllNotificationsAsRead marks all notifications as read for a user
-func (s *GormDB) MarkAllNotificationsAsRead(userID int) error {
+func (r *GormNotificationRepository) MarkAllNotificationsAsRead(userID int) error {
 	now := time.Now()
-	return s.db.Model(&Notification{}).
+	return r.db.Model(&Notification{}).
 		Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
 		Updates(map[string]interface{}{
 			"status":  NotificationStatusRead,
@@ -161,8 +167,8 @@ func (s *GormDB) MarkAllNotificationsAsRead(userID int) error {
 }
 
 // DeleteNotification deletes a notification for a user
-func (s *GormDB) DeleteNotification(notificationID string, userID int) error {
-	result := s.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
+func (r *GormNotificationRepository) DeleteNotification(notificationID string, userID int) error {
+	result := r.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
 
 	if result.Error != nil {
 		return result.Error
@@ -176,9 +182,9 @@ func (s *GormDB) DeleteNotification(notificationID string, userID int) error {
 }
 
 // GetUnreadNotifications retrieves only unread notifications for a user with pagination
-func (s *GormDB) GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error) {
+func (r *GormNotificationRepository) GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error) {
 	var notifications []Notification
-	err := s.db.Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
+	err := r.db.Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&notifications).Error
@@ -186,13 +192,13 @@ func (s *GormDB) GetUnreadNotifications(userID int, limit, offset int) ([]Notifi
 }
 
 // DeleteAllNotifications deletes all notifications for a user
-func (s *GormDB) DeleteAllNotifications(userID int) error {
-	return s.db.Where("user_id = ?", userID).Delete(&Notification{}).Error
+func (r *GormNotificationRepository) DeleteAllNotifications(userID int) error {
+	return r.db.Where("user_id = ?", userID).Delete(&Notification{}).Error
 }
 
 // MarkNotificationAsUnread marks a specific notification as unread
-func (s *GormDB) MarkNotificationAsUnread(notificationID string, userID int) error {
-	result := s.db.Model(&Notification{}).
+func (r *GormNotificationRepository) MarkNotificationAsUnread(notificationID string, userID int) error {
+	result := r.db.Model(&Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{
 			"status":  NotificationStatusUnread,

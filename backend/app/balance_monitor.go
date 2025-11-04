@@ -5,11 +5,12 @@ import (
 	"kubecloud/models"
 	"time"
 
-	"github.com/pkg/errors"
 	"kubecloud/internal/logger"
+
+	"github.com/pkg/errors"
 )
 
-func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
+func (h *adminHandler) MonitorSystemBalanceAndHandleSettlement() {
 	balanceTicker := time.NewTicker(time.Duration(h.config.MonitorBalanceIntervalInMinutes) * time.Minute)
 	adminNotifyTicker := time.NewTicker(time.Duration(h.config.NotifyAdminsForPendingRecordsInHours) * time.Hour)
 	defer balanceTicker.Stop()
@@ -18,7 +19,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 	for {
 		select {
 		case <-balanceTicker.C:
-			records, err := h.db.ListOnlyPendingRecords()
+			records, err := h.svc.ListOnlyPendingRecords()
 			if err != nil {
 				continue
 			}
@@ -28,7 +29,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 			}
 
 		case <-adminNotifyTicker.C:
-			records, err := h.db.ListOnlyPendingRecords()
+			records, err := h.svc.ListOnlyPendingRecords()
 			if err != nil {
 				continue
 			}
@@ -42,7 +43,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 	}
 }
 
-func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
+func (h *adminHandler) settlePendingPayments(records []models.PendingRecord) error {
 	for _, record := range records {
 		// Already settled
 		if record.TransferredTFTAmount >= record.TFTAmount {
@@ -71,8 +72,8 @@ func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
 	return nil
 }
 
-func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint64) error {
-	user, err := h.db.GetUserByID(userID)
+func (h *adminHandler) transferTFTsToUser(userID, recordID int, amountToTransfer uint64) error {
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get user for pending record ID %d", recordID)
 	}
@@ -82,7 +83,7 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 		return errors.Wrapf(err, "Failed to transfer TFTs for pending record ID %d", recordID)
 	}
 
-	err = h.db.UpdatePendingRecordTransferredAmount(recordID, amountToTransfer)
+	err = h.svc.UpdatePendingRecordTransferredAmount(recordID, amountToTransfer)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to update transferred amount for pending record ID %d", recordID)
 	}
@@ -90,10 +91,10 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 	return nil
 }
 
-func (h *Handler) notifyAdminWithPendingRecords(records []models.PendingRecord) error {
+func (h *adminHandler) notifyAdminWithPendingRecords(records []models.PendingRecord) error {
 	subject, body := h.mailService.NotifyAdminsMailContent(len(records), h.config.Server.Host)
 
-	admins, err := h.db.ListAdmins()
+	admins, err := h.svc.ListAdmins()
 	if err != nil {
 		return err
 	}

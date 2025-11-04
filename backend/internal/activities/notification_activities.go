@@ -11,7 +11,7 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func SendNotification(db models.DB, notifier notification.Notifier) ewf.StepFn {
+func SendNotification(userRepo models.UserRepository, notifier notification.Notifier) ewf.StepFn {
 	return func(ctx context.Context, wf ewf.State) error {
 		raw, ok := wf["notification"]
 		if !ok {
@@ -25,7 +25,7 @@ func SendNotification(db models.DB, notifier notification.Notifier) ewf.StepFn {
 			logger.GetLogger().Debug().Msgf("SendNotification: step skipped for channel %s (not in notification channels)", notifier.GetType())
 			return nil
 		}
-		user, err := db.GetUserByID(notif.UserID)
+		user, err := userRepo.GetUserByID(notif.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to get user by ID (id: %v): %w", notif.UserID, err)
 		}

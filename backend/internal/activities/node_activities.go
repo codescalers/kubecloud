@@ -32,7 +32,7 @@ func CreateIdentityStep() ewf.StepFn {
 	}
 }
 
-func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userID, ok := state["user_id"].(int)
 		if !ok {
@@ -53,7 +53,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
 
-		err = db.CreateUserNode(&models.UserNodes{
+		err = userNodesRepo.CreateUserNode(&models.UserNodes{
 			UserID:     userID,
 			ContractID: contractID,
 			NodeID:     nodeID,
@@ -68,7 +68,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 	}
 }
 
-func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractID, ok := state["contract_id"].(uint64)
 		if !ok {
@@ -89,7 +89,7 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
 
-		err = db.DeleteUserNode(contractID)
+		err = userNodesRepo.DeleteUserNode(contractID)
 		if err != nil {
 			return fmt.Errorf("failed to delete user node: %w", err)
 		}

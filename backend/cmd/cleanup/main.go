@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 var config internal.Configuration
@@ -30,7 +31,6 @@ func loadConfig(configPath string) {
 			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
 			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
-		TFChainURL: viper.GetString("tfchain_url"),
 		SystemAccount: internal.GridAccount{
 			Mnemonic: viper.GetString("system_account.mnemonic"),
 			Network:  viper.GetString("system_account.network"),
@@ -55,7 +55,7 @@ func main() {
 		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
-	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)
+	db, err := models.NewGormDB(config.Database.DSN, dbPoolConfig)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
@@ -63,14 +63,14 @@ func main() {
 	}
 	defer db.Close()
 
-	substrateClient, err := substrate.NewManager(config.TFChainURL).Substrate()
+	substrateClient, err := substrate.NewManager(deployer.SubstrateURLs[config.SystemAccount.Network]...).Substrate()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create substrate client")
 		return
 	}
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
+	moneyCollector := moneycollector.NewMoneyCollector(models.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
 
 }

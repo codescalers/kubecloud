@@ -19,6 +19,30 @@ const (
 	DefaultOffset            = 0
 )
 
+type notificationService struct {
+	models.NotificationRepository
+}
+
+func NewNotificationService(
+	notificationRepo models.NotificationRepository,
+) notificationService {
+	return notificationService{
+		NotificationRepository: notificationRepo,
+	}
+}
+
+type notificationHandler struct {
+	svc notificationService
+	*appConfig
+}
+
+func newNotificationHandler(svc notificationService, config *appConfig) notificationHandler {
+	return notificationHandler{
+		svc:       svc,
+		appConfig: config,
+	}
+}
+
 // @Model NotificationResponse
 // @Description A notification response
 // @Property ID string
@@ -119,7 +143,7 @@ func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
 // @Failure 500 {object} APIResponse "Failed to retrieve notifications"
 // @Router /notifications [get]
 // GetAllNotificationsHandler retrieves all user notifications with pagination
-func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
+func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
@@ -136,7 +160,7 @@ func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.db.GetUserNotifications(userID, limit, offset)
+	notifications, err := h.svc.GetUserNotifications(userID, limit, offset)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to retrieve notifications", err.Error())
 		return
@@ -169,7 +193,7 @@ func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to mark notification as read"
 // @Router /notifications/{notification_id}/read [patch]
 // MarkNotificationReadHandler marks a specific notification as read
-func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
+func (h *notificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
@@ -182,7 +206,7 @@ func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.MarkNotificationAsRead(notificationIDStr, userID)
+	err = h.svc.MarkNotificationAsRead(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
@@ -206,14 +230,14 @@ func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to mark notifications as read"
 // @Router /notifications/read-all [patch]
 // MarkAllNotificationsReadHandler marks all notifications as read for a user
-func (h *Handler) MarkAllNotificationsReadHandler(c *gin.Context) {
+func (h *notificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
 
-	err = h.db.MarkAllNotificationsAsRead(userID)
+	err = h.svc.MarkAllNotificationsAsRead(userID)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to mark notifications as read", err.Error())
 		return
@@ -235,7 +259,7 @@ func (h *Handler) MarkAllNotificationsReadHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to delete notification"
 // @Router /notifications/{notification_id} [delete]
 // DeleteNotificationHandler deletes a specific notification
-func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
+func (h *notificationHandler) DeleteNotificationHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
@@ -248,7 +272,7 @@ func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.DeleteNotification(notificationIDStr, userID)
+	err = h.svc.DeleteNotification(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
@@ -273,7 +297,7 @@ func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to retrieve unread notifications"
 // @Router /notifications/unread [get]
 // GetUnreadNotificationsHandler retrieves only unread notifications for a user
-func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
+func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
@@ -290,7 +314,7 @@ func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.db.GetUnreadNotifications(userID, limit, offset)
+	notifications, err := h.svc.GetUnreadNotifications(userID, limit, offset)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to retrieve unread notifications", err.Error())
 		return
@@ -320,14 +344,14 @@ func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to delete notifications"
 // @Router /notifications [delete]
 // DeleteAllNotificationsHandler deletes all notifications for a user
-func (h *Handler) DeleteAllNotificationsHandler(c *gin.Context) {
+func (h *notificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
 
-	err = h.db.DeleteAllNotifications(userID)
+	err = h.svc.DeleteAllNotifications(userID)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to delete notifications", err.Error())
 		return
@@ -349,7 +373,7 @@ func (h *Handler) DeleteAllNotificationsHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Failed to mark notification as unread"
 // @Router /notifications/{notification_id}/unread [patch]
 // MarkNotificationUnreadHandler marks a specific notification as unread
-func (h *Handler) MarkNotificationUnreadHandler(c *gin.Context) {
+func (h *notificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
@@ -362,7 +386,7 @@ func (h *Handler) MarkNotificationUnreadHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.db.MarkNotificationAsUnread(notificationIDStr, userID)
+	err = h.svc.MarkNotificationAsUnread(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")

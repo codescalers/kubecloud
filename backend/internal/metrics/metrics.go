@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"kubecloud/models"
 	"net/http"
 	"runtime"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gorm.io/gorm"
 )
 
 const MetricsCollectorInterval = 10 * time.Second
@@ -213,8 +213,8 @@ func (m *Metrics) Middleware() gin.HandlerFunc {
 }
 
 // UpdateGORMMetrics updates the GORM connection metrics
-func (m *Metrics) UpdateGORMMetrics(db *gorm.DB) {
-	sqlDB, err := db.DB()
+func (m *Metrics) UpdateGORMMetrics(db models.DB) {
+	sqlDB, err := db.GetDB().DB()
 	if err != nil {
 		return
 	}
@@ -270,7 +270,7 @@ func (m *Metrics) IncrementEmailFailed() {
 }
 
 // StartGORMMetricsCollector starts a goroutine that periodically updates GORM metrics
-func (m *Metrics) StartGORMMetricsCollector(db *gorm.DB, interval time.Duration) {
+func (m *Metrics) StartGORMMetricsCollector(db models.DB, interval time.Duration) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()

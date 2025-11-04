@@ -55,7 +55,7 @@ func TestRegisterHandler(t *testing.T) {
 		user.AccountAddress = "sponseeAddress"
 		user.Sponsored = true
 		user.StripeCustomerID = "stripeCustomerID"
-		require.NoError(t, app.db.UpdateUserByID(user))
+		require.NoError(t, app.userHandler.svc.UpdateUserByID(user))
 
 		payload := RegisterInput{
 			Name:            "New Name",
@@ -136,7 +136,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		registeredUser.AccountAddress = "sponseeAddress"
 		registeredUser.Sponsored = true
 		registeredUser.StripeCustomerID = "stripeCustomerID"
-		require.NoError(t, app.db.UpdateUserByID(registeredUser))
+		require.NoError(t, app.userHandler.svc.UpdateUserByID(registeredUser))
 
 		payload := VerifyCodeInput{
 			Email: registeredUser.Email,
@@ -261,7 +261,7 @@ func TestRefreshTokenHandler(t *testing.T) {
 	t.Run("Test RefreshTokenHandler", func(t *testing.T) {
 
 		user := CreateTestUser(t, app, "refreshtoken@example.com", "Refresh User", []byte("securepassword"), true, false, false, 0, time.Now())
-		tokenPair, _ := app.handlers.tokenManager.CreateTokenPair(user.ID, user.Username, false)
+		tokenPair, _ := app.tokenManager.CreateTokenPair(user.ID, user.Username, false)
 
 		payload := RefreshTokenInput{
 			RefreshToken: tokenPair.RefreshToken,
@@ -519,7 +519,7 @@ func TestChargeBalanceHandler(t *testing.T) {
 
 		user := CreateTestUser(t, app, "chargeuser@example.com", "Charge User", []byte("securepassword"), true, false, true, 0, time.Now())
 		user.Mnemonic = "test-menmonic"
-		err = app.handlers.db.UpdateUserByID(user)
+		err = app.userHandler.svc.UpdateUserByID(user)
 		assert.NoError(t, err)
 		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
 		payload := ChargeBalanceInput{
@@ -665,7 +665,7 @@ func TestRedeemVoucherHandler(t *testing.T) {
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(1 * time.Hour),
 	}
-	err = app.handlers.db.CreateVoucher(voucher)
+	err = app.userHandler.svc.CreateVoucher(voucher)
 	assert.NoError(t, err)
 	t.Run("Test redeem voucher successfully", func(t *testing.T) {
 
@@ -710,7 +710,7 @@ func TestRedeemVoucherHandler(t *testing.T) {
 			CreatedAt: time.Now().Add(-2 * time.Hour),
 			ExpiresAt: time.Now().Add(-1 * time.Hour),
 		}
-		err = app.handlers.db.CreateVoucher(voucher)
+		err = app.userHandler.svc.CreateVoucher(voucher)
 		assert.NoError(t, err)
 		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
 		req, _ := http.NewRequest("PUT", "/api/v1/user/redeem/EXPIREDVOUCHER", nil)
@@ -774,9 +774,9 @@ func TestListSSHKeysHandler(t *testing.T) {
 
 	t.Run("Test list SSH keys with multiple keys", func(t *testing.T) {
 
-		err = app.handlers.db.CreateSSHKey(sshKey1)
+		err = app.userHandler.svc.CreateSSHKey(sshKey1)
 		assert.NoError(t, err)
-		err = app.handlers.db.CreateSSHKey(sshKey2)
+		err = app.userHandler.svc.CreateSSHKey(sshKey2)
 		assert.NoError(t, err)
 		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/user/ssh-keys", nil)

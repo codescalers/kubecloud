@@ -136,11 +136,7 @@ func SetUp(t testing.TB) (*App, error) {
 	app.httpServer = nil
 
 	t.Cleanup(func() {
-		// Shutdown the app gracefully to close all connections
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := app.Shutdown(ctx); err != nil {
+		if err := app.Shutdown(); err != nil {
 			t.Logf("Warning: failed to shutdown app cleanly: %v", err)
 		}
 
@@ -159,7 +155,7 @@ func SetUp(t testing.TB) (*App, error) {
 }
 
 func GetAuthToken(t *testing.T, app *App, id int, email, username string, isAdmin bool) string {
-	tokenPair, err := app.handlers.tokenManager.CreateTokenPair(id, username, isAdmin)
+	tokenPair, err := app.tokenManager.CreateTokenPair(id, username, isAdmin)
 	assert.NoError(t, err)
 	return tokenPair.AccessToken
 }
@@ -171,7 +167,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := internal.SetupUserOnTFChain(app.handlers.substrateClient, app.config)
+		mnemonic, _, err := internal.SetupUserOnTFChain(app.substrateClient, app.config)
 		require.NoError(t, err)
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
@@ -189,7 +185,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		Mnemonic:       mnemonic,
 		AccountAddress: sponseeAddress,
 	}
-	err := app.handlers.db.RegisterUser(user)
+	err := app.userHandler.svc.RegisterUser(user)
 	require.NoError(t, err)
 	return user
 }

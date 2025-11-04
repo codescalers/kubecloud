@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"kubecloud/kubedeployer"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Cluster represents a deployed cluster in the system
@@ -46,4 +48,64 @@ func (c *Cluster) GetLeaderIP() (string, error) {
 		}
 	}
 	return "", nil
+}
+
+type GormClusterRepository struct {
+	db *gorm.DB
+}
+
+func NewGormClusterRepository(db DB) *GormClusterRepository {
+	return &GormClusterRepository{db: db.GetDB()}
+}
+
+// CreateCluster creates a new cluster in the database
+func (r *GormClusterRepository) CreateCluster(userID int, cluster *Cluster) error {
+	cluster.CreatedAt = time.Now()
+	cluster.UpdatedAt = time.Now()
+	cluster.UserID = userID
+	return r.db.Create(cluster).Error
+}
+
+// ListUserClusters returns all clusters for a specific user
+func (r *GormClusterRepository) ListUserClusters(userID int) ([]Cluster, error) {
+	var clusters []Cluster
+	query := r.db.Where("user_id = ?", userID).Find(&clusters)
+	return clusters, query.Error
+}
+
+// GetClusterByName returns a cluster by name for a specific user
+func (r *GormClusterRepository) GetClusterByName(userID int, projectName string) (Cluster, error) {
+	var cluster Cluster
+	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&cluster)
+	return cluster, query.Error
+}
+
+// UpdateCluster updates an existing cluster
+func (r *GormClusterRepository) UpdateCluster(cluster *Cluster) error {
+	cluster.UpdatedAt = time.Now()
+	return r.db.Model(&Cluster{}).
+		Where("user_id = ? AND project_name = ?", cluster.UserID, cluster.ProjectName).
+		Updates(cluster).Error
+}
+
+// DeleteCluster deletes a cluster by name for a specific user
+func (r *GormClusterRepository) DeleteCluster(userID int, projectName string) error {
+	return r.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{}).Error
+}
+
+// DeleteAllUserClusters deletes all clusters for a specific user
+func (r *GormClusterRepository) DeleteAllUserClusters(userID int) error {
+	return r.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
+}
+
+// CountAllClusters returns the total number of clusters in the system
+func (r *GormClusterRepository) CountAllClusters() (int64, error) {
+	var count int64
+	err := r.db.Model(&Cluster{}).Count(&count).Error
+	return count, err
+}
+
+func (r *GormClusterRepository) ListAllClusters() ([]Cluster, error) {
+	var clusters []Cluster
+	return clusters, r.db.Find(&clusters).Error
 }

@@ -10,9 +10,39 @@ import (
 
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+
+	"github.com/gin-gonic/gin"
 )
+
+type invoiceService struct {
+	models.InvoiceRepository
+	models.UserRepository
+	models.UserNodesRepository
+}
+
+func NewInvoiceService(
+	invoiceRepo models.InvoiceRepository, userRepo models.UserRepository,
+	userNodeRepo models.UserNodesRepository,
+) invoiceService {
+	return invoiceService{
+		InvoiceRepository:   invoiceRepo,
+		UserRepository:      userRepo,
+		UserNodesRepository: userNodeRepo,
+	}
+}
+
+type invoiceHandler struct {
+	svc invoiceService
+	*appConfig
+}
+
+func newInvoiceHandler(svc invoiceService, config *appConfig) invoiceHandler {
+	return invoiceHandler{
+		svc:       svc,
+		appConfig: config,
+	}
+}
 
 // @Summary Get all invoices
 // @Description Returns a list of all invoices
@@ -25,8 +55,8 @@ import (
 // @Security AdminMiddleware
 // @Router /invoices [get]
 // ListAllInvoicesHandler lists all invoices in system
-func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
-	invoices, err := h.db.ListInvoices()
+func (h *invoiceHandler) ListAllInvoicesHandler(c *gin.Context) {
+	invoices, err := h.svc.ListInvoices()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -49,10 +79,10 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 // @Security UserMiddleware
 // @Router /user/invoice [get]
 // ListUserInvoicesHandler lists user invoices by its ID
-func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
+func (h *invoiceHandler) ListUserInvoicesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	invoices, err := h.db.ListUserInvoices(userID)
+	invoices, err := h.svc.ListUserInvoices(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -64,7 +94,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	})
 }
 
-func (h *Handler) MonthlyInvoicesHandler() {
+func (h *invoiceHandler) MonthlyInvoicesHandler() {
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
@@ -85,7 +115,7 @@ func (h *Handler) MonthlyInvoicesHandler() {
 			continue
 		}
 
-		users, err := h.db.ListAllUsers()
+		users, err := h.svc.ListAllUsers()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 		}
@@ -114,7 +144,7 @@ func (h *Handler) MonthlyInvoicesHandler() {
 // @Failure 500 {object} APIResponse
 // @Security UserMiddleware
 // @Router /user/invoice/{invoice_id} [get]
-func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
+func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
 	invoiceID := c.Param("invoice_id")
@@ -130,7 +160,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 		return
 	}
 
-	invoice, err := h.db.GetInvoice(id)
+	invoice, err := h.svc.GetInvoice(id)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
@@ -139,7 +169,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 	// Creating pdf for invoice if it doesn't have it
 	if len(invoice.FileData) == 0 {
-		user, err := h.db.GetUserByID(userID)
+		user, err := h.svc.GetUserByID(userID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
@@ -154,7 +184,7 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 		}
 
 		invoice.FileData = pdfContent
-		if err := h.db.UpdateInvoicePDF(id, invoice.FileData); err != nil {
+		if err := h.svc.UpdateInvoicePDF(id, invoice.FileData); err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
@@ -172,8 +202,8 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 }
 
-func (h *Handler) createUserInvoice(user models.User) error {
-	records, err := h.db.ListUserNodes(user.ID)
+func (h *invoiceHandler) createUserInvoice(user models.User) error {
+	records, err := h.svc.ListUserNodes(user.ID)
 	if err != nil {
 		return err
 	}
@@ -184,11 +214,11 @@ func (h *Handler) createUserInvoice(user models.User) error {
 
 	now := time.Now()
 
-	var nodeItems []models.NodeItem
+	var invoiceItems []models.NodeItem
 	var totalInvoiceCostUSD float64
 
 	for _, record := range records {
-		billReports, err := internal.ListContractBillReportsPerMonth(h.graphqlClient, record.ContractID, now)
+		billReports, err := internal.ListContractBillReportsPerMonth(h.graphql, record.ContractID, now)
 		if err != nil {
 			return err
 		}
@@ -219,7 +249,7 @@ func (h *Handler) createUserInvoice(user models.User) error {
 
 		totalAmountUSD := internal.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
-		nodeItems = append(nodeItems, models.NodeItem{
+		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
 			ContractID:    record.ContractID,
 			RentCreatedAt: rentRecordStart,
@@ -233,7 +263,7 @@ func (h *Handler) createUserInvoice(user models.User) error {
 	invoice := models.Invoice{
 		UserID:    user.ID,
 		Total:     totalInvoiceCostUSD,
-		Nodes:     nodeItems,
+		Nodes:     invoiceItems,
 		Tax:       0, //TODO:
 		CreatedAt: time.Now(),
 	}
@@ -244,7 +274,7 @@ func (h *Handler) createUserInvoice(user models.User) error {
 	}
 
 	invoice.FileData = file
-	if err = h.db.CreateInvoice(&invoice); err != nil {
+	if err = h.svc.CreateInvoice(&invoice); err != nil {
 		return err
 	}
 

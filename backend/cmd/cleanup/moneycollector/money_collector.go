@@ -10,7 +10,7 @@ import (
 )
 
 type MoneyCollector struct {
-	db              models.DB
+	userRepo        models.UserRepository
 	config          internal.Configuration
 	substrateClient *substrate.Substrate
 }
@@ -19,9 +19,9 @@ const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config internal.Configuration, substrateClient *substrate.Substrate) *MoneyCollector {
 	return &MoneyCollector{
-		db:              db,
+		userRepo:        userRepo,
 		config:          config,
 		substrateClient: substrateClient,
 	}
@@ -33,7 +33,7 @@ func (m *MoneyCollector) CollectMoney() {
 		log.Error().Err(err).Msg("MoneyCollector: failed to load system identity")
 		return
 	}
-	users, err := m.db.ListAllUsers()
+	users, err := m.userRepo.ListAllUsers()
 	if err != nil {
 		log.Error().Err(err).Msg("MoneyCollector: failed to list all users")
 		return

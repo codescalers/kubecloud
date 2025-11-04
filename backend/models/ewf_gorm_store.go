@@ -9,8 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
-type EWFGormStore struct {
+type GormEWFRepository struct {
 	db *gorm.DB
+}
+
+func NewGormEWFRepository(db DB) *GormEWFRepository {
+	return &GormEWFRepository{db: db.GetDB()}
 }
 
 type gormWorkflowRecord struct {
@@ -29,15 +33,11 @@ type serializableTemplate struct {
 	Steps []ewf.Step `json:"steps"`
 }
 
-func NewGormStore(db *gorm.DB) *EWFGormStore {
-	return &EWFGormStore{db: db}
+func (r *GormEWFRepository) Setup() error {
+	return r.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{})
 }
 
-func (s *EWFGormStore) Setup() error {
-	return s.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{})
-}
-
-func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
+func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
 	data, err := json.Marshal(workflow)
 	if err != nil {
 		return fmt.Errorf("failed to marshal workflow: %w", err)
@@ -50,12 +50,12 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 		Data:   data,
 	}
 
-	return s.db.WithContext(ctx).Save(&gormWorkflow).Error
+	return r.db.WithContext(ctx).Save(&gormWorkflow).Error
 }
 
-func (s *EWFGormStore) LoadWorkflowByName(ctx context.Context, name string) (*ewf.Workflow, error) {
+func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string) (*ewf.Workflow, error) {
 	var gormWorkflow gormWorkflowRecord
-	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&gormWorkflow).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("name = ?", name).First(&gormWorkflow).Error; err != nil {
 		return nil, err
 	}
 
@@ -67,9 +67,9 @@ func (s *EWFGormStore) LoadWorkflowByName(ctx context.Context, name string) (*ew
 	return &workflow, nil
 }
 
-func (s *EWFGormStore) LoadWorkflowByUUID(ctx context.Context, uuid string) (*ewf.Workflow, error) {
+func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string) (*ewf.Workflow, error) {
 	var gormWorkflow gormWorkflowRecord
-	if err := s.db.WithContext(ctx).Where("uuid = ?", uuid).First(&gormWorkflow).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("uuid = ?", uuid).First(&gormWorkflow).Error; err != nil {
 		return nil, err
 	}
 	var workflow ewf.Workflow
@@ -79,9 +79,9 @@ func (s *EWFGormStore) LoadWorkflowByUUID(ctx context.Context, uuid string) (*ew
 	return &workflow, nil
 }
 
-func (s *EWFGormStore) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf.WorkflowStatus) ([]string, error) {
+func (r *GormEWFRepository) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf.WorkflowStatus) ([]string, error) {
 	var uuids []string
-	err := s.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Model(&gormWorkflowRecord{}).
 		Where("status = ?", status).
 		Pluck("uuid", &uuids).
@@ -89,9 +89,9 @@ func (s *EWFGormStore) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf
 	return uuids, err
 }
 
-func (s *EWFGormStore) LoadWorkflowTemplate(ctx context.Context, name string) (*ewf.WorkflowTemplate, error) {
+func (r *GormEWFRepository) LoadWorkflowTemplate(ctx context.Context, name string) (*ewf.WorkflowTemplate, error) {
 	var gormTemplate gormTemplateRecord
-	if err := s.db.WithContext(ctx).Where("name = ?", name).First(&gormTemplate).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("name = ?", name).First(&gormTemplate).Error; err != nil {
 		return nil, err
 	}
 
@@ -102,9 +102,9 @@ func (s *EWFGormStore) LoadWorkflowTemplate(ctx context.Context, name string) (*
 	return &ewf.WorkflowTemplate{Steps: st.Steps}, nil
 }
 
-func (s *EWFGormStore) LoadAllWorkflowTemplates(ctx context.Context) (map[string]*ewf.WorkflowTemplate, error) {
+func (r *GormEWFRepository) LoadAllWorkflowTemplates(ctx context.Context) (map[string]*ewf.WorkflowTemplate, error) {
 	var gormTemplates []gormTemplateRecord
-	err := s.db.WithContext(ctx).Find(&gormTemplates).Error
+	err := r.db.WithContext(ctx).Find(&gormTemplates).Error
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (s *EWFGormStore) LoadAllWorkflowTemplates(ctx context.Context) (map[string
 	return templates, nil
 }
 
-func (s *EWFGormStore) SaveWorkflowTemplate(ctx context.Context, name string, template *ewf.WorkflowTemplate) error {
+func (r *GormEWFRepository) SaveWorkflowTemplate(ctx context.Context, name string, template *ewf.WorkflowTemplate) error {
 	st := serializableTemplate{Steps: template.Steps}
 	data, err := json.Marshal(st)
 	if err != nil {
@@ -132,9 +132,9 @@ func (s *EWFGormStore) SaveWorkflowTemplate(ctx context.Context, name string, te
 		Data: data,
 	}
 
-	return s.db.WithContext(ctx).Save(&gormTemplate).Error
+	return r.db.WithContext(ctx).Save(&gormTemplate).Error
 }
 
-func (s *EWFGormStore) Close() error {
+func (r *GormEWFRepository) Close() error {
 	return nil
 }

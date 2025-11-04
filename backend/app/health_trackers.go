@@ -20,15 +20,14 @@ type NodeHealthResult struct {
 	unhealthyNodeID uint32
 }
 
-func (h *Handler) TrackClusterHealth() {
-
+func (h *deploymentHandler) TrackClusterHealth() {
 	interval := time.Duration(h.config.ClusterHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for range ticker.C {
 		logger.GetLogger().Info().Msg("Cluster health check test started")
-		clusters, err := h.db.ListAllClusters()
+		clusters, err := h.svc.ListAllClusters()
 		if err != nil {
 			logger.GetLogger().Error().Err(err)
 			continue
@@ -62,13 +61,13 @@ func (h *Handler) TrackClusterHealth() {
 				},
 			}
 
-			h.ewfEngine.RunAsync(h.appContext, wf)
+			h.ewfEngine.RunAsync(h.appCtx, wf)
 		}
 
 	}
 }
 
-func (h *Handler) TrackReservedNodeHealth(notificationService *notification.NotificationService, grid proxy.Client) {
+func (h *nodeHandler) TrackReservedNodeHealth(notificationService *notification.NotificationService, grid proxy.Client) {
 	interval := time.Duration(h.config.ReservedNodeHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
@@ -77,7 +76,7 @@ func (h *Handler) TrackReservedNodeHealth(notificationService *notification.Noti
 	for range ticker.C {
 		logger.GetLogger().Info().Msg("Reserved node health check started")
 
-		reservedNodes, err := h.db.ListAllReservedNodes()
+		reservedNodes, err := h.svc.ListAllReservedNodes()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to get reserved nodes for health check")
 			continue
@@ -101,7 +100,7 @@ func (h *Handler) TrackReservedNodeHealth(notificationService *notification.Noti
 }
 
 // checkNodesWithWorkerPool uses a worker pool to check node health concurrently
-func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, grid proxy.Client, notificationService *notification.NotificationService) {
+func (h *nodeHandler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, grid proxy.Client, notificationService *notification.NotificationService) {
 	timeout := time.Duration(h.config.ReservedNodeHealthCheckTimeoutInMinutes) * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -181,13 +180,13 @@ func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, gri
 			models.WithChannels(notification.ChannelEmail),
 		)
 
-		if err := notificationService.Send(h.appContext, notif); err != nil {
+		if err := notificationService.Send(h.appCtx, notif); err != nil {
 			logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to send consolidated notification")
 		}
 	}
 }
 
-func (h *Handler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserNodes, results chan<- NodeHealthResult, grid proxy.Client) {
+func (h *nodeHandler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserNodes, results chan<- NodeHealthResult, grid proxy.Client) {
 	defer wg.Done()
 
 	for userNode := range jobs {

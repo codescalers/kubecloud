@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/models"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -26,6 +27,32 @@ var (
 		"network",
 	}
 )
+
+type nodeService struct {
+	models.UserNodesRepository
+	models.UserRepository
+}
+
+func NewNodeService(
+	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
+) nodeService {
+	return nodeService{
+		UserNodesRepository: userNodesRepo,
+		UserRepository:      userRepo,
+	}
+}
+
+type nodeHandler struct {
+	svc nodeService
+	*appConfig
+}
+
+func newNodeHandler(svc nodeService, config *appConfig) nodeHandler {
+	return nodeHandler{
+		svc:       svc,
+		appConfig: config,
+	}
+}
 
 // ListNodesResponse holds the response for reserved nodes
 type ListNodesResponse struct {
@@ -77,7 +104,7 @@ type TwinResponse struct {
 // @Failure 400 {object} APIResponse "Invalid filter parameters"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /nodes [get]
-func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
+func (h *nodeHandler) ListAllGridNodesHandler(c *gin.Context) {
 	query := c.Request.URL.Query()
 
 	limit := proxyTypes.DefaultLimit()
@@ -95,7 +122,7 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 		return
 	}
 
-	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	nodes, count, err := h.gridClient.GridProxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -123,7 +150,7 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security UserMiddleware
 // @Router /user/nodes [get]
-func (h *Handler) ListNodesHandler(c *gin.Context) {
+func (h *nodeHandler) ListNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	rentedNodes, rentedNodesCount, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
 	if err != nil {
@@ -161,7 +188,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 	filter.Healthy = &healthy
 	filter.AvailableFor = &twinID
 	filter.Features = zos3NodeFeatures
-	availableNodes, availableNodesCount, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	availableNodes, availableNodesCount, err := h.gridClient.GridProxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		InternalServerError(c)
 		return
@@ -208,7 +235,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 // @Security UserMiddleware
 // @Router /user/nodes/{node_id} [post]
 // ReserveNodeHandler reserves node for user
-func (h *Handler) ReserveNodeHandler(c *gin.Context) {
+func (h *nodeHandler) ReserveNodeHandler(c *gin.Context) {
 	nodeIDParam := c.Param("node_id")
 	if nodeIDParam == "" {
 		Error(c, http.StatusBadRequest, "Node ID is required", "")
@@ -225,7 +252,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	userID := c.GetInt("user_id")
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -237,7 +264,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		Features: zos3NodeFeatures,
 	}
 
-	nodes, _, err := h.proxyClient.Nodes(c.Request.Context(), filter, proxyTypes.Limit{})
+	nodes, _, err := h.gridClient.GridProxyClient.Nodes(c.Request.Context(), filter, proxyTypes.Limit{})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -255,7 +282,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	userNode, err := h.db.GetUserNodeByNodeID(uint64(nodeID))
+	userNode, err := h.svc.GetUserNodeByNodeID(uint64(nodeID))
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.GetLogger().Error().Err(err).Uint32("node_id", nodeID).Msg("failed to check node reservation state")
 		InternalServerError(c)
@@ -293,7 +320,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRented,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
@@ -312,7 +339,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 // @Success 200 {object} APIResponse{data=ListNodesWithDiscountResponse} "Rentable nodes retrieved successfully"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/nodes/rentable [get]
-func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
+func (h *nodeHandler) ListRentableNodesHandler(c *gin.Context) {
 	healthy := true
 	rentable := true
 	filter := proxyTypes.NodeFilter{
@@ -324,7 +351,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 	limit := proxyTypes.DefaultLimit()
 	limit.Randomize = true
 
-	nodes, count, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
+	nodes, count, err := h.gridClient.GridProxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -355,7 +382,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 // @Security UserMiddleware
 // @Router /user/nodes/rented [get]
 // ListReservedNodeHandler list reserved nodes for user on tfchain
-func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
+func (h *nodeHandler) ListRentedNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	nodes, count, err := h.getRentedNodesForUser(c.Request.Context(), userID, false)
 	if err != nil {
@@ -390,7 +417,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 // @Security UserMiddleware
 // @Router /user/nodes/unreserve/{contract_id} [delete]
 // UnreserveNodeHandler unreserve node for user
-func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
+func (h *nodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	contractIDParam := c.Param("contract_id")
 	if contractIDParam == "" {
 		Error(c, http.StatusBadRequest, "Contract ID is required", "")
@@ -399,7 +426,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	userID := c.GetInt("user_id")
 
-	user, err := h.db.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -412,7 +439,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	userNode, err := h.db.GetUserNodeByContractID(contractID)
+	userNode, err := h.svc.GetUserNodeByContractID(contractID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
@@ -438,7 +465,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRentable,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Success(c, http.StatusAccepted, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,
@@ -530,8 +557,8 @@ func setValueFromString(v reflect.Value, s string) error {
 	return nil
 }
 
-func (h *Handler) getTwinIDFromUserID(userID int) (uint64, error) {
-	user, err := h.db.GetUserByID(userID)
+func (h *nodeHandler) getTwinIDFromUserID(userID int) (uint64, error) {
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		return 0, err
 	}
@@ -549,7 +576,7 @@ func (h *Handler) getTwinIDFromUserID(userID int) (uint64, error) {
 	return uint64(twinID), nil
 }
 
-func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy bool) ([]proxyTypes.Node, int, error) {
+func (h *nodeHandler) getRentedNodesForUser(ctx context.Context, userID int, healthy bool) ([]proxyTypes.Node, int, error) {
 	twinID, err := h.getTwinIDFromUserID(userID)
 	if err != nil {
 		return nil, 0, err
@@ -566,7 +593,7 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 
 	limit := proxyTypes.DefaultLimit()
 
-	nodes, count, err := h.proxyClient.Nodes(ctx, filter, limit)
+	nodes, count, err := h.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -588,7 +615,7 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 // @Failure 404 {object} APIResponse "Twin ID not found"
 // @Failure 500 {object} APIResponse "Internal Server Error"
 // @Router /twins/{twin_id}/account [get]
-func (h *Handler) GetAccountIDHandler(c *gin.Context) {
+func (h *nodeHandler) GetAccountIDHandler(c *gin.Context) {
 	twinIDParam := c.Param("twin_id")
 	if twinIDParam == "" {
 		Error(c, http.StatusBadRequest, "Twin ID is required", "")
@@ -619,7 +646,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 		return
 	}
 
-	twins, _, err := h.proxyClient.Twins(c.Request.Context(), filter, limit)
+	twins, _, err := h.gridClient.GridProxyClient.Twins(c.Request.Context(), filter, limit)
 	if err != nil {
 		InternalServerError(c)
 		return
@@ -662,7 +689,7 @@ type NodeStoragePoolResponse struct {
 // @Failure 404 {object} APIResponse "Node not found"
 // @Failure 500 {object} APIResponse "Internal Server Error"
 // @Router /nodes/{node_id}/storage-pool [get]
-func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
+func (h *nodeHandler) GetNodeStoragePoolHandler(c *gin.Context) {
 	nodeIDParam := c.Param("node_id")
 	if nodeIDParam == "" {
 		Error(c, http.StatusBadRequest, "Node ID is required", "")
@@ -676,7 +703,7 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 		return
 	}
 
-	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
+	res, _, err := h.gridClient.GridProxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
 	if err != nil {
 		Error(c, http.StatusNotFound, "failed to get node", "")
 		return

@@ -17,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
+func CreateUserStep(config internal.Configuration, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -58,20 +58,20 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 			Admin:    internal.Contains(config.Admins, email),
 		}
 
-		existingUser, err := db.GetUserByEmail(email)
+		existingUser, err := userRepo.GetUserByEmail(email)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
 		if err == gorm.ErrRecordNotFound {
-			if err = db.RegisterUser(&user); err != nil {
+			if err = userRepo.RegisterUser(&user); err != nil {
 				return fmt.Errorf("user registration failed: %w", err)
 			}
 			return nil
 		}
 
 		user.ID = existingUser.ID
-		if updateErr := db.UpdateUserByID(&user); updateErr != nil {
+		if updateErr := userRepo.UpdateUserByID(&user); updateErr != nil {
 			return fmt.Errorf("failed to update user: %w", updateErr)
 		}
 
@@ -111,7 +111,7 @@ func SendVerificationEmailStep(mailService internal.MailService, config internal
 	}
 }
 
-func UpdateCodeStep(db models.DB) ewf.StepFn {
+func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -131,17 +131,17 @@ func UpdateCodeStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("'code' in state is not a int")
 		}
 
-		existingUser, err := db.GetUserByEmail(email)
+		existingUser, err := userRepo.GetUserByEmail(email)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
 		existingUser.Code = code
-		return db.UpdateUserByID(&existingUser)
+		return userRepo.UpdateUserByID(&existingUser)
 	}
 }
 
-func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB) ewf.StepFn {
+func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -152,7 +152,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
 
-		existingUser, err := db.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -167,7 +167,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return err
 		}
 
-		if err := db.UpdateUserByID(&models.User{
+		if err := userRepo.UpdateUserByID(&models.User{
 			ID:       userID,
 			Mnemonic: mnemonic,
 		}); err != nil {
@@ -179,7 +179,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 	}
 }
 
-func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
+func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -190,7 +190,7 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
 
-		existingUser, err := db.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -222,7 +222,7 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 			return err
 		}
 
-		if err := db.UpdateUserByID(&models.User{
+		if err := userRepo.UpdateUserByID(&models.User{
 			ID:               userID,
 			StripeCustomerID: customer.ID,
 		}); err != nil {
@@ -233,7 +233,7 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, db models.DB) ewf.StepFn {
+func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -244,7 +244,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 			return fmt.Errorf("'user_id' in state is not an int")
 		}
 
-		existingUser, err := db.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -279,7 +279,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 			return fmt.Errorf("failed to create KYC sponsorship: %w", err)
 		}
 
-		if err := db.UpdateUserByID(&models.User{
+		if err := userRepo.UpdateUserByID(&models.User{
 			ID:             userID,
 			Sponsored:      true,
 			AccountAddress: sponseeAddress,
@@ -360,7 +360,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
+func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.UserRepository, pendingRecordRepo models.PendingRecordRepository, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		amountVal, ok := state["amount"]
 		if !ok {
@@ -405,7 +405,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			return err
 		}
 
-		if err = db.CreatePendingRecord(&models.PendingRecord{
+		if err = pendingRecordRepo.CreatePendingRecord(&models.PendingRecord{
 			UserID:       userID,
 			Username:     username,
 			TFTAmount:    requestedTFTs,
@@ -419,7 +419,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 	}
 }
 
-func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -439,13 +439,13 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := db.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("user not found: %w", err)
 		}
 
 		user.CreditCardBalance += amount
-		if err := db.UpdateUserByID(&user); err != nil {
+		if err := userRepo.UpdateUserByID(&user); err != nil {
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
@@ -460,7 +460,7 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 	}
 }
 
-func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
+func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -480,13 +480,13 @@ func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := db.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(userID)
 		if err != nil {
 			return fmt.Errorf("user is not found: %w", err)
 		}
 
 		user.CreditedBalance += amount
-		if err := db.UpdateUserByID(&user); err != nil {
+		if err := userRepo.UpdateUserByID(&user); err != nil {
 			return fmt.Errorf("error updating user: %w", err)
 		}
 

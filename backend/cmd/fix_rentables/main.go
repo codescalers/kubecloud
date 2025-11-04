@@ -31,7 +31,7 @@ func main() {
 	}
 
 	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetimeMinutes: maxLife, ConnMaxIdleTimeMinutes: maxIdleTime}
-	db, err := models.NewDB(dsn, pool)
+	db, err := models.NewGormDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return
