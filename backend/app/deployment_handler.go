@@ -224,7 +224,7 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	kubeconfig, err := clusterResult.GetKubeconfig(string(privateKeyBytes))
+	kubeconfig, err := clusterResult.GetKubeconfig(c.Request.Context(), string(privateKeyBytes))
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})

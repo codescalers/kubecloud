@@ -1,6 +1,7 @@
 package kubedeployer
 
 import (
+	"context"
 	"fmt"
 	"kubecloud/internal/logger"
 	"net"
@@ -20,7 +21,7 @@ const (
 )
 
 // GetKubeconfig retrieves the kubeconfig from a leader or master node in the cluster.
-func (c *Cluster) GetKubeconfig(privateKey string) (string, error) {
+func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string, error) {
 	if privateKey == "" {
 		return "", fmt.Errorf("private key cannot be empty")
 	}
@@ -38,7 +39,7 @@ func (c *Cluster) GetKubeconfig(privateKey string) (string, error) {
 				Str("node_ip", node.MyceliumIP).
 				Msg("Attempting to retrieve kubeconfig from node")
 
-			kubeconfig, err := getKubeconfigViaSSH(privateKey, &node)
+			kubeconfig, err := getKubeconfigViaSSH(ctx, privateKey, &node)
 			if err != nil {
 				logger.GetLogger().Debug().
 					Err(err).
@@ -60,7 +61,7 @@ func (c *Cluster) GetKubeconfig(privateKey string) (string, error) {
 	return "", fmt.Errorf("no leader or master node found in cluster %s (checked %d nodes)", c.Name, len(c.Nodes))
 }
 
-func getKubeconfigViaSSH(privateKey string, node *Node) (string, error) {
+func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (string, error) {
 	ip := node.MyceliumIP
 	if ip == "" {
 		return "", fmt.Errorf("no mycelium IP address found for node %s", node.Name)
@@ -72,7 +73,7 @@ func getKubeconfigViaSSH(privateKey string, node *Node) (string, error) {
 		Msg("Attempting SSH connection to retrieve kubeconfig")
 
 	command := fmt.Sprintf("cat %s", k3sKubeconfigPath)
-	kubeconfig, err := executeSSHCommand(privateKey, ip, command)
+	kubeconfig, err := executeSSHCommand(ctx, privateKey, ip, command)
 	if err != nil {
 		logger.GetLogger().Debug().
 			Err(err).
@@ -99,7 +100,7 @@ func getKubeconfigViaSSH(privateKey string, node *Node) (string, error) {
 	return processedKubeconfig, nil
 }
 
-func executeSSHCommand(privateKey, address, command string) (string, error) {
+func executeSSHCommand(ctx context.Context, privateKey, address, command string) (string, error) {
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse SSH private key: %w", err)
@@ -133,7 +134,13 @@ func executeSSHCommand(privateKey, address, command string) (string, error) {
 				Int("max_retries", sshMaxRetries).
 				Dur("backoff", backoffDuration).
 				Msg("SSH connection attempt failed, retrying")
-			time.Sleep(backoffDuration)
+
+			select {
+			case <-time.After(backoffDuration):
+				continue
+			case <-ctx.Done():
+				return "", fmt.Errorf("operation cancelled during retry backoff: %w", ctx.Err())
+			}
 		}
 	}
 

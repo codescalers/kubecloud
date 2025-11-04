@@ -766,7 +766,7 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	return config, nil
 }
 
-func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (string, error) {
+func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, privateKeyPath string) (string, error) {
 	// 1. Check if kubeconfig is already in state
 	if kc, err := getFromState[string](state, "kubeconfig"); err == nil && kc != "" {
 		return kc, nil
@@ -804,16 +804,16 @@ func retrieveKubeconfig(state ewf.State, db models.DB, privateKeyPath string) (s
 		if err != nil {
 			return "", fmt.Errorf("failed to get cluster result for %s (user_id=%d): %w", cluster.ProjectName, config.UserID, err)
 		}
-		return existingClusterResult.GetKubeconfig(string(privateKeyBytes))
+		return existingClusterResult.GetKubeconfig(ctx, string(privateKeyBytes))
 	}
 
 	// Brand new cluster
-	return cluster.GetKubeconfig(string(privateKeyBytes))
+	return cluster.GetKubeconfig(ctx, string(privateKeyBytes))
 }
 
 func FetchKubeconfigStep(db models.DB, privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		kubeconfig, err := retrieveKubeconfig(state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(ctx, state, db, privateKeyPath)
 		if err != nil {
 			return err
 		}
@@ -829,7 +829,7 @@ func VerifyAddedNodeStep(db models.DB, privateKeyPath string) ewf.StepFn {
 			return fmt.Errorf("missing or invalid 'node' in state for verification: %w", err)
 		}
 
-		kubeconfig, err := retrieveKubeconfig(state, db, privateKeyPath)
+		kubeconfig, err := retrieveKubeconfig(ctx, state, db, privateKeyPath)
 		if err != nil {
 			return err
 		}
