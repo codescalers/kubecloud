@@ -20,6 +20,7 @@ coverage
 .env.development
 .env.production
 .env.test
+env.js
 
 /cypress/videos/
 /cypress/screenshots/
