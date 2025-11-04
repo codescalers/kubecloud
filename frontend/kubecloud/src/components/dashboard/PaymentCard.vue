@@ -1,8 +1,8 @@
 <template>
   <v-card class="pa-6" variant="outlined" rounded="xl">
-    <v-card-title class="text-h5 font-weight-bold">Add Funds</v-card-title>
-    <v-card-subtitle class="mb-2">Add funds to your account balance</v-card-subtitle>
-    <v-divider class="mb-4"></v-divider>
+    <v-card-title class="py-0 text-h5 font-weight-bold mb-1">Add Funds</v-card-title>
+    <v-card-subtitle class="text-body-1 dashboard-card-subtitle">Add funds to your account balance</v-card-subtitle>
+    <v-divider class="my-4"></v-divider>
 
     <v-row class="mb-2">
       <v-col cols="12" class="d-flex justify-space-between align-center">

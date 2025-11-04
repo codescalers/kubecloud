@@ -3,10 +3,10 @@
     <!-- Header Section -->
     <div class="card-header">
       <div class="header-content">
-        <h2 class="card-titl">
+        <h2 class="text-h5 font-weight-bold mb-1">
           My Nodes
         </h2>
-        <p class="card-description">
+        <p class="text-body-1 dashboard-card-subtitle">
           Manage your rented nodes and their resources.
         </p>
       </div>
@@ -364,7 +364,7 @@ const normalizedNodes = computed(() =>
 .error-section,
 .empty-section {
   text-align: center;
-  padding: 4rem 2rem;
+  padding: 2rem 2rem;
 }
 
 .loading-text {

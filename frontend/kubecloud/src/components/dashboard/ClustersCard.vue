@@ -3,7 +3,7 @@
     <div class="d-flex justify-space-between align-center mb-6">
       <div class="flex-grow-1">
         <h3 class="text-h5 font-weight-bold mb-1">Kubernetes Clusters</h3>
-        <p class="text-body-2 text-medium-emphasis">Manage your cloud-native infrastructure</p>
+        <p class="text-body-1 dashboard-card-subtitle">Manage your cloud-native infrastructure</p>
       </div>
       <v-tooltip location="top" :disabled="haveEnoughBalance">
         <template #activator="{ props }">
@@ -311,3 +311,4 @@ watch(() => clusterStore.clusters.length, (newLength) => {
   }
 })
 </script>
+
