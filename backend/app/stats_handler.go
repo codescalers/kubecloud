@@ -72,7 +72,7 @@ func (h *statsHandler) GetStatsHandler(c *gin.Context) {
 		return
 	}
 
-	stats, err := h.gridClient.GridProxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "stansvcy"}})
+	stats, err := h.gridClient.GridProxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)
