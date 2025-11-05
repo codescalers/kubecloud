@@ -1,4 +1,4 @@
-package internal
+package mailservice
 
 import (
 	_ "embed"
@@ -36,25 +36,14 @@ type Attachment struct {
 	Data     []byte
 }
 
-// MailService defines the contract for mail services
-type MailService interface {
-	SendMail(sender, receiver, subject, body string, attachments ...Attachment) error
-	ResetPasswordMailContent(code int, timeout int, username, host string) (string, string)
-	WelcomeMailContent(username, host string) (string, string)
-	SignUpMailContent(code int, timeout int, username, host string) (string, string)
-	NotifyAdminsMailContent(recordsNumber int, host string) (string, string)
-	InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string)
-	SystemAnnouncementMailBody(body string) string
-}
-
-// SendService struct hods all functionalities of mail service
+// SendGridMailService provides functionalities for sending emails using SendGrid.
 type SendGridMailService struct {
 	client  *sendgrid.Client
 	metrics *metrics.Metrics
 }
 
-// NewMailService creates new instance of mail service
-func NewMailService(sendGridKey string, metrics *metrics.Metrics) SendGridMailService {
+// NewSendGridMailService creates new instance of SendGridMailService
+func NewSendGridMailService(sendGridKey string, metrics *metrics.Metrics) SendGridMailService {
 	logger.GetLogger().Info().Msg("Using SendGrid mail service")
 	return SendGridMailService{
 		client:  sendgrid.NewSendClient(sendGridKey),
@@ -62,7 +51,7 @@ func NewMailService(sendGridKey string, metrics *metrics.Metrics) SendGridMailSe
 	}
 }
 
-// SendMail sends verification mails
+// SendMail sends mails
 func (service SendGridMailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
 	from := mail.NewEmail("Mycelium Cloud", sender)
 
@@ -109,17 +98,6 @@ func (service SendGridMailService) ResetPasswordMailContent(code int, timeout in
 	return subject, body
 }
 
-// WelcomeMailContent gets the email content for welcome messages
-func (service SendGridMailService) WelcomeMailContent(username, host string) (string, string) {
-	subject := "Welcome to Mycelium Cloud 🎉"
-	body := string(welcomeMail)
-
-	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
-	body = strings.ReplaceAll(body, "-host-", host)
-
-	return subject, body
-}
-
 // SignUpMailContent gets the email content for sign up
 func (service SendGridMailService) SignUpMailContent(code int, timeout int, username, host string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
@@ -131,36 +109,4 @@ func (service SendGridMailService) SignUpMailContent(code int, timeout int, user
 	body = strings.ReplaceAll(body, "-host-", host)
 
 	return subject, body
-}
-
-// NotifyAdminsMailContent gets the content for notifying admins
-func (service SendGridMailService) NotifyAdminsMailContent(recordsNumber int, host string) (string, string) {
-	subject := "There're pending payment requests for you to settle"
-	body := string(notifyPaymentRecordsMail)
-
-	body = strings.ReplaceAll(body, "-records-", fmt.Sprint(recordsNumber))
-	body = strings.ReplaceAll(body, "-host-", host)
-
-	return subject, body
-}
-
-func (service SendGridMailService) InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string) {
-	mailBody := "We hope this message finds you well. <br>"
-	mailBody += fmt.Sprintf("Our records show that there is an outstanding invoice (%d) for %v %s associated with your account. ", invoiceID, invoiceTotal, currency)
-
-	mailBody += "If you have already made the payment or need any assistance, "
-	mailBody += "please don't hesitate to reach out to us. <br><br>"
-	mailBody += "We appreciate your prompt attention to this matter and thank you for being a valued customer."
-
-	subject := "Invoice Notification"
-	return subject, mailBody
-
-}
-
-func (service SendGridMailService) SystemAnnouncementMailBody(body string) string {
-	template := string(systemAnnouncementMail)
-	body = strings.ReplaceAll(body, "\n", "<br>")
-	template = strings.ReplaceAll(template, "-body-", body)
-
-	return template
 }

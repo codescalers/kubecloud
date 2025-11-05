@@ -16,6 +16,7 @@ import (
 
 	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/notification"
 
 	"github.com/gin-gonic/gin"
@@ -436,7 +437,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	var attachments []internal.Attachment
+	var attachments []mailservice.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
 			logger.GetLogger().Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
@@ -457,7 +458,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	body := h.mailService.SystemAnnouncementMailBody(input.Body)
+	body := mailservice.SystemAnnouncementMailBody(input.Body)
 
 	emailConcurrencyLimiter := make(chan struct{}, h.config.MailSender.MaxConcurrentSends)
 
@@ -504,7 +505,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
 }
 
-func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]internal.Attachment, error) {
+func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {
 	if len(fileHeaders) == 0 {
 		return nil, nil
 	}
@@ -517,7 +518,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 	var (
 		mu       sync.Mutex
 		multiErr *multierror.Error
-		results  []internal.Attachment
+		results  []mailservice.Attachment
 		wg       sync.WaitGroup
 	)
 
@@ -562,7 +563,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]inter
 				return
 			}
 
-			attachment := internal.Attachment{
+			attachment := mailservice.Attachment{
 				FileName: fh.Filename,
 				Data:     fileData,
 			}

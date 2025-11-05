@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/middlewares"
@@ -136,12 +137,12 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	metrics := metrics.NewMetrics()
 	notificationConfig := config.Notification
-	var mailService internal.MailService
-	if config.DevMode && config.MailSender.SendGridKey == "" {
+	var mailService mailservice.MailService
+	if config.DevMode {
 		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
-		mailService = internal.NewFakeMailService(metrics)
+		mailService = mailservice.NewFakeMailService(metrics)
 	} else {
-		mailService = internal.NewMailService(config.MailSender.SendGridKey, metrics)
+		mailService = mailservice.NewSendGridMailService(config.MailSender.SendGridKey, metrics)
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)

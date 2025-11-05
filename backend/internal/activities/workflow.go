@@ -3,6 +3,7 @@ package activities
 import (
 	"kubecloud/internal"
 	"kubecloud/internal/constants"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -34,7 +35,7 @@ func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config internal.Configuration,
 	db models.DB,
-	mail internal.MailService,
+	mail mailservice.MailService,
 	substrate *substrate.Substrate,
 	kycClient *internal.KYCClient,
 	sponsorAddress string,

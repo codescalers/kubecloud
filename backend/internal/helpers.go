@@ -2,7 +2,6 @@ package internal
 
 import (
 	"math/rand"
-	"net/mail"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -32,12 +31,6 @@ func GenerateRandomCode() int {
 	min := 1000
 	max := 9999
 	return rand.Intn(max-min) + min
-}
-
-// IsValidEmail validates an email address using the standard library
-func IsValidEmail(email string) bool {
-	_, err := mail.ParseAddress(email)
-	return err == nil
 }
 
 // ValidateSSH used for validating ssh keys

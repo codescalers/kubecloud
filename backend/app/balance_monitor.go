@@ -5,8 +5,10 @@ import (
 	"kubecloud/models"
 	"time"
 
-	"github.com/pkg/errors"
 	"kubecloud/internal/logger"
+	mailservice "kubecloud/internal/mailservice"
+
+	"github.com/pkg/errors"
 )
 
 func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
@@ -91,7 +93,7 @@ func (h *Handler) transferTFTsToUser(userID, recordID int, amountToTransfer uint
 }
 
 func (h *Handler) notifyAdminWithPendingRecords(records []models.PendingRecord) error {
-	subject, body := h.mailService.NotifyAdminsMailContent(len(records), h.config.Server.Host)
+	subject, body := mailservice.NotifyAdminsMailContent(len(records), h.config.Server.Host)
 
 	admins, err := h.db.ListAdmins()
 	if err != nil {

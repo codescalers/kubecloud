@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -79,7 +80,7 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 	}
 }
 
-func SendVerificationEmailStep(mailService internal.MailService, config internal.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, config internal.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -291,7 +292,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 	}
 }
 
-func SendWelcomeEmailStep(mailService internal.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
@@ -313,7 +314,7 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		subject, body := mailService.WelcomeMailContent(name, config.Server.Host)
+		subject, body := mailservice.WelcomeMailContent(name, config.Server.Host)
 		if err := mailService.SendMail(config.MailSender.Email, email, subject, body); err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
