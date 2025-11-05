@@ -260,6 +260,7 @@ func LoadConfig() (Configuration, error) {
 	}
 
 	// custom validation: sendGridKey is required when NOT in dev mode
+	config.MailSender.SendGridKey = strings.TrimSpace(config.MailSender.SendGridKey)
 	if !config.DevMode && config.MailSender.SendGridKey == "" {
 		return Configuration{}, fmt.Errorf("sendgrid_key is required when dev_mode is false. Set dev_mode=true to use FakeMailService for development")
 	}
