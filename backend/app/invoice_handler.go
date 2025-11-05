@@ -10,8 +10,10 @@ import (
 
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"kubecloud/internal/logger"
+	mailservice "kubecloud/internal/mailservice"
+
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Get all invoices
@@ -248,8 +250,8 @@ func (h *Handler) createUserInvoice(user models.User) error {
 		return err
 	}
 
-	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCostUSD, h.config.Currency, invoice.ID)
-	err = h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body, internal.Attachment{
+	subject, body := mailservice.InvoiceMailContent(totalInvoiceCostUSD, h.config.Currency, invoice.ID)
+	err = h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body, mailservice.Attachment{
 		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
 		Data:     invoice.FileData,
 	})

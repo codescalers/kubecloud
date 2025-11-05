@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -38,7 +39,7 @@ type Handler struct {
 	tokenManager        internal.TokenManager
 	db                  models.DB
 	config              internal.Configuration
-	mailService         internal.MailService
+	mailService         mailservice.MailService
 	proxyClient         proxy.Client
 	substrateClient     *substrate.Substrate
 	graphqlClient       graphql.GraphQl
@@ -59,7 +60,7 @@ type Handler struct {
 
 // NewHandler create new handler
 func NewHandler(tokenManager internal.TokenManager, db models.DB,
-	config internal.Configuration, mailService internal.MailService,
+	config internal.Configuration, mailService mailservice.MailService,
 	gridproxy proxy.Client, substrateClient *substrate.Substrate,
 	graphqlClient graphql.GraphQl, firesquidClient graphql.GraphQl,
 	sseManager *internal.SSEManager, ewfEngine *ewf.Engine,

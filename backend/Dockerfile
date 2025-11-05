@@ -11,7 +11,7 @@ RUN CGO_ENABLED=1 go build -v -o ./myceliumcloud
 
 FROM alpine:latest
 
-COPY --from=builder /app/internal/templates /app/internal/templates
+COPY --from=builder /app/internal/mailservice/templates /app/internal/templates
 COPY --from=builder /app/myceliumcloud /myceliumcloud
 
 EXPOSE 8080

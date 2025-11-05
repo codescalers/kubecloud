@@ -46,6 +46,7 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
+  "dev_mode": false,
   "monitor_balance_interval_in_minutes": 120,
   "notify_admins_for_pending_records_in_hours": 24,
   "cluster_health_check_interval_in_hours": 1,
