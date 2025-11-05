@@ -80,7 +80,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to create user storage")
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
@@ -90,21 +89,18 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	substrateClient, err := manager.Substrate()
 
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to substrate client")
 		return nil, fmt.Errorf("failed to connect to substrate client: %w", err)
 	}
 
 	graphqlURL := []string{config.GraphqlURL}
 	graphqlClient, err := graphql.NewGraphQl(graphqlURL...)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to graphql client")
 		return nil, fmt.Errorf("failed to connect to graphql client: %w", err)
 	}
 
 	firesquidURL := []string{config.FiresquidURL}
 	firesquidClient, err := graphql.NewGraphQl(firesquidURL...)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return nil, fmt.Errorf("failed to connect to firesquid client: %w", err)
 	}
 
@@ -131,7 +127,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// initialize workflow ewfEngine
 	ewfEngine, err := ewf.NewEngine(ewfStore)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to init EWF engine")
 		return nil, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 

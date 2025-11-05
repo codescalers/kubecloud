@@ -30,23 +30,26 @@ type Stats struct {
 // @Router /stats [get]
 // GetStatsHandler retrieves and returns system statistics including total users and clusters count.
 func (h *Handler) GetStatsHandler(c *gin.Context) {
+	requestID := GetRequestID(c)
+	userID := c.GetInt("user_id")
+	reqLog := logger.ForRequest(userID, requestID, "GetStatsHandler")
 	totalUsers, err := h.db.CountAllUsers()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to count total users")
+		reqLog.Error().Err(err).Msg("failed to count total users")
 		InternalServerError(c)
 		return
 	}
 
 	totalClusters, err := h.db.CountAllClusters()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to count total clusters")
+		reqLog.Error().Err(err).Msg("failed to count total clusters")
 		InternalServerError(c)
 		return
 	}
 
 	stats, err := h.proxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
+		reqLog.Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)
 		return
 	}

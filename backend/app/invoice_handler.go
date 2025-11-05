@@ -29,9 +29,12 @@ import (
 // @Router /invoices [get]
 // ListAllInvoicesHandler lists all invoices in system
 func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
+	adminID := c.GetInt("user_id")
+	requestID := GetRequestID(c)
+	reqLog := logger.ForRequest(adminID, requestID, "ListAllInvoicesHandler")
 	invoices, err := h.db.ListInvoices()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve invoices")
 		InternalServerError(c)
 		return
 	}
@@ -54,10 +57,12 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 // ListUserInvoicesHandler lists user invoices by its ID
 func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	requestID := GetRequestID(c)
+	reqLog := logger.ForRequest(userID, requestID, "ListUserInvoicesHandler")
 
 	invoices, err := h.db.ListUserInvoices(userID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve user invoices")
 		InternalServerError(c)
 		return
 	}
@@ -100,13 +105,13 @@ func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 		// Process invoices (we're on month-end and haven't processed yet)
 		users, err := h.db.ListAllUsers()
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("invoices", "create_invoices").Error().Err(err).Msg("failed to retrieve users for invoice creation")
 			continue
 		}
 
 		for _, user := range users {
 			if err = h.createUserInvoice(user); err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				logger.ForOperation("invoices", "create_invoices").Error().Err(err).Msg("failed to create invoice for user")
 			}
 		}
 		//update last processed month and year
@@ -129,6 +134,8 @@ func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 // @Router /user/invoice/{invoice_id} [get]
 func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	requestID := GetRequestID(c)
+	reqLog := logger.ForRequest(userID, requestID, "DownloadInvoiceHandler")
 
 	invoiceID := c.Param("invoice_id")
 	if invoiceID == "" {
@@ -138,14 +145,14 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to parse invoice ID")
 		Error(c, http.StatusBadRequest, "Invalid invoice ID", err.Error())
 		return
 	}
 
 	invoice, err := h.db.GetInvoice(id)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve invoice")
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
 		return
 	}
@@ -154,21 +161,21 @@ func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	if len(invoice.FileData) == 0 {
 		user, err := h.db.GetUserByID(userID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to retrieve user")
 			InternalServerError(c)
 			return
 		}
 
 		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to create invoice PDF")
 			InternalServerError(c)
 			return
 		}
 
 		invoice.FileData = pdfContent
 		if err := h.db.UpdateInvoicePDF(id, invoice.FileData); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to update invoice PDF")
 			InternalServerError(c)
 			return
 		}

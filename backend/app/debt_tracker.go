@@ -22,7 +22,7 @@ func (h *Handler) TrackUserDebt(ctx context.Context, gridClient deployer.TFPlugi
 			return
 		case <-ticker.C:
 			if err := h.updateUserDebt(gridClient); err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				logger.ForOperation("debt_tracker", "update_user_debt").Error().Err(err).Msg("Failed to update user debt")
 			}
 		}
 	}
@@ -37,13 +37,13 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 	for _, user := range users {
 		userNodes, err := h.db.ListUserNodes(user.ID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("debt_tracker", "list_user_nodes").Error().Err(err).Msg("Failed to list user nodes")
 			continue
 		}
 		// Create identity from mnemonic
 		identity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("debt_tracker", "new_identity").Error().Err(err).Msg("Failed to create identity from mnemonic")
 			continue
 		}
 
@@ -52,7 +52,7 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 			calculatorClient := calculator.NewCalculator(gridClient.SubstrateConn, identity)
 			debt, err := calculatorClient.CalculateContractOverdue(node.ContractID, time.Hour)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				logger.ForOperation("debt_tracker", "calc_overdue").Error().Err(err).Msg("Failed to calculate contract overdue")
 				continue
 			}
 			totalDebt += debt
@@ -61,13 +61,13 @@ func (h *Handler) updateUserDebt(gridClient deployer.TFPluginClient) error {
 
 		totalDebtUSD, err := internal.FromTFTtoUSDMillicent(h.substrateClient, uint64(totalDebt))
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("debt_tracker", "tft_to_usd_millicent").Error().Err(err).Msg("Failed to convert debt to USD millicent")
 			continue
 		}
 		user.Debt = totalDebtUSD
 		err = h.db.UpdateUserByID(&user)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("debt_tracker", "update_user_debt_db").Error().Err(err).Msg("Failed to update user debt in DB")
 		}
 	}
 

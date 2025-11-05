@@ -51,7 +51,7 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 
 		// Use the shared logger which is configured with file output
 		logEvent := logger.GetLogger().With().
-			Str("request_id", GetRequestID(c)).
+			Str("request_id", requestID).
 			Str("method", method).
 			Str("path", path).
 			Int("status", statusCode).
@@ -70,14 +70,4 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 			logEvent.Debug().Msg("Request completed successfully")
 		}
 	}
-}
-
-// GetRequestID retrieves the request ID from the gin context
-func GetRequestID(c *gin.Context) string {
-	if requestID, exists := c.Get("request_id"); exists {
-		if id, ok := requestID.(string); ok {
-			return id
-		}
-	}
-	return ""
 }

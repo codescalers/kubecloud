@@ -27,7 +27,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 			}
 
 			if err := h.settlePendingPayments(records); err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				logger.ForOperation("balance_monitor", "settle_pending_payments").Error().Err(err).Msg("Failed to settle pending payments")
 			}
 
 		case <-adminNotifyTicker.C:
@@ -38,7 +38,7 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 
 			if len(records) > 0 {
 				if err := h.notifyAdminWithPendingRecords(records); err != nil {
-					logger.GetLogger().Error().Err(err).Send()
+					logger.ForOperation("balance_monitor", "notify_admins_pending_records").Error().Err(err).Msg("Failed to notify admins with pending records")
 				}
 			}
 		case <-ctx.Done():
@@ -68,7 +68,7 @@ func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
 		}
 
 		if err = h.transferTFTsToUser(record.UserID, record.ID, amountToTransfer); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("balance_monitor", "transfer_tfts_to_user").Error().Err(err).Msg("Failed to transfer TFTs to user")
 			continue
 		}
 	}
@@ -106,7 +106,7 @@ func (h *Handler) notifyAdminWithPendingRecords(records []models.PendingRecord) 
 	for _, admin := range admins {
 		err = h.mailService.SendMail(h.config.MailSender.Email, admin.Email, subject, body)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue
 		}
 	}
