@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
 	"net/http"
@@ -10,25 +13,21 @@ import (
 	"strings"
 	"time"
 
-	"errors"
-
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/mattn/go-sqlite3"
 	"github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/paymentmethod"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/xmonader/ewf"
 
 	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type userService struct {
-	models.UserRepository
-	models.VoucherRepository
-	models.PendingRecordRepository
+	userRepo    models.UserRepository
+	voucherRepo models.VoucherRepository
+	prRepo      models.PendingRecordRepository
 }
 
 func NewUserService(
@@ -37,21 +36,47 @@ func NewUserService(
 	pendingRecordRepo models.PendingRecordRepository,
 ) userService {
 	return userService{
-		UserRepository:          userRepo,
-		VoucherRepository:       voucherRepo,
-		PendingRecordRepository: pendingRecordRepo,
+		userRepo:    userRepo,
+		voucherRepo: voucherRepo,
+		prRepo:      pendingRecordRepo,
 	}
 }
 
 type userHandler struct {
 	svc userService
-	*appConfig
+
+	appCtx              context.Context
+	ewfEngine           *ewf.Engine
+	metrics             *metrics.Metrics
+	security            appSecurity
+	substrateClient     *substrate.Substrate
+	notificationService *notification.NotificationService
+	mailService         internal.MailService
+
+	// configs
+	codeTimeoutMin int
+	systemAdmins   []string
 }
 
-func newUserHandler(svc userService, config *appConfig) userHandler {
+func newUserHandler(
+	appCtx context.Context, svc userService, security appSecurity,
+	metrics *metrics.Metrics, ewfEngine *ewf.Engine,
+	substrateClient *substrate.Substrate, notificationService *notification.NotificationService,
+	mailService internal.MailService, codeTimeoutMin int, systemAdmins []string,
+) userHandler {
 	return userHandler{
-		svc:       svc,
-		appConfig: config,
+		svc: svc,
+
+		appCtx:              appCtx,
+		ewfEngine:           ewfEngine,
+		metrics:             metrics,
+		security:            security,
+		notificationService: notificationService,
+		substrateClient:     substrateClient,
+		mailService:         mailService,
+
+		codeTimeoutMin: codeTimeoutMin,
+		systemAdmins:   systemAdmins,
 	}
 }
 
@@ -178,13 +203,13 @@ func (h *userHandler) RegisterHandler(c *gin.Context) {
 	}
 
 	// check if user previously exists
-	existingUser, getErr := h.svc.GetUserByEmail(request.Email)
-	if getErr != nil && getErr != gorm.ErrRecordNotFound {
+	existingUser, getErr := h.svc.userRepo.GetUserByEmail(request.Email)
+	if getErr != nil && getErr != models.ErrUserNotFound {
 		InternalServerError(c)
 		return
 	}
 
-	if getErr != gorm.ErrRecordNotFound {
+	if getErr != models.ErrUserNotFound {
 		if isUserRegistered(existingUser) {
 			Error(c, http.StatusConflict, "Conflict", "User is already registered")
 			return
@@ -234,7 +259,7 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.GetUserByEmail(request.Email)
+	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
@@ -254,12 +279,12 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 			return
 		}
 
-		if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
+		if user.UpdatedAt.Add(time.Duration(h.codeTimeoutMin) * time.Minute).Before(time.Now()) {
 			Error(c, http.StatusBadRequest, "verification failed", "code has expired")
 			return
 		}
 
-		if err := h.svc.UpdateUserByID(&models.User{
+		if err := h.svc.userRepo.UpdateUserByID(&models.User{
 			ID:       user.ID,
 			Verified: true,
 		}); err != nil {
@@ -300,7 +325,7 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
 
-	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
+	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
@@ -337,7 +362,7 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.GetUserByEmail(request.Email)
+	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user by email")
 		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
@@ -352,7 +377,7 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 	}
 
 	// Check KYC verification status without blocking login
-	sponsored, err := h.kycClient.IsUserVerified(c.Request.Context(), user.AccountAddress)
+	sponsored, err := h.security.kycClient.IsUserVerified(c.Request.Context(), user.AccountAddress)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to check KYC verification status")
 		InternalServerError(c)
@@ -360,13 +385,13 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 	}
 	if user.Sponsored != sponsored {
 		user.Sponsored = sponsored
-		if err := h.svc.UpdateUserByID(&user); err != nil {
+		if err := h.svc.userRepo.UpdateUserByID(&user); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to update user sponsorship status")
 		}
 	}
 
 	// create token pairs
-	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
+	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
@@ -397,7 +422,7 @@ func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := h.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
+	accessToken, err := h.security.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusUnauthorized, "refresh token failed", "Invalid or expired refresh token")
@@ -433,7 +458,7 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.GetUserByEmail(request.Email)
+	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to get user ")
 		Error(c, http.StatusNotFound, "user lookup failed", "failed to get user")
@@ -442,8 +467,8 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	code := internal.GenerateRandomCode()
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.TimeoutMin, user.Username, h.config.Server.Host)
-	err = h.mailService.SendMail(h.config.MailSender.Email, request.Email, subject, body)
+	subject, body := h.mailService.ResetPasswordMailContent(code, h.codeTimeoutMin, user.Username)
+	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
 
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send verification code")
@@ -451,7 +476,7 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.UpdateUserByID(
+	err = h.svc.userRepo.UpdateUserByID(
 		&models.User{
 			ID:        user.ID,
 			UpdatedAt: time.Now(),
@@ -467,7 +492,7 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	Success(c, http.StatusOK, "Verification code sent", RegisterResponse{
 		Email:   request.Email,
-		Timeout: fmt.Sprintf("%d minutes", h.config.MailSender.TimeoutMin),
+		Timeout: fmt.Sprintf("%d minutes", h.codeTimeoutMin),
 	})
 
 }
@@ -494,9 +519,9 @@ func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.GetUserByEmail(request.Email)
+	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == models.ErrUserNotFound {
 			Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 			return
 
@@ -512,15 +537,15 @@ func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 	}
 
-	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
+	if user.UpdatedAt.Add(time.Duration(h.codeTimeoutMin) * time.Minute).Before(time.Now()) {
 		Error(c, http.StatusBadRequest, "code expired", "verification code has expired")
 
 		return
 	}
-	isAdmin := internal.Contains(h.config.Admins, request.Email)
+	isAdmin := internal.Contains(h.systemAdmins, request.Email)
 
 	// create token pairs
-	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
+	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
@@ -561,8 +586,8 @@ func (h *userHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.UpdatePassword(request.Email, hashedPassword)
-	if err == gorm.ErrRecordNotFound {
+	err = h.svc.userRepo.UpdatePassword(request.Email, hashedPassword)
+	if err == models.ErrUserNotFound {
 		logger.GetLogger().Error().Err(err).Msg("user is not found")
 		Error(c, http.StatusNotFound, "user is not found", err.Error())
 
@@ -614,7 +639,7 @@ func (h *userHandler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -686,14 +711,14 @@ func (h *userHandler) ChargeBalance(c *gin.Context) {
 func (h *userHandler) GetUserHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
 		return
 	}
 
-	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
@@ -735,7 +760,7 @@ func (h *userHandler) GetUserHandler(c *gin.Context) {
 func (h *userHandler) GetUserBalance(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -749,7 +774,7 @@ func (h *userHandler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
@@ -794,7 +819,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	userID := c.GetInt("user_id")
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -802,7 +827,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 	}
 
 	// check voucher exists
-	voucher, err := h.svc.GetVoucherByCode(voucherCodeParam)
+	voucher, err := h.svc.voucherRepo.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Voucher is not found", "")
@@ -821,7 +846,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.RedeemVoucher(voucher.Code)
+	err = h.svc.voucherRepo.RedeemVoucher(voucher.Code)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -870,7 +895,7 @@ func (h *userHandler) ListSSHKeysHandler(c *gin.Context) {
 		return
 	}
 
-	sshKeys, err := h.svc.ListUserSSHKeys(userID)
+	sshKeys, err := h.svc.userRepo.ListUserSSHKeys(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list SSH keys")
 		InternalServerError(c)
@@ -920,8 +945,8 @@ func (h *userHandler) AddSSHKeyHandler(c *gin.Context) {
 		PublicKey: request.PublicKey,
 	}
 
-	if err := h.svc.CreateSSHKey(&sshKey); err != nil {
-		if isUniqueViolation(err) {
+	if err := h.svc.userRepo.CreateSSHKey(&sshKey); err != nil {
+		if errors.Is(err, models.ErrSSHKeyAlreadyExists) {
 			Error(c, http.StatusBadRequest, "Duplicate SSH key", "SSH key name or public key already exists for this user.")
 			return
 		}
@@ -980,9 +1005,9 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	sshKey, err := h.svc.GetSSHKeyByID(keyID, userID)
+	sshKey, err := h.svc.userRepo.GetSSHKeyByID(keyID, userID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if err == models.ErrSSHKeyNotFound {
 			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
 			return
 		}
@@ -991,7 +1016,7 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.DeleteSSHKey(keyID, userID); err != nil {
+	if err := h.svc.userRepo.DeleteSSHKey(keyID, userID); err != nil {
 		if err.Error() == fmt.Sprintf("no SSH key found with ID %d for user %d", keyID, userID) {
 			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
 			return
@@ -1027,7 +1052,6 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /workflow/{workflow_id} [get]
 func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
-
 	workflowID := c.Param("workflow_id")
 	if workflowID == "" {
 		Error(c, http.StatusBadRequest, "Invalid request", "Workflow ID is required")
@@ -1056,7 +1080,7 @@ func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
 func (h *userHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	pendingRecords, err := h.svc.ListUserPendingRecords(userID)
+	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
@@ -1097,28 +1121,4 @@ func isUserRegistered(user models.User) bool {
 		len(strings.TrimSpace(user.AccountAddress)) > 0 &&
 		len(strings.TrimSpace(user.StripeCustomerID)) > 0 &&
 		len(strings.TrimSpace(user.Mnemonic)) > 0
-}
-
-func isUniqueViolation(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		// 23505 is the code for unique constraint violation
-		return pgErr.Code == "23505"
-	}
-
-	var sqlLiteErr sqlite3.Error
-	if errors.As(err, &sqlLiteErr) {
-		if sqlLiteErr.Code == sqlite3.ErrConstraint {
-			return sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintUnique || sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
-		}
-	}
-	return false
 }

@@ -1,10 +1,19 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/mattn/go-sqlite3"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrUserNotFound        = errors.New("user is not found")
+	ErrSSHKeyNotFound      = errors.New("ssh key is not found")
+	ErrSSHKeyAlreadyExists = errors.New("ssh key already exists")
 )
 
 // User represents a user in the system
@@ -54,6 +63,11 @@ func (r *GormUserRepository) RegisterUser(user *User) error {
 func (r *GormUserRepository) GetUserByEmail(email string) (User, error) {
 	var user User
 	query := r.db.First(&user, "email = ?", email)
+
+	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
+		return User{}, ErrUserNotFound
+	}
+
 	return user, query.Error
 }
 
@@ -82,11 +96,15 @@ func (r *GormUserRepository) UpdatePassword(email string, hashedPassword []byte)
 		})
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("no user found with email %s", email)
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -113,10 +131,15 @@ func (r *GormUserRepository) ListAdmins() ([]User, error) {
 func (r *GormUserRepository) DeleteUserByID(userID int) error {
 	result := r.db.Where("id = ?", userID).Delete(&User{})
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+
 		return result.Error
 	}
+
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return ErrUserNotFound
 	}
 	return nil
 }
@@ -141,7 +164,12 @@ func (r *GormUserRepository) CountAllUsers() (int64, error) {
 func (r *GormUserRepository) CreateSSHKey(sshKey *SSHKey) error {
 	sshKey.CreatedAt = time.Now()
 	sshKey.UpdatedAt = time.Now()
-	return r.db.Create(sshKey).Error
+	query := r.db.Create(sshKey)
+
+	if isUniqueViolation(query.Error) {
+		return ErrSSHKeyAlreadyExists
+	}
+	return query.Error
 }
 
 // ListUserSSHKeys returns all SSH keys for a user
@@ -170,5 +198,34 @@ func (r *GormUserRepository) DeleteSSHKey(sshKeyID int, userID int) error {
 func (r *GormUserRepository) GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error) {
 	var sshKey SSHKey
 	query := r.db.Where("id = ? AND user_id = ?", sshKeyID, userID).First(&sshKey)
+
+	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
+		return SSHKey{}, ErrSSHKeyNotFound
+	}
+
 	return sshKey, query.Error
+}
+
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		// 23505 is the code for unique constraint violation
+		return pgErr.Code == "23505"
+	}
+
+	var sqlLiteErr sqlite3.Error
+	if errors.As(err, &sqlLiteErr) {
+		if sqlLiteErr.Code == sqlite3.ErrConstraint {
+			return sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintUnique || sqlLiteErr.ExtendedCode == sqlite3.ErrConstraintPrimaryKey
+		}
+	}
+	return false
 }

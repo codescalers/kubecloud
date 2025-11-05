@@ -106,7 +106,12 @@ func TransferTFTs(substrateClient *substrate.Substrate, tftBalance uint64, userM
 // GetUserBalanceUSDMillicent gets balance of user in USD Millicent
 // This avoids floating point precision issues by returning an integer value
 func GetUserBalanceUSDMillicent(substrateClient *substrate.Substrate, userMnemonic string) (uint64, error) {
-	tftBalance, err := GetUserTFTBalance(substrateClient, userMnemonic)
+	userIdentity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	tftBalance, err := GetUserTFTBalance(substrateClient, userIdentity)
 	if err != nil {
 		return 0, err
 	}
@@ -115,18 +120,8 @@ func GetUserBalanceUSDMillicent(substrateClient *substrate.Substrate, userMnemon
 }
 
 // GetUserBalanceUSD gets balance of user in TFT
-func GetUserTFTBalance(substrateClient *substrate.Substrate, userMnemonic string) (uint64, error) {
-	if userMnemonic == "" {
-		return 0, nil
-	}
-
-	// Create identity from mnemonic
-	identity, err := substrate.NewIdentityFromSr25519Phrase(userMnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	account, err := substrate.FromAddress(identity.Address())
+func GetUserTFTBalance(substrateClient *substrate.Substrate, userIdentity substrate.Identity) (uint64, error) {
+	account, err := substrate.FromAddress(userIdentity.Address())
 	if err != nil {
 		return 0, err
 	}

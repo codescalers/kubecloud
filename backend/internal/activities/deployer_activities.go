@@ -19,7 +19,6 @@ import (
 	"kubecloud/internal/logger"
 
 	"github.com/xmonader/ewf"
-	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -783,7 +782,7 @@ func retrieveKubeconfig(ctx context.Context, state ewf.State, clusterRepo models
 	}
 
 	existingCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, models.ErrClusterNotFound) {
 		return "", fmt.Errorf("failed to query cluster %s from database (user_id=%d): %w", cluster.ProjectName, config.UserID, err)
 	}
 
@@ -933,7 +932,7 @@ func VerifyClusterInDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 
 		existingCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
+			if errors.Is(err, models.ErrClusterNotFound) {
 				return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)
 			}
 			return nil

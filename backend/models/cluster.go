@@ -2,11 +2,14 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"kubecloud/kubedeployer"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var ErrClusterNotFound = errors.New("cluster is not found")
 
 // Cluster represents a deployed cluster in the system
 type Cluster struct {
@@ -77,6 +80,10 @@ func (r *GormClusterRepository) ListUserClusters(userID int) ([]Cluster, error) 
 func (r *GormClusterRepository) GetClusterByName(userID int, projectName string) (Cluster, error) {
 	var cluster Cluster
 	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&cluster)
+
+	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
+		return Cluster{}, ErrClusterNotFound
+	}
 	return cluster, query.Error
 }
 

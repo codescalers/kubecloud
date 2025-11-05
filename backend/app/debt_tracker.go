@@ -23,13 +23,13 @@ func (h *adminHandler) TrackUserDebt(gridClient deployer.TFPluginClient) {
 }
 
 func (h *adminHandler) updateUserDebt(gridClient deployer.TFPluginClient) error {
-	users, err := h.svc.ListAllUsers()
+	users, err := h.svc.userRepo.ListAllUsers()
 	if err != nil {
 		return err
 	}
 
 	for _, user := range users {
-		userNodes, err := h.svc.ListUserNodes(user.ID)
+		userNodes, err := h.svc.nodesRepo.ListUserNodes(user.ID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			continue
@@ -59,7 +59,7 @@ func (h *adminHandler) updateUserDebt(gridClient deployer.TFPluginClient) error 
 			continue
 		}
 		user.Debt = totalDebtUSD
-		err = h.svc.UpdateUserByID(&user)
+		err = h.svc.userRepo.UpdateUserByID(&user)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 		}

@@ -30,7 +30,7 @@ type App struct {
 	httpServer *http.Server
 	config     internal.Configuration
 
-	*appConfig
+	*appDependencies
 	*handlers
 }
 
@@ -51,15 +51,15 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	stripe.Key = config.StripeSecret
 
-	appConfig, err := newAppConfig(ctx, config)
+	appDependencies, err := createAppDependencies(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
 	app := &App{
-		router:    router,
-		config:    config,
-		appConfig: &appConfig,
+		router:          router,
+		config:          config,
+		appDependencies: &appDependencies,
 	}
 
 	handlers := app.createHandlers()
@@ -73,29 +73,29 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 func (app *App) registerEWFWorkflows() {
 	activities.RegisterEWFWorkflows(
-		app.ewfEngine,
+		app.core.ewfEngine,
 		app.config,
-		app.db,
-		app.mailService,
-		app.substrateClient,
-		app.kycClient,
-		app.sponsorAddress,
-		app.sponsorKeyPair,
-		app.metrics,
-		app.notificationService,
-		app.gridClient.GridProxyClient,
+		app.core.db,
+		app.communication.mailService,
+		app.infra.substrateClient,
+		app.security.kycClient,
+		app.security.sponsorAddress,
+		app.security.sponsorKeyPair,
+		app.core.metrics,
+		app.communication.notificationService,
+		app.infra.gridClient.GridProxyClient,
 	)
 }
 
 // registerHandlers registers all routes
 func (app *App) registerHandlers() {
-	app.metrics.RegisterMetricsEndpoint(app.router)
+	app.core.metrics.RegisterMetricsEndpoint(app.router)
 
 	app.router.Use(middlewares.CorsMiddleware())
-	app.router.Use(app.metrics.Middleware())
+	app.router.Use(app.core.metrics.Middleware())
 
-	app.metrics.StartGORMMetricsCollector(app.db, metrics.MetricsCollectorInterval)
-	app.metrics.StartGoRuntimeMetricsCollector(metrics.MetricsCollectorInterval)
+	app.core.metrics.StartGORMMetricsCollector(app.core.db, metrics.MetricsCollectorInterval)
+	app.core.metrics.StartGoRuntimeMetricsCollector(metrics.MetricsCollectorInterval)
 
 	v1 := app.router.Group("/api/v1")
 	{
@@ -108,7 +108,7 @@ func (app *App) registerHandlers() {
 		v1.GET("/nodes/:node_id/storage-pool", app.nodeHandler.GetNodeStoragePoolHandler)
 
 		adminGroup := v1.Group("")
-		adminGroup.Use(middlewares.AdminMiddleware(app.tokenManager))
+		adminGroup.Use(middlewares.AdminMiddleware(app.security.tokenManager))
 		{
 			usersGroup := adminGroup.Group("/users")
 			{
@@ -144,7 +144,7 @@ func (app *App) registerHandlers() {
 			userGroup.POST("/forgot_password/verify", app.userHandler.VerifyForgetPasswordCodeHandler)
 
 			authGroup := userGroup.Group("")
-			authGroup.Use(middlewares.UserMiddleware(app.tokenManager))
+			authGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
 			{
 				authGroup.GET("/", app.userHandler.GetUserHandler)
 				authGroup.POST("/balance/charge", app.userHandler.ChargeBalance)
@@ -169,9 +169,9 @@ func (app *App) registerHandlers() {
 		}
 
 		deployerGroup := v1.Group("")
-		deployerGroup.Use(middlewares.UserMiddleware(app.tokenManager))
+		deployerGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
 		{
-			deployerGroup.GET("/events", app.sseManager.HandleSSE)
+			deployerGroup.GET("/events", app.communication.sseManager.HandleSSE)
 
 			deploymentGroup := deployerGroup.Group("/deployments")
 			{
@@ -202,10 +202,10 @@ func (app *App) registerHandlers() {
 
 func (app *App) StartBackgroundWorkers() {
 	go app.invoiceHandler.MonthlyInvoicesHandler()
-	go app.adminHandler.TrackUserDebt(app.gridClient)
+	go app.adminHandler.TrackUserDebt(app.infra.gridClient)
 	go app.adminHandler.MonitorSystemBalanceAndHandleSettlement()
 	go app.deploymentHandler.TrackClusterHealth()
-	go app.nodeHandler.TrackReservedNodeHealth(app.notificationService, app.gridClient.GridProxyClient)
+	go app.nodeHandler.TrackReservedNodeHealth(app.communication.notificationService, app.infra.gridClient.GridProxyClient)
 }
 
 // Run starts the server
@@ -215,7 +215,7 @@ func (app *App) Run() error {
 	// Start command socket
 	go app.startCommandSocket()
 
-	app.ewfEngine.ResumeRunningWorkflows()
+	app.core.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
 		Handler: app.router,
@@ -233,25 +233,25 @@ func (app *App) Run() error {
 
 // Shutdown gracefully shuts down the server and worker manager
 func (app *App) Shutdown() error {
-	defer app.appCtx.Done()
+	defer app.core.appCtx.Done()
 
 	if app.httpServer != nil {
-		if err := app.httpServer.Shutdown(app.appCtx); err != nil {
+		if err := app.httpServer.Shutdown(app.core.appCtx); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to shutdown HTTP server")
 		}
 	}
 
-	if app.sseManager != nil {
-		app.sseManager.Stop()
+	if app.communication.sseManager != nil {
+		app.communication.sseManager.Stop()
 	}
 
-	if app.db != nil {
-		if err := app.db.Close(); err != nil {
+	if app.core.db != nil {
+		if err := app.core.db.Close(); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to close database connection")
 		}
 	}
 
-	app.gridClient.Close()
+	app.infra.gridClient.Close()
 
 	logger.CloseLogger()
 
@@ -275,7 +275,7 @@ func (app *App) startCommandSocket() {
 
 	for {
 		select {
-		case <-app.appCtx.Done():
+		case <-app.core.appCtx.Done():
 			logger.GetLogger().Info().Msg("command socket stopping")
 			return
 		default:
@@ -298,7 +298,7 @@ func (app *App) startCommandSocket() {
 			continue
 		}
 
-		if app.appCtx.Err() != nil {
+		if app.core.appCtx.Err() != nil {
 			return
 		}
 
@@ -364,7 +364,7 @@ func (app *App) reloadNotificationConfig() error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if err = app.notificationService.ReloadNotificationConfig(cfg.Notification); err != nil {
+	if err = app.communication.notificationService.ReloadNotificationConfig(cfg.Notification); err != nil {
 		return fmt.Errorf("failed to reload notification config: %w", err)
 	}
 

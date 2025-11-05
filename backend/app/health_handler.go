@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	"kubecloud/models"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -26,12 +28,22 @@ const (
 )
 
 type healthHandler struct {
-	*appConfig
+	db              models.DB
+	systemNetwork   string
+	firesquidClient graphql.GraphQl
+	graphql         graphql.GraphQl
 }
 
-func newHealthHandler(config *appConfig) healthHandler {
+func newHealthHandler(systemNetwork string,
+	firesquidClient graphql.GraphQl,
+	graphql graphql.GraphQl,
+	db models.DB,
+) healthHandler {
 	return healthHandler{
-		appConfig: config,
+		db:              db,
+		systemNetwork:   systemNetwork,
+		firesquidClient: firesquidClient,
+		graphql:         graphql,
 	}
 }
 
@@ -102,7 +114,7 @@ func healthURL(baseURL string) (string, error) {
 }
 
 func (h *healthHandler) checkGridProxy(ctx context.Context) HealthStatus {
-	proxyURLs := deployer.ProxyURLs[h.config.SystemAccount.Network]
+	proxyURLs := deployer.ProxyURLs[h.systemNetwork]
 	var validURLs []string
 
 	for _, proxyURL := range proxyURLs {
@@ -118,7 +130,7 @@ func (h *healthHandler) checkGridProxy(ctx context.Context) HealthStatus {
 }
 
 func (h *healthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
-	chainURLs := deployer.SubstrateURLs[h.config.SystemAccount.Network]
+	chainURLs := deployer.SubstrateURLs[h.systemNetwork]
 
 	url := strings.Replace(chainURLs[0], "wss://", "https://", 1)
 	url = strings.TrimSuffix(url, "/ws")
@@ -159,7 +171,7 @@ func (h *healthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
 }
 
 func (h *healthHandler) checkActivationService(ctx context.Context) HealthStatus {
-	url, err := healthURL(constants.ActivationServiceURLs[h.config.SystemAccount.Network])
+	url, err := healthURL(constants.ActivationServiceURLs[h.systemNetwork])
 	if err != nil {
 		return healthStatusFromError(fmt.Errorf("activation service %s", err.Error()))
 	}

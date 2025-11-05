@@ -1,11 +1,14 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+var ErrNotificationNotFound = errors.New("notification is not found")
 
 // NotificationType represents the type of notification
 type NotificationType string
@@ -145,11 +148,15 @@ func (r *GormNotificationRepository) MarkNotificationAsRead(notificationID strin
 		})
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ErrNotificationNotFound
+		}
+
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return ErrNotificationNotFound
 	}
 
 	return nil
@@ -171,11 +178,15 @@ func (r *GormNotificationRepository) DeleteNotification(notificationID string, u
 	result := r.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ErrNotificationNotFound
+		}
+
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return ErrNotificationNotFound
 	}
 
 	return nil
@@ -206,11 +217,15 @@ func (r *GormNotificationRepository) MarkNotificationAsUnread(notificationID str
 		})
 
 	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return ErrNotificationNotFound
+		}
+
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return ErrNotificationNotFound
 	}
 
 	return nil

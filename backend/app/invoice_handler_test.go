@@ -57,9 +57,9 @@ func TestListAllInvoicesHandler(t *testing.T) {
 		Tax:       20.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.CreateInvoice(invoice1)
+	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice1)
 	require.NoError(t, err)
-	err = app.invoiceHandler.svc.CreateInvoice(invoice2)
+	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice2)
 	require.NoError(t, err)
 
 	t.Run("Test List all invoices successfully", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestListUserInvoicesHandler(t *testing.T) {
 		Tax:       10.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.CreateInvoice(invoice1)
+	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice1)
 	require.NoError(t, err)
 
 	t.Run("Test List user invoices successfully", func(t *testing.T) {
@@ -189,7 +189,7 @@ func TestDownloadInvoiceHandler(t *testing.T) {
 		Tax:       10.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.CreateInvoice(invoice)
+	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice)
 	require.NoError(t, err)
 
 	t.Run("Download an invoice successfully", func(t *testing.T) {

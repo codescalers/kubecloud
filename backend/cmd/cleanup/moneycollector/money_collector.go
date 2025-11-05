@@ -52,7 +52,14 @@ func (m *MoneyCollector) CollectMoney() {
 			if user.Mnemonic == "" {
 				return
 			}
-			balance, err := internal.GetUserTFTBalance(m.substrateClient, user.Mnemonic)
+
+			userIdentity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
+			if err != nil {
+				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to load user identity")
+				return
+			}
+
+			balance, err := internal.GetUserTFTBalance(m.substrateClient, userIdentity)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return

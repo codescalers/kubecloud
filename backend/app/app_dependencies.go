@@ -33,24 +33,24 @@ type handlers struct {
 	healthHandler       *healthHandler
 }
 
-type appConfig struct {
-	*coreConfig
-	*authConfig
-	*communicationConfig
-	*gridConfig
+type appDependencies struct {
+	config        internal.Configuration
+	core          appCore
+	security      appSecurity
+	communication appCommunication
+	infra         appInfrastructure
 }
 
-// coreConfig contains essential application services
-type coreConfig struct {
+// appCore contains essential application services
+type appCore struct {
 	appCtx    context.Context
-	config    internal.Configuration
 	db        models.DB
 	metrics   *metrics.Metrics
 	ewfEngine *ewf.Engine
 }
 
-// authConfig contains authentication and security related services
-type authConfig struct {
+// appSecurity contains authentication and security related services
+type appSecurity struct {
 	tokenManager   internal.TokenManager
 	systemIdentity substrate.Identity
 	sponsorKeyPair subkey.KeyPair
@@ -59,51 +59,52 @@ type authConfig struct {
 	kycClient      *internal.KYCClient
 }
 
-// communicationConfig contains notification and communication related services
-type communicationConfig struct {
+// appCommunication contains notification and communication related services
+type appCommunication struct {
 	mailService         internal.MailService
 	sseManager          *internal.SSEManager
 	notificationService *notification.NotificationService
 }
 
-// gridConfig contains grid and blockchain related services
-type gridConfig struct {
+// appInfrastructure contains grid and blockchain related services
+type appInfrastructure struct {
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
 	substrateClient *substrate.Substrate
 }
 
-func newAppConfig(ctx context.Context, config internal.Configuration) (appConfig, error) {
-	coreConfig, err := newCoreConfig(ctx, config)
+func createAppDependencies(ctx context.Context, config internal.Configuration) (appDependencies, error) {
+	appCore, err := createAppCore(ctx, config)
 	if err != nil {
-		return appConfig{}, err
+		return appDependencies{}, err
 	}
 
-	gridConfig, err := newGridConfig(ctx, config)
+	appInfrastructure, err := createAppInfrastructure(config)
 	if err != nil {
-		return appConfig{}, err
+		return appDependencies{}, err
 	}
 
-	authConfig, err := newAuthConfig(ctx, config)
+	appSecurity, err := createAppSecurity(ctx, config)
 	if err != nil {
-		return appConfig{}, err
+		return appDependencies{}, err
 	}
 
-	communicationConfig, err := newCommunicationConfig(ctx, config, coreConfig.db, coreConfig.ewfEngine, coreConfig.metrics)
+	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics)
 	if err != nil {
-		return appConfig{}, err
+		return appDependencies{}, err
 	}
 
-	return appConfig{
-		coreConfig:          &coreConfig,
-		authConfig:          &authConfig,
-		communicationConfig: &communicationConfig,
-		gridConfig:          &gridConfig,
+	return appDependencies{
+		config:        config,
+		core:          appCore,
+		security:      appSecurity,
+		communication: appCommunication,
+		infra:         appInfrastructure,
 	}, nil
 }
 
-func newCoreConfig(ctx context.Context, config internal.Configuration) (coreConfig, error) {
+func createAppCore(ctx context.Context, config internal.Configuration) (appCore, error) {
 	dbPoolConfig := models.DBPoolConfig{
 		MaxOpenConns:           config.Database.MaxOpenConns,
 		MaxIdleConns:           config.Database.MaxIdleConns,
@@ -113,7 +114,7 @@ func newCoreConfig(ctx context.Context, config internal.Configuration) (coreConf
 
 	db, err := models.NewGormDB(config.Database.DSN, dbPoolConfig)
 	if err != nil {
-		return coreConfig{}, fmt.Errorf("failed to create user storage: %w", err)
+		return appCore{}, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
 	// create storage for workflows
@@ -123,19 +124,18 @@ func newCoreConfig(ctx context.Context, config internal.Configuration) (coreConf
 	ewfEngine, err := ewf.NewEngine(ewfStore)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to init EWF engine")
-		return coreConfig{}, fmt.Errorf("failed to init workflow engine: %w", err)
+		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
-	return coreConfig{
+	return appCore{
 		appCtx:    ctx,
-		config:    config,
 		db:        db,
 		metrics:   metrics.NewMetrics(),
 		ewfEngine: ewfEngine,
 	}, nil
 }
 
-func newAuthConfig(ctx context.Context, config internal.Configuration) (authConfig, error) {
+func createAppSecurity(ctx context.Context, config internal.Configuration) (appSecurity, error) {
 	tokenManager := internal.NewTokenHandler(
 		config.JwtToken.Secret,
 		time.Duration(config.JwtToken.AccessExpiryMinutes)*time.Minute,
@@ -144,24 +144,24 @@ func newAuthConfig(ctx context.Context, config internal.Configuration) (authConf
 
 	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)
 	if err != nil {
-		return authConfig{}, fmt.Errorf("failed to create system identity: %w", err)
+		return appSecurity{}, fmt.Errorf("failed to create system identity: %w", err)
 	}
 
 	// Derive sponsor (system) account SS58 address once
 	sponsorKeyPair, err := internal.KeyPairFromMnemonic(config.SystemAccount.Mnemonic)
 	if err != nil {
-		return authConfig{}, fmt.Errorf("failed to create sponsor keypair from system account: %w", err)
+		return appSecurity{}, fmt.Errorf("failed to create sponsor keypair from system account: %w", err)
 	}
 	sponsorAddress, err := internal.AccountAddressFromKeypair(sponsorKeyPair)
 	if err != nil {
-		return authConfig{}, fmt.Errorf("failed to create sponsor address from keypair: %w", err)
+		return appSecurity{}, fmt.Errorf("failed to create sponsor address from keypair: %w", err)
 	}
 
 	// Initialize KYC client
 	kycVerifierAPIURL := constants.KYCURLs[config.SystemAccount.Network]
 	parsedUrl, err := url.Parse(kycVerifierAPIURL)
 	if err != nil {
-		return authConfig{}, fmt.Errorf("failed to parse KYC verifier API URL: %w", err)
+		return appSecurity{}, fmt.Errorf("failed to parse KYC verifier API URL: %w", err)
 	}
 	kycChallengeDomain := parsedUrl.Hostname()
 
@@ -173,17 +173,17 @@ func newAuthConfig(ctx context.Context, config internal.Configuration) (authConf
 
 	if valid, err := kycClient.IsValidSponsor(ctx, sponsorAddress); err != nil || !valid {
 		if err != nil {
-			return authConfig{}, fmt.Errorf("failed to validate sponsor address, %w", err)
+			return appSecurity{}, fmt.Errorf("failed to validate sponsor address, %w", err)
 		}
-		return authConfig{}, fmt.Errorf("the provided sponsor address can't be used as a sponsor")
+		return appSecurity{}, fmt.Errorf("the provided sponsor address can't be used as a sponsor")
 	}
 
 	sshPublicKeyBytes, err := os.ReadFile(config.SSH.PublicKeyPath)
 	if err != nil {
-		return authConfig{}, fmt.Errorf("failed to read SSH public key from %s: %w", config.SSH.PublicKeyPath, err)
+		return appSecurity{}, fmt.Errorf("failed to read SSH public key from %s: %w", config.SSH.PublicKeyPath, err)
 	}
 
-	return authConfig{
+	return appSecurity{
 		tokenManager:   tokenManager,
 		systemIdentity: systemIdentity,
 		sponsorKeyPair: sponsorKeyPair,
@@ -193,37 +193,37 @@ func newAuthConfig(ctx context.Context, config internal.Configuration) (authConf
 	}, nil
 }
 
-func newCommunicationConfig(ctx context.Context, config internal.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (communicationConfig, error) {
-	mailService := internal.NewMailService(config.MailSender.SendGridKey, metrics)
+func createAppCommunication(config internal.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+	mailService := internal.NewMailService(config.MailSender, config.Server.Host, metrics)
 	sseManager := internal.NewSSEManager()
 
 	notificationRepo := models.NewGormNotificationRepository(db)
 	notificationService, err := notification.NewNotificationService(notificationRepo, ewfEngine, config.Notification)
 	if err != nil {
-		return communicationConfig{}, fmt.Errorf("failed to create notification service: %w", err)
+		return appCommunication{}, fmt.Errorf("failed to create notification service: %w", err)
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailService, config.MailSender.Email, config.Notification.EmailTemplatesDirPath)
+	emailNotifier := notification.NewEmailNotifier(mailService, config.Notification.EmailTemplatesDirPath)
 	err = emailNotifier.ParseTemplates()
 	if err != nil {
-		return communicationConfig{}, fmt.Errorf("failed to init notification templates: %w", err)
+		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
 	}
 
 	notificationService.RegisterNotifier(sseNotifier)
 	notificationService.RegisterNotifier(emailNotifier)
 	if err := notificationService.ValidateConfigsChannelsAgainstRegistered(); err != nil {
-		return communicationConfig{}, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
+		return appCommunication{}, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
-	return communicationConfig{
+	return appCommunication{
 		mailService:         mailService,
 		sseManager:          sseManager,
 		notificationService: notificationService,
 	}, nil
 }
 
-func newGridConfig(ctx context.Context, config internal.Configuration) (gridConfig, error) {
+func createAppInfrastructure(config internal.Configuration) (appInfrastructure, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),
@@ -237,27 +237,27 @@ func newGridConfig(ctx context.Context, config internal.Configuration) (gridConf
 		pluginOpts...,
 	)
 	if err != nil {
-		return gridConfig{}, fmt.Errorf("failed to create TF grid client: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
 	}
 
 	fireSquidClient, err := graphql.NewGraphQl(constants.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
-		return gridConfig{}, fmt.Errorf("failed to connect to firesquid client: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to connect to firesquid client: %w", err)
 	}
 
 	manager := substrate.NewManager(deployer.SubstrateURLs[config.SystemAccount.Network]...)
 	substrateClient, err := manager.Substrate()
 	if err != nil {
-		return gridConfig{}, fmt.Errorf("failed to connect to TF chain: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to connect to TF chain: %w", err)
 	}
 
 	graphQl, err := graphql.NewGraphQl(deployer.GraphQlURLs[config.SystemAccount.Network]...)
 	if err != nil {
-		return gridConfig{}, fmt.Errorf("failed to connect to TF graphql: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to connect to TF graphql: %w", err)
 	}
 
-	return gridConfig{
+	return appInfrastructure{
 		gridClient:      gridClient,
 		graphql:         graphQl,
 		substrateClient: substrateClient,
@@ -267,15 +267,15 @@ func newGridConfig(ctx context.Context, config internal.Configuration) (gridConf
 
 func (app *App) createHandlers() handlers {
 	// Repositories
-	userRepo := models.NewGormUserRepository(app.db)
-	voucherRepo := models.NewGormVoucherRepository(app.db)
-	pendingRecordRepo := models.NewGormPendingRecordRepository(app.db)
-	notificationRepo := models.NewGormNotificationRepository(app.db)
-	clusterRepo := models.NewGormClusterRepository(app.db)
-	invoiceRepo := models.NewGormInvoiceRepository(app.db)
-	userNodesRepo := models.NewGormUserNodesRepository(app.db)
-	transactionRepo := models.NewGormTransactionRepository(app.db)
-	settingsRepo := models.NewGormSettingsRepository(app.db)
+	userRepo := models.NewGormUserRepository(app.core.db)
+	voucherRepo := models.NewGormVoucherRepository(app.core.db)
+	pendingRecordRepo := models.NewGormPendingRecordRepository(app.core.db)
+	notificationRepo := models.NewGormNotificationRepository(app.core.db)
+	clusterRepo := models.NewGormClusterRepository(app.core.db)
+	invoiceRepo := models.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := models.NewGormUserNodesRepository(app.core.db)
+	transactionRepo := models.NewGormTransactionRepository(app.core.db)
+	settingsRepo := models.NewGormSettingsRepository(app.core.db)
 
 	// Services
 	userService := NewUserService(userRepo, voucherRepo, pendingRecordRepo)
@@ -287,14 +287,30 @@ func (app *App) createHandlers() handlers {
 	adminService := NewAdminService(userRepo, userNodesRepo, pendingRecordRepo, voucherRepo, transactionRepo, settingsRepo)
 
 	// Handlers
-	userHandler := newUserHandler(userService, app.appConfig)
-	statsHandler := newStatsHandler(statsService, app.appConfig)
-	notificationHandler := newNotificationHandler(notificationService, app.appConfig)
-	nodeHandler := newNodeHandler(nodeService, app.appConfig)
-	invoiceHandler := newInvoiceHandler(invoiceService, app.appConfig)
-	deploymentHandler := newDeploymentHandler(deploymentService, app.appConfig)
-	adminHandler := newAdminHandler(adminService, app.appConfig)
-	healthHandler := newHealthHandler(app.appConfig)
+	userHandler := newUserHandler(
+		app.core.appCtx, userService, app.security, app.core.metrics,
+		app.core.ewfEngine, app.infra.substrateClient, app.communication.notificationService, app.communication.mailService,
+		app.config.MailSender.TimeoutMin, app.config.Admins,
+	)
+	statsHandler := newStatsHandler(statsService, app.infra.gridClient.GridProxyClient)
+	notificationHandler := newNotificationHandler(notificationService)
+
+	nodeHandler := newNodeHandler(app.core.appCtx, nodeService, app.core.ewfEngine,
+		app.infra.gridClient, app.infra.substrateClient, app.config.NodeHealthCheck)
+
+	invoiceHandler := newInvoiceHandler(invoiceService, app.infra.firesquidClient, app.infra.graphql,
+		app.infra.substrateClient, app.communication.mailService, app.config.Invoice, app.config.Currency)
+	deploymentHandler := newDeploymentHandler(app.core.appCtx, deploymentService,
+		app.core.ewfEngine, app.config.SystemAccount.Network, app.config.SSH.PrivateKeyPath,
+		app.config.ClusterHealthCheckIntervalInHours, app.security.sshPublicKey, app.config.Debug,
+	)
+	adminHandler := newAdminHandler(app.core.appCtx, adminService, app.core.ewfEngine,
+		app.communication.notificationService, app.communication.mailService,
+		app.infra.substrateClient, app.security.systemIdentity,
+		app.config.VoucherNameLength, app.config.MonitorBalanceIntervalInMinutes,
+		app.config.NotifyAdminsForPendingRecordsInHours,
+	)
+	healthHandler := newHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 
 	return handlers{
 		userHandler:         &userHandler,

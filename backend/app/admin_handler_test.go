@@ -252,9 +252,9 @@ func TestListVouchersHandler(t *testing.T) {
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(48 * time.Hour),
 	}
-	err = app.adminHandler.svc.CreateVoucher(voucher1)
+	err = app.adminHandler.svc.voucherRepo.CreateVoucher(voucher1)
 	require.NoError(t, err)
-	err = app.adminHandler.svc.CreateVoucher(voucher2)
+	err = app.adminHandler.svc.voucherRepo.CreateVoucher(voucher2)
 	require.NoError(t, err)
 
 	t.Run("Test List Vouchers successfully", func(t *testing.T) {

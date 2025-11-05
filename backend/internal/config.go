@@ -13,26 +13,24 @@ import (
 )
 
 type Configuration struct {
-	Server                                  Server             `json:"server" validate:"required,dive"`
-	Database                                DB                 `json:"database" validate:"required"`
-	JwtToken                                JwtToken           `json:"jwt_token" validate:"required"`
-	Admins                                  []string           `json:"admins" validate:"required"`
-	MailSender                              MailSender         `json:"mailSender"`
-	Currency                                string             `json:"currency" validate:"required"`
-	StripeSecret                            string             `json:"stripe_secret" validate:"required"`
-	VoucherNameLength                       int                `json:"voucher_name_length"  validate:"required,gt=0"`
-	TermsANDConditions                      TermsANDConditions `json:"terms_and_conditions"`
-	SystemAccount                           GridAccount        `json:"system_account"`
-	DeployerWorkersNum                      int                `json:"deployer_workers_num" default:"1"`
-	Invoice                                 InvoiceCompanyData `json:"invoice"`
-	SSH                                     SSHConfig          `json:"ssh" validate:"required,dive"`
-	Debug                                   bool               `json:"debug"`
-	MonitorBalanceIntervalInMinutes         int                `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
-	NotifyAdminsForPendingRecordsInHours    int                `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
-	ClusterHealthCheckIntervalInHours       int                `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
-	ReservedNodeHealthCheckIntervalInHours  int                `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
-	ReservedNodeHealthCheckTimeoutInMinutes int                `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
-	ReservedNodeHealthCheckWorkersNum       int                `json:"reserved_node_health_check_workers_num" validate:"required,gt=0" default:"10"`
+	Server                               Server                        `json:"server" validate:"required,dive"`
+	Database                             DB                            `json:"database" validate:"required"`
+	JwtToken                             JwtToken                      `json:"jwt_token" validate:"required"`
+	Admins                               []string                      `json:"admins" validate:"required"`
+	MailSender                           MailSender                    `json:"mailSender"`
+	Currency                             string                        `json:"currency" validate:"required"`
+	StripeSecret                         string                        `json:"stripe_secret" validate:"required"`
+	VoucherNameLength                    int                           `json:"voucher_name_length"  validate:"required,gt=0"`
+	TermsANDConditions                   TermsANDConditions            `json:"terms_and_conditions"`
+	SystemAccount                        GridAccount                   `json:"system_account"`
+	DeployerWorkersNum                   int                           `json:"deployer_workers_num" default:"1"`
+	Invoice                              InvoiceCompanyData            `json:"invoice"`
+	SSH                                  SSHConfig                     `json:"ssh" validate:"required,dive"`
+	Debug                                bool                          `json:"debug"`
+	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
+	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
+	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
 	Logger LoggerConfig `json:"logger"`
 	Loki   LokiConfig   `json:"loki"`
@@ -129,6 +127,12 @@ type ChannelRuleConfig struct {
 type NotificationTemplateTypeConfig struct {
 	Default  ChannelRuleConfig            `json:"default" validate:"required"`
 	ByStatus map[string]ChannelRuleConfig `json:"by_status"`
+}
+
+type ReservedNodeHealthCheckConfig struct {
+	ReservedNodeHealthCheckIntervalInHours  int `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
+	ReservedNodeHealthCheckTimeoutInMinutes int `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
+	ReservedNodeHealthCheckWorkersNum       int `json:"reserved_node_health_check_workers_num" validate:"required,gt=0" default:"10"`
 }
 
 // LoadNotificationConfig loads notification configuration from a separate file

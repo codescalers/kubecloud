@@ -17,8 +17,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"gorm.io/gorm"
+	"github.com/xmonader/ewf"
 )
 
 var (
@@ -29,28 +30,43 @@ var (
 )
 
 type nodeService struct {
-	models.UserNodesRepository
-	models.UserRepository
+	nodesRepo models.UserNodesRepository
+	userRepo  models.UserRepository
 }
 
 func NewNodeService(
 	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
 ) nodeService {
 	return nodeService{
-		UserNodesRepository: userNodesRepo,
-		UserRepository:      userRepo,
+		nodesRepo: userNodesRepo,
+		userRepo:  userRepo,
 	}
 }
 
 type nodeHandler struct {
-	svc nodeService
-	*appConfig
+	svc             nodeService
+	appCtx          context.Context
+	ewfEngine       *ewf.Engine
+	gridClient      deployer.TFPluginClient
+	substrateClient *substrate.Substrate
+
+	// configs
+	*internal.ReservedNodeHealthCheckConfig
 }
 
-func newNodeHandler(svc nodeService, config *appConfig) nodeHandler {
+func newNodeHandler(
+	appCtx context.Context, svc nodeService, ewfEngine *ewf.Engine,
+	gridClient deployer.TFPluginClient, substrateClient *substrate.Substrate,
+	reservedNodeHealthCheckConfig internal.ReservedNodeHealthCheckConfig,
+) nodeHandler {
 	return nodeHandler{
-		svc:       svc,
-		appConfig: config,
+		svc:             svc,
+		appCtx:          appCtx,
+		ewfEngine:       ewfEngine,
+		gridClient:      gridClient,
+		substrateClient: substrateClient,
+
+		ReservedNodeHealthCheckConfig: &reservedNodeHealthCheckConfig,
 	}
 }
 
@@ -252,7 +268,7 @@ func (h *nodeHandler) ReserveNodeHandler(c *gin.Context) {
 
 	userID := c.GetInt("user_id")
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -282,8 +298,8 @@ func (h *nodeHandler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	userNode, err := h.svc.GetUserNodeByNodeID(uint64(nodeID))
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	userNode, err := h.svc.nodesRepo.GetUserNodeByNodeID(uint64(nodeID))
+	if err != nil && !errors.Is(err, models.ErrUserNodeNotFound) {
 		logger.GetLogger().Error().Err(err).Uint32("node_id", nodeID).Msg("failed to check node reservation state")
 		InternalServerError(c)
 		return
@@ -426,7 +442,7 @@ func (h *nodeHandler) UnreserveNodeHandler(c *gin.Context) {
 
 	userID := c.GetInt("user_id")
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "User is not found", "")
@@ -439,9 +455,9 @@ func (h *nodeHandler) UnreserveNodeHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	userNode, err := h.svc.GetUserNodeByContractID(contractID)
+	userNode, err := h.svc.nodesRepo.GetUserNodeByContractID(contractID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrUserNodeNotFound) {
 			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
 			return
 		}
@@ -558,7 +574,7 @@ func setValueFromString(v reflect.Value, s string) error {
 }
 
 func (h *nodeHandler) getTwinIDFromUserID(userID int) (uint64, error) {
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		return 0, err
 	}

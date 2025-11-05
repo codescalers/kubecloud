@@ -21,13 +21,13 @@ type NodeHealthResult struct {
 }
 
 func (h *deploymentHandler) TrackClusterHealth() {
-	interval := time.Duration(h.config.ClusterHealthCheckIntervalInHours) * time.Hour
+	interval := time.Duration(h.clusterHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for range ticker.C {
 		logger.GetLogger().Info().Msg("Cluster health check test started")
-		clusters, err := h.svc.ListAllClusters()
+		clusters, err := h.svc.clusterRepo.ListAllClusters()
 		if err != nil {
 			logger.GetLogger().Error().Err(err)
 			continue
@@ -68,7 +68,7 @@ func (h *deploymentHandler) TrackClusterHealth() {
 }
 
 func (h *nodeHandler) TrackReservedNodeHealth(notificationService *notification.NotificationService, grid proxy.Client) {
-	interval := time.Duration(h.config.ReservedNodeHealthCheckIntervalInHours) * time.Hour
+	interval := time.Duration(h.ReservedNodeHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -76,7 +76,7 @@ func (h *nodeHandler) TrackReservedNodeHealth(notificationService *notification.
 	for range ticker.C {
 		logger.GetLogger().Info().Msg("Reserved node health check started")
 
-		reservedNodes, err := h.svc.ListAllReservedNodes()
+		reservedNodes, err := h.svc.nodesRepo.ListAllReservedNodes()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to get reserved nodes for health check")
 			continue
@@ -101,11 +101,11 @@ func (h *nodeHandler) TrackReservedNodeHealth(notificationService *notification.
 
 // checkNodesWithWorkerPool uses a worker pool to check node health concurrently
 func (h *nodeHandler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, grid proxy.Client, notificationService *notification.NotificationService) {
-	timeout := time.Duration(h.config.ReservedNodeHealthCheckTimeoutInMinutes) * time.Minute
+	timeout := time.Duration(h.ReservedNodeHealthCheckTimeoutInMinutes) * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	workerCount := h.config.ReservedNodeHealthCheckWorkersNum
+	workerCount := h.ReservedNodeHealthCheckWorkersNum
 	if workerCount > len(reservedNodes) {
 		workerCount = len(reservedNodes)
 	}

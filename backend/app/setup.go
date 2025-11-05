@@ -95,9 +95,11 @@ func SetUp(t testing.TB) (*App, error) {
   "kyc_challenge_domain": "kyc.dev.grid.tf",
   "notification_config_path": "%s",
   "cluster_health_check_interval_in_hours": 1,
-  "reserved_node_health_check_interval_in_hours": 1,
-  "reserved_node_health_check_timeout_in_minutes": 1,
-  "reserved_node_health_check_workers_num": 10
+	"node_health_check": {
+		"reserved_node_health_check_interval_in_hours": 1,
+		"reserved_node_health_check_timeout_in_minutes": 1,
+		"reserved_node_health_check_workers_num": 10
+	}
 }
 `, dsn, mnemonic, privateKeyPath, publicKeyPath, notificationConfigPath)
 
@@ -155,7 +157,7 @@ func SetUp(t testing.TB) (*App, error) {
 }
 
 func GetAuthToken(t *testing.T, app *App, id int, email, username string, isAdmin bool) string {
-	tokenPair, err := app.tokenManager.CreateTokenPair(id, username, isAdmin)
+	tokenPair, err := app.security.tokenManager.CreateTokenPair(id, username, isAdmin)
 	assert.NoError(t, err)
 	return tokenPair.AccessToken
 }
@@ -167,7 +169,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := internal.SetupUserOnTFChain(app.substrateClient, app.config)
+		mnemonic, _, err := internal.SetupUserOnTFChain(app.infra.substrateClient, app.config)
 		require.NoError(t, err)
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
@@ -185,7 +187,7 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		Mnemonic:       mnemonic,
 		AccountAddress: sponseeAddress,
 	}
-	err := app.userHandler.svc.RegisterUser(user)
+	err := app.userHandler.svc.userRepo.RegisterUser(user)
 	require.NoError(t, err)
 	return user
 }

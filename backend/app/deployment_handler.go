@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal/constants"
@@ -14,13 +15,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/xmonader/ewf"
-	"gorm.io/gorm"
 )
 
 type deploymentService struct {
-	models.ClusterRepository
-	models.UserRepository
-	models.UserNodesRepository
+	clusterRepo models.ClusterRepository
+	userRepo    models.UserRepository
+	nodesRepo   models.UserNodesRepository
 }
 
 func NewDeploymentService(
@@ -28,21 +28,39 @@ func NewDeploymentService(
 	userNodesRepo models.UserNodesRepository,
 ) deploymentService {
 	return deploymentService{
-		ClusterRepository:   clusterRepo,
-		UserRepository:      userRepo,
-		UserNodesRepository: userNodesRepo,
+		clusterRepo: clusterRepo,
+		userRepo:    userRepo,
+		nodesRepo:   userNodesRepo,
 	}
 }
 
 type deploymentHandler struct {
-	svc deploymentService
-	*appConfig
+	svc       deploymentService
+	appCtx    context.Context
+	ewfEngine *ewf.Engine
+
+	// configs
+	debug                             bool
+	sshPublicKey                      string
+	sshPrivateKeyPath                 string
+	systemNetwork                     string
+	clusterHealthCheckIntervalInHours int
 }
 
-func newDeploymentHandler(svc deploymentService, config *appConfig) deploymentHandler {
+func newDeploymentHandler(appCtx context.Context, svc deploymentService, ewfEngine *ewf.Engine,
+	systemNetwork string, sshPrivateKeyPath string, clusterHealthCheckIntervalInHours int,
+	sshPublicKey string, debug bool,
+) deploymentHandler {
 	return deploymentHandler{
 		svc:       svc,
-		appConfig: config,
+		appCtx:    appCtx,
+		ewfEngine: ewfEngine,
+
+		debug:                             debug,
+		systemNetwork:                     systemNetwork,
+		sshPrivateKeyPath:                 sshPrivateKeyPath,
+		clusterHealthCheckIntervalInHours: clusterHealthCheckIntervalInHours,
+		sshPublicKey:                      sshPublicKey,
 	}
 }
 
@@ -111,7 +129,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 		return
 	}
 
-	clusters, err := h.svc.ListUserClusters(userID)
+	clusters, err := h.svc.clusterRepo.ListUserClusters(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user clusters")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
@@ -167,9 +185,9 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	}
 
 	projectName = kubedeployer.GetProjectName(userID, projectName)
-	cluster, err := h.svc.GetClusterByName(userID, projectName)
+	cluster, err := h.svc.clusterRepo.GetClusterByName(userID, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrClusterNotFound) {
 			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
@@ -223,9 +241,9 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	}
 
 	projectName = kubedeployer.GetProjectName(userID, projectName)
-	cluster, err := h.svc.GetClusterByName(userID, projectName)
+	cluster, err := h.svc.clusterRepo.GetClusterByName(userID, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrClusterNotFound) {
 			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
@@ -247,9 +265,9 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	privateKeyBytes, err := os.ReadFile(h.config.SSH.PrivateKeyPath)
+	privateKeyBytes, err := os.ReadFile(h.sshPrivateKeyPath)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("key_path", h.config.SSH.PrivateKeyPath).Msg("Failed to read SSH private key")
+		logger.GetLogger().Error().Err(err).Str("key_path", h.sshPrivateKeyPath).Msg("Failed to read SSH private key")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read SSH configuration"})
 		return
 	}
@@ -262,7 +280,7 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	}
 
 	cluster.Kubeconfig = kubeconfig
-	if err := h.svc.UpdateCluster(&cluster); err != nil {
+	if err := h.svc.clusterRepo.UpdateCluster(&cluster); err != nil {
 		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
 	}
 
@@ -275,7 +293,7 @@ func (h *deploymentHandler) getClientConfig(c *gin.Context) (statemanager.Client
 		return statemanager.ClientConfig{}, fmt.Errorf("user_id not found in context")
 	}
 
-	user, err := h.svc.GetUserByID(userID)
+	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to get user: %v", err)
 	}
@@ -284,8 +302,8 @@ func (h *deploymentHandler) getClientConfig(c *gin.Context) (statemanager.Client
 		SSHPublicKey: h.sshPublicKey,
 		Mnemonic:     user.Mnemonic,
 		UserID:       userID,
-		Network:      h.config.SystemAccount.Network,
-		Debug:        h.config.Debug,
+		Network:      h.systemNetwork,
+		Debug:        h.debug,
 	}, nil
 }
 
@@ -320,11 +338,11 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
-	_, err = h.svc.GetClusterByName(config.UserID, projectName)
+	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "deployment already exists"})
 		return
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+	} else if !errors.Is(err, models.ErrClusterNotFound) {
 		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when checking for existing deployment")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing deployments"})
 		return
@@ -375,9 +393,9 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 		return
 	}
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
-	_, err = h.svc.GetClusterByName(config.UserID, projectName)
+	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrClusterNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
 			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for deletion")
@@ -422,7 +440,7 @@ func (h *deploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 		return
 	}
 
-	clusters, err := h.svc.ListUserClusters(config.UserID)
+	clusters, err := h.svc.clusterRepo.ListUserClusters(config.UserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
 		return
@@ -479,9 +497,9 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
-	existingCluster, err := h.svc.GetClusterByName(config.UserID, projectName)
+	existingCluster, err := h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrClusterNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
 			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for adding node")
@@ -567,9 +585,9 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
-	cluster, err := h.svc.GetClusterByName(config.UserID, projectName)
+	cluster, err := h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrClusterNotFound) {
 			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {

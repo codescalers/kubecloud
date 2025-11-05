@@ -7,12 +7,13 @@ import (
 	"kubecloud/models"
 
 	"github.com/gin-gonic/gin"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
 
 type statsService struct {
-	models.UserRepository
-	models.ClusterRepository
+	userRepo    models.UserRepository
+	clusterRepo models.ClusterRepository
 }
 
 func NewStatsService(
@@ -20,20 +21,20 @@ func NewStatsService(
 	clusterRepo models.ClusterRepository,
 ) statsService {
 	return statsService{
-		UserRepository:    userRepo,
-		ClusterRepository: clusterRepo,
+		userRepo:    userRepo,
+		clusterRepo: clusterRepo,
 	}
 }
 
 type statsHandler struct {
-	svc statsService
-	*appConfig
+	svc             statsService
+	gridProxyClient proxy.Client
 }
 
-func newStatsHandler(svc statsService, config *appConfig) statsHandler {
+func newStatsHandler(svc statsService, gridProxyClient proxy.Client) statsHandler {
 	return statsHandler{
-		svc:       svc,
-		appConfig: config,
+		svc:             svc,
+		gridProxyClient: gridProxyClient,
 	}
 }
 
@@ -58,21 +59,21 @@ type Stats struct {
 // @Router /stats [get]
 // GetStatsHandler retrieves and returns system statistics including total users and clusters count.
 func (h *statsHandler) GetStatsHandler(c *gin.Context) {
-	totalUsers, err := h.svc.CountAllUsers()
+	totalUsers, err := h.svc.userRepo.CountAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to count total users")
 		InternalServerError(c)
 		return
 	}
 
-	totalClusters, err := h.svc.CountAllClusters()
+	totalClusters, err := h.svc.clusterRepo.CountAllClusters()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to count total clusters")
 		InternalServerError(c)
 		return
 	}
 
-	stats, err := h.gridClient.GridProxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
+	stats, err := h.gridProxyClient.Stats(c.Request.Context(), types.StatsFilter{Status: []string{"up", "standby"}})
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to retrieve up nodes count")
 		InternalServerError(c)

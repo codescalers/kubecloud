@@ -13,12 +13,14 @@ import (
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 )
 
 type invoiceService struct {
-	models.InvoiceRepository
-	models.UserRepository
-	models.UserNodesRepository
+	invoicesRepo models.InvoiceRepository
+	userRepo     models.UserRepository
+	nodesRepo    models.UserNodesRepository
 }
 
 func NewInvoiceService(
@@ -26,21 +28,37 @@ func NewInvoiceService(
 	userNodeRepo models.UserNodesRepository,
 ) invoiceService {
 	return invoiceService{
-		InvoiceRepository:   invoiceRepo,
-		UserRepository:      userRepo,
-		UserNodesRepository: userNodeRepo,
+		invoicesRepo: invoiceRepo,
+		userRepo:     userRepo,
+		nodesRepo:    userNodeRepo,
 	}
 }
 
 type invoiceHandler struct {
-	svc invoiceService
-	*appConfig
+	svc             invoiceService
+	firesquidClient graphql.GraphQl
+	graphql         graphql.GraphQl
+	substrateClient *substrate.Substrate
+	mailService     internal.MailService
+
+	invoiceCompanyData internal.InvoiceCompanyData
+	currency           string
 }
 
-func newInvoiceHandler(svc invoiceService, config *appConfig) invoiceHandler {
+func newInvoiceHandler(svc invoiceService,
+	firesquidClient, graphql graphql.GraphQl,
+	substrateClient *substrate.Substrate, mailService internal.MailService,
+	invoiceCompanyData internal.InvoiceCompanyData, currency string,
+) invoiceHandler {
 	return invoiceHandler{
-		svc:       svc,
-		appConfig: config,
+		svc:             svc,
+		firesquidClient: firesquidClient,
+		graphql:         graphql,
+		substrateClient: substrateClient,
+		mailService:     mailService,
+
+		invoiceCompanyData: invoiceCompanyData,
+		currency:           currency,
 	}
 }
 
@@ -56,7 +74,7 @@ func newInvoiceHandler(svc invoiceService, config *appConfig) invoiceHandler {
 // @Router /invoices [get]
 // ListAllInvoicesHandler lists all invoices in system
 func (h *invoiceHandler) ListAllInvoicesHandler(c *gin.Context) {
-	invoices, err := h.svc.ListInvoices()
+	invoices, err := h.svc.invoicesRepo.ListInvoices()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -82,7 +100,7 @@ func (h *invoiceHandler) ListAllInvoicesHandler(c *gin.Context) {
 func (h *invoiceHandler) ListUserInvoicesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 
-	invoices, err := h.svc.ListUserInvoices(userID)
+	invoices, err := h.svc.invoicesRepo.ListUserInvoices(userID)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -115,7 +133,7 @@ func (h *invoiceHandler) MonthlyInvoicesHandler() {
 			continue
 		}
 
-		users, err := h.svc.ListAllUsers()
+		users, err := h.svc.userRepo.ListAllUsers()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 		}
@@ -160,7 +178,7 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 		return
 	}
 
-	invoice, err := h.svc.GetInvoice(id)
+	invoice, err := h.svc.invoicesRepo.GetInvoice(id)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
@@ -169,14 +187,14 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 
 	// Creating pdf for invoice if it doesn't have it
 	if len(invoice.FileData) == 0 {
-		user, err := h.svc.GetUserByID(userID)
+		user, err := h.svc.userRepo.GetUserByID(userID)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
 		}
 
-		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
+		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.invoiceCompanyData)
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
@@ -184,7 +202,7 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 		}
 
 		invoice.FileData = pdfContent
-		if err := h.svc.UpdateInvoicePDF(id, invoice.FileData); err != nil {
+		if err := h.svc.invoicesRepo.UpdateInvoicePDF(id, invoice.FileData); err != nil {
 			logger.GetLogger().Error().Err(err).Send()
 			InternalServerError(c)
 			return
@@ -203,7 +221,7 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 }
 
 func (h *invoiceHandler) createUserInvoice(user models.User) error {
-	records, err := h.svc.ListUserNodes(user.ID)
+	records, err := h.svc.nodesRepo.ListUserNodes(user.ID)
 	if err != nil {
 		return err
 	}
@@ -268,18 +286,18 @@ func (h *invoiceHandler) createUserInvoice(user models.User) error {
 		CreatedAt: time.Now(),
 	}
 
-	file, err := internal.CreateInvoicePDF(invoice, user, h.config.Invoice)
+	file, err := internal.CreateInvoicePDF(invoice, user, h.invoiceCompanyData)
 	if err != nil {
 		return err
 	}
 
 	invoice.FileData = file
-	if err = h.svc.CreateInvoice(&invoice); err != nil {
+	if err = h.svc.invoicesRepo.CreateInvoice(&invoice); err != nil {
 		return err
 	}
 
-	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCostUSD, h.config.Currency, invoice.ID)
-	err = h.mailService.SendMail(h.config.MailSender.Email, user.Email, subject, body, internal.Attachment{
+	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCostUSD, h.currency, invoice.ID)
+	err = h.mailService.SendMailFromSystem(user.Email, subject, body, internal.Attachment{
 		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
 		Data:     invoice.FileData,
 	})

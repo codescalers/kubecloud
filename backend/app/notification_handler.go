@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 const (
@@ -20,26 +19,24 @@ const (
 )
 
 type notificationService struct {
-	models.NotificationRepository
+	notifRepo models.NotificationRepository
 }
 
 func NewNotificationService(
 	notificationRepo models.NotificationRepository,
 ) notificationService {
 	return notificationService{
-		NotificationRepository: notificationRepo,
+		notifRepo: notificationRepo,
 	}
 }
 
 type notificationHandler struct {
 	svc notificationService
-	*appConfig
 }
 
-func newNotificationHandler(svc notificationService, config *appConfig) notificationHandler {
+func newNotificationHandler(svc notificationService) notificationHandler {
 	return notificationHandler{
-		svc:       svc,
-		appConfig: config,
+		svc: svc,
 	}
 }
 
@@ -160,7 +157,7 @@ func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.svc.GetUserNotifications(userID, limit, offset)
+	notifications, err := h.svc.notifRepo.GetUserNotifications(userID, limit, offset)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to retrieve notifications", err.Error())
 		return
@@ -206,9 +203,9 @@ func (h *notificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.MarkNotificationAsRead(notificationIDStr, userID)
+	err = h.svc.notifRepo.MarkNotificationAsRead(notificationIDStr, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrNotificationNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
 			return
 		}
@@ -237,7 +234,7 @@ func (h *notificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.MarkAllNotificationsAsRead(userID)
+	err = h.svc.notifRepo.MarkAllNotificationsAsRead(userID)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to mark notifications as read", err.Error())
 		return
@@ -272,9 +269,9 @@ func (h *notificationHandler) DeleteNotificationHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.DeleteNotification(notificationIDStr, userID)
+	err = h.svc.notifRepo.DeleteNotification(notificationIDStr, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrNotificationNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
 			return
 		}
@@ -314,7 +311,7 @@ func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	notifications, err := h.svc.GetUnreadNotifications(userID, limit, offset)
+	notifications, err := h.svc.notifRepo.GetUnreadNotifications(userID, limit, offset)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to retrieve unread notifications", err.Error())
 		return
@@ -351,7 +348,7 @@ func (h *notificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.DeleteAllNotifications(userID)
+	err = h.svc.notifRepo.DeleteAllNotifications(userID)
 	if err != nil {
 		Error(c, http.StatusInternalServerError, "Failed to delete notifications", err.Error())
 		return
@@ -386,9 +383,9 @@ func (h *notificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.MarkNotificationAsUnread(notificationIDStr, userID)
+	err = h.svc.notifRepo.MarkNotificationAsUnread(notificationIDStr, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrNotificationNotFound) {
 			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
 			return
 		}

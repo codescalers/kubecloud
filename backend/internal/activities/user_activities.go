@@ -14,7 +14,6 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
-	"gorm.io/gorm"
 )
 
 func CreateUserStep(config internal.Configuration, userRepo models.UserRepository) ewf.StepFn {
@@ -59,11 +58,11 @@ func CreateUserStep(config internal.Configuration, userRepo models.UserRepositor
 		}
 
 		existingUser, err := userRepo.GetUserByEmail(email)
-		if err != nil && err != gorm.ErrRecordNotFound {
+		if err != nil && err != models.ErrUserNotFound {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
-		if err == gorm.ErrRecordNotFound {
+		if err == models.ErrUserNotFound {
 			if err = userRepo.RegisterUser(&user); err != nil {
 				return fmt.Errorf("user registration failed: %w", err)
 			}
@@ -100,9 +99,9 @@ func SendVerificationEmailStep(mailService internal.MailService, config internal
 		}
 
 		code := internal.GenerateRandomCode()
-		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name, config.Server.Host)
+		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name)
 
-		if err := mailService.SendMail(config.MailSender.Email, email, subject, body); err != nil {
+		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 
@@ -132,7 +131,7 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 		}
 
 		existingUser, err := userRepo.GetUserByEmail(email)
-		if err != nil && err != gorm.ErrRecordNotFound {
+		if err != nil && err != models.ErrUserNotFound {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
@@ -313,8 +312,8 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		subject, body := mailService.WelcomeMailContent(name, config.Server.Host)
-		if err := mailService.SendMail(config.MailSender.Email, email, subject, body); err != nil {
+		subject, body := mailService.WelcomeMailContent(name)
+		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 		return nil

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -20,16 +21,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
-	"gorm.io/gorm"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/xmonader/ewf"
 )
 
 type adminService struct {
-	models.UserRepository
-	models.UserNodesRepository
-	models.PendingRecordRepository
-	models.VoucherRepository
-	models.TransactionRepository
-	models.SettingsRepository
+	userRepo     models.UserRepository
+	nodesRepo    models.UserNodesRepository
+	prRepo       models.PendingRecordRepository
+	voucherRepo  models.VoucherRepository
+	transRepo    models.TransactionRepository
+	settingsRepo models.SettingsRepository
 }
 
 func NewAdminService(
@@ -41,24 +43,48 @@ func NewAdminService(
 	settingsRepo models.SettingsRepository,
 ) adminService {
 	return adminService{
-		UserRepository:          userRepo,
-		UserNodesRepository:     userNodeRepo,
-		PendingRecordRepository: pendingRecordRepo,
-		VoucherRepository:       voucherRepo,
-		TransactionRepository:   transactionRepo,
-		SettingsRepository:      settingsRepo,
+		userRepo:     userRepo,
+		nodesRepo:    userNodeRepo,
+		prRepo:       pendingRecordRepo,
+		voucherRepo:  voucherRepo,
+		transRepo:    transactionRepo,
+		settingsRepo: settingsRepo,
 	}
 }
 
 type adminHandler struct {
 	svc adminService
-	*appConfig
+
+	appCtx              context.Context
+	ewfEngine           *ewf.Engine
+	notificationService *notification.NotificationService
+	mailService         internal.MailService
+	substrateClient     *substrate.Substrate
+	systemIdentity      substrate.Identity
+
+	voucherNameLength                    int
+	monitorBalanceIntervalInMinutes      int
+	notifyAdminsForPendingRecordsInHours int
 }
 
-func newAdminHandler(svc adminService, config *appConfig) adminHandler {
+func newAdminHandler(appCtx context.Context, svc adminService, ewfEngine *ewf.Engine,
+	notificationService *notification.NotificationService, mailService internal.MailService,
+	substrateClient *substrate.Substrate, systemIdentity substrate.Identity,
+	voucherNameLength, monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
+) adminHandler {
 	return adminHandler{
-		svc:       svc,
-		appConfig: config,
+		svc: svc,
+
+		appCtx:              appCtx,
+		ewfEngine:           ewfEngine,
+		notificationService: notificationService,
+		mailService:         mailService,
+		substrateClient:     substrateClient,
+		systemIdentity:      systemIdentity,
+
+		voucherNameLength:                    voucherNameLength,
+		monitorBalanceIntervalInMinutes:      monitorBalanceIntervalInMinutes,
+		notifyAdminsForPendingRecordsInHours: notifyAdminsForPendingRecordsInHours,
 	}
 }
 
@@ -123,7 +149,7 @@ type MaintenanceModeStatus struct {
 // @Router /users [get]
 // ListUsersHandler lists all users
 func (h *adminHandler) ListUsersHandler(c *gin.Context) {
-	users, err := h.svc.ListAllUsers()
+	users, err := h.svc.userRepo.ListAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
@@ -214,18 +240,17 @@ func (h *adminHandler) DeleteUsersHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.DeleteUserByID(id)
+	err = h.svc.userRepo.DeleteUserByID(id)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, models.ErrUserNotFound) {
 			Error(c, http.StatusNotFound, "User not found", "")
-		} else {
-			InternalServerError(c)
+			return
 		}
+		InternalServerError(c)
 		return
 	}
 
 	Success(c, http.StatusOK, "User is deleted successfully", nil)
-
 }
 
 // @Summary Generate vouchers
@@ -253,7 +278,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 
 	var vouchers []models.Voucher
 	for i := 0; i < request.Count; i++ {
-		voucherCode := internal.GenerateRandomVoucher(h.config.VoucherNameLength)
+		voucherCode := internal.GenerateRandomVoucher(h.voucherNameLength)
 		timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 		fullCode := fmt.Sprintf("%s-%s", voucherCode, timestampPart)
 
@@ -264,7 +289,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 			ExpiresAt: time.Now().Add(time.Duration(request.ExpireAfter) * 24 * time.Hour),
 		}
 
-		if err := h.svc.CreateVoucher(&voucher); err != nil {
+		if err := h.svc.voucherRepo.CreateVoucher(&voucher); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to create voucher")
 			InternalServerError(c)
 			return
@@ -311,7 +336,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 // @Router /vouchers [get]
 // ListVouchersHandler returns all vouchers in system
 func (h *adminHandler) ListVouchersHandler(c *gin.Context) {
-	vouchers, err := h.svc.ListAllVouchers()
+	vouchers, err := h.svc.voucherRepo.ListAllVouchers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all vouchers")
 		InternalServerError(c)
@@ -358,7 +383,7 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.GetUserByID(id)
+	user, err := h.svc.userRepo.GetUserByID(id)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
@@ -383,7 +408,7 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.CreateTransaction(&transaction); err != nil {
+	if err := h.svc.transRepo.CreateTransaction(&transaction); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Failed to create credit transaction")
 		InternalServerError(c)
 		return
@@ -418,7 +443,7 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 // @Router /pending-records [get]
 // ListPendingRecordsHandler returns all pending records in the system
 func (h *adminHandler) ListPendingRecordsHandler(c *gin.Context) {
-	pendingRecords, err := h.svc.ListAllPendingRecords()
+	pendingRecords, err := h.svc.prRepo.ListAllPendingRecords()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
 		InternalServerError(c)
@@ -489,16 +514,15 @@ func (h *adminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		}
 	}
 
-	users, err := h.svc.ListAllUsers()
+	users, err := h.svc.userRepo.ListAllUsers()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
 		return
 	}
 
-	body := h.mailService.SystemAnnouncementMailBody(input.Body)
-
-	emailConcurrencyLimiter := make(chan struct{}, h.config.MailSender.MaxConcurrentSends)
+	body := h.mailService.SystemAnnouncementMailContent(input.Body)
+	emailConcurrencyLimiter := make(chan struct{}, h.mailService.MaxConcurrentSends())
 
 	var (
 		wg           sync.WaitGroup
@@ -513,7 +537,7 @@ func (h *adminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, input.Subject, body, attachments...)
+			err := h.mailService.SendMailFromSystem(user.Email, input.Subject, body, attachments...)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
@@ -573,7 +597,7 @@ func (h *adminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 				return
 			}
 
-			maxFileSizeBytes := h.config.MailSender.MaxAttachmentSizeMB * 1024 * 1024
+			maxFileSizeBytes := h.mailService.MaxAttachmentSizeInBytes()
 
 			if fh.Size > maxFileSizeBytes {
 				mu.Lock()
@@ -638,7 +662,7 @@ func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.SetMaintenanceMode(request.Enabled); err != nil {
+	if err := h.svc.settingsRepo.SetMaintenanceMode(request.Enabled); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
@@ -659,7 +683,7 @@ func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
 func (h *adminHandler) GetMaintenanceModeHandler(c *gin.Context) {
-	enabled, err := h.svc.GetMaintenanceMode()
+	enabled, err := h.svc.settingsRepo.GetMaintenanceMode()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

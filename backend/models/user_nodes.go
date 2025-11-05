@@ -1,10 +1,13 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+var ErrUserNodeNotFound = errors.New("user node is not found")
 
 // UserNodes model holds info of reserved nodes of user
 type UserNodes struct {
@@ -47,10 +50,21 @@ func (r *GormUserNodesRepository) ListAllReservedNodes() ([]UserNodes, error) {
 
 func (r *GormUserNodesRepository) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
 	var userNode UserNodes
-	return userNode, r.db.Where("node_id = ?", nodeID).First(&userNode).Error
+	result := r.db.Where("node_id = ?", nodeID).First(&userNode)
+
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return UserNodes{}, ErrUserNodeNotFound
+	}
+
+	return userNode, result.Error
 }
 
 func (r *GormUserNodesRepository) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
 	var userNode UserNodes
-	return userNode, r.db.Where("contract_id = ?", contractID).First(&userNode).Error
+	result := r.db.Where("contract_id = ?", contractID).First(&userNode)
+	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return UserNodes{}, ErrUserNodeNotFound
+	}
+
+	return userNode, result.Error
 }

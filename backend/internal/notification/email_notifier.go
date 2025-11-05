@@ -15,16 +15,14 @@ import (
 var emailTpls *template.Template
 
 type EmailNotifier struct {
-	mailService   internal.MailService
-	defaultSender string
-	templatesDir  string
+	mailService  internal.MailService
+	templatesDir string
 }
 
-func NewEmailNotifier(mailService internal.MailService, defaultSender, templatesDir string) *EmailNotifier {
+func NewEmailNotifier(mailService internal.MailService, templatesDir string) *EmailNotifier {
 	return &EmailNotifier{
-		mailService:   mailService,
-		defaultSender: defaultSender,
-		templatesDir:  templatesDir,
+		mailService:  mailService,
+		templatesDir: templatesDir,
 	}
 }
 
@@ -62,7 +60,7 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 		return fmt.Errorf("receiver email address must be valid")
 	}
 
-	from := mail.NewEmail("KubeCloud", n.defaultSender)
+	from := mail.NewEmail("KubeCloud", n.mailService.SystemMail())
 	receiverEmail := mail.NewEmail("KubeCloud User", receiver[0])
 
 	tplName := string(notification.Type)
@@ -82,6 +80,6 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 		mail.NewContent("text/html", buf.String()),
 	}
 
-	err := n.mailService.SendMail(n.defaultSender, receiver[0], subject, buf.String())
+	err := n.mailService.SendMailFromSystem(receiver[0], subject, buf.String())
 	return err
 }
