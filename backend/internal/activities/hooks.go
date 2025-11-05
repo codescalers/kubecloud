@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	"kubecloud/internal/metrics"
 	"kubecloud/internal/statemanager"
+	"kubecloud/kubedeployer"
 
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -25,7 +28,7 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 		cfg, err := getConfig(w.State)
 		if err == nil {
 			userID = cfg.UserID
-			logger.GetLogger().Info().Int("user_id", userID).Msg("hookWorkflowStarted")
+			logger.GetLogger().Debug().Int("user_id", userID).Msg("hookWorkflowStarted")
 		}
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("missing or invalid config in workflow state")
@@ -35,7 +38,7 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 				return
 			}
 			userID = userIDVal
-			logger.GetLogger().Info().Int("user_id", userID).Msg("hookWorkflowStarted")
+			logger.GetLogger().Debug().Int("user_id", userID).Msg("hookWorkflowStarted")
 		}
 
 		workflowDesc := getWorkflowDescription(w.Name)
@@ -61,7 +64,16 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 }
 
 func hookStepStarted(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
-	logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Starting step")
+	logEvent := logger.GetLogger().Info().
+		Str("workflow_name", w.Name).
+		Str("step_name", step.Name)
+
+	// Add node_id if available
+	if node, err := getFromState[kubedeployer.Node](w.State, "node"); err == nil && node.NodeID > 0 {
+		logEvent = logEvent.Uint32("node_id", node.NodeID)
+	}
+
+	logEvent.Msg("Starting step")
 }
 
 func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
@@ -74,9 +86,28 @@ func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
 
 func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error) {
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step failed")
+		logEvent := logger.GetLogger().Error().
+			Err(err).
+			Str("workflow_name", w.Name).
+			Str("step_name", step.Name)
+
+		// Add node_id if available
+		if node, nodeErr := getFromState[kubedeployer.Node](w.State, "node"); nodeErr == nil && node.NodeID > 0 {
+			logEvent = logEvent.Uint32("node_id", node.NodeID)
+		}
+
+		logEvent.Msg("Step failed")
 	} else {
-		logger.GetLogger().Info().Str("workflow_name", w.Name).Str("step_name", step.Name).Msg("Step completed successfully")
+		logEvent := logger.GetLogger().Info().
+			Str("workflow_name", w.Name).
+			Str("step_name", step.Name)
+
+		// Add node_id if available
+		if node, nodeErr := getFromState[kubedeployer.Node](w.State, "node"); nodeErr == nil && node.NodeID > 0 {
+			logEvent = logEvent.Uint32("node_id", node.NodeID)
+		}
+
+		logEvent.Msg("Step completed successfully")
 	}
 }
 func hookClusterHealthCheck(notificationService *notification.NotificationService) ewf.AfterWorkflowHook {
@@ -125,10 +156,6 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 	}
 }
 
-func hookNotificationWorkflowStarted(ctx context.Context, w *ewf.Workflow) {
-	logger.GetLogger().Info().Str("workflow_name", w.Name).Msg("Starting notification workflow")
-}
-
 func newKubecloudWorkflowTemplate(n *notification.NotificationService) ewf.WorkflowTemplate {
 	return ewf.WorkflowTemplate{
 		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
@@ -147,24 +174,48 @@ func newKubecloudWorkflowTemplate(n *notification.NotificationService) ewf.Workf
 	}
 }
 
-func getOrdinalSuffix(n int) string {
-	switch n % 100 {
-	case 11, 12, 13:
-		return "th"
-	default:
-		switch n % 10 {
-		case 1:
-			return "st"
-		case 2:
-			return "nd"
-		case 3:
-			return "rd"
-		default:
-			return "th"
+func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, err error) {
+		if err == nil || wf.Name != constants.WorkflowAddNode {
+			return
 		}
-	}
-}
 
-func getDeployNodeStepName(index int) string {
-	return fmt.Sprintf("deploy-%d%s-node", index, getOrdinalSuffix(index))
+		node, err := getFromState[kubedeployer.Node](wf.State, "node")
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Str("workflow_name", wf.Name).Msg("missing or invalid 'node' in workflow state")
+			return
+		}
+
+		rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedAddNode)
+		if rollbackErr != nil {
+			logger.GetLogger().Error().
+				Err(rollbackErr).
+				Str("node", node.Name).
+				Uint32("node_id", node.NodeID).
+				Str("workflow_name", wf.Name).
+				Msg("Failed to create rollback workflow")
+			return
+		}
+
+		rollbackWf.State["config"] = wf.State["config"]
+		rollbackWf.State["cluster"] = wf.State["cluster"]
+		rollbackWf.State["kubeclient"] = wf.State["kubeclient"]
+		rollbackWf.State["node_name"] = node.OriginalName
+
+		rollbackCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+
+		// wait the rollback workflow to finish before closing the client
+		if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+			logger.GetLogger().Error().
+				Err(err).
+				Str("node", node.Name).
+				Uint32("node_id", node.NodeID).
+				Str("workflow_name", wf.Name).
+				Msg("Failed to run rollback workflow")
+			return
+		}
+
+		metrics.DecActiveClusterCount()
+	}
 }

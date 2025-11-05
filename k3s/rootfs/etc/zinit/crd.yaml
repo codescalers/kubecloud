@@ -1,6 +1,0 @@
-exec: /scripts/install_crd.sh
-oneshot: true
-after:
-  - k3s
-env:
-  KUBECONFIG: "/etc/rancher/k3s/k3s.yaml"

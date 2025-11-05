@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [ -z "${DUAL_STACK}" ]; then
+if [ -z "${DUAL_STACK}" ] || [ "${DUAL_STACK}" = "false" ]; then
   echo "❌ Not a dual stack setup"
   exit 1
 fi

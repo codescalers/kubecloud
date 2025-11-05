@@ -50,7 +50,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 		// Reserve the node
 		contractID, err := substrateClient.CreateRentContract(identity, nodeID, nil)
 		if err != nil {
-			return fmt.Errorf("failed to create rent contract: %w", err)
+			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
 
 		err = db.CreateUserNode(&models.UserNodes{
@@ -60,7 +60,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 			CreatedAt:  time.Now(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create user node: %w", err)
+			return fmt.Errorf("failed to create user node record for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
 
 		state["contract_id"] = contractID
@@ -70,7 +70,7 @@ func ReserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.Ste
 
 func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		contractID, ok := state["contract_id"].(uint32)
+		contractID, ok := state["contract_id"].(uint64)
 		if !ok {
 			return fmt.Errorf("missing or invalid 'contract_id' in state")
 		}
@@ -84,14 +84,12 @@ func UnreserveNodeStep(db models.DB, substrateClient *substrate.Substrate) ewf.S
 			return fmt.Errorf("failed to create identity: %w", err)
 		}
 
-		contractIDUint64 := uint64(contractID)
-
-		err = substrateClient.CancelContract(identity, contractIDUint64)
+		err = substrateClient.CancelContract(identity, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
 
-		err = db.DeleteUserNode(contractIDUint64)
+		err = db.DeleteUserNode(contractID)
 		if err != nil {
 			return fmt.Errorf("failed to delete user node: %w", err)
 		}

@@ -64,11 +64,6 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// updating status trigger another reconcile, avoid by checking the status
-	if meta.IsStatusConditionTrue(tfgw.Status.Conditions, ingressv1.ConditionTypeReady) {
-		return ctrl.Result{}, nil
-	}
-
 	mne := os.Getenv("MNEMONIC")
 	net := os.Getenv("NETWORK")
 	if net == "" || mne == "" {
@@ -87,22 +82,26 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	token := os.Getenv("K3S_TOKEN")
-	mne, err := decrypt(token, mne)
-	if token == "" || err != nil {
-		klog.Warningf("Failed to decrypt mnemonic, using raw value: %v", err)
+	token := os.Getenv("TOKEN")
+	if token != "" {
+		decryptedMne, err := decrypt(token, mne)
+		if err != nil {
+			klog.Warningf("Failed to decrypt mnemonic, using raw value: %v", err)
 
-		meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
-			Type:    ingressv1.ConditionTypeError,
-			Status:  metav1.ConditionFalse,
-			Reason:  "DecryptionFailed",
-			Message: "Failed to decrypt mnemonic, using raw value",
-		})
+			meta.SetStatusCondition(&tfgw.Status.Conditions, metav1.Condition{
+				Type:    ingressv1.ConditionTypeError,
+				Status:  metav1.ConditionFalse,
+				Reason:  "DecryptionFailed",
+				Message: "Failed to decrypt mnemonic, using raw value",
+			})
 
-		tfgw.Status.Message = "Failed to decrypt mnemonic, using raw value"
-		_ = r.Status().Update(ctx, &tfgw)
+			tfgw.Status.Message = "Failed to decrypt mnemonic, using raw value"
+			_ = r.Status().Update(ctx, &tfgw)
 
-		return ctrl.Result{}, nil
+			return ctrl.Result{}, nil
+		}
+
+		mne = decryptedMne
 	}
 
 	sessionID, err := generateSessionId()
@@ -158,6 +157,13 @@ func (r *TFGWReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				return ctrl.Result{}, err
 			}
 		}
+		return ctrl.Result{}, nil
+	}
+
+	// MUST be after deletion check to avoid skipping deletion,
+	// updating status trigger another reconcile, avoid by checking the status
+	if meta.IsStatusConditionTrue(tfgw.Status.Conditions, ingressv1.ConditionTypeReady) {
+		klog.Infof("TFGW %s is already ready, skipping reconcile and closing grid plugin", tfgw.Name)
 		return ctrl.Result{}, nil
 	}
 

@@ -3,8 +3,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"kubecloud/internal"
-	"kubecloud/internal/activities"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
@@ -219,28 +217,6 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	var targetNode *kubedeployer.Node
-	for _, node := range clusterResult.Nodes {
-		if node.Type == kubedeployer.NodeTypeLeader {
-			targetNode = &node
-			break
-		}
-	}
-
-	if targetNode == nil {
-		for _, node := range clusterResult.Nodes {
-			if node.Type == kubedeployer.NodeTypeMaster {
-				targetNode = &node
-				break
-			}
-		}
-	}
-
-	if targetNode == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No leader or master node found in deployment"})
-		return
-	}
-
 	privateKeyBytes, err := os.ReadFile(h.config.SSH.PrivateKeyPath)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Str("key_path", h.config.SSH.PrivateKeyPath).Msg("Failed to read SSH private key")
@@ -248,9 +224,9 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	kubeconfig, err := internal.GetKubeconfigViaSSH(string(privateKeyBytes), targetNode)
+	kubeconfig, err := clusterResult.GetKubeconfig(c.Request.Context(), string(privateKeyBytes))
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("node_name", targetNode.Name).Msg("Failed to retrieve kubeconfig via SSH")
+		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})
 		return
 	}
@@ -324,11 +300,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	wfName := fmt.Sprintf("deploy-%d-nodes", len(cluster.Nodes))
-	activities.NewDynamicDeployWorkflowTemplate(h.ewfEngine, h.metrics, h.notificationService, wfName, len(cluster.Nodes))
-
-	// Get the workflow
-	wf, err := h.ewfEngine.NewWorkflow(wfName)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
 		return
@@ -339,7 +311,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		"cluster": cluster,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -395,7 +367,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		"project_name": projectName,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -441,7 +413,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		"config": config,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -522,7 +494,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"node":    cluster.Nodes[0],
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,
@@ -608,7 +580,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"node_name": nodeName,
 	}
 
-	h.ewfEngine.RunAsync(c, wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	c.JSON(http.StatusAccepted, Response{
 		WorkflowID: wf.UUID,

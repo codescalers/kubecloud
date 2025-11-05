@@ -27,24 +27,30 @@
             <div class="assignment-details">
               <div class="assignment-name">{{ vm.name }}</div>
               <div class="assignment-node">Node: {{ vm.node ?? 'Unassigned' }}</div>
-              <div class="assignment-specs">
-                <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
-                  {{ vm.vcpu }} vCPU
+              <div>
+                <v-chip v-if="vm.fullCapabilities" color="success" size="small" variant="outlined" class="mt-2">
+                  <v-icon size="16" class="mr-1">mdi-check</v-icon>
+                  Use Full Node Capabilities
                 </v-chip>
-                <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-memory</v-icon>
-                  {{ vm.ram }} GB RAM
-                </v-chip>
-                <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
-                  {{ vm.disk }} GB Disk
-                </v-chip>
-                <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
-                  <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
-                  GPU
-                </v-chip>
-                <div class="ssh-keys-section">
+                <div class="d-flex mt-2" v-else>
+                  <v-chip color="primary" text-color="white" size="x-small" class="mr-1" variant="outlined">
+                    <v-icon size="14" class="mr-1">mdi-cpu-64-bit</v-icon>
+                    {{ vm.vcpu }} vCPU
+                  </v-chip>
+                  <v-chip color="success" text-color="white" size="x-small" class="mr-1" variant="outlined">
+                    <v-icon size="14" class="mr-1">mdi-memory</v-icon>
+                    {{ vm.ram }} GB RAM
+                  </v-chip>
+                  <v-chip color="info" text-color="white" size="x-small" class="mr-1" variant="outlined">
+                    <v-icon size="14" class="mr-1">mdi-harddisk</v-icon>
+                    {{ vm.disk }} GB Disk
+                  </v-chip>
+                  <v-chip v-if="vm.gpu" color="deep-purple-accent-2" text-color="white" size="x-small" class="mr-1" variant="outlined">
+                    <v-icon size="14" class="mr-1">mdi-expansion-card</v-icon>
+                    GPU
+                  </v-chip>
+                </div>
+                <div class="mt-3 ssh-keys-section">
                   <v-chip 
                     v-for="sshKeyId in vm.sshKeyIds" 
                     :key="sshKeyId"

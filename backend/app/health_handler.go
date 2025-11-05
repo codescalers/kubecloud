@@ -55,15 +55,6 @@ func (h *Handler) checkDatabase(ctx context.Context) HealthStatus {
 	return healthStatusFromError(err)
 }
 
-func (h *Handler) checkRedis(ctx context.Context) HealthStatus {
-	if h.redis == nil || h.redis.Client() == nil {
-		return healthStatusFromError(fmt.Errorf("redis client not initialized"))
-	}
-
-	err := h.redis.Client().Ping(ctx).Err()
-	return healthStatusFromError(err)
-}
-
 func httpHealthCheck(ctx context.Context, url string) HealthStatus {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -171,7 +162,6 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	checks := map[string]HealthChecker{
 		"database":           h.checkDatabase,
-		"redis":              h.checkRedis,
 		"gridproxy":          h.checkGridProxy,
 		"tfchain":            h.checkTFChainHealth,
 		"activation_service": h.checkActivationService,

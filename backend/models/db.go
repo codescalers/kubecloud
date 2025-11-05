@@ -71,6 +71,11 @@ type DB interface {
 	CountAllUsers() (int64, error)
 	CountAllClusters() (int64, error)
 	ListAllClusters() ([]Cluster, error)
+	// Settings methods
+	GetSetting(name string) (string, error)
+	SetSetting(name, value string) error
+	SetMaintenanceMode(enabled bool) error
+	GetMaintenanceMode() (bool, error)
 }
 
 func NewDB(dsn string, cfg DBPoolConfig) (DB, error) {

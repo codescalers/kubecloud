@@ -64,7 +64,7 @@ func RegisterEWFWorkflows(
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationService)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
-		hookNotificationWorkflowStarted,
+		// hookNotificationWorkflowStarted,
 	}
 	registerWorkflowTemplate.Steps = []ewf.Step{
 		{Name: constants.StepCreateUser, RetryPolicy: &ewf.RetryPolicy{
@@ -148,21 +148,16 @@ func RegisterEWFWorkflows(
 		{Name: constants.StepVerifyClusterReady, RetryPolicy: standardRetryPolicy},
 	}
 	trackClusterHealthWFTemplate.AfterWorkflowHooks = []ewf.AfterWorkflowHook{hookClusterHealthCheck(notificationService)}
-	trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
+	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(constants.WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
 	registerDeploymentActivities(engine, metrics, db, notificationService, config)
 
-	notificationTemplate := newKubecloudWorkflowTemplate(notificationService)
-	notificationTemplate.Steps = []ewf.Step{
-		{Name: constants.StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: constants.StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	notificationTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
-		hookNotificationWorkflowStarted,
-	}
-	notificationTemplate.AfterWorkflowHooks = []ewf.AfterWorkflowHook{
-		hookWorkflowDone,
+	notificationTemplate := ewf.WorkflowTemplate{
+		Steps: []ewf.Step{
+			{Name: constants.StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+			{Name: constants.StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		},
 	}
 	engine.RegisterTemplate(constants.WorkflowSendNotification, &notificationTemplate)
 }

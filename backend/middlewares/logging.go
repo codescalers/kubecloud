@@ -54,7 +54,7 @@ func GinLoggerMiddleware() gin.HandlerFunc {
 		} else if statusCode >= 400 {
 			logEvent.Warn().Msg("Request completed with client error")
 		} else {
-			logEvent.Info().Msg("Request completed successfully")
+			logEvent.Debug().Msg("Request completed successfully")
 		}
 	}
 }

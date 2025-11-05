@@ -9,6 +9,7 @@ const (
 	WorkflowRedeemVoucher            = "redeem-voucher"
 	WorkflowReserveNode              = "reserve-node"
 	WorkflowUnreserveNode            = "unreserve-node"
+	WorkflowDeployCluster            = "deploy-cluster"
 	WorkflowDeleteCluster            = "delete-cluster"
 	WorkflowAddNode                  = "add-node"
 	WorkflowRemoveNode               = "remove-node"
@@ -16,6 +17,7 @@ const (
 	WorkflowSendNotification         = "send-notification"
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
 	WorkflowTrackClusterHealth       = "track-cluster-health"
+	WorkflowRollbackFailedAddNode    = "rollback-add-node"
 
 	// Step names
 	StepCreatePaymentIntent     = "create_payment_intent"
@@ -41,15 +43,18 @@ const (
 	StepGatherAllContractIDs    = "gather-all-contract-ids"
 	StepBatchCancelContracts    = "batch-cancel-contracts"
 	StepDeleteAllUserClusters   = "delete-all-user-clusters"
-	StepDeployNode              = "deploy-node"
+	StepDeployLeaderNode        = "deploy-leader-node"
+	StepBatchDeployAllNodes     = "batch-deploy-all-nodes"
 	StepDeployNetwork           = "deploy-network"
 	StepFetchKubeconfig         = "fetch_kubeconfig"
 	StepVerifyClusterReady      = "verify-cluster-ready"
+	StepVerifyNewNodes          = "prepare-verify-new-nodes"
 	StepSendEmailNotification   = "send-email-notification"
 	StepSendUINotification      = "send-ui-notification"
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
 
-	NodeRentable = "rentable"
-	NodeRented   = "rented"
+	NodeRentable           = "rentable"
+	NodeRented             = "rented"
+	NodeHasActiveContracts = "NodeHasActiveContracts"
 )

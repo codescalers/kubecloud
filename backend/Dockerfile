@@ -1,11 +1,18 @@
-FROM golang:latest
+FROM golang:1.25-alpine AS builder
+
+RUN apk add --no-cache build-base
 
 WORKDIR /app
 
 COPY . .
 
 RUN go mod download
-RUN go build -o /myceliumcloud
+RUN CGO_ENABLED=1 go build -v -o ./myceliumcloud
+
+FROM alpine:latest
+
+COPY --from=builder /app/internal/templates /app/internal/templates
+COPY --from=builder /app/myceliumcloud /myceliumcloud
 
 EXPOSE 8080
 CMD [ "/myceliumcloud" ]

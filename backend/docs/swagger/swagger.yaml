@@ -686,12 +686,14 @@ definitions:
     - billing
     - user
     - connected
+    - node
     type: string
     x-enum-varnames:
     - NotificationTypeDeployment
     - NotificationTypeBilling
     - NotificationTypeUser
     - NotificationTypeConnected
+    - NotificationTypeNode
   models.SSHKey:
     properties:
       created_at:
@@ -907,6 +909,8 @@ definitions:
         type: integer
       vendor:
         type: string
+      vram:
+        type: integer
     type: object
   types.NodePower:
     properties:

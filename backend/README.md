@@ -150,3 +150,39 @@ The priority order for configuration is:
 4. Default values
 
 This allows you to override specific settings without modifying the configuration file.
+
+## API Documentation
+
+The backend APIs is defined using **Swagger (OpenAPI)** and can be viewed or tested using **Postman collections**.
+
+### Swagger (OpenAPI)
+
+The OpenAPI definition file is located at [docs/swagger/swagger.yaml](docs//swagger/swagger.yaml)
+
+You can open it directly in a Swagger UI at
+[`http://localhost:8080/swagger/index.html`](http://localhost:8080/swagger/index.html) to browse and test endpoints interactively.
+
+> **Note:** The URL can be changed according to your backend configuration. Replace `localhost:8080` with your actual backend host and port.
+
+### Postman Collection
+
+A ready-to-use Postman collection is available at [docs/postman/myceliumcloud_collection.json](docs/postman/myceliumcloud_collection.json).
+
+This collection contains all API endpoints, parameters, and sample request/response bodies generated from the Swagger file.
+
+It allows quick import and testing of the API without having to generate the collection manually.
+
+#### How to use the postman collection
+
+1. Open **Postman**.
+2. Select **Import → File** and choose `docs/postman/myceliumcloud_collection.json`.
+
+#### How to update the postman collection
+
+If any changes are made to the Swagger file, you can regenerate the Postman collection by running:
+
+```bash
+make update-postman-collection
+```
+
+This will automatically convert the latest `docs/swagger/swagger.yaml` into an updated Postman collection at `docs/postman/myceliumcloud_collection.json`.

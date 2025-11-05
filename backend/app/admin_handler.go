@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -251,7 +250,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			models.WithSeverity(models.NotificationSeveritySuccess),
 			models.WithNoPersist(),
 		)
-		if err := h.notificationService.Send(c.Request.Context(), notif); err != nil {
+		if err := h.notificationService.Send(h.appContext, notif); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
 		}
 	}
@@ -359,7 +358,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,
 	}
-	h.ewfEngine.RunAsync(context.Background(), wf)
+	h.ewfEngine.RunAsync(h.appContext, wf)
 
 	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
@@ -600,7 +599,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.redis.SetMaintenanceMode(c.Request.Context(), request.Enabled); err != nil {
+	if err := h.db.SetMaintenanceMode(request.Enabled); err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)
 		return
@@ -621,7 +620,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
 func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
-	enabled, err := h.redis.GetMaintenanceMode(c.Request.Context())
+	enabled, err := h.db.GetMaintenanceMode()
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Send()
 		InternalServerError(c)

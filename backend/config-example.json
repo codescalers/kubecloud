@@ -35,12 +35,6 @@
     "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
     "network": "dev"
   },
-  "redis": {
-    "host": "localhost",
-    "port": 6379,
-    "password": "",
-    "db": 0
-  },
   "deployer_workers_num": 3,
   "invoice": {
     "name": "Your Company Name",

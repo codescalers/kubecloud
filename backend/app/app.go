@@ -29,7 +29,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	// Import the generated docs package
-	_ "kubecloud/docs"
+	_ "kubecloud/docs/swagger"
 )
 
 // App holds all configurations for the app
@@ -39,7 +39,6 @@ type App struct {
 	config              internal.Configuration
 	handlers            Handler
 	db                  models.DB
-	redis               *internal.RedisClient
 	sseManager          *internal.SSEManager
 	notificationService *notification.NotificationService
 	gridClient          deployer.TFPluginClient
@@ -106,12 +105,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return nil, fmt.Errorf("failed to connect to firesquid client: %w", err)
-	}
-
-	redisClient, err := internal.NewRedisClient(config.Redis)
-	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to create Redis client")
-		return nil, fmt.Errorf("failed to create Redis client: %w", err)
 	}
 
 	sseManager := internal.NewSSEManager()
@@ -212,15 +205,14 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 
 	handler := NewHandler(tokenHandler, db, config, mailService, gridProxy,
-		substrateClient, graphqlClient, firesquidClient, redisClient,
+		substrateClient, graphqlClient, firesquidClient,
 		sseManager, ewfEngine, config.SystemAccount.Network, sshPublicKey,
-		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient)
+		systemIdentity, kycClient, sponsorKeyPair, sponsorAddress, metrics, notificationService, gridClient, appCtx)
 
 	app := &App{
 		router:              router,
 		config:              config,
 		handlers:            *handler,
-		redis:               redisClient,
 		db:                  db,
 		sseManager:          sseManager,
 		notificationService: notificationService,
@@ -373,9 +365,6 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	// Start command socket
-	go app.startCommandSocket()
-
 	app.handlers.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
@@ -409,12 +398,6 @@ func (app *App) Shutdown(ctx context.Context) error {
 		app.sseManager.Stop()
 	}
 
-	if app.redis != nil {
-		if err := app.redis.Close(); err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to close Redis connection")
-		}
-	}
-
 	if app.db != nil {
 		if err := app.db.Close(); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to close database connection")
@@ -432,6 +415,7 @@ func (app *App) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+//nolint:unused
 func (app *App) startCommandSocket() {
 	socketPath := "/tmp/myceliumcloud.sock"
 
@@ -481,6 +465,7 @@ func (app *App) startCommandSocket() {
 	}
 }
 
+//nolint:unused
 func (app *App) handleSocketCommand(conn net.Conn) {
 	defer conn.Close()
 
@@ -513,6 +498,7 @@ func (app *App) handleSocketCommand(conn net.Conn) {
 	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
 }
 
+//nolint:unused
 func (app *App) handleReloadNotifications(conn net.Conn) {
 	err := app.reloadNotificationConfig()
 
@@ -532,6 +518,7 @@ func (app *App) handleReloadNotifications(conn net.Conn) {
 	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
 }
 
+//nolint:unused
 func (app *App) reloadNotificationConfig() error {
 	cfg, err := internal.LoadConfig()
 	if err != nil {
