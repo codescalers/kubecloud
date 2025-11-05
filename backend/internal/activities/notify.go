@@ -323,32 +323,49 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 			logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'admin_id' in workflow state")
 			return nil
 		}
-		payloadData := notification.CommonPayload{
-			Message: fmt.Sprintf("User %d was credited successfully money transferred successfully to their account (Amount: $%.2f)", userID, amountUSD),
-			Subject: "Money transfer to user's account succeeded",
-			Status:  "succeeded",
+		username, ok := wf.State["username"].(string)
+		if !ok {
+			logger.GetLogger().Warn().Str("workflow_name", wf.Name).Msg("Missing or invalid 'username' in workflow state")
 		}
-		severity := models.NotificationSeveritySuccess
-		if err != nil {
-			severity = models.NotificationSeverityError
-			payloadData.Message = fmt.Sprintf("Money transfer to user %d's account failed", userID)
-			payloadData.Subject = "Money transfer to user's account failed"
-			payloadData.Error = err.Error()
-			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
-				"workflow_name": getWorkflowDescription(wf.Name),
-				"user_id":       fmt.Sprintf("%d", userID),
-				"admin_id":      fmt.Sprintf("%d", adminID),
-				"timestamp":     time.Now().Local().Format(TimestampFormat),
-			}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
-			return []*models.Notification{adminNotif}
-		}
-		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
+
+		// Build common payload map
+		payloadMap := map[string]string{
 			"workflow_name": getWorkflowDescription(wf.Name),
 			"user_id":       fmt.Sprintf("%d", userID),
 			"admin_id":      fmt.Sprintf("%d", adminID),
-			"amount":        fmt.Sprintf("%.2f", amountUSD),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
-		}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+		}
+		if ok && username != "" {
+			payloadMap["username"] = username
+		}
+
+		payloadData := notification.CommonPayload{}
+		if ok && username != "" {
+			payloadData.Message = fmt.Sprintf("User %s was credited successfully, money transferred successfully to their account (Amount: $%.2f)", username, amountUSD)
+		} else {
+			payloadData.Message = fmt.Sprintf("User was credited successfully, money transferred successfully to their account (Amount: $%.2f)", amountUSD)
+		}
+		payloadData.Subject = "Money transfer to user's account succeeded"
+		payloadData.Status = "succeeded"
+
+		severity := models.NotificationSeveritySuccess
+		if err != nil {
+			severity = models.NotificationSeverityError
+			if ok && username != "" {
+				payloadData.Message = fmt.Sprintf("Money transfer to user %s's account failed", username)
+			} else {
+				payloadData.Message = "Money transfer to user's account failed"
+			}
+			payloadData.Subject = "Money transfer to user's account failed"
+			payloadData.Error = err.Error()
+
+			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, payloadMap), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+			return []*models.Notification{adminNotif}
+		}
+
+		payloadMap["amount"] = fmt.Sprintf("%.2f", amountUSD)
+
+		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, payloadMap), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
 		// also notify the user about success
 		userPayload := notification.MergePayload(notification.CommonPayload{
 			Message: fmt.Sprintf("Funds were credited to your account. Amount added: $%.2f.", amountUSD),
