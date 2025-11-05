@@ -365,9 +365,6 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	// Start command socket
-	go app.startCommandSocket()
-
 	app.handlers.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
@@ -418,6 +415,7 @@ func (app *App) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+//nolint:unused
 func (app *App) startCommandSocket() {
 	socketPath := "/tmp/myceliumcloud.sock"
 
@@ -467,6 +465,7 @@ func (app *App) startCommandSocket() {
 	}
 }
 
+//nolint:unused
 func (app *App) handleSocketCommand(conn net.Conn) {
 	defer conn.Close()
 
@@ -499,6 +498,7 @@ func (app *App) handleSocketCommand(conn net.Conn) {
 	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
 }
 
+//nolint:unused
 func (app *App) handleReloadNotifications(conn net.Conn) {
 	err := app.reloadNotificationConfig()
 
@@ -518,6 +518,7 @@ func (app *App) handleReloadNotifications(conn net.Conn) {
 	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
 }
 
+//nolint:unused
 func (app *App) reloadNotificationConfig() error {
 	cfg, err := internal.LoadConfig()
 	if err != nil {
