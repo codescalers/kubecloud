@@ -711,7 +711,6 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.RegisterTemplate(constants.WorkflowRollbackFailedAddNode, &rollbackAddNodeWFTemplate)
 }
 
-
 func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	value, ok := state["config"]
 	if !ok {
