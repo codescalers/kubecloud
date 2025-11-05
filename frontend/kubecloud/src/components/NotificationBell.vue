@@ -31,7 +31,7 @@
 
       <v-card class="notification-dropdown">
         <v-card-title class="d-flex align-center justify-space-between pa-4 bg-primary text-white">
-          <span class="text-h6 font-weight-medium">Notifications</span>
+          <span class="text-h6 font-weight-bold">Notifications</span>
           <v-btn
             v-if="unreadCount > 0"
             size="small"
@@ -72,7 +72,7 @@
                 :ripple="true"
               >
                 <template v-slot:prepend>
-                  <v-avatar size="40" :color="getNotificationColor(notification.severity)" class="notification-icon">
+                  <v-avatar size="40" :color="getNotificationColor(notification.severity)" class="mx-2 notification-icon">
                     <v-icon :icon="getNotificationIcon(notification.type)" color="white"></v-icon>
                   </v-avatar>
                 </template>
