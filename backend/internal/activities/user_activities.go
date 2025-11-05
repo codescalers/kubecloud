@@ -19,31 +19,19 @@ import (
 
 func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		emailVal, ok := state["email"]
-		if !ok {
-			return fmt.Errorf("missing 'email' in state")
-		}
-		email, ok := emailVal.(string)
-		if !ok {
-			return fmt.Errorf("'email' in state is not a string")
+		email, err := getFromState[string](state, "email")
+		if err != nil {
+			return err
 		}
 
-		nameVal, ok := state["name"]
-		if !ok {
-			return fmt.Errorf("missing 'name' in state")
-		}
-		name, ok := nameVal.(string)
-		if !ok {
-			return fmt.Errorf("'name' in state is not a string")
+		name, err := getFromState[string](state, "name")
+		if err != nil {
+			return err
 		}
 
-		passwordVal, ok := state["password"]
-		if !ok {
-			return fmt.Errorf("missing 'password' in state")
-		}
-		password, ok := passwordVal.(string)
-		if !ok {
-			return fmt.Errorf("'password' in state is not a string")
+		password, err := getFromState[string](state, "password")
+		if err != nil {
+			return err
 		}
 
 		hashedPassword, err := internal.HashAndSaltPassword([]byte(password))
@@ -81,22 +69,14 @@ func CreateUserStep(config internal.Configuration, db models.DB) ewf.StepFn {
 
 func SendVerificationEmailStep(mailService internal.MailService, config internal.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		emailVal, ok := state["email"]
-		if !ok {
-			return fmt.Errorf("missing 'email' in state")
-		}
-		email, ok := emailVal.(string)
-		if !ok {
-			return fmt.Errorf("'email' in state is not a string")
+		email, err := getFromState[string](state, "email")
+		if err != nil {
+			return err
 		}
 
-		nameVal, ok := state["name"]
-		if !ok {
-			return fmt.Errorf("missing 'name' in state")
-		}
-		name, ok := nameVal.(string)
-		if !ok {
-			return fmt.Errorf("'name' in state is not a string")
+		name, err := getFromState[string](state, "name")
+		if err != nil {
+			return err
 		}
 
 		code := internal.GenerateRandomCode()
@@ -113,22 +93,14 @@ func SendVerificationEmailStep(mailService internal.MailService, config internal
 
 func UpdateCodeStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		emailVal, ok := state["email"]
-		if !ok {
-			return fmt.Errorf("missing 'email' in state")
-		}
-		email, ok := emailVal.(string)
-		if !ok {
-			return fmt.Errorf("'email' in state is not a string")
+		email, err := getFromState[string](state, "email")
+		if err != nil {
+			return err
 		}
 
-		codeVal, ok := state["code"]
-		if !ok {
-			return fmt.Errorf("missing 'code' in state")
-		}
-		code, ok := codeVal.(int)
-		if !ok {
-			return fmt.Errorf("'code' in state is not a int")
+		code, err := getFromState[int](state, "code")
+		if err != nil {
+			return err
 		}
 
 		existingUser, err := db.GetUserByEmail(email)
@@ -143,13 +115,9 @@ func UpdateCodeStep(db models.DB) ewf.StepFn {
 
 func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
 		existingUser, err := db.GetUserByID(userID)
@@ -181,13 +149,9 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 
 func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
 		existingUser, err := db.GetUserByID(userID)
@@ -199,22 +163,14 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 			return nil
 		}
 
-		emailVal, ok := state["email"]
-		if !ok {
-			return fmt.Errorf("missing 'email' in state")
-		}
-		email, ok := emailVal.(string)
-		if !ok {
-			return fmt.Errorf("'email' in state is not a string")
+		email, err := getFromState[string](state, "email")
+		if err != nil {
+			return err
 		}
 
-		nameVal, ok := state["name"]
-		if !ok {
-			return fmt.Errorf("missing 'name' in state")
-		}
-		name, ok := nameVal.(string)
-		if !ok {
-			return fmt.Errorf("'name' in state is not a string")
+		name, err := getFromState[string](state, "name")
+		if err != nil {
+			return err
 		}
 
 		customer, err := internal.CreateStripeCustomer(name, email)
@@ -235,13 +191,9 @@ func CreateStripeCustomerStep(db models.DB) ewf.StepFn {
 
 func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
 		existingUser, err := db.GetUserByID(userID)
@@ -253,13 +205,9 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 			return nil
 		}
 
-		mnemonicVal, ok := state["mnemonic"]
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
-		}
-		mnemonic, ok := mnemonicVal.(string)
-		if !ok {
-			return fmt.Errorf("'mnemonic' in state is not a string")
+		mnemonic, err := getFromState[string](state, "mnemonic")
+		if err != nil {
+			return err
 		}
 
 		// Set user.AccountAddress from mnemonic
@@ -295,22 +243,14 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
-		emailVal, ok := state["email"]
-		if !ok {
-			return fmt.Errorf("missing 'email' in state")
-		}
-		email, ok := emailVal.(string)
-		if !ok {
-			return fmt.Errorf("'email' in state is not a string")
+		email, err := getFromState[string](state, "email")
+		if err != nil {
+			return err
 		}
 
-		nameVal, ok := state["name"]
-		if !ok {
-			return fmt.Errorf("missing 'name' in state")
-		}
-		name, ok := nameVal.(string)
-		if !ok {
-			return fmt.Errorf("'name' in state is not a string")
+		name, err := getFromState[string](state, "name")
+		if err != nil {
+			return err
 		}
 
 		subject, body := mailService.WelcomeMailContent(name, config.Server.Host)
@@ -323,29 +263,19 @@ func SendWelcomeEmailStep(mailService internal.MailService, config internal.Conf
 
 func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notificationService *notification.NotificationService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		customerIDVal, ok := state["stripe_customer_id"]
-		if !ok {
-			return fmt.Errorf("missing 'stripe_customer_id' in state")
+		customerID, err := getFromState[string](state, "stripe_customer_id")
+		if err != nil {
+			return err
 		}
-		customerID, ok := customerIDVal.(string)
-		if !ok {
-			return fmt.Errorf("'stripe_customer_id' in state is not a string")
+
+		paymentMethodID, err := getFromState[string](state, "payment_method_id")
+		if err != nil {
+			return err
 		}
-		paymentMethodIDVal, ok := state["payment_method_id"]
-		if !ok {
-			return fmt.Errorf("missing 'payment_method_id' in state")
-		}
-		paymentMethodID, ok := paymentMethodIDVal.(string)
-		if !ok {
-			return fmt.Errorf("'payment_method_id' in state is not a string")
-		}
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
+
+		amount, err := getFromState[uint64](state, "amount")
+		if err != nil {
+			return err
 		}
 
 		intent, err := internal.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
@@ -362,41 +292,24 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 
 func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
+		amount, err := getFromState[uint64](state, "amount")
+		if err != nil {
+			return err
 		}
 
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		username, err := getFromState[string](state, "username")
+		if err != nil {
+			return err
 		}
 
-		usernameVal, ok := state["username"]
-		if !ok {
-			return fmt.Errorf("missing 'username' in state")
-		}
-		username, ok := usernameVal.(string)
-		if !ok {
-			return fmt.Errorf("'username' in state is not a string")
-		}
-
-		transferModeVal, ok := state["transfer_mode"]
-		if !ok {
-			return fmt.Errorf("missing 'transfer_mode' in state")
-		}
-		transferMode, ok := transferModeVal.(string)
-		if !ok {
-			return fmt.Errorf("'transfer_mode' in state is not a string")
+		transferMode, err := getFromState[string](state, "transfer_mode")
+		if err != nil {
+			return err
 		}
 
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
@@ -421,22 +334,14 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 
 func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
+		amount, err := getFromState[uint64](state, "amount")
+		if err != nil {
+			return err
 		}
 
 		user, err := db.GetUserByID(userID)
@@ -462,22 +367,14 @@ func UpdateCreditCardBalanceStep(db models.DB) ewf.StepFn {
 
 func UpdateCreditedBalanceStep(db models.DB) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userID, err := getFromState[int](state, "user_id")
+		if err != nil {
+			return err
 		}
 
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
+		amount, err := getFromState[uint64](state, "amount")
+		if err != nil {
+			return err
 		}
 
 		user, err := db.GetUserByID(userID)
