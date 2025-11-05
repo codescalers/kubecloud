@@ -311,6 +311,20 @@ export class UserService {
     return response.data.data
   }
 
+  async waitTaskTocomplete(id: string): Promise<boolean> {
+    const res = await api.get<ApiResponse<"completed" | "failed">>(`/v1/workflow/${id}`)
+    if (res.data.data === "failed") {
+      return false
+    }
+
+    if (res.data.data === "completed") {
+      return true
+    }
+
+    await new Promise(res => setTimeout(res, 5000))
+    return this.waitTaskTocomplete(id)
+  }
+
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {
     await new Promise((resolve, reject) => {
       let attempts = 0

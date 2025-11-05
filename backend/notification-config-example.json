@@ -1,5 +1,5 @@
 {
-  "email_templates_dir_path": "../internal/templates/notifications",
+  "email_templates_dir_path": "./internal/templates/notifications",
   "template_types": {
     "deployment": {
       "default": {
