@@ -159,22 +159,6 @@ const features = [
           <div v-else class="stat-value">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
         </div>
-        <!-- <div data-v-673f9b36="" class="stat-card fade-in visible">
-          <div data-v-673f9b36="" class="stat-value">4,607,667 GB</div>
-           <div data-v-673f9b36="" class="stat-label">SSD Storage</div>
-        </div>
-        <div data-v-673f9b36="" class="stat-card fade-in visible">
-          <div data-v-673f9b36="" class="stat-value">1275</div>
-          <div data-v-673f9b36="" class="stat-label">Active Nodes</div>
-        </div>
-        <div data-v-673f9b36="" class="stat-card fade-in visible">
-          <div data-v-673f9b36="" class="stat-value">1275</div>
-          <div data-v-673f9b36="" class="stat-label">Active Nodes</div>
-        </div>
-        <div data-v-673f9b36="" class="stat-card fade-in visible">
-          <div data-v-673f9b36="" class="stat-value">37370</div>
-          <div data-v-673f9b36="" class="stat-label">CPU Cores</div>
-        </div> -->
       </div>
     </section>
 

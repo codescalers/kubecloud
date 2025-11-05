@@ -350,7 +350,7 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
   padding: 0 1rem;
 }
 .hero-title {
-  font-size: 2.2rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--color-text, #fff);
   margin-bottom: 0.5rem;

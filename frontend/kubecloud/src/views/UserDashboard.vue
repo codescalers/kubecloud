@@ -195,21 +195,15 @@ function handleNavigateToFund() {
 }
 
 .hero-title {
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
-  margin-bottom: 1.5rem;
-  line-height: 1.1;
-  letter-spacing: -1px;
-  color: var(--mycelium-cloud-text);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  margin-bottom: 0.5rem;
 }
 
 .section-subtitle {
-  font-size: var(--font-size-xl);
-  color: var(--mycelium-cloud-text-muted);
-  line-height: 1.5;
-  opacity: 0.92;
-  margin-bottom: 0;
-  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted, #7c7fa5);
+  font-size: 1.1rem;
 }
 
 .dashboard-header {

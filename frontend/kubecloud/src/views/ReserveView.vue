@@ -21,7 +21,7 @@
           <h1 class="hero-title">
             Reserve Your Node
           </h1>
-          <p class="hero-description">
+          <p class="section-subtitle">
             Choose and reserve your dedicated Kubernetes node from our global network.
           </p>
         </div>
@@ -373,11 +373,10 @@ watch(filteredNodes, () => {
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 400;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  margin-bottom: 0.5rem;
 }
 
 .hero-description {
@@ -385,6 +384,11 @@ watch(filteredNodes, () => {
   color: #CBD5E1;
   line-height: 1.7;
   opacity: 0.8;
+}
+
+.section-subtitle {
+  color: var(--color-text-muted, #7c7fa5);
+  font-size: 1.1rem;
 }
 
 /* Reservation Content */
