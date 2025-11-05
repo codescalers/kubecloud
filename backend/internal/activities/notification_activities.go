@@ -13,11 +13,13 @@ import (
 
 func SendNotification(db models.DB, notifier notification.Notifier) ewf.StepFn {
 	return func(ctx context.Context, wf ewf.State) error {
-		notif, err := getFromState[*models.Notification](wf, "notification")
-		if err != nil {
-			return err
+		raw, ok := wf["notification"]
+		if !ok {
+			return fmt.Errorf("missing notification in workflow state")
 		}
-		if notif == nil {
+
+		notif, ok := raw.(*models.Notification)
+		if !ok || notif == nil {
 			return fmt.Errorf("invalid notification in workflow state")
 		}
 
