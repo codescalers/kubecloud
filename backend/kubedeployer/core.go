@@ -216,7 +216,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 	return nil
 }
 
-func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
+func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNetwork *workloads.ZNet) error {
 	seen := make(map[uint32]bool)
 	nodeIDs := make([]uint32, 0, len(cluster.Nodes))
 	for _, node := range cluster.Nodes {
@@ -236,7 +236,13 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 	var net workloads.ZNet
 	var err error
 
-	if len(cluster.Network.NodeDeploymentID) > 0 {
+	// If we have a pre-built network from a retry, use it directly and skip all building
+	if preBuiltNetwork != nil {
+		logger.GetLogger().Debug().
+			Str("network", preBuiltNetwork.Name).
+			Msg("Using pre-built network from retry, skipping all building logic")
+		net = *preBuiltNetwork
+	} else if len(cluster.Network.NodeDeploymentID) > 0 {
 		logger.GetLogger().Debug().
 			Str("network", cluster.Network.Name).
 			Int("existing_nodes", len(cluster.Network.Nodes)).
@@ -287,11 +293,18 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 		}
 	}
 
+	// Store the built network in cluster before deployment attempt
+	// This ensures it's available in state if deployment fails
+	cluster.Network = net
+
 	logger.GetLogger().Debug().Msgf("Deploying network %s with nodes %v", net.Name, net.Nodes)
 	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
+		// Update with what is already deployer
+		cluster.Network = net
 		return fmt.Errorf("failed to deploy network: %v", err)
 	}
 
+	// Update the network in the cluster
 	cluster.Network = net
 
 	logger.GetLogger().Info().
