@@ -37,7 +37,7 @@
                   </v-btn>
                 </div>
               </template>
-              <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
+              <span>Insufficient balance. Minimum 5 USD required to add nodes.</span>
             </v-tooltip>
 
             <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
