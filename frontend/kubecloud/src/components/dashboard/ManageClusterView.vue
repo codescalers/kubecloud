@@ -297,6 +297,7 @@ async function repairNode(oldNodeName: string, newNode: number) {
         }
       ]
     })
+    await new Promise(res => setTimeout(res, 5000))
     await userService.waitTaskTocomplete((d as any).task_id)
   }
   repairing.value = false
