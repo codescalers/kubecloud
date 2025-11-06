@@ -20,83 +20,93 @@ type NodeHealthResult struct {
 	unhealthyNodeID uint32
 }
 
-func (h *Handler) TrackClusterHealth() {
+func (h *Handler) TrackClusterHealth(ctx context.Context) {
 
 	interval := time.Duration(h.config.ClusterHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for range ticker.C {
-		logger.GetLogger().Info().Msg("Cluster health check test started")
-		clusters, err := h.db.ListAllClusters()
-		if err != nil {
-			logger.GetLogger().Error().Err(err)
-			continue
-		}
-
-		if len(clusters) == 0 {
-			logger.GetLogger().Info().Msg("No clusters to check health for")
-			continue
-		}
-
-		for _, cluster := range clusters {
-
-			wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			logger.GetLogger().Info().Msg("Cluster health check test started")
+			clusters, err := h.db.ListAllClusters()
 			if err != nil {
-				logger.GetLogger().Error().
-					Err(err).
-					Msg("Failed to create health tracking workflow")
+				logger.GetLogger().Error().Err(err)
 				continue
 			}
-			cl, err := cluster.GetClusterResult()
-			if err != nil {
-				logger.GetLogger().Error().
-					Err(err).
-					Msg("Failed to get cluster result during health tracking")
+
+			if len(clusters) == 0 {
+				logger.GetLogger().Info().Msg("No clusters to check health for")
 				continue
 			}
-			wf.State = ewf.State{
-				"cluster": cl,
-				"config": map[string]interface{}{
-					"user_id": cluster.UserID,
-				},
-			}
 
-			h.ewfEngine.RunAsync(h.appContext, wf)
+			for _, cluster := range clusters {
+
+				wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
+				if err != nil {
+					logger.GetLogger().Error().
+						Err(err).
+						Msg("Failed to create health tracking workflow")
+					continue
+				}
+				cl, err := cluster.GetClusterResult()
+				if err != nil {
+					logger.GetLogger().Error().
+						Err(err).
+						Msg("Failed to get cluster result during health tracking")
+					continue
+				}
+				wf.State = ewf.State{
+					"cluster": cl,
+					"config": map[string]interface{}{
+						"user_id": cluster.UserID,
+					},
+				}
+
+				h.ewfEngine.RunAsync(h.appContext, wf)
+			}
 		}
 
 	}
 }
 
-func (h *Handler) TrackReservedNodeHealth(notificationService *notification.NotificationService, grid proxy.Client) {
+func (h *Handler) TrackReservedNodeHealth(ctx context.Context, notificationService *notification.NotificationService, grid proxy.Client) {
 	interval := time.Duration(h.config.ReservedNodeHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		logger.GetLogger().Info().Msg("Reserved node health check started")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			logger.GetLogger().Info().Msg("Reserved node health check started")
 
-		reservedNodes, err := h.db.ListAllReservedNodes()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to get reserved nodes for health check")
-			continue
+			reservedNodes, err := h.db.ListAllReservedNodes()
+			if err != nil {
+				logger.GetLogger().Error().Err(err).Msg("Failed to get reserved nodes for health check")
+				continue
+			}
+
+			if len(reservedNodes) == 0 {
+				logger.GetLogger().Info().Msg("No reserved nodes to check health for")
+				continue
+			}
+
+			logger.GetLogger().Info().
+				Int("count", len(reservedNodes)).
+				Msg("Starting health check for reserved nodes")
+
+			h.checkNodesWithWorkerPool(reservedNodes, grid, notificationService)
+
+			logger.GetLogger().Info().
+				Int("count", len(reservedNodes)).
+				Msg("Reserved node health check workflows started")
 		}
-
-		if len(reservedNodes) == 0 {
-			logger.GetLogger().Info().Msg("No reserved nodes to check health for")
-			continue
-		}
-
-		logger.GetLogger().Info().
-			Int("count", len(reservedNodes)).
-			Msg("Starting health check for reserved nodes")
-
-		h.checkNodesWithWorkerPool(reservedNodes, grid, notificationService)
-
-		logger.GetLogger().Info().
-			Int("count", len(reservedNodes)).
-			Msg("Reserved node health check workflows started")
 	}
 }
 

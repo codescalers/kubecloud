@@ -361,11 +361,11 @@ func (app *App) registerHandlers() {
 }
 
 func (app *App) StartBackgroundWorkers() {
-	go app.handlers.MonthlyInvoicesHandler()
-	go app.handlers.TrackUserDebt(app.gridClient)
-	go app.handlers.MonitorSystemBalanceAndHandleSettlement()
-	go app.handlers.TrackClusterHealth()
-	go app.handlers.TrackReservedNodeHealth(app.notificationService, app.handlers.proxyClient)
+	go app.handlers.MonthlyInvoicesHandler(app.appCtx)
+	go app.handlers.TrackUserDebt(app.appCtx, app.gridClient)
+	go app.handlers.MonitorSystemBalanceAndHandleSettlement(app.appCtx)
+	go app.handlers.TrackClusterHealth(app.appCtx)
+	go app.handlers.TrackReservedNodeHealth(app.appCtx, app.notificationService, app.handlers.proxyClient)
 }
 
 // Run starts the server
