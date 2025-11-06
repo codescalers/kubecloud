@@ -6,9 +6,10 @@ import (
 
 	"kubecloud/kubedeployer"
 
+	"kubecloud/internal/logger"
+
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/state"
 	"github.com/xmonader/ewf"
-	"kubecloud/internal/logger"
 )
 
 // GridClientState represents the critical state that needs to be preserved
@@ -19,6 +20,7 @@ type GridClientState struct {
 
 // SaveGridClientState saves the critical GridClient state to workflow state
 func SaveGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Client) {
+	log := logger.ForOperation("statemanager", "save_gridclient_state")
 	if kubeClient == nil || kubeClient.GridClient.State == nil {
 		return
 	}
@@ -41,21 +43,22 @@ func SaveGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Clien
 	// Store as JSON string in workflow state
 	if stateBytes, err := json.Marshal(gridState); err == nil {
 		workflowState["gridclient_state"] = string(stateBytes)
-		logger.GetLogger().Debug().Msg("Saved GridClient state to workflow state")
+		log.Debug().Msg("Saved GridClient state to workflow state")
 	} else {
-		logger.GetLogger().Warn().Err(err).Msg("Failed to marshal GridClient state")
+		log.Warn().Err(err).Msg("Failed to marshal GridClient state")
 	}
 }
 
 // RestoreGridClientState restores the critical GridClient state from workflow state
 func RestoreGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Client) error {
+	log := logger.ForOperation("statemanager", "restore_gridclient_state")
 	if kubeClient == nil || kubeClient.GridClient.State == nil {
 		return fmt.Errorf("invalid kubeclient or gridclient state")
 	}
 
 	stateStr, ok := workflowState["gridclient_state"].(string)
 	if !ok || stateStr == "" {
-		logger.GetLogger().Debug().Msg("No GridClient state found in workflow state")
+		log.Debug().Msg("No GridClient state found in workflow state")
 		return nil // Not an error, just no state to restore
 	}
 
@@ -78,6 +81,6 @@ func RestoreGridClientState(workflowState ewf.State, kubeClient *kubedeployer.Cl
 		}
 	}
 
-	logger.GetLogger().Debug().Msg("Restored GridClient state from workflow state")
+	log.Debug().Msg("Restored GridClient state from workflow state")
 	return nil
 }

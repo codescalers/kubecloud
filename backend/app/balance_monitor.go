@@ -48,6 +48,8 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 }
 
 func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
+	log := logger.ForOperation("balance_monitor", "settle_pending_payments")
+
 	for _, record := range records {
 		// Already settled
 		if record.TransferredTFTAmount >= record.TFTAmount {
@@ -57,18 +59,22 @@ func (h *Handler) settlePendingPayments(records []models.PendingRecord) error {
 		// getting balance every time to ensure we have the latest balance
 		systemTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, h.config.SystemAccount.Mnemonic)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
+			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
 		}
 
 		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
 		if systemTFTBalance < amountToTransfer {
-			logger.GetLogger().Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
+			log.Warn().
+				Int("record_id", record.ID).
+				Uint64("system_balance", systemTFTBalance).
+				Uint64("amount_needed", amountToTransfer).
+				Msg("Insufficient system balance to settle pending record")
 			continue
 		}
 
 		if err = h.transferTFTsToUser(record.UserID, record.ID, amountToTransfer); err != nil {
-			logger.ForOperation("balance_monitor", "transfer_tfts_to_user").Error().Err(err).Msg("Failed to transfer TFTs to user")
+			log.Error().Err(err).Int("user_id", record.UserID).Int("record_id", record.ID).Msg("Failed to transfer TFTs to user")
 			continue
 		}
 	}

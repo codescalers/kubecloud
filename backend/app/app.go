@@ -373,7 +373,10 @@ func (app *App) Run() error {
 		Handler: app.router,
 	}
 
-	logger.GetLogger().Info().Msgf("Starting server at %s:%s", app.config.Server.Host, app.config.Server.Port)
+	logger.GetLogger().Info().
+		Str("host", app.config.Server.Host).
+		Str("port", app.config.Server.Port).
+		Msg("Starting server")
 
 	if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.GetLogger().Error().Err(err).Msg("Failed to start server")

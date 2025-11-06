@@ -22,6 +22,8 @@ const (
 
 // GetKubeconfig retrieves the kubeconfig from a leader or master node in the cluster.
 func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string, error) {
+	log := logger.ForOperation("kubedeployer", "get_kubeconfig")
+
 	if privateKey == "" {
 		return "", fmt.Errorf("private key cannot be empty")
 	}
@@ -32,7 +34,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 
 	for _, node := range c.Nodes {
 		if node.Type == NodeTypeLeader || node.Type == NodeTypeMaster {
-			logger.GetLogger().Debug().
+			log.Debug().
 				Str("cluster", c.Name).
 				Str("node_name", node.Name).
 				Str("node_type", string(node.Type)).
@@ -41,7 +43,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 
 			kubeconfig, err := getKubeconfigViaSSH(ctx, privateKey, &node)
 			if err != nil {
-				logger.GetLogger().Debug().
+				log.Debug().
 					Err(err).
 					Str("cluster", c.Name).
 					Str("node_name", node.Name).
@@ -50,7 +52,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 				continue // try the next node
 			}
 
-			logger.GetLogger().Info().
+			log.Info().
 				Str("cluster", c.Name).
 				Str("node_name", node.Name).
 				Msg("Successfully retrieved kubeconfig")
@@ -62,12 +64,14 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 }
 
 func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (string, error) {
+	log := logger.ForOperation("kubedeployer", "ssh_kubeconfig_retrieval")
+
 	ip := node.MyceliumIP
 	if ip == "" {
 		return "", fmt.Errorf("no mycelium IP address found for node %s", node.Name)
 	}
 
-	logger.GetLogger().Debug().
+	log.Debug().
 		Str("ip", ip).
 		Str("node", node.Name).
 		Msg("Attempting SSH connection to retrieve kubeconfig")
@@ -75,7 +79,7 @@ func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 	command := fmt.Sprintf("cat %s", k3sKubeconfigPath)
 	kubeconfig, err := executeSSHCommand(ctx, privateKey, ip, command)
 	if err != nil {
-		logger.GetLogger().Debug().
+		log.Debug().
 			Err(err).
 			Str("ip", ip).
 			Str("node", node.Name).
@@ -89,7 +93,7 @@ func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 
 	processedKubeconfig, processErr := processKubeconfig(kubeconfig, ip)
 	if processErr != nil {
-		logger.GetLogger().Warn().
+		log.Warn().
 			Err(processErr).
 			Str("ip", ip).
 			Str("node", node.Name).
@@ -101,6 +105,8 @@ func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 }
 
 func executeSSHCommand(ctx context.Context, privateKey, address, command string) (string, error) {
+	log := logger.ForOperation("kubedeployer", "execute_ssh_command")
+
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse SSH private key: %w", err)
@@ -127,7 +133,7 @@ func executeSSHCommand(ctx context.Context, privateKey, address, command string)
 		lastErr = err
 		if attempt < sshMaxRetries {
 			backoffDuration := sshRetryBackoff * time.Duration(attempt)
-			logger.GetLogger().Debug().
+			log.Debug().
 				Err(err).
 				Str("address", address).
 				Int("attempt", attempt).
@@ -175,6 +181,8 @@ func isValidKubeconfig(kubeconfig string) bool {
 
 // processKubeconfig replaces localhost references in the kubeconfig with the external IP.
 func processKubeconfig(kubeconfigYAML, externalIP string) (string, error) {
+	log := logger.ForOperation("kubedeployer", "process_kubeconfig")
+
 	kubeconfigServerPattern := "server: https://127.0.0.1:"
 
 	if kubeconfigYAML == "" {
@@ -196,12 +204,12 @@ func processKubeconfig(kubeconfigYAML, externalIP string) (string, error) {
 
 	configChanged := updatedConfig != kubeconfigYAML
 	if !configChanged {
-		logger.GetLogger().Warn().
+		log.Warn().
 			Str("target_ip", externalIP).
 			Msg("No server URL replacement made in kubeconfig - pattern may not match")
 	}
 
-	logger.GetLogger().Debug().
+	log.Debug().
 		Str("target_ip", externalIP).
 		Bool("config_changed", configChanged).
 		Msg("Processed kubeconfig for external IP")
