@@ -18,7 +18,6 @@ import (
 
 	"kubecloud/internal/logger"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
@@ -64,8 +63,6 @@ func ensureClient(state ewf.State) {
 
 func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		ensureClient(state)
-
 		config, err := getConfig(state)
 		if err != nil {
 			return fmt.Errorf("failed to get config from state: %w", err)
@@ -90,14 +87,7 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 		}
 		statemanager.StoreCluster(state, cluster)
 
-		// Check if we have a pre-built network from a previous retry
-		var preBuiltNetwork *workloads.ZNet
-		if net, err := getFromState[workloads.ZNet](state, "pre_built_network"); err == nil {
-			logger.GetLogger().Debug().Msg("Using pre-built network from state for retry")
-			preBuiltNetwork = &net
-		}
-
-		if err := kubeClient.DeployNetwork(ctx, &cluster, preBuiltNetwork); err != nil {
+		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			nodeIDs := make([]uint32, 0, len(cluster.Nodes))
 			for _, node := range cluster.Nodes {
 				nodeIDs = append(nodeIDs, node.NodeID)
@@ -105,30 +95,19 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 
 			if isWorkloadAlreadyDeployedError(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				// Clear pre-built network on permanent failure
-				delete(state, "pre_built_network")
 				return fmt.Errorf("network already deployed for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, ewf.ErrFailWorkflowNow)
 			}
 			if isWorkloadInvalid(err) {
 				metrics.IncrementClusterDeploymentFailure()
-				// Clear pre-built network on permanent failure
-				delete(state, "pre_built_network")
 				return fmt.Errorf("network invalid for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, ewf.ErrFailWorkflowNow)
 			}
 
-			// Store the built network in state for retry
-			// The network should be stored in cluster.Network after DeployNetwork builds it
-			if cluster.Network.Name != "" {
-				state["pre_built_network"] = cluster.Network
-				logger.GetLogger().Debug().Msg("Stored pre-built network in state for retry")
-			}
+			// Store cluster with built network for retry (network is already in cluster.Network)
+			statemanager.StoreCluster(state, cluster)
 
 			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to deploy network for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, err)
 		}
-
-		// Clear pre-built network on success
-		delete(state, "pre_built_network")
 
 		// Save GridClient state after network deployment
 		statemanager.SaveGridClientState(state, kubeClient)
@@ -164,8 +143,7 @@ func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 		node.Name = kubedeployer.GetNodeName(config.UserID, cluster.Name, node.OriginalName)
 		cluster.Nodes = append(cluster.Nodes, node)
 
-		// UpdateNetworkStep doesn't need retry logic, so pass nil for preBuiltNetwork
-		if err := kubeClient.DeployNetwork(ctx, &cluster, nil); err != nil {
+		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
 			metrics.IncrementClusterDeploymentFailure()
 			return fmt.Errorf("failed to update network for cluster %s, node %s (user_id=%d): %w", cluster.Name, node.Name, config.UserID, err)
 		}
@@ -417,7 +395,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 			state["cluster"] = cluster
 		}
 
-		if err := kubeClient.CancelCluster(ctx, cluster); err != nil {
+		if err := kubeClient.CancelCluster(ctx, &cluster); err != nil {
 			return fmt.Errorf("failed to cancel deployment for cluster %s (user_id=%d): %w", cluster.Name, config.UserID, err)
 		}
 

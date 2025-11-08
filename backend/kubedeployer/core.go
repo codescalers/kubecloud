@@ -216,7 +216,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 	return nil
 }
 
-func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNetwork *workloads.ZNet) error {
+func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 	seen := make(map[uint32]bool)
 	nodeIDs := make([]uint32, 0, len(cluster.Nodes))
 	for _, node := range cluster.Nodes {
@@ -236,20 +236,15 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 	var net workloads.ZNet
 	var err error
 
-	// If we have a pre-built network from a retry, use it directly and skip all building
-	if preBuiltNetwork != nil {
-		logger.GetLogger().Debug().
-			Str("network", preBuiltNetwork.Name).
-			Msg("Using pre-built network from retry, skipping all building logic")
-		net = *preBuiltNetwork
-	} else if len(cluster.Network.NodeDeploymentID) > 0 {
+	// Check if we have an existing network (either pre-built from retry or already deployed)
+	hasExistingNetwork := len(cluster.Network.NodeDeploymentID) > 0
+	if hasExistingNetwork {
 		logger.GetLogger().Debug().
 			Str("network", cluster.Network.Name).
-			Int("existing_nodes", len(cluster.Network.Nodes)).
-			Msg("Updating existing network workload")
-
+			Msg("Using existing network from cluster state")
 		net = cluster.Network
 
+		// Ensure all current nodes are prepared (this shouldn't affect already prepared nodes)
 		for _, nodeID := range nodeIDs {
 			found := false
 			for _, existingNodeID := range net.Nodes {
@@ -262,7 +257,6 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 				net.Nodes = append(net.Nodes, nodeID)
 			}
 		}
-
 		if net.MyceliumKeys == nil {
 			net.MyceliumKeys = make(map[uint32][]byte)
 		}
@@ -270,7 +264,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 			if _, exists := net.MyceliumKeys[nodeID]; !exists {
 				key, err := workloads.RandomMyceliumKey()
 				if err != nil {
-					return fmt.Errorf("failed to generate mycelium key for node %d: %v", nodeID, err)
+					return fmt.Errorf("failed to generate mycelium key for node %d: %w", nodeID, err)
 				}
 				net.MyceliumKeys[nodeID] = key
 			}
@@ -279,8 +273,9 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 		logger.GetLogger().Debug().
 			Str("network", cluster.Network.Name).
 			Interface("total_nodes", net.Nodes).
-			Msg("Network update prepared")
+			Msg("Network prepared")
 	} else {
+		// If the network is not deployed, then it is new network step
 		logger.GetLogger().Debug().
 			Str("network", cluster.Network.Name).
 			Str("project", cluster.ProjectName).
@@ -289,7 +284,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 
 		net, err = createNetworkWorkload(cluster.Network.Name, cluster.ProjectName, nodeIDs)
 		if err != nil {
-			return fmt.Errorf("failed to create network workload: %v", err)
+			return fmt.Errorf("failed to create network workload: %w", err)
 		}
 	}
 
@@ -297,14 +292,18 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 	// This ensures it's available in state if deployment fails
 	cluster.Network = net
 
-	logger.GetLogger().Debug().Msgf("Deploying network %s with nodes %v", net.Name, net.Nodes)
+	logger.GetLogger().Debug().
+		Str("network", net.Name).
+		Interface("nodes", net.Nodes).
+		Msg("Deploying network")
 	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
-		// Update with what is already deployer
+		// Update with what is already deployed
 		cluster.Network = net
 		return fmt.Errorf("failed to deploy network: %v", err)
 	}
 
-	// Update the network in the cluster
+	// Update the network in the cluster with deployment results
+	// The deployer may have modified the network struct (e.g., NodeDeploymentID)
 	cluster.Network = net
 
 	logger.GetLogger().Info().
@@ -315,10 +314,17 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster, preBuiltNe
 	return nil
 }
 
-func (c *Client) CancelCluster(ctx context.Context, cluster Cluster) error {
+func (c *Client) CancelCluster(ctx context.Context, cluster *Cluster) error {
 	clusterContracts, err := cluster.getAllClusterContracts()
 	if err != nil {
-		return fmt.Errorf("failed to get cluster contract IDs: %v", err)
+		return fmt.Errorf("failed to get cluster contract IDs: %w", err)
+	}
+
+	if len(clusterContracts) == 0 {
+		logger.GetLogger().Debug().
+			Str("cluster", cluster.Name).
+			Msg("No contracts found to cancel for cluster")
+		return nil
 	}
 
 	logger.GetLogger().Debug().
@@ -328,13 +334,13 @@ func (c *Client) CancelCluster(ctx context.Context, cluster Cluster) error {
 		Msg("Collected cluster contracts")
 
 	if err := c.cancelNodeContracts(clusterContracts, cluster.Name); err != nil {
-		return fmt.Errorf("failed to cancel cluster contracts: %v", err)
+		return fmt.Errorf("failed to cancel cluster contracts: %w", err)
 	}
 
 	logger.GetLogger().Info().
 		Str("cluster", cluster.Name).
-		Int("contracts_canceled", len(clusterContracts)).
-		Msg("Cluster canceled successfully")
+		Int("contracts_attempted", len(clusterContracts)).
+		Msg("Cluster cancellation completed successfully")
 
 	return nil
 }
