@@ -23,10 +23,10 @@ const (
 
 // SSEClient represents a single SSE client connection
 type SSEClient struct {
-	Channel      chan SSEMessage
-	Token        string
-	ConnectedAt  time.Time
-	CancelFunc   context.CancelFunc
+	Channel     chan SSEMessage
+	Token       string
+	ConnectedAt time.Time
+	CancelFunc  context.CancelFunc
 }
 
 // SSEManager handles Server-Sent Events for real-time notifications
@@ -98,10 +98,10 @@ func (s *SSEManager) AddClient(userID int, token string) (*SSEClient, context.Co
 	ctx, cancel := context.WithCancel(s.ctx)
 
 	client := &SSEClient{
-		Channel:      make(chan SSEMessage, 10),
-		Token:        token,
-		ConnectedAt:  time.Now(),
-		CancelFunc:   cancel,
+		Channel:     make(chan SSEMessage, 10),
+		Token:       token,
+		ConnectedAt: time.Now(),
+		CancelFunc:  cancel,
 	}
 	s.clients[userID] = append(s.clients[userID], client)
 
