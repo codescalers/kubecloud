@@ -151,6 +151,17 @@ The priority order for configuration is:
 
 This allows you to override specific settings without modifying the configuration file.
 
+## Server-Sent Events (SSE) Security
+
+MyceliumCloud uses Server-Sent Events (SSE) for real-time notifications to connected clients. To ensure security, SSE connections have token expiration enabled:
+
+- **Token Validation**: SSE connections periodically validate the authentication token (every 30 seconds by default)
+- **Automatic Disconnection**: When a token expires, the SSE connection is automatically closed
+- **Client Reconnection**: The frontend automatically reconnects with a fresh token when the connection is closed
+- **Multiple Connections**: Each user can have multiple active SSE connections (e.g., from different devices/tabs), and each is validated independently
+
+This prevents expired tokens from maintaining active SSE connections, improving security and ensuring that users must re-authenticate when their sessions expire.
+
 ## API Documentation
 
 The backend APIs is defined using **Swagger (OpenAPI)** and can be viewed or tested using **Postman collections**.
