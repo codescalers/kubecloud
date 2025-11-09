@@ -108,6 +108,20 @@
                       <v-btn
                         icon
                         size="small"
+                        color="primary"
+                        variant="text"
+                        @click="nodeToRepair = node.original_name"
+                        class="repair-node-btn"
+                      >
+                        <v-icon icon="mdi-hammer-screwdriver" size="small" />
+                        <v-tooltip activator="parent" location="top">
+                          Repair Node
+                        </v-tooltip>
+                      </v-btn>
+
+                      <v-btn
+                        icon
+                        size="small"
                         color="error"
                         variant="text"
                         @click="showDeleteConfirmation(node.original_name)"
@@ -129,6 +143,40 @@
         </div>
       </v-container>
     </div>
+
+    <v-dialog :model-value="nodeToRepair !== ''" @update:model-value="nodeToRepair = ''" max-width="600" :persistent="repairing">
+      <v-card>
+        <v-card-title class="text-h6">
+          Repair {{ nodeToRepair }} node
+        </v-card-title>
+
+        <v-card-text>
+          <p>Pick a node in order to replace the old one</p>
+          <NodeSelect
+            :loading="nodesLoading || validatingNode"
+            v-model="addFormNodeId"
+            @update:modelValue="val => validateNode(val)"
+            label="Select Node"
+            :items="nodes.filter(n => n.nodeId !== filteredNodesMap[nodeToRepair])"
+            :get-node-resources="node => ({ cpu: getTotalCPU(node), ram: getAvailableRAM(node), storage: getAvailableStorage(node) })"
+            :cpu-label="'CPU'"
+            :gpu-icon="'mdi-nvidia'"
+            :error="!!nodeValidationError"
+            :error-messages="nodeValidationError" 
+            />
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="grey" variant="text" @click="nodeToRepair = ''" :disabled="repairing">
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="text" :disabled="!addFormNodeId || !!nodeValidationError || nodesLoading || validatingNode" @click="repairNode(nodeToRepair, addFormNodeId!)" :loading="repairing">
+            Repair
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
 
     <!-- Delete Confirmation Dialog -->
@@ -185,12 +233,20 @@ import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
 import { api } from '../../utils/api'
+import NodeSelect from '../ui/NodeSelect.vue';
+import { useNodes } from '../../composables/useNodes';
+import { getAvailableCPU, getAvailableRAM, getAvailableStorage, getTotalCPU } from '../../utils/nodeNormalizer';
 
 import { formatDate } from '../../utils/dateUtils'
 import { userService } from '@/utils/userService'
 import { useUserStore } from '@/stores/user'
+import useNodeStoragePool from '@/composables/useNodeStoragePool'
 
 const userStore = useUserStore()
+
+const addFormNodeId = ref<number|null>(null);
+const { nodes, loading: nodesLoading, fetchNodes } = useNodes()
+onMounted(fetchNodes)
 
 const haveEnoughBalance = computed(() => {
   return userStore.netBalance >= 5
@@ -210,6 +266,64 @@ const loading = ref(true)
 const notFound = ref(false)
 const deleteConfirmDialog = ref(false);
 const nodeToDelete = ref<string>('');
+const nodeToRepair = ref<string>('');
+
+const repairing = ref(false)
+async function repairNode(oldNodeName: string, newNode: number) {
+  const name = cluster.value?.cluster.name
+  const node = filteredNodes.value.find(n => n.original_name === oldNodeName)
+  if (!name || !node) {
+    console.warn('cluster or it\'s name not found', cluster.value)
+    return
+  }
+
+  repairing.value = true
+  
+  const { data } = await userService.removeNodeFromDeployment(name, oldNodeName)
+  await new Promise(res => setTimeout(res, 5000))
+  if (await userService.waitTaskTocomplete((data as any).task_id)) {
+    const {data: d } = await userService.addNodeToDeployment(name, {
+      name: name,
+      nodes: [
+        {
+          name: oldNodeName,
+          type: node.type,
+          node_id: newNode,
+          cpu: node.cpu,
+          memory: node.memory,
+          root_size: node.root_size,
+          disk_size: node.disk_size,
+          env_vars: node.env_vars,
+        }
+      ]
+    })
+    await new Promise(res => setTimeout(res, 5000))
+    await userService.waitTaskTocomplete((d as any).task_id)
+  }
+  repairing.value = false
+}
+
+const { validateNodeStoragePool, createStoragePoolError, failedToCheckStoragePoolError } = useNodeStoragePool()
+const nodeValidationError = ref('')
+const validatingNode = ref(false)
+
+async function validateNode(nodeId: number | null) {
+try {
+  nodeValidationError.value = ''
+  validatingNode.value = true
+  if (!nodeId || !nodes.value.find((node) => node.nodeId === nodeId)) return
+  const isValid = await validateNodeStoragePool(/* addFormStorage.value */ 25, nodeId)
+  if (!isValid) {
+    nodeValidationError.value = createStoragePoolError(nodeId)
+    return
+  }
+} catch (error) {
+  console.error(error)
+  nodeValidationError.value = failedToCheckStoragePoolError().message
+} finally {
+  validatingNode.value = false
+}
+}
 
 const projectName = computed(() => route.params.id?.toString() || '')
 const cluster = computed(() =>
@@ -222,6 +336,10 @@ const filteredNodes = computed(() => {
   }
   return []
 })
+const filteredNodesMap = computed(() => filteredNodes.value.reduce((r, n) => {
+  r[n.original_name] = n.node_id
+  return r
+}, {} as {[key: string]: number}))
 
 const totalCPU = computed(() => {
   return filteredNodes.value.length

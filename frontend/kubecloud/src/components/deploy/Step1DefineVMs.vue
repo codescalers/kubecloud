@@ -61,6 +61,11 @@
           </h4>
           <v-btn color="primary" prepend-icon="mdi-plus" size="small" variant="outlined" @click="addMaster">Add Master</v-btn>
         </div>
+
+        <v-alert variant="tonal" type="info" class="mb-4">
+          To achieve high availability in your cluster, consider having at least three master nodes.
+        </v-alert>
+        
         <DeployVMCard v-for="(master, masterIdx) in masters" :key="masterIdx" :vm="master" type="master" :availableSshKeys="availableSshKeys" @edit="() => openEditNodeModal('master', masterIdx)" @delete="() => removeMaster(masterIdx)" />
         <div v-if="!masters.length" class="empty-state">
           <p>No master nodes configured</p>
