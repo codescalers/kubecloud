@@ -23,11 +23,6 @@
     "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
     "network": "main"
   },
-  "redis": {
-    "host": "redis-db",
-    "port": 6379,
-    "password": "pass"
-  },
 	"invoice": {
 		"name": "KubeCloud Invoice",
 		"address": "123 KubeCloud St, Cloud City, CC 12345",
