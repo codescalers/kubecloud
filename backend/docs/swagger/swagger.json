@@ -96,7 +96,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -149,7 +149,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -275,7 +275,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -420,7 +420,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -497,7 +497,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -1191,7 +1191,7 @@
                 "operationId": "list-pending-records",
                 "responses": {
                     "200": {
-                        "description": "Pending records retrieved successfully",
+                        "description": "Pending records are retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -3284,6 +3284,17 @@
                 }
             }
         },
+        "app.DeploymentWorkflowResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
         "app.EmailInput": {
             "type": "object",
             "required": [
@@ -3814,17 +3825,6 @@
                     "type": "integer"
                 },
                 "workflow_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "app.Response": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                },
-                "task_id": {
                     "type": "string"
                 }
             }

@@ -220,7 +220,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	existingUser, getErr := h.db.GetUserByEmail(request.Email)
 	if getErr != nil && getErr != gorm.ErrRecordNotFound {
 		reqLog.Error().Err(getErr).Msg("failed to get user by email")
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -282,7 +282,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get user by email")
-		InternalServerError(c, "Failed to get user by email")
+		InternalServerError(c)
 		return
 	}
 	logWithUser := requestLogger(c, "VerifyRegisterCode").With().Int("user_id", user.ID).Logger()
@@ -685,7 +685,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 			return
 		}
 
-		InternalServerError(c, "Failed to create payment method")
+		InternalServerError(c)
 		return
 	}
 
@@ -699,7 +699,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
-		InternalServerError(c, "Failed to attach payment method")
+		InternalServerError(c)
 		return
 	}
 
@@ -749,7 +749,7 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 			return
 		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -803,7 +803,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 			return
 		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -867,7 +867,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 			return
 		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -879,7 +879,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 			return
 		}
 		reqLog.Error().Err(err).Msg("Voucher is not found")
-		InternalServerError(c, "Failed to retrieve voucher")
+		InternalServerError(c)
 		return
 	}
 

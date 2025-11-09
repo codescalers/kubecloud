@@ -48,33 +48,33 @@ func Accepted(c *gin.Context, message string, data interface{}) {
 }
 
 // BadRequest returns a bad request error response (400)
-func BadRequest(c *gin.Context, error string) {
-	Error(c, http.StatusBadRequest, "Bad Request", error)
+func BadRequest(c *gin.Context, message string) {
+	Error(c, http.StatusBadRequest, message, "")
 }
 
 // Unauthorized returns an unauthorized error response (401)
-func Unauthorized(c *gin.Context, error string) {
-	Error(c, http.StatusUnauthorized, "Unauthorized", error)
+func Unauthorized(c *gin.Context, message string) {
+	Error(c, http.StatusUnauthorized, message, "")
 }
 
 // Forbidden returns a forbidden error response (403)
-func Forbidden(c *gin.Context, error string) {
-	Error(c, http.StatusForbidden, "Forbidden", error)
+func Forbidden(c *gin.Context, message string) {
+	Error(c, http.StatusForbidden, message, "")
 }
 
 // NotFound returns a not found error response (404)
-func NotFound(c *gin.Context, error string) {
-	Error(c, http.StatusNotFound, "Resource not found", error)
+func NotFound(c *gin.Context, message string) {
+	Error(c, http.StatusNotFound, message, "")
 }
 
 // Conflict returns a conflict error response (409)
-func Conflict(c *gin.Context, error string) {
-	Error(c, http.StatusConflict, "Conflict", error)
+func Conflict(c *gin.Context, message string) {
+	Error(c, http.StatusConflict, message, "")
 }
 
 // InternalServerError returns internal server error (500)
-func InternalServerError(c *gin.Context, error string) {
-	Error(c, http.StatusInternalServerError, "Internal server error", error)
+func InternalServerError(c *gin.Context) {
+	Error(c, http.StatusInternalServerError, "Internal server error", "")
 }
 
 // JSONResponse returns a raw JSON response (for special cases like health checks)

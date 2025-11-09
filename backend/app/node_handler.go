@@ -164,7 +164,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 	filter.Features = zos3NodeFeatures
 	availableNodes, availableNodesCount, err := h.proxyClient.Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
-		InternalServerError(c, "Failed to retrieve available nodes")
+		InternalServerError(c)
 		return
 	}
 
@@ -233,7 +233,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 			NotFound(c, "User is not found")
 			return
 		}
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -366,7 +366,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 
 	nodes, count, err := h.getRentedNodesForUser(c.Request.Context(), userID, false)
 	if err != nil {
-		InternalServerError(c, "Failed to retrieve rented nodes")
+		InternalServerError(c)
 		return
 	}
 
@@ -414,7 +414,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 			NotFound(c, "User is not found")
 			return
 		}
-		InternalServerError(c, "Failed to retrieve user")
+		InternalServerError(c)
 		return
 	}
 
@@ -635,7 +635,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	twins, _, err := h.proxyClient.Twins(c.Request.Context(), filter, limit)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get twins")
-		InternalServerError(c, "Failed to retrieve twins")
+		InternalServerError(c)
 		return
 	}
 
@@ -694,7 +694,7 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get node from proxy")
-		InternalServerError(c, "Failed to retrieve nodes")
+		InternalServerError(c)
 		return
 	}
 	if len(res) == 0 {
@@ -704,13 +704,13 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 
 	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, uint32(nodeID))
 	if err != nil {
-		InternalServerError(c, "Failed to get node client")
+		InternalServerError(c)
 		return
 	}
 
 	storagePool, err := nc.Pools(c.Request.Context())
 	if err != nil {
-		InternalServerError(c, "Failed to retrieve storage pool")
+		InternalServerError(c)
 		return
 	}
 

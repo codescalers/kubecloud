@@ -14,7 +14,7 @@ import (
 )
 
 // Response represents the response structure for deployment requests
-type Response struct {
+type DeploymentWorkflowResponse struct {
 	WorkflowID string `json:"task_id"`
 	Status     string `json:"status"`
 }
@@ -81,7 +81,7 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 	clusters, err := h.db.ListUserClusters(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list user clusters")
-		InternalServerError(c, "Failed to retrieve deployments")
+		InternalServerError(c)
 		return
 	}
 
@@ -144,7 +144,7 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment")
-			InternalServerError(c, "Failed to lookup deployment")
+			InternalServerError(c)
 		}
 		return
 	}
@@ -152,7 +152,7 @@ func (h *Handler) HandleGetDeployment(c *gin.Context) {
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		InternalServerError(c, "Failed to retrieve deployment details")
+		InternalServerError(c)
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for kubeconfig")
-			InternalServerError(c, "Failed to lookup deployment")
+			InternalServerError(c)
 		}
 		return
 	}
@@ -216,21 +216,21 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		InternalServerError(c, "Failed to retrieve deployment details")
+		InternalServerError(c)
 		return
 	}
 
 	privateKeyBytes, err := os.ReadFile(h.config.SSH.PrivateKeyPath)
 	if err != nil {
 		reqLog.Error().Err(err).Str("key_path", h.config.SSH.PrivateKeyPath).Msg("Failed to read SSH private key")
-		InternalServerError(c, "Failed to read SSH configuration")
+		InternalServerError(c)
 		return
 	}
 
 	kubeconfig, err := clusterResult.GetKubeconfig(c.Request.Context(), string(privateKeyBytes))
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
-		InternalServerError(c, "Failed to retrieve kubeconfig: "+err.Error())
+		InternalServerError(c)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 // @Accept json
 // @Produce json
 // @Param cluster body ClusterInput true "Cluster configuration"
-// @Success 202 {object} APIResponse{data=Response} "Deployment workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Deployment workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -275,7 +275,8 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeployCluster")
 	if err != nil {
-		InternalServerError(c, "Failed to get client configurations")
+		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
@@ -299,13 +300,14 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		reqLog.Error().Err(err).Msg("Database error when checking for existing deployment")
-		InternalServerError(c, "Failed to check existing deployments")
+		InternalServerError(c)
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
-		InternalServerError(c, "Failed to create workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for cluster deployment")
+		InternalServerError(c)
 		return
 	}
 
@@ -315,7 +317,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
-	Accepted(c, "Deployment workflow started successfully", Response{WorkflowID: wf.UUID, Status: string(wf.Status)})
+	Accepted(c, "Deployment workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Delete deployment
@@ -324,7 +326,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param name path string true "Deployment name"
-// @Success 202 {object} APIResponse{data=Response{}} "Deployment deletion workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Deployment deletion workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -334,7 +336,8 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeleteCluster")
 	if err != nil {
-		InternalServerError(c, "Failed to get client configurations")
+		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
@@ -352,14 +355,15 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for deletion")
-			InternalServerError(c, "Failed to lookup deployment")
+			InternalServerError(c)
 		}
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
 	if err != nil {
-		InternalServerError(c, "Failed to create workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for cluster deletion")
+		InternalServerError(c)
 		return
 	}
 
@@ -370,7 +374,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Accepted(c, "Deployment deletion workflow started successfully", Response{WorkflowID: wf.UUID, Status: string(wf.Status)})
+	Accepted(c, "Deployment deletion workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Delete all deployments
@@ -378,20 +382,22 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 // @Tags deployments
 // @Security BearerAuth
 // @Produce json
-// @Success 202 {object} APIResponse{data=Response{}} "Delete all deployments workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Delete all deployments workflow started successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments [delete]
 func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	if err != nil {
-		InternalServerError(c, "Failed to get client configurations")
+		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
 	clusters, err := h.db.ListUserClusters(config.UserID)
 	if err != nil {
-		InternalServerError(c, "Failed to retrieve deployments")
+		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Msg("Failed to list user clusters for deletion")
+		InternalServerError(c)
 		return
 	}
 
@@ -402,7 +408,8 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
 	if err != nil {
-		InternalServerError(c, "Failed to create workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for deleting all deployments")
+		InternalServerError(c)
 		return
 	}
 
@@ -412,7 +419,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Accepted(c, "Delete all deployments workflow started successfully", Response{WorkflowID: wf.UUID, Status: string(wf.Status)})
+	Accepted(c, "Delete all deployments workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Add node to deployment
@@ -422,7 +429,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param cluster body ClusterInput true "Cluster configuration with new node"
-// @Success 202 {object} APIResponse{data=Response{}} "Node addition workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Node addition workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -432,7 +439,8 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleAddNode")
 	if err != nil {
-		InternalServerError(c, "Failed to get client configurations")
+		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
@@ -451,7 +459,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for adding node")
-			InternalServerError(c, "Failed to lookup deployment")
+			InternalServerError(c)
 		}
 		return
 	}
@@ -459,7 +467,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	cl, err := existingCluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", existingCluster.ID).Msg("Failed to deserialize cluster result")
-		InternalServerError(c, "Failed to retrieve deployment details")
+		InternalServerError(c)
 		return
 	}
 
@@ -480,7 +488,8 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
 	if err != nil {
-		InternalServerError(c, "Failed to create workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for adding node")
+		InternalServerError(c)
 		return
 	}
 
@@ -491,7 +500,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	}
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
-	Accepted(c, "Node addition workflow started successfully", Response{WorkflowID: wf.UUID, Status: string(wf.Status)})
+	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Remove node from deployment
@@ -501,7 +510,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 // @Produce json
 // @Param name path string true "Deployment name"
 // @Param node_name path string true "Node name to remove"
-// @Success 202 {object} APIResponse{data=Response{}} "Node removal workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Node removal workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -511,7 +520,8 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleRemoveNode")
 	if err != nil {
-		InternalServerError(c, "Failed to get client configurations")
+		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
@@ -541,7 +551,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for node removal")
-			InternalServerError(c, "Failed to lookup deployment")
+			InternalServerError(c)
 		}
 		return
 	}
@@ -549,7 +559,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	cl, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		InternalServerError(c, "Failed to retrieve deployment details")
+		InternalServerError(c)
 		return
 	}
 
@@ -567,7 +577,8 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
 	if err != nil {
-		InternalServerError(c, "Failed to create workflow")
+		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for removing node")
+		InternalServerError(c)
 		return
 	}
 
@@ -579,5 +590,5 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Accepted(c, "Node removal workflow started successfully", Response{WorkflowID: wf.UUID, Status: string(wf.Status)})
+	Accepted(c, "Node removal workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }

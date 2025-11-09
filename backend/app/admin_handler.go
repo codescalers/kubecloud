@@ -186,9 +186,11 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			NotFound(c, "User not found")
-		} else {
-			InternalServerError(c, "Failed to delete user")
+			return
 		}
+		logger.GetLogger().Error().Err(err).Msg("failed to delete user by id")
+		InternalServerError(c)
+
 		return
 	}
 	OK(c, "User is deleted successfully", nil)
@@ -286,7 +288,7 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 		return
 	}
 
-	OK(c, "Vouchers are Retrieved successfully", gin.H{
+	OK(c, "Vouchers are retrieved successfully", gin.H{
 		"vouchers": vouchers,
 	})
 }
@@ -385,7 +387,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 // @ID list-pending-records
 // @Accept json
 // @Produce json
-// @Success 200 {object} APIResponse{data=PendingRecordsResponse} "Pending records retrieved successfully"
+// @Success 200 {object} APIResponse{data=PendingRecordsResponse} "Pending records are retrieved successfully"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /pending-records [get]
@@ -508,7 +510,8 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	}
 
 	if responseData.SuccessfulEmails == 0 {
-		InternalServerError(c, "Failed to send mail to all users")
+		logger.GetLogger().Error().Msg("failed to send email to all users")
+		InternalServerError(c)
 		return
 	}
 	if responseData.FailedEmailsCount > 0 {

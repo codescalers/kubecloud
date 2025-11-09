@@ -103,7 +103,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -156,7 +156,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -282,7 +282,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -427,7 +427,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -504,7 +504,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Response"
+                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -1198,7 +1198,7 @@ const docTemplate = `{
                 "operationId": "list-pending-records",
                 "responses": {
                     "200": {
-                        "description": "Pending records retrieved successfully",
+                        "description": "Pending records are retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -3291,6 +3291,17 @@ const docTemplate = `{
                 }
             }
         },
+        "app.DeploymentWorkflowResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
         "app.EmailInput": {
             "type": "object",
             "required": [
@@ -3821,17 +3832,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "workflow_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "app.Response": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string"
-                },
-                "task_id": {
                     "type": "string"
                 }
             }

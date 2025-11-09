@@ -268,7 +268,7 @@ func TestListVouchersHandler(t *testing.T) {
 		var vouchersResp map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &vouchersResp)
 		assert.NoError(t, err)
-		assert.Equal(t, "Vouchers are Retrieved successfully", vouchersResp["message"])
+		assert.Equal(t, "Vouchers are retrieved successfully", vouchersResp["message"])
 		data, ok := vouchersResp["data"].(map[string]interface{})
 		assert.True(t, ok)
 		vouchersRaw, ok := data["vouchers"]
@@ -548,7 +548,7 @@ func TestSetMaintenanceModeHandler(t *testing.T) {
 		var result APIResponse
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "Bad Request", result.Message)
+		assert.Equal(t, "Invalid request format", result.Message)
 	})
 
 	t.Run("Test Set maintenance mode with non-admin user", func(t *testing.T) {
