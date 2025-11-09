@@ -18,7 +18,7 @@ type Configuration struct {
 	JwtToken                             JwtToken                      `json:"jwt_token" validate:"required"`
 	Admins                               []string                      `json:"admins" validate:"required"`
 	MailSender                           MailSender                    `json:"mailSender"`
-	Currency                             string                        `json:"currency" validate:"required"`
+	Currency                             string                        `json:"currency" default:"usd"`
 	StripeSecret                         string                        `json:"stripe_secret" validate:"required"`
 	VoucherNameLength                    int                           `json:"voucher_name_length"  validate:"required,gt=0"`
 	TermsANDConditions                   TermsANDConditions            `json:"terms_and_conditions"`
@@ -36,7 +36,7 @@ type Configuration struct {
 	Loki   LokiConfig   `json:"loki"`
 
 	// Notification configuration
-	NotificationConfigPath string             `json:"notification_config_path"`
+	NotificationConfigPath string             `json:"notification_config_path" default:"./notification-config.json"`
 	Notification           NotificationConfig `json:"-"`
 }
 
@@ -47,8 +47,8 @@ type SSHConfig struct {
 
 // Server struct holds server's information
 type Server struct {
-	Host string `json:"host" validate:"required,hostname|ip|url"`
-	Port string `json:"port" validate:"required,numeric"`
+	Host string `json:"host" validate:"required,hostname|ip|url" default:"0.0.0.0"`
+	Port string `json:"port" validate:"required,numeric" default:"8080"`
 }
 
 // DB struct holds database file
@@ -64,15 +64,15 @@ type DB struct {
 // JWT Token struct holds info required for JWT Tokens
 type JwtToken struct {
 	Secret              string `json:"secret" validate:"required"`
-	AccessExpiryMinutes int    `json:"access_expiry_minutes" validate:"required,gt=0"` // in minutes
-	RefreshExpiryHours  int    `json:"refresh_expiry_hours" validate:"required,gt=0"`  // in hours
+	AccessExpiryMinutes int    `json:"access_expiry_minutes" validate:"required,gt=0" default:"60"` // in minutes
+	RefreshExpiryHours  int    `json:"refresh_expiry_hours" validate:"required,gt=0" default:"24"`  // in hours
 }
 
 // MailSender struct to hold sender's email, password
 type MailSender struct {
 	Email               string `json:"email" validate:"required,email"`
 	SendGridKey         string `json:"sendgrid_key" validate:"required"`
-	TimeoutMin          int    `json:"timeout" validate:"min=2"`
+	TimeoutMin          int    `json:"timeout" validate:"min=2" default:"120"`
 	MaxConcurrentSends  int    `json:"max_concurrent_sends" validate:"min=1"`
 	MaxAttachmentSizeMB int64  `json:"max_attachment_size_mb" validate:"min=1"`
 }
@@ -86,7 +86,7 @@ type TermsANDConditions struct {
 // GridAccount holds data for system's account
 type GridAccount struct {
 	Mnemonic string `json:"mnemonic" validate:"required"`
-	Network  string `json:"network" validate:"required"`
+	Network  string `json:"network" validate:"required" default:"main"`
 }
 
 // Invoice struct holds needed data for invoice file
@@ -106,9 +106,15 @@ type LoggerConfig struct {
 }
 
 type LokiConfig struct {
-	URL                 string            `json:"url"`
-	FlushIntervalSecond int               `json:"flush_interval_second"`
-	Labels              map[string]string `json:"labels"`
+	URL                 string      `json:"url"`
+	FlushIntervalSecond int         `json:"flush_interval_second" default:"5"`
+	Labels              *LokiLabels `json:"labels,omitempty"`
+}
+
+type LokiLabels struct {
+	App  string `json:"app,omitempty" default:"myceliumCloud"`
+	Env  string `json:"env,omitempty" default:"main"`
+	Host string `json:"host,omitempty"`
 }
 
 // NotificationConfig holds notification template type rules
@@ -206,17 +212,6 @@ func LoadConfig() (Configuration, error) {
 	// custom validators
 	v := validator.New()
 	registerConfigValidators(v)
-
-	if labelsRaw := viper.GetString("loki.labels"); labelsRaw != "" {
-		parsed := make(map[string]string)
-		pairs := strings.Split(labelsRaw, ",")
-		for _, p := range pairs {
-			if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
-				parsed[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
-			}
-		}
-		config.Loki.Labels = parsed
-	}
 
 	config.SSH.PrivateKeyPath, err = utils.ExpandPath(config.SSH.PrivateKeyPath)
 	if err != nil {

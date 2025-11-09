@@ -1,0 +1,43 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": "8080"
+  },
+  "database": {
+    "dsn": "sqlite3:///app/myceliumCloud.db"
+  },
+  "jwt_token": {
+    "secret": "your-jwt-secret-key-here-make-it-long-and-secure"
+  },
+  "admins": ["admin@admin.com"],
+  "mailSender": {
+    "email": "noreply@example.com",
+    "sendgrid_key": "your-sendgrid-api-key-here"
+  },
+  "stripe_secret": "sk_test_your_stripe_secret_key_here",
+  "terms_and_conditions": {
+    "document_link": "https://example.com/terms",
+    "document_hash": "sha256:example_hash_here"
+  },
+  "system_account": {
+    "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
+    "network": "main"
+  },
+  "redis": {
+    "host": "redis-db",
+    "port": 6379,
+    "password": "pass"
+  },
+	"invoice": {
+		"name": "KubeCloud Invoice",
+		"address": "123 KubeCloud St, Cloud City, CC 12345",
+		"governorate": "Cloud Governorate"
+	},
+  "ssh": {
+    "private_key_path": "/root/.ssh/id_rsa",
+    "public_key_path": "/root/.ssh/id_rsa.pub"
+  },
+	"loki": {
+    "url": "http://loki:3100/loki/api/v1/push"
+	}
+}

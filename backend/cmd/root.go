@@ -143,6 +143,11 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind debug flag: %w", err)
 	}
 
+	// === Development Mode ===
+	if err := bindBoolFlag(rootCmd, "dev_mode", false, "Enable development mode"); err != nil {
+		return fmt.Errorf("failed to bind dev_mode flag: %w", err)
+	}
+
 	// === Monitor Balance Interval In Hours ===
 	if err := bindIntFlag(rootCmd, "monitor_balance_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
 		return fmt.Errorf("failed to bind monitor_balance_interval_in_minutes flag: %w", err)
@@ -176,8 +181,16 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "loki.flush_interval_second", 2, "Loki flush interval (seconds)"); err != nil {
 		return fmt.Errorf("failed to bind loki.flush_interval_second flag: %w", err)
 	}
-	if err := bindStringFlag(rootCmd, "loki.labels", "app=myceliumCloud,env=,host=", "Loki labels (key=value,key2=value2)"); err != nil {
-		return fmt.Errorf("failed to bind loki.labels flag: %w", err)
+
+	// === Loki Labels ===
+	if err := bindStringFlag(rootCmd, "loki.labels.app", "myceliumcloud", "Loki app label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.app flag: %w", err)
+	}
+	if err := bindStringFlag(rootCmd, "loki.labels.env", "main", "Loki env label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.env flag: %w", err)
+	}
+	if err := bindStringFlag(rootCmd, "loki.labels.host", "localhost", "Loki host label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.host flag: %w", err)
 	}
 
 	// === Notification Config ===
@@ -292,11 +305,20 @@ It supports:
 		if loggerConfig.LogDir == "" {
 			loggerConfig.LogDir = "./logs"
 		}
+
+		if config.Loki.Labels == nil {
+			return fmt.Errorf("failed to initialize logger: loki.labels is nil")
+		}
+
 		fmt.Printf("Setting up logging to: %s/app.log\n", loggerConfig.LogDir)
 		lokiConfig := &logger.LokiConfig{
 			URL:           config.Loki.URL,
 			FlushInterval: time.Duration(config.Loki.FlushIntervalSecond) * time.Second,
-			Labels:        config.Loki.Labels,
+			Labels: map[string]string{
+				"app":  config.Loki.Labels.App,
+				"env":  config.Loki.Labels.Env,
+				"host": config.Loki.Labels.Host,
+			},
 		}
 		if err := logger.InitLogger(loggerConfig, lokiConfig, config.Debug); err != nil {
 			return fmt.Errorf("failed to initialize logger: %w", err)
