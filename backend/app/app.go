@@ -109,6 +109,9 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	}
 
 	sseManager := internal.NewSSEManager()
+	// Set the token manager for periodic token validation
+	sseManager.SetTokenManager(tokenHandler)
+	
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),

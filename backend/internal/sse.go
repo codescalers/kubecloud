@@ -21,12 +21,22 @@ const (
 	Error   = "error"
 )
 
+// SSEClient represents a single SSE client connection
+type SSEClient struct {
+	Channel      chan SSEMessage
+	Token        string
+	ConnectedAt  time.Time
+	CancelFunc   context.CancelFunc
+}
+
 // SSEManager handles Server-Sent Events for real-time notifications
 type SSEManager struct {
-	clients map[int][]chan SSEMessage // userID -> client channels
-	mu      sync.RWMutex
-	ctx     context.Context
-	cancel  context.CancelFunc
+	clients       map[int][]*SSEClient // userID -> client connections
+	mu            sync.RWMutex
+	ctx           context.Context
+	cancel        context.CancelFunc
+	tokenManager  TokenManager
+	checkInterval time.Duration
 }
 
 // SSEMessage represents a server-sent event message
@@ -43,12 +53,20 @@ type SSEMessage struct {
 func NewSSEManager() *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
-		clients: make(map[int][]chan SSEMessage),
-		ctx:     ctx,
-		cancel:  cancel,
+		clients:       make(map[int][]*SSEClient),
+		ctx:           ctx,
+		cancel:        cancel,
+		checkInterval: 30 * time.Second, // Check tokens every 30 seconds
 	}
 
 	return manager
+}
+
+// SetTokenManager sets the token manager for token validation
+func (s *SSEManager) SetTokenManager(tm TokenManager) {
+	s.tokenManager = tm
+	// Start the token validation goroutine
+	go s.validateTokensPeriodically()
 }
 
 // Stop gracefully shuts down the SSE manager
@@ -58,37 +76,51 @@ func (s *SSEManager) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Close all client channels
-	for userID, channels := range s.clients {
-		for _, ch := range channels {
-			close(ch)
+	// Close all client channels and cancel their contexts
+	for userID, clients := range s.clients {
+		for _, client := range clients {
+			if client.CancelFunc != nil {
+				client.CancelFunc()
+			}
+			close(client.Channel)
 		}
 		delete(s.clients, userID)
 	}
 
 }
 
-// AddClient adds a new client channel for a user
-func (s *SSEManager) AddClient(userID int) chan SSEMessage {
+// AddClient adds a new client connection for a user with token tracking
+func (s *SSEManager) AddClient(userID int, token string) (*SSEClient, context.Context) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	ch := make(chan SSEMessage, 10)
-	s.clients[userID] = append(s.clients[userID], ch)
+	// Create a cancellable context for this specific client
+	ctx, cancel := context.WithCancel(s.ctx)
 
-	return ch
+	client := &SSEClient{
+		Channel:      make(chan SSEMessage, 10),
+		Token:        token,
+		ConnectedAt:  time.Now(),
+		CancelFunc:   cancel,
+	}
+	s.clients[userID] = append(s.clients[userID], client)
+
+	return client, ctx
 }
 
-// RemoveClient removes a client channel for a user
-func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
+// RemoveClient removes a client connection for a user
+func (s *SSEManager) RemoveClient(userID int, client *SSEClient) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	channels := s.clients[userID]
-	for i, ch := range channels {
-		if ch == clientChan {
-			s.clients[userID] = append(channels[:i], channels[i+1:]...)
-			close(ch)
+	clients := s.clients[userID]
+	for i, c := range clients {
+		if c == client {
+			s.clients[userID] = append(clients[:i], clients[i+1:]...)
+			if client.CancelFunc != nil {
+				client.CancelFunc()
+			}
+			close(client.Channel)
 			break
 		}
 	}
@@ -116,23 +148,70 @@ func (s *SSEManager) Notify(userID int, msgType string, severity models.Notifica
 	}
 
 	s.mu.RLock()
-	channels := make([]chan SSEMessage, len(s.clients[userID]))
-	copy(channels, s.clients[userID])
+	clients := make([]*SSEClient, len(s.clients[userID]))
+	copy(clients, s.clients[userID])
 	s.mu.RUnlock()
 
 	// Send to all user's clients
-	for _, ch := range channels {
+	for _, client := range clients {
 		select {
-		case ch <- message:
+		case client.Channel <- message:
 			// Message sent successfully
 		case <-time.After(2 * time.Second):
 			// Client not responding, remove it
-			go s.RemoveClient(userID, ch)
+			go s.RemoveClient(userID, client)
 		case <-s.ctx.Done():
 			return
 		}
 	}
 
+}
+
+// validateTokensPeriodically checks all active SSE connections and closes those with expired tokens
+func (s *SSEManager) validateTokensPeriodically() {
+	if s.tokenManager == nil {
+		logger.GetLogger().Warn().Msg("Token manager not set, skipping periodic token validation")
+		return
+	}
+
+	ticker := time.NewTicker(s.checkInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.validateAllTokens()
+		case <-s.ctx.Done():
+			return
+		}
+	}
+}
+
+// validateAllTokens validates tokens for all active SSE connections
+func (s *SSEManager) validateAllTokens() {
+	s.mu.RLock()
+	// Create a snapshot of all clients to validate
+	clientsToValidate := make(map[int][]*SSEClient)
+	for userID, clients := range s.clients {
+		clientsToValidate[userID] = make([]*SSEClient, len(clients))
+		copy(clientsToValidate[userID], clients)
+	}
+	s.mu.RUnlock()
+
+	// Validate tokens outside the lock to avoid blocking
+	for userID, clients := range clientsToValidate {
+		for _, client := range clients {
+			_, err := s.tokenManager.VerifyToken(client.Token)
+			if err != nil {
+				logger.GetLogger().Info().
+					Int("user_id", userID).
+					Err(err).
+					Msg("SSE connection token expired, closing connection")
+				// Remove the client with expired token
+				s.RemoveClient(userID, client)
+			}
+		}
+	}
 }
 
 // HandleSSE handles SSE HTTP connections
@@ -143,14 +222,29 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 		return
 	}
 
+	// Get the token from the context (set by the middleware)
+	token := c.Query("token")
+	if token == "" {
+		// Fallback to Authorization header if available
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" {
+			token = authHeader[len("Bearer "):]
+		}
+	}
+
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
+		return
+	}
+
 	// Set SSE headers
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	// Add client and get channel
-	clientChan := s.AddClient(userID)
-	defer s.RemoveClient(userID, clientChan)
+	// Add client and get client object with its context
+	client, clientCtx := s.AddClient(userID, token)
+	defer s.RemoveClient(userID, client)
 
 	// Send initial connection message
 	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"}, "")
@@ -158,7 +252,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	// Stream messages to client
 	c.Stream(func(w io.Writer) bool {
 		select {
-		case message, ok := <-clientChan:
+		case message, ok := <-client.Channel:
 			if !ok {
 				return false // Channel closed
 			}
@@ -171,6 +265,10 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			c.SSEvent("message", string(data))
 			return true
+
+		case <-clientCtx.Done():
+			logger.GetLogger().Debug().Int("user_id", userID).Msg("SSE client context cancelled (token expired or connection closed)")
+			return false
 
 		case <-c.Request.Context().Done():
 			logger.GetLogger().Debug().Int("user_id", userID).Msg("Client disconnected")
