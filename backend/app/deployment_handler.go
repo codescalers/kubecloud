@@ -85,7 +85,7 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 
 	clusters, err := h.db.ListUserClusters(userID)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to list user clusters")
+		reqLog.Error().Err(err).Msg("failed to list user clusters")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
 		return
 	}
@@ -94,7 +94,7 @@ func (h *Handler) HandleListDeployments(c *gin.Context) {
 	for _, cluster := range clusters {
 		clusterResult, err := cluster.GetClusterResult()
 		if err != nil {
-			reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+			reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("failed to deserialize cluster result")
 			continue
 		}
 

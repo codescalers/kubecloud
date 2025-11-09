@@ -32,10 +32,10 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
 		}
 		if err != nil {
-			log.Warn().Err(err).Msg("Missing or invalid config in workflow state")
+			log.Warn().Err(err).Msg("missing or invalid config in workflow state")
 			userIDVal, ok := w.State["user_id"].(int)
 			if !ok {
-				log.Error().Msg("Missing or invalid 'user_id' in workflow state")
+				log.Error().Msg("missing or invalid 'user_id' in workflow state")
 				return
 			}
 			userID = userIDVal
@@ -58,7 +58,7 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 		notification := models.NewNotification(userID, notificationType, payload, models.WithNoPersist())
 		err = n.Send(ctx, notification)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to send notification")
+			log.Error().Err(err).Msg("failed to send notification")
 		}
 		log.Info().Msg("Starting workflow")
 	}
@@ -82,9 +82,9 @@ func hookStepStarted(ctx context.Context, w *ewf.Workflow, step *ewf.Step) {
 func hookWorkflowDone(_ context.Context, wf *ewf.Workflow, err error) {
 	log := logger.GetLogger().With().Str("workflow_name", wf.Name).Logger()
 	if err != nil {
-		log.Error().Err(err).Msg("Workflow failed")
+		log.Error().Err(err).Msg("workflow failed")
 	} else {
-		log.Info().Msg("Workflow completed successfully")
+		log.Info().Msg("workflow completed successfully")
 	}
 }
 
@@ -101,7 +101,7 @@ func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error)
 			logEvent = logEvent.Uint32("node_id", node.NodeID)
 		}
 
-		logEvent.Msg("Step failed")
+		logEvent.Msg("step failed")
 	} else {
 		logEvent := log.Info()
 
@@ -110,7 +110,7 @@ func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error)
 			logEvent = logEvent.Uint32("node_id", node.NodeID)
 		}
 
-		logEvent.Msg("Step completed successfully")
+		logEvent.Msg("step completed successfully")
 	}
 }
 
@@ -121,12 +121,12 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 			return
 		}
 		if errors.Is(err, ewf.ErrFailWorkflowNow) {
-			log.Warn().Msg("Cluster not found in database")
+			log.Warn().Msg("cluster not found in database")
 			return
 		}
 		config, cfgErr := getConfig(wf.State)
 		if cfgErr != nil {
-			log.Error().Err(cfgErr).Msg("Failed to get config from state")
+			log.Error().Err(cfgErr).Msg("failed to get config from state")
 			return
 		}
 		severity := models.NotificationSeverityError
@@ -141,11 +141,11 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 		})
 		cluster, errCluster := statemanager.GetCluster(wf.State)
 		if errCluster != nil {
-			log.Error().Err(errCluster).Msg("Failed to get cluster from state")
+			log.Error().Err(errCluster).Msg("failed to get cluster from state")
 
 			notification := models.NewNotification(config.UserID, models.NotificationTypeDeployment, payload, models.WithSeverity(severity), models.WithChannels(notification.ChannelEmail))
 			if err := notificationService.Send(ctx, notification); err != nil {
-				log.Error().Err(err).Msg("Failed to send cluster health check notification")
+				log.Error().Err(err).Msg("failed to send cluster health check notification")
 			}
 
 			return
@@ -154,10 +154,10 @@ func hookClusterHealthCheck(notificationService *notification.NotificationServic
 		payload["cluster_name"] = cluster.Name
 		notificationObj := models.NewNotification(config.UserID, models.NotificationTypeDeployment, payload, models.WithSeverity(severity), models.WithChannels(notification.ChannelEmail))
 		if err := notificationService.Send(ctx, notificationObj); err != nil {
-			log.Error().Err(err).Msg("Failed to send cluster health check notification")
+			log.Error().Err(err).Msg("failed to send cluster health check notification")
 		}
 
-		log.Error().Err(err).Msg("Cluster health check failed")
+		log.Error().Err(err).Msg("cluster health check failed")
 	}
 }
 
@@ -188,7 +188,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 
 		node, err := getFromState[kubedeployer.Node](wf.State, "node")
 		if err != nil {
-			log.Error().Err(err).Msg("Missing or invalid 'node' in workflow state")
+			log.Error().Err(err).Msg("missing or invalid 'node' in workflow state")
 			return
 		}
 
@@ -198,7 +198,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 				Err(rollbackErr).
 				Str("node", node.Name).
 				Uint32("node_id", node.NodeID).
-				Msg("Failed to create rollback workflow")
+				Msg("failed to create rollback workflow")
 			return
 		}
 
@@ -216,7 +216,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 				Err(err).
 				Str("node", node.Name).
 				Uint32("node_id", node.NodeID).
-				Msg("Failed to run rollback workflow")
+				Msg("failed to run rollback workflow")
 			return
 		}
 

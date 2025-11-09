@@ -267,13 +267,13 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to create keypair for SS58 address")
+			log.Error().Err(err).Msg("failed to create keypair for SS58 address")
 			return err
 		}
 
 		sponseeAddress, err := internal.AccountAddressFromKeypair(sponseeKeyPair)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to get SS58 address")
+			log.Error().Err(err).Msg("failed to get SS58 address")
 			return err
 		}
 
@@ -404,7 +404,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
-			log.Error().Err(err).Msg("Error converting USD to TFT")
+			log.Error().Err(err).Msg("error converting USD to TFT")
 			return err
 		}
 
@@ -414,7 +414,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, db models.DB, sys
 			TFTAmount:    requestedTFTs,
 			TransferMode: transferMode,
 		}); err != nil {
-			log.Error().Err(err).Msg("Failed to create pending record")
+			log.Error().Err(err).Msg("failed to create pending record")
 			return err
 		}
 

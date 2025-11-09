@@ -35,7 +35,7 @@ func (h *Handler) TrackClusterHealth(ctx context.Context) {
 			log.Info().Msg("Cluster health check started")
 			clusters, err := h.db.ListAllClusters()
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to list clusters")
+				log.Error().Err(err).Msg("failed to list clusters")
 				continue
 			}
 
@@ -48,12 +48,12 @@ func (h *Handler) TrackClusterHealth(ctx context.Context) {
 
 			wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to create health tracking workflow")
+				log.Error().Err(err).Msg("failed to create health tracking workflow")
 				continue
 			}
 			cl, err := cluster.GetClusterResult()
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to get cluster result during health tracking")
+				log.Error().Err(err).Msg("failed to get cluster result during health tracking")
 				continue
 			}
 			wf.State = ewf.State{
@@ -87,7 +87,7 @@ func (h *Handler) TrackReservedNodeHealth(ctx context.Context, notificationServi
 
 			reservedNodes, err := h.db.ListAllReservedNodes()
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to get reserved nodes for health check")
+				log.Error().Err(err).Msg("failed to get reserved nodes for health check")
 				continue
 			}
 
@@ -188,7 +188,7 @@ func (h *Handler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, gri
 		)
 
 		if err := notificationService.Send(h.appContext, notif); err != nil {
-			log.Error().Err(err).Int("user_id", userID).Msg("Failed to send consolidated notification")
+			log.Error().Err(err).Int("user_id", userID).Msg("failed to send consolidated notification")
 		}
 	}
 }
@@ -201,7 +201,7 @@ func (h *Handler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, job
 
 		node, err := grid.Node(ctx, userNode.NodeID)
 		if err != nil {
-			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("Failed to get node for health check")
+			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("failed to get node for health check")
 			continue
 		}
 

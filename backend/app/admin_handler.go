@@ -178,7 +178,7 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
-		reqLog.Error().Err(err).Msg("Invalid user ID to delete")
+		reqLog.Error().Err(err).Msg("invalid user id to delete")
 		Error(c, http.StatusBadRequest, "Invalid user ID", err.Error())
 		return
 	}
@@ -334,14 +334,14 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
-		reqLog.Error().Err(err).Msg("Invalid user ID format")
+		reqLog.Error().Err(err).Msg("invalid user ID format")
 		Error(c, http.StatusBadRequest, "Invalid user ID format", "")
 		return
 	}
 
 	user, err := h.db.GetUserByID(id)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to get user by ID")
+		reqLog.Error().Err(err).Msg("failed to get user by id")
 		InternalServerError(c)
 		return
 	}
@@ -356,13 +356,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAdminCreditBalance)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to create workflow")
+		reqLog.Error().Err(err).Msg("failed to create workflow")
 		InternalServerError(c)
 		return
 	}
 
 	if err := h.db.CreateTransaction(&transaction); err != nil {
-		reqLog.Error().Err(err).Msg("Failed to create credit transaction")
+		reqLog.Error().Err(err).Msg("failed to create credit transaction")
 		InternalServerError(c)
 		return
 	}

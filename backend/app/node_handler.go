@@ -617,7 +617,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 
 	twinID64, err := strconv.ParseUint(twinIDParam, 10, 64)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to parse twin id")
+		reqLog.Error().Err(err).Msg("failed to parse twin id")
 		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
 		return
 	}
@@ -632,7 +632,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 
 	twins, _, err := h.proxyClient.Twins(c.Request.Context(), filter, limit)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to get twins")
+		reqLog.Error().Err(err).Msg("failed to get twins")
 		InternalServerError(c)
 		return
 	}
@@ -685,14 +685,14 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 
 	nodeID, err := strconv.ParseUint(nodeIDParam, 10, 32)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to parse node id")
+		reqLog.Error().Err(err).Msg("failed to parse node id")
 		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing node id")
 		return
 	}
 
 	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
 	if err != nil {
-		reqLog.Error().Err(err).Msg("Failed to get node from proxy")
+		reqLog.Error().Err(err).Msg("failed to get node from proxy")
 		Error(c, http.StatusNotFound, "failed to get node", "")
 		return
 	}

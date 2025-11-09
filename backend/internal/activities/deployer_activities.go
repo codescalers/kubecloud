@@ -48,18 +48,18 @@ func ensureClient(state ewf.State) {
 	// Get config first
 	config, err := getConfig(state)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get config")
+		log.Error().Err(err).Msg("failed to get config")
 		return
 	}
 
 	// Use the statemanager to get or create client
 	_, err = statemanager.GetKubeClient(state, config)
 	if err != nil {
-		log.Error().Err(err).Int("user_id", config.UserID).Msg("Failed to ensure kubeclient")
+		log.Error().Err(err).Int("user_id", config.UserID).Msg("failed to ensure kubeclient")
 		return
 	}
 
-	log.Debug().Msg("Kubeclient ensured and ready for use")
+	log.Debug().Msg("kubeclient ensured and ready for use")
 }
 
 func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
@@ -582,15 +582,15 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 		if err != nil && isDeployWorkflow(wf.Name) {
 			cluster, clusterErr := statemanager.GetCluster(wf.State)
 			if clusterErr != nil || cluster.ProjectName == "" {
-				log.Error().Err(clusterErr).Msg("Nothing to rollback")
+				log.Error().Err(clusterErr).Msg("nothing to rollback")
 				return
 			}
 
-			log.Info().Str("project_name", cluster.ProjectName).Msg("Triggering rollback workflow for failed deployment")
+			log.Info().Str("project_name", cluster.ProjectName).Msg("triggering rollback workflow for failed deployment")
 
 			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
 			if rollbackErr != nil {
-				log.Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("Failed to create rollback workflow")
+				log.Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("failed to create rollback workflow")
 				return
 			}
 
@@ -604,7 +604,7 @@ func deploymentFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.Aft
 
 			// wait the rollback workflow to finish before closing the client
 			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
-				log.Error().Err(err).Str("project_name", cluster.ProjectName).Msg("Failed to run rollback workflow")
+				log.Error().Err(err).Str("project_name", cluster.ProjectName).Msg("failed to run rollback workflow")
 				return
 			}
 
