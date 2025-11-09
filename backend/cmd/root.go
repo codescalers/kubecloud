@@ -161,7 +161,7 @@ func addFlags() error {
 	}
 
 	// === Development Mode ===
-	if err := bindBoolFlag(rootCmd, "dev_mode", true, "Enable development mode"); err != nil {
+	if err := bindBoolFlag(rootCmd, "dev_mode", false, "Enable development mode"); err != nil {
 		return fmt.Errorf("failed to bind dev_mode flag: %w", err)
 	}
 
