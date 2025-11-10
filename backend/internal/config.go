@@ -246,7 +246,7 @@ func LoadConfig() (Configuration, error) {
 
 	config.Notification, err = loadNotificationConfig(notificationFilePath)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to load notification config")
+		logger.ForOperation("config", "load_notification_config").Error().Err(err).Msg("Failed to load notification config")
 		config.Notification = NotificationConfig{}
 	}
 

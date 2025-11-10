@@ -85,9 +85,10 @@ type MaintenanceModeStatus struct {
 // @Router /users [get]
 // ListUsersHandler lists all users
 func (h *Handler) ListUsersHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "ListUsersHandler")
 	users, err := h.db.ListAllUsers()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
+		reqLog.Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
 		return
 	}
@@ -111,7 +112,10 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 
 			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
+				reqLog.Error().
+					Int("target_user_id", user.ID).
+					Err(err).
+					Msg("failed to get user balance")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
 				mu.Unlock()
@@ -132,7 +136,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 
 	// Check if there were any errors during balance fetching
 	if multiErr != nil {
-		logger.GetLogger().Error().Err(multiErr).Msg("errors occurred while fetching user balances")
+		reqLog.Error().Err(multiErr).Msg("errors occurred while fetching user balances")
 		InternalServerError(c)
 		return
 	}
@@ -158,6 +162,9 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 // DeleteUsersHandler deletes user from system
 func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 	userID := c.Param("user_id")
+	authUserID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "DeleteUsersHandler")
+
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
 		return
@@ -165,12 +172,11 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("invalid user id to delete")
 		Error(c, http.StatusBadRequest, "Invalid user ID", err.Error())
 		return
 	}
 
-	authUserID := c.GetInt("user_id")
 	if id == authUserID {
 		Error(c, http.StatusForbidden, "Admins cannot delete their own account", "")
 		return
@@ -205,10 +211,11 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 // GenerateVouchersHandler generates bulk of vouchers
 func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 	var request GenerateVouchersInput
-
+	reqLog := requestLogger(c, "GenerateVouchersHandler")
+	adminID := c.GetInt("user_id")
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("Invalid request format")
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
@@ -227,7 +234,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		}
 
 		if err := h.db.CreateVoucher(&voucher); err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to create voucher")
+			reqLog.Error().Err(err).Msg("failed to create voucher")
 			InternalServerError(c)
 			return
 		}
@@ -235,7 +242,6 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 		vouchers = append(vouchers, voucher)
 	}
 
-	adminID := c.GetInt("user_id")
 	if h.notificationService != nil && adminID > 0 {
 
 		payload := notification.MergePayload(notification.CommonPayload{
@@ -252,7 +258,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 			models.WithNoPersist(),
 		)
 		if err := h.notificationService.Send(h.appContext, notif); err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to send UI notification for voucher generation")
+			reqLog.Error().Err(err).Msg("failed to send UI notification for voucher generation")
 		}
 	}
 
@@ -273,10 +279,10 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 // @Router /vouchers [get]
 // ListVouchersHandler returns all vouchers in system
 func (h *Handler) ListVouchersHandler(c *gin.Context) {
-
+	reqLog := requestLogger(c, "ListVouchersHandler")
 	vouchers, err := h.db.ListAllVouchers()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list all vouchers")
+		reqLog.Error().Err(err).Msg("failed to list all vouchers")
 		InternalServerError(c)
 		return
 	}
@@ -301,6 +307,9 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 // CreditUserHandler lets admin credit specific user with money
 func (h *Handler) CreditUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
+	// get admin ID from middleware context
+	reqLog := requestLogger(c, "CreditUserHandler")
+	adminID := c.GetInt("user_id")
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
 		return
@@ -315,20 +324,17 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("invalid user ID format")
 		Error(c, http.StatusBadRequest, "Invalid user ID format", "")
 		return
 	}
 
 	user, err := h.db.GetUserByID(id)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to get user by id")
 		InternalServerError(c)
 		return
 	}
-
-	// get admin ID from middleware context
-	adminID := c.GetInt("user_id")
 
 	transaction := models.Transaction{
 		UserID:    user.ID,
@@ -340,13 +346,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAdminCreditBalance)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to create workflow")
 		InternalServerError(c)
 		return
 	}
 
 	if err := h.db.CreateTransaction(&transaction); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to create credit transaction")
+		reqLog.Error().Err(err).Msg("failed to create credit transaction")
 		InternalServerError(c)
 		return
 	}
@@ -380,9 +386,10 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 // @Router /pending-records [get]
 // ListPendingRecordsHandler returns all pending records in the system
 func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "ListPendingRecordsHandler")
 	pendingRecords, err := h.db.ListAllPendingRecords()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list all pending records")
+		reqLog.Error().Err(err).Msg("failed to list all pending records")
 		InternalServerError(c)
 		return
 	}
@@ -391,14 +398,14 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 	for _, record := range pendingRecords {
 		usdAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd amount")
+			reqLog.Error().Err(err).Msg("failed to convert tft to usd amount")
 			InternalServerError(c)
 			return
 		}
 
 		usdTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to convert tft to usd transferred amount")
+			reqLog.Error().Err(err).Msg("failed to convert tft to usd transferred amount")
 			InternalServerError(c)
 			return
 		}
@@ -431,6 +438,7 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /users/mail [post]
 func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "SendMailToAllUsersHandler")
 	var input AdminMailInput
 	if err := c.ShouldBind(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
@@ -440,11 +448,11 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 	var attachments []mailservice.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
-			logger.GetLogger().Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
+			reqLog.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
 
 			attachments, err = h.parseAttachments(uploaded)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("failed to parse attachments")
+				reqLog.Error().Err(err).Msg("failed to parse attachments")
 				InternalServerError(c)
 				return
 			}
@@ -453,7 +461,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 
 	users, err := h.db.ListAllUsers()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to list all users")
+		reqLog.Error().Err(err).Msg("failed to list all users")
 		InternalServerError(c)
 		return
 	}
@@ -468,7 +476,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 		failedEmails []string
 	)
 
-	logger.GetLogger().Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
+	reqLog.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
 	for _, user := range users {
 		wg.Add(1)
 		emailConcurrencyLimiter <- struct{}{}
@@ -477,7 +485,7 @@ func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
 			defer func() { <-emailConcurrencyLimiter }()
 			err := h.mailService.SendMail(h.config.MailSender.Email, user.Email, input.Subject, body, attachments...)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+				reqLog.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
 				failedEmails = append(failedEmails, user.Email)
 				mu.Unlock()
@@ -591,17 +599,18 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mails
 // @Router /system/maintenance/status [put]
 // SetMaintenanceModeHandler sets maintenance mode for the system
 func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "SetMaintenanceModeHandler")
 	var request MaintenanceModeStatus
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("Invalid request format")
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
 		return
 	}
 
 	if err := h.db.SetMaintenanceMode(request.Enabled); err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("Failed to set maintenance mode")
 		InternalServerError(c)
 		return
 	}
@@ -621,9 +630,10 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
 func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "GetMaintenanceModeHandler")
 	enabled, err := h.db.GetMaintenanceMode()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("Failed to get maintenance mode")
 		InternalServerError(c)
 		return
 	}

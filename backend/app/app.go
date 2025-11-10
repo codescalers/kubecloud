@@ -60,7 +60,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
-	// Add our custom logging middleware
+	// Add our custom logging middleware (includes request ID generation)
 	router.Use(middlewares.GinLoggerMiddleware())
 
 	stripe.Key = config.StripeSecret
@@ -80,7 +80,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 
 	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("Failed to create user storage")
 		return nil, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
@@ -90,21 +89,18 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	substrateClient, err := manager.Substrate()
 
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to substrate client")
 		return nil, fmt.Errorf("failed to connect to substrate client: %w", err)
 	}
 
 	graphqlURL := []string{config.GraphqlURL}
 	graphqlClient, err := graphql.NewGraphQl(graphqlURL...)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to graphql client")
 		return nil, fmt.Errorf("failed to connect to graphql client: %w", err)
 	}
 
 	firesquidURL := []string{config.FiresquidURL}
 	firesquidClient, err := graphql.NewGraphQl(firesquidURL...)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return nil, fmt.Errorf("failed to connect to firesquid client: %w", err)
 	}
 
@@ -131,7 +127,6 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// initialize workflow ewfEngine
 	ewfEngine, err := ewf.NewEngine(ewfStore)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to init EWF engine")
 		return nil, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
@@ -378,7 +373,10 @@ func (app *App) Run() error {
 		Handler: app.router,
 	}
 
-	logger.GetLogger().Info().Msgf("Starting server at %s:%s", app.config.Server.Host, app.config.Server.Port)
+	logger.GetLogger().Info().
+		Str("host", app.config.Server.Host).
+		Str("port", app.config.Server.Port).
+		Msg("Starting server")
 
 	if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.GetLogger().Error().Err(err).Msg("Failed to start server")

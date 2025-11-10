@@ -50,14 +50,17 @@ func gatherContractsToCancel(cluster *Cluster, nodeToRemove *Node, networkStillI
 }
 
 func (c *Client) isContractActive(contractID uint64) bool {
-	logger.GetLogger().Debug().Msgf("Checking if contract %d is active", contractID)
+	log := logger.ForOperation("kubedeployer", "check_contract_active")
+	log.Debug().Uint64("contract_id", contractID).Msg("Checking if contract is active")
 	_, err := c.GridClient.SubstrateConn.GetContract(contractID)
 	return err == nil
 }
 
 func (c *Client) cancelNodeContracts(contractsToCancel []uint64, name string) error {
+	log := logger.ForOperation("kubedeployer", "cancel_node_contracts")
+
 	if len(contractsToCancel) == 0 {
-		logger.GetLogger().Debug().Msgf("No contracts to cancel for node %q", name)
+		log.Debug().Str("node_name", name).Msg("No contracts to cancel")
 		return nil
 	}
 
@@ -72,7 +75,10 @@ func (c *Client) cancelNodeContracts(contractsToCancel []uint64, name string) er
 			if c.isContractActive(contractID) {
 				activeContractsChan <- contractID
 			} else {
-				logger.GetLogger().Warn().Msgf("Contract %d for node %q does not exist or already canceled, skipping", contractID, name)
+				log.Warn().
+					Uint64("contract_id", contractID).
+					Str("node_name", name).
+					Msg("Contract does not exist or already canceled, skipping")
 			}
 		}(contractID)
 	}
@@ -83,7 +89,10 @@ func (c *Client) cancelNodeContracts(contractsToCancel []uint64, name string) er
 		existingContractsToCancel = append(existingContractsToCancel, contractID)
 	}
 
-	logger.GetLogger().Debug().Msgf("Canceling contracts for %q: %v", name, existingContractsToCancel)
+	log.Debug().
+		Str("node_name", name).
+		Interface("contract_ids", existingContractsToCancel).
+		Msg("Canceling contracts")
 	if err := c.GridClient.BatchCancelContract(existingContractsToCancel); err != nil {
 		return fmt.Errorf("failed to cancel node and/or network contracts: %v", err)
 	}
@@ -92,11 +101,16 @@ func (c *Client) cancelNodeContracts(contractsToCancel []uint64, name string) er
 }
 
 func updateNetworkWorkload(cluster *Cluster, removedNodeId uint32, networkStillInUse bool) {
+	log := logger.ForOperation("kubedeployer", "update_network_workload")
+
 	network := cluster.Network
 
 	_, exists := network.NodeDeploymentID[removedNodeId]
 	if !exists || networkStillInUse {
-		logger.GetLogger().Debug().Msgf("Network workload for node_id %d still in use, skipping cleanup", removedNodeId)
+		log.Debug().
+			Uint32("node_id", removedNodeId).
+			Bool("network_in_use", networkStillInUse).
+			Msg("Network workload still in use, skipping cleanup")
 		return
 	}
 
@@ -124,7 +138,9 @@ func updateNetworkWorkload(cluster *Cluster, removedNodeId uint32, networkStillI
 	}
 
 	cluster.Network = network
-	logger.GetLogger().Debug().Uint32("node_id", removedNodeId).Msg("Cleaned up network workload data for canceled network contract")
+	log.Debug().
+		Uint32("node_id", removedNodeId).
+		Msg("Cleaned up network workload data for canceled network contract")
 }
 
 func removeNodeFromCluster(cluster *Cluster, nodeIndex int) {
@@ -137,6 +153,8 @@ func removeNodeFromCluster(cluster *Cluster, nodeIndex int) {
 // RemoveNode cancel the node contract on chain and remove it from the cluster in db
 // also cancel the network contract and clean up the network workload in db if not used by other nodes
 func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName string) error {
+	log := logger.ForOperation("kubedeployer", "remove_node")
+
 	nodeToRemove, nodeIndex, err := getNodeToRemove(cluster, nodeName)
 	if err != nil {
 		return err
@@ -154,6 +172,9 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 
 	removeNodeFromCluster(cluster, nodeIndex)
 
-	logger.GetLogger().Debug().Msgf("Successfully removed node %s from cluster %s", nodeName, cluster.Name)
+	log.Debug().
+		Str("node_name", nodeName).
+		Str("cluster", cluster.Name).
+		Msg("Successfully removed node from cluster")
 	return nil
 }

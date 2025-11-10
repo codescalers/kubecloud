@@ -152,6 +152,8 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	clientChan := s.AddClient(userID)
 	defer s.RemoveClient(userID, clientChan)
 
+	log := logger.ForOperation("sse", "handle_connection").With().Int("user_id", userID).Logger()
+
 	// Send initial connection message
 	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"}, "")
 
@@ -165,7 +167,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			data, err := json.Marshal(message)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to marshal SSE message")
+				log.Error().Err(err).Msg("Failed to marshal SSE message")
 				return false
 			}
 
@@ -173,7 +175,7 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 			return true
 
 		case <-c.Request.Context().Done():
-			logger.GetLogger().Debug().Int("user_id", userID).Msg("Client disconnected")
+			log.Debug().Msg("Client disconnected")
 			return false
 
 		case <-s.ctx.Done():
