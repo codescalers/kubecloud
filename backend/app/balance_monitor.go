@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"kubecloud/internal"
 	"kubecloud/models"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
+func (h *Handler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 	balanceTicker := time.NewTicker(time.Duration(h.config.MonitorBalanceIntervalInMinutes) * time.Minute)
 	adminNotifyTicker := time.NewTicker(time.Duration(h.config.NotifyAdminsForPendingRecordsInHours) * time.Hour)
 	defer balanceTicker.Stop()
@@ -40,6 +41,8 @@ func (h *Handler) MonitorSystemBalanceAndHandleSettlement() {
 					logger.GetLogger().Error().Err(err).Send()
 				}
 			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }

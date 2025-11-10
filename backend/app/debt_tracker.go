@@ -1,22 +1,29 @@
 package app
 
 import (
+	"context"
 	"kubecloud/internal"
 	"time"
+
+	"kubecloud/internal/logger"
 
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"kubecloud/internal/logger"
 )
 
-func (h *Handler) TrackUserDebt(gridClient deployer.TFPluginClient) {
+func (h *Handler) TrackUserDebt(ctx context.Context, gridClient deployer.TFPluginClient) {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		if err := h.updateUserDebt(gridClient); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := h.updateUserDebt(gridClient); err != nil {
+				logger.GetLogger().Error().Err(err).Send()
+			}
 		}
 	}
 }

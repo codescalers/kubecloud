@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal"
@@ -66,41 +67,51 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	})
 }
 
-func (h *Handler) MonthlyInvoicesHandler() {
+func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
 	for {
 		now := time.Now()
 		monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
+
+		// Calculate sleep duration until month-end
+		var sleepDuration time.Duration
 		if now.Day() != monthLastDay.Day() {
-			// sleep till last day of month
-			time.Sleep(monthLastDay.Sub(now))
+			sleepDuration = monthLastDay.Sub(now)
 		}
 
-		// Check if invoices for the current month have already been created
+		//check if invoice for this month and year is already processed
 		if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
-			// Sleep until the first day of the next month to avoid running multiple times on the last day
+			// Already processed, sleep until the first day of the next month to avoid running multiple times on the last day
 			nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
-			sleepDuration := nextMonth.Sub(now)
-			time.Sleep(sleepDuration)
+			sleepDuration = nextMonth.Sub(now)
+		}
+
+		// Sleep with context awareness (single select)
+		if sleepDuration > 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(sleepDuration):
+			}
 			continue
 		}
-
+		// Process invoices (we're on month-end and haven't processed yet)
 		users, err := h.db.ListAllUsers()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Send()
+			continue
 		}
+
 		for _, user := range users {
 			if err = h.createUserInvoice(user); err != nil {
 				logger.GetLogger().Error().Err(err).Send()
 			}
 		}
-
-		// Update the last processed month and year
+		//update last processed month and year
 		lastProcessedMonth = now.Month()
 		lastProcessedYear = now.Year()
-
 	}
 }
 
