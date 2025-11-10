@@ -303,9 +303,8 @@ func BatchDeployAllNodesStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService) ewf.StepFn {
+func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics, fileStorage *internal.FileStorageService) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		log := logger.ForOperation("deployer_activities", "store_deployment")
 		cluster, err := statemanager.GetCluster(state)
 		if err != nil {
 			return err
@@ -330,16 +329,12 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics, fileStorage *in
 			return fmt.Errorf("failed to get cluster by name: %w", err)
 		}
 
-		persistedCluster := dbCluster
-
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if err := db.CreateCluster(config.UserID, dbCluster); err != nil {
 				return fmt.Errorf("failed to create cluster in database: %w", err)
 			}
 
 		} else {
-		persistedCluster := dbCluster
-		if err == nil {
 			existingCluster.Result = dbCluster.Result
 			if err := db.UpdateCluster(&existingCluster); err != nil {
 				return fmt.Errorf("failed to update cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
@@ -347,11 +342,9 @@ func StoreDeploymentStep(db models.DB, metrics *metrics.Metrics, fileStorage *in
 		}
 
 		metrics.IncActiveClusterCount()
-
 		return nil
 	}
 }
-
 func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
@@ -394,7 +387,7 @@ func CancelDeploymentStep(db models.DB, metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
+func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -404,16 +397,6 @@ func RemoveClusterFromDBStep(db models.DB, fileStorage *internal.FileStorageServ
 		projectName, ok := state["project_name"].(string)
 		if !ok {
 			return fmt.Errorf("missing or invalid 'project_name' in state")
-		}
-
-		cluster, err := db.GetClusterByName(config.UserID, projectName)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("failed to get cluster by name: %w", err)
-		}
-		if cluster.ID != 0 {
-			if err := fileStorage.DeleteKubeconfigFile(config.UserID, cluster.ID, projectName); err != nil {
-				logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Int("cluster_id", cluster.ID).Str("project_name", projectName).Msg("Failed to delete kubeconfig during cluster removal")
-			}
 		}
 
 		cluster, err := db.GetClusterByName(config.UserID, projectName)
@@ -520,7 +503,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 	}
 }
 
-func DeleteAllUserClustersStep(db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
+func DeleteAllUserClustersStep(db models.DB, fileStorage *internal.FileStorageService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -678,14 +661,14 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
 	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
 	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics, fileStorage, fileStorage))
-	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, fileStorage, fileStorage, config.SSH.PrivateKeyPath))
+	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(db, metrics, fileStorage))
+	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(db, fileStorage, config.SSH.PrivateKeyPath))
 	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(db, fileStorage, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db, fileStorage, fileStorage, metrics, fileStorage))
+	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(db, fileStorage, metrics))
 	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(db))
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db, fileStorage, fileStorage, metrics, fileStorage))
+	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(db, fileStorage, metrics))
 
 	deployWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
@@ -803,8 +786,7 @@ func getConfig(state ewf.State) (statemanager.ClientConfig, error) {
 	return config, nil
 }
 
-func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, fileStorage *internal.FileStorageService, fileStorage *internal.FileStorageService, privateKeyPath string) (string, error) {
-	log := logger.ForOperation("deployer_activities", "retrieve_kubeconfig")
+func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, fileStorage *internal.FileStorageService, privateKeyPath string) (string, error) {
 	// 1. Check if kubeconfig is already in state
 	if kc, err := getFromState[string](state, "kubeconfig"); err == nil && kc != "" {
 		return kc, nil
@@ -823,11 +805,6 @@ func retrieveKubeconfig(ctx context.Context, state ewf.State, db models.DB, file
 	existingCluster, err := db.GetClusterByName(config.UserID, cluster.ProjectName)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", fmt.Errorf("failed to query cluster from database: %w", err)
-	}
-
-	if existingCluster.ID != 0 && existingCluster.Kubeconfig != "" {
-		logger.GetLogger().Debug().Msgf("Using kubeconfig from DB for cluster %s", existingCluster.ProjectName)
-		return existingCluster.Kubeconfig, nil
 	}
 
 	if existingCluster.ID != 0 {
