@@ -210,8 +210,8 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	if cluster.Kubeconfig != "" {
-		c.JSON(http.StatusOK, gin.H{"kubeconfig": cluster.Kubeconfig})
+	if data, err := h.fileStorage.ReadKubeconfigFile(userID, cluster.ID, projectName); err == nil {
+		c.JSON(http.StatusOK, gin.H{"kubeconfig": string(data)})
 		return
 	}
 
@@ -236,9 +236,8 @@ func (h *Handler) HandleGetKubeconfig(c *gin.Context) {
 		return
 	}
 
-	cluster.Kubeconfig = kubeconfig
-	if err := h.db.UpdateCluster(&cluster); err != nil {
-		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
+	if _, err := h.fileStorage.WriteKubeconfigFile(userID, cluster.ID, projectName, []byte(kubeconfig)); err != nil {
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to persist kubeconfig to file storage")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"kubeconfig": kubeconfig})
