@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"kubecloud/internal/logger"
 )
 
 const (
@@ -121,13 +120,12 @@ func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
 // @Router /notifications [get]
 // GetAllNotificationsHandler retrieves all user notifications with pagination
 func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "GetAllNotificationsHandler")
+	reqLog := requestLogger(c, "GetAllNotificationsHandler")
 
 	// Parse and validate pagination parameters
 	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
@@ -174,19 +172,20 @@ func (h *Handler) GetAllNotificationsHandler(c *gin.Context) {
 // @Router /notifications/{notification_id}/read [patch]
 // MarkNotificationReadHandler marks a specific notification as read
 func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "MarkNotificationReadHandler")
-
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
 		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
 		return
 	}
+
+	reqLog := requestLogger(c, "MarkNotificationReadHandler")
+	logWithNotification := reqLog.With().Str("notification_id", notificationIDStr).Logger()
+	reqLog = &logWithNotification
 
 	err = h.db.MarkNotificationAsRead(notificationIDStr, userID)
 	if err != nil {
@@ -214,13 +213,12 @@ func (h *Handler) MarkNotificationReadHandler(c *gin.Context) {
 // @Router /notifications/read-all [patch]
 // MarkAllNotificationsReadHandler marks all notifications as read for a user
 func (h *Handler) MarkAllNotificationsReadHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "MarkAllNotificationsReadHandler")
+	reqLog := requestLogger(c, "MarkAllNotificationsReadHandler")
 
 	err = h.db.MarkAllNotificationsAsRead(userID)
 	if err != nil {
@@ -246,19 +244,20 @@ func (h *Handler) MarkAllNotificationsReadHandler(c *gin.Context) {
 // @Router /notifications/{notification_id} [delete]
 // DeleteNotificationHandler deletes a specific notification
 func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "DeleteNotificationHandler")
-
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
 		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
 		return
 	}
+
+	reqLog := requestLogger(c, "DeleteNotificationHandler")
+	logWithNotification := reqLog.With().Str("notification_id", notificationIDStr).Logger()
+	reqLog = &logWithNotification
 
 	err = h.db.DeleteNotification(notificationIDStr, userID)
 	if err != nil {
@@ -287,13 +286,12 @@ func (h *Handler) DeleteNotificationHandler(c *gin.Context) {
 // @Router /notifications/unread [get]
 // GetUnreadNotificationsHandler retrieves only unread notifications for a user
 func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "GetUnreadNotificationsHandler")
+	reqLog := requestLogger(c, "GetUnreadNotificationsHandler")
 
 	// Parse and validate pagination parameters
 	limitStr := c.DefaultQuery("limit", strconv.Itoa(DefaultNotificationLimit))
@@ -337,13 +335,12 @@ func (h *Handler) GetUnreadNotificationsHandler(c *gin.Context) {
 // @Router /notifications [delete]
 // DeleteAllNotificationsHandler deletes all notifications for a user
 func (h *Handler) DeleteAllNotificationsHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "DeleteAllNotificationsHandler")
+	reqLog := requestLogger(c, "DeleteAllNotificationsHandler")
 
 	err = h.db.DeleteAllNotifications(userID)
 	if err != nil {
@@ -369,19 +366,20 @@ func (h *Handler) DeleteAllNotificationsHandler(c *gin.Context) {
 // @Router /notifications/{notification_id}/unread [patch]
 // MarkNotificationUnreadHandler marks a specific notification as unread
 func (h *Handler) MarkNotificationUnreadHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
 		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
 		return
 	}
-	reqLog := logger.ForRequest(userID, requestID, "MarkNotificationUnreadHandler")
-
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
 		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
 		return
 	}
+
+	reqLog := requestLogger(c, "MarkNotificationUnreadHandler")
+	logWithNotification := reqLog.With().Str("notification_id", notificationIDStr).Logger()
+	reqLog = &logWithNotification
 
 	err = h.db.MarkNotificationAsUnread(notificationIDStr, userID)
 	if err != nil {

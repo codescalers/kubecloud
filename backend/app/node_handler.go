@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"kubecloud/internal/constants"
-	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -78,8 +77,7 @@ type TwinResponse struct {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /nodes [get]
 func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "ListAllGridNodesHandler")
+	reqLog := requestLogger(c, "ListAllGridNodesHandler")
 	query := c.Request.URL.Query()
 
 	limit := proxyTypes.DefaultLimit()
@@ -127,8 +125,7 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 // @Router /user/nodes [get]
 func (h *Handler) ListNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(userID, requestID, "ListNodesHandler")
+	reqLog := requestLogger(c, "ListNodesHandler")
 	rentedNodes, rentedNodesCount, err := h.getRentedNodesForUser(c.Request.Context(), userID, true)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve rented nodes")
@@ -215,8 +212,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	nodeIDParam := c.Param("node_id")
 	userID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(userID, requestID, "ReserveNodeHandler")
+	reqLog := requestLogger(c, "ReserveNodeHandler")
 	if nodeIDParam == "" {
 		Error(c, http.StatusBadRequest, "Node ID is required", "")
 		return
@@ -318,8 +314,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/nodes/rentable [get]
 func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "ListRentableNodesHandler")
+	reqLog := requestLogger(c, "ListRentableNodesHandler")
 	healthy := true
 	rentable := true
 	filter := proxyTypes.NodeFilter{
@@ -398,7 +393,6 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 // @Router /user/nodes/unreserve/{contract_id} [delete]
 // UnreserveNodeHandler unreserve node for user
 func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	contractIDParam := c.Param("contract_id")
 	if contractIDParam == "" {
 		Error(c, http.StatusBadRequest, "Contract ID is required", "")
@@ -406,7 +400,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	}
 
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "UnreserveNodeHandler")
+	reqLog := requestLogger(c, "UnreserveNodeHandler")
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
@@ -598,8 +592,7 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 // @Failure 500 {object} APIResponse "Internal Server Error"
 // @Router /twins/{twin_id}/account [get]
 func (h *Handler) GetAccountIDHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "GetAccountIDHandler")
+	reqLog := requestLogger(c, "GetAccountIDHandler")
 	twinIDParam := c.Param("twin_id")
 	if twinIDParam == "" {
 		Error(c, http.StatusBadRequest, "Twin ID is required", "")
@@ -675,8 +668,7 @@ type NodeStoragePoolResponse struct {
 // @Failure 500 {object} APIResponse "Internal Server Error"
 // @Router /nodes/{node_id}/storage-pool [get]
 func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "GetNodeStoragePoolHandler")
+	reqLog := requestLogger(c, "GetNodeStoragePoolHandler")
 	nodeIDParam := c.Param("node_id")
 	if nodeIDParam == "" {
 		Error(c, http.StatusBadRequest, "Node ID is required", "")

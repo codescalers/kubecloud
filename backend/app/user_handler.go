@@ -29,6 +29,7 @@ import (
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 
 	"github.com/vedhavyas/go-subkey"
@@ -206,8 +207,7 @@ type GetUserResponse struct {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register [post]
 func (h *Handler) RegisterHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "RegisterHandler")
+	reqLog := requestLogger(c, "RegisterHandler")
 	var request RegisterInput
 
 	// check on request format
@@ -266,8 +266,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register/verify [post]
 func (h *Handler) VerifyRegisterCode(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "VerifyRegisterCode")
+	reqLog := requestLogger(c, "VerifyRegisterCode")
 	var request VerifyCodeInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -283,8 +282,8 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
 		return
 	}
-	// rebind once user is known
-	reqLog = logger.ForRequest(user.ID, requestID, "VerifyRegisterCode")
+	logWithUser := requestLogger(c, "VerifyRegisterCode").With().Int("user_id", user.ID).Logger()
+	reqLog = &logWithUser
 
 	// check if user is already registered (all required fields are set)
 	if isUserRegistered(user) {
@@ -373,8 +372,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 // @Router /user/login [post]
 // LoginUserHandler logs user into the system
 func (h *Handler) LoginUserHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "LoginUserHandler")
+	reqLog := requestLogger(c, "LoginUserHandler")
 	var request LoginInput
 
 	// check on request format
@@ -390,8 +388,8 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
 		return
 	}
-	// bind user id now
-	reqLog = logger.ForRequest(user.ID, requestID, "LoginUserHandler")
+	logWithUser := requestLogger(c, "LoginUserHandler").With().Int("user_id", user.ID).Logger()
+	reqLog = &logWithUser
 
 	// verify password
 	match := internal.VerifyPassword(user.Password, request.Password)
@@ -438,8 +436,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 // @Router /user/refresh [post]
 // RefreshTokenHandler handles token refresh requests
 func (h *Handler) RefreshTokenHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "RefreshTokenHandler")
+	reqLog := requestLogger(c, "RefreshTokenHandler")
 	var request RefreshTokenInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -474,8 +471,7 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 // @Router /user/forgot_password [post]
 // ForgotPasswordHandler sends user verification code
 func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "ForgotPasswordHandler")
+	reqLog := requestLogger(c, "ForgotPasswordHandler")
 	var request EmailInput
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -492,8 +488,8 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 		return
 
 	}
-	// bind user id now
-	reqLog = logger.ForRequest(user.ID, requestID, "ForgotPasswordHandler")
+	logWithUser := requestLogger(c, "ForgotPasswordHandler").With().Int("user_id", user.ID).Logger()
+	reqLog = &logWithUser
 
 	code := internal.GenerateRandomCode()
 	subject, body := h.mailService.ResetPasswordMailContent(code, h.config.MailSender.TimeoutMin, user.Username, h.config.Server.Host)
@@ -539,8 +535,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 // @Router /user/forgot_password/verify [post]
 // VerifyForgetPasswordCodeHandler verifies code sent to user when forgetting password
 func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(0, requestID, "VerifyForgetPasswordCodeHandler")
+	reqLog := requestLogger(c, "VerifyForgetPasswordCodeHandler")
 	var request VerifyCodeInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
@@ -561,8 +556,8 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 
 	}
-	// bind user id now
-	reqLog = logger.ForRequest(user.ID, requestID, "VerifyForgetPasswordCodeHandler")
+	logWithUser := requestLogger(c, "VerifyForgetPasswordCodeHandler").With().Int("user_id", user.ID).Logger()
+	reqLog = &logWithUser
 
 	if user.Code != request.Code {
 		Error(c, http.StatusBadRequest, "Invalid code", "")
@@ -600,10 +595,9 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 // @Router /user/change_password [put]
 // ChangePasswordHandler changes password of user
 func (h *Handler) ChangePasswordHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	var request ChangePasswordInput
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "ChangePasswordHandler")
+	reqLog := requestLogger(c, "ChangePasswordHandler")
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
@@ -664,9 +658,8 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/balance/charge [post]
 func (h *Handler) ChargeBalance(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "ChargeBalance")
+	reqLog := requestLogger(c, "ChargeBalance")
 
 	var request ChargeBalanceInput
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -745,9 +738,8 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Router /user [get]
 // GetUserHandler retrieves all data of the user
 func (h *Handler) GetUserHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "GetUserHandler")
+	reqLog := requestLogger(c, "GetUserHandler")
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
@@ -796,9 +788,8 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 // @Router /user/balance [get]
 // GetUserBalance returns user's balance in usd
 func (h *Handler) GetUserBalance(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "GetUserBalance")
+	reqLog := requestLogger(c, "GetUserBalance")
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
@@ -852,14 +843,13 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/redeem/{voucher_code} [put]
 func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	voucherCodeParam := c.Param("voucher_code")
 	if voucherCodeParam == "" {
 		Error(c, http.StatusBadRequest, "Voucher Code is required", "")
 		return
 	}
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "RedeemVoucherHandler")
+	reqLog := requestLogger(c, "RedeemVoucherHandler")
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
@@ -931,9 +921,8 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 // @Router /user/ssh-keys [get]
 // ListSSHKeysHandler lists all SSH keys for the authenticated user
 func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "ListSSHKeysHandler")
+	reqLog := requestLogger(c, "ListSSHKeysHandler")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
 		return
@@ -964,9 +953,8 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 // @Router /user/ssh-keys [post]
 // AddSSHKeyHandler adds a new SSH key for the authenticated user
 func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "AddSSHKeyHandler")
+	reqLog := requestLogger(c, "AddSSHKeyHandler")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
 		return
@@ -1031,9 +1019,8 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 // @Router /user/ssh-keys/{ssh_key_id} [delete]
 // DeleteSSHKeyHandler deletes an SSH key for the authenticated user
 func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "DeleteSSHKeyHandler")
+	reqLog := requestLogger(c, "DeleteSSHKeyHandler")
 	if userID == 0 {
 		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
 		return
@@ -1100,9 +1087,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /workflow/{workflow_id} [get]
 func (h *Handler) GetWorkflowStatus(c *gin.Context) {
-	requestID := GetRequestID(c)
-	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "GetWorkflowStatus")
+	reqLog := requestLogger(c, "GetWorkflowStatus")
 
 	workflowID := c.Param("workflow_id")
 	if workflowID == "" {
@@ -1131,9 +1116,8 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 // @Router /user/pending-records [get]
 // ListUserPendingRecordsHandler returns user pending records in the system
 func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
 	userID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(userID, requestID, "ListUserPendingRecordsHandler")
+	reqLog := requestLogger(c, "ListUserPendingRecordsHandler")
 
 	pendingRecords, err := h.db.ListUserPendingRecords(userID)
 	if err != nil {
@@ -1202,12 +1186,19 @@ func isUniqueViolation(err error) bool {
 	return false
 }
 
-// GetRequestID retrieves the request ID from the gin context
-func GetRequestID(c *gin.Context) string {
+// getRequestID retrieves the request ID from the gin context
+func getRequestID(c *gin.Context) string {
 	if requestID, exists := c.Get("request_id"); exists {
 		if id, ok := requestID.(string); ok {
 			return id
 		}
 	}
 	return ""
+}
+
+// requestLogger creates a contextual logger for a request handler.
+func requestLogger(c *gin.Context, handlerName string) *zerolog.Logger {
+	requestID := getRequestID(c)
+	userID := c.GetInt("user_id")
+	return logger.ForRequest(userID, requestID, handlerName)
 }

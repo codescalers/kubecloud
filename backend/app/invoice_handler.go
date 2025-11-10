@@ -29,9 +29,7 @@ import (
 // @Router /invoices [get]
 // ListAllInvoicesHandler lists all invoices in system
 func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "ListAllInvoicesHandler")
+	reqLog := requestLogger(c, "ListAllInvoicesHandler")
 	invoices, err := h.db.ListInvoices()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve invoices")
@@ -57,8 +55,7 @@ func (h *Handler) ListAllInvoicesHandler(c *gin.Context) {
 // ListUserInvoicesHandler lists user invoices by its ID
 func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(userID, requestID, "ListUserInvoicesHandler")
+	reqLog := requestLogger(c, "ListUserInvoicesHandler")
 
 	invoices, err := h.db.ListUserInvoices(userID)
 	if err != nil {
@@ -73,6 +70,7 @@ func (h *Handler) ListUserInvoicesHandler(c *gin.Context) {
 }
 
 func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
+	baseLog := logger.ForOperation("invoices", "monthly_invoices")
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
@@ -105,13 +103,13 @@ func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 		// Process invoices (we're on month-end and haven't processed yet)
 		users, err := h.db.ListAllUsers()
 		if err != nil {
-			logger.ForOperation("invoices", "create_invoices").Error().Err(err).Msg("failed to retrieve users for invoice creation")
+			baseLog.Error().Err(err).Msg("failed to retrieve users for invoice creation")
 			continue
 		}
 
 		for _, user := range users {
 			if err = h.createUserInvoice(user); err != nil {
-				logger.ForOperation("invoices", "create_invoices").Error().Err(err).Msg("failed to create invoice for user")
+				baseLog.Error().Err(err).Int("user_id", user.ID).Msg("failed to create invoice for user")
 			}
 		}
 		//update last processed month and year
@@ -134,14 +132,16 @@ func (h *Handler) MonthlyInvoicesHandler(ctx context.Context) {
 // @Router /user/invoice/{invoice_id} [get]
 func (h *Handler) DownloadInvoiceHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(userID, requestID, "DownloadInvoiceHandler")
+	reqLog := requestLogger(c, "DownloadInvoiceHandler")
 
 	invoiceID := c.Param("invoice_id")
 	if invoiceID == "" {
 		Error(c, http.StatusBadRequest, "Invoice ID is required", "")
 		return
 	}
+
+	logWithInvoice := reqLog.With().Str("invoice_id", invoiceID).Logger()
+	reqLog = &logWithInvoice
 
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {

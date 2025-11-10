@@ -85,9 +85,7 @@ type MaintenanceModeStatus struct {
 // @Router /users [get]
 // ListUsersHandler lists all users
 func (h *Handler) ListUsersHandler(c *gin.Context) {
-	requestID := GetRequestID(c)
-	adminID := c.GetInt("user_id")
-	reqLog := logger.ForRequest(adminID, requestID, "ListUsersHandler")
+	reqLog := requestLogger(c, "ListUsersHandler")
 	users, err := h.db.ListAllUsers()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all users")
@@ -114,12 +112,9 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 
 			balance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
 			if err != nil {
-				logger.GetLogger().Error().
-					Err(err).
-					Int("admin_id", adminID).
+				reqLog.Error().
 					Int("target_user_id", user.ID).
-					Str("request_id", requestID).
-					Str("handler", "ListUsersHandler").
+					Err(err).
 					Msg("failed to get user balance")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
@@ -168,8 +163,7 @@ func (h *Handler) ListUsersHandler(c *gin.Context) {
 func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	authUserID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(authUserID, requestID, "DeleteUsersHandler")
+	reqLog := requestLogger(c, "DeleteUsersHandler")
 
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
@@ -217,9 +211,8 @@ func (h *Handler) DeleteUsersHandler(c *gin.Context) {
 // GenerateVouchersHandler generates bulk of vouchers
 func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 	var request GenerateVouchersInput
+	reqLog := requestLogger(c, "GenerateVouchersHandler")
 	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "GenerateVouchersHandler")
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
@@ -286,9 +279,7 @@ func (h *Handler) GenerateVouchersHandler(c *gin.Context) {
 // @Router /vouchers [get]
 // ListVouchersHandler returns all vouchers in system
 func (h *Handler) ListVouchersHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "ListVouchersHandler")
+	reqLog := requestLogger(c, "ListVouchersHandler")
 	vouchers, err := h.db.ListAllVouchers()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all vouchers")
@@ -317,9 +308,8 @@ func (h *Handler) ListVouchersHandler(c *gin.Context) {
 func (h *Handler) CreditUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	// get admin ID from middleware context
+	reqLog := requestLogger(c, "CreditUserHandler")
 	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "CreditUserHandler")
 	if userID == "" {
 		Error(c, http.StatusBadRequest, "User ID is required", "")
 		return
@@ -396,9 +386,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 // @Router /pending-records [get]
 // ListPendingRecordsHandler returns all pending records in the system
 func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "ListPendingRecordsHandler")
+	reqLog := requestLogger(c, "ListPendingRecordsHandler")
 	pendingRecords, err := h.db.ListAllPendingRecords()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all pending records")
@@ -450,9 +438,7 @@ func (h *Handler) ListPendingRecordsHandler(c *gin.Context) {
 // @Security AdminMiddleware
 // @Router /users/mail [post]
 func (h *Handler) SendMailToAllUsersHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "SendMailToAllUsersHandler")
+	reqLog := requestLogger(c, "SendMailToAllUsersHandler")
 	var input AdminMailInput
 	if err := c.ShouldBind(&input); err != nil {
 		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
@@ -613,9 +599,7 @@ func (h *Handler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mails
 // @Router /system/maintenance/status [put]
 // SetMaintenanceModeHandler sets maintenance mode for the system
 func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "SetMaintenanceModeHandler")
+	reqLog := requestLogger(c, "SetMaintenanceModeHandler")
 	var request MaintenanceModeStatus
 
 	// check on request format
@@ -646,9 +630,7 @@ func (h *Handler) SetMaintenanceModeHandler(c *gin.Context) {
 // @Router /system/maintenance/status [get]
 // GetMaintenanceModeHandler gets maintenance mode for the system
 func (h *Handler) GetMaintenanceModeHandler(c *gin.Context) {
-	adminID := c.GetInt("user_id")
-	requestID := GetRequestID(c)
-	reqLog := logger.ForRequest(adminID, requestID, "GetMaintenanceModeHandler")
+	reqLog := requestLogger(c, "GetMaintenanceModeHandler")
 	enabled, err := h.db.GetMaintenanceMode()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to get maintenance mode")
