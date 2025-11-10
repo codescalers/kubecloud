@@ -110,9 +110,6 @@
       </div>
       <div class="mobile-auth">
         <div v-if="isLoggedIn" class="mobile-user">
-          <router-link to="/dashboard" class="mobile-primary" @click="closeMobileMenu">
-            Dashboard
-          </router-link>
           <button class="mobile-secondary" @click="() => { handleLogout(); closeMobileMenu() }">Sign Out</button>
         </div>
         <div v-else class="mobile-guest">
