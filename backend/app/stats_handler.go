@@ -1,8 +1,6 @@
 package app
 
 import (
-	"kubecloud/internal/logger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )

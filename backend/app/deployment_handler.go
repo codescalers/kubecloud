@@ -275,7 +275,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeployCluster")
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		reqLog.Error().Err(err).Msg("failed to get client config")
 		InternalServerError(c)
 		return
 	}
@@ -306,7 +306,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for cluster deployment")
+		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deployment")
 		InternalServerError(c)
 		return
 	}
@@ -336,7 +336,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeleteCluster")
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		reqLog.Error().Err(err).Msg("failed to get client config")
 		InternalServerError(c)
 		return
 	}
@@ -362,7 +362,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for cluster deletion")
+		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deletion")
 		InternalServerError(c)
 		return
 	}
@@ -388,15 +388,16 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 // @Router /deployments [delete]
 func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleDeleteAllDeployments")
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		reqLog.Error().Err(err).Msg("failed to get client config")
 		InternalServerError(c)
 		return
 	}
 
 	clusters, err := h.db.ListUserClusters(config.UserID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Msg("Failed to list user clusters for deletion")
+		reqLog.Error().Err(err).Msg("Failed to list user clusters for deletion")
 		InternalServerError(c)
 		return
 	}
@@ -408,7 +409,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for deleting all deployments")
+		reqLog.Error().Err(err).Msg("failed to create workflow for deleting all deployments")
 		InternalServerError(c)
 		return
 	}
@@ -439,7 +440,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleAddNode")
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		reqLog.Error().Err(err).Msg("failed to get client config")
 		InternalServerError(c)
 		return
 	}
@@ -488,7 +489,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for adding node")
+		reqLog.Error().Err(err).Msg("failed to create workflow for adding node")
 		InternalServerError(c)
 		return
 	}
@@ -520,7 +521,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleRemoveNode")
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to get client config")
+		reqLog.Error().Err(err).Msg("failed to get client config")
 		InternalServerError(c)
 		return
 	}
@@ -577,7 +578,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to create workflow for removing node")
+		reqLog.Error().Err(err).Msg("failed to create workflow for removing node")
 		InternalServerError(c)
 		return
 	}
