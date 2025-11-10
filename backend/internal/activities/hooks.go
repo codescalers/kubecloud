@@ -185,7 +185,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 		if err == nil || wf.Name != constants.WorkflowAddNode {
 			return
 		}
-
+		metrics.IncrementClusterOperationFailure(constants.ClusterOperationAddNode)
 		node, err := getFromState[kubedeployer.Node](wf.State, "node")
 		if err != nil {
 			log.Error().Err(err).Msg("missing or invalid 'node' in workflow state")
@@ -220,6 +220,43 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 			return
 		}
 
-		metrics.DecActiveClusterCount()
+	}
+}
+
+func metricsSuccessHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, err error) {
+		if err != nil {
+			return
+		}
+		if wf.Name == constants.WorkflowAddNode {
+			metrics.IncrementClusterOperationSuccess(constants.ClusterOperationAddNode)
+		}
+		if wf.Name == constants.WorkflowRemoveNode {
+			metrics.IncrementClusterOperationSuccess(constants.ClusterOperationRemoveNode)
+		}
+		if isDeployWorkflow(wf.Name) {
+			metrics.IncActiveClusterCount()
+			metrics.IncrementClusterDeploymentSuccess()
+		}
+	}
+}
+
+func metricsFailureHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, err error) {
+		if err == nil {
+			return
+		}
+		if isDeployWorkflow(wf.Name) {
+			metrics.IncrementClusterDeploymentFailure()
+			return
+		}
+		switch wf.Name {
+		case constants.WorkflowDeleteCluster:
+			metrics.IncrementClusterOperationFailure(constants.ClusterOperationDeleteCluster)
+		case constants.WorkflowRemoveNode:
+			metrics.IncrementClusterOperationFailure(constants.ClusterOperationRemoveNode)
+		case constants.WorkflowDeleteAllClusters:
+			metrics.IncrementClusterOperationFailure(constants.ClusterOperationDeleteAllClusters)
+		}
 	}
 }
