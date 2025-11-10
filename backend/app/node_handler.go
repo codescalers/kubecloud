@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
-	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -214,7 +213,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ReserveNodeHandler")
 	if nodeIDParam == "" {
-		Error(c, http.StatusBadRequest, "Node ID is required", "")
+		BadRequest(c, "Node ID is required")
 		return
 	}
 

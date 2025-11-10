@@ -680,7 +680,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error creating payment method")
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
@@ -695,7 +695,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error attaching payment method to customer")
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			h.metrics.IncrementStripePaymentFailure()
 			return
 		}

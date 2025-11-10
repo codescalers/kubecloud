@@ -179,7 +179,11 @@ func (h *Handler) HealthHandler(c *gin.Context) {
 		}
 	}
 
-	JSONResponse(c, statusCode, results)
+	if statusCode != http.StatusOK {
+		ServiceUnavailable(c, "Health check failed", results)
+		return
+	}
+	OK(c, "Health check passed", results)
 }
 
 func (h *Handler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {

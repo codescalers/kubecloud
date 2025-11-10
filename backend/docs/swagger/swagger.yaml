@@ -3,8 +3,6 @@ definitions:
   app.APIResponse:
     properties:
       data: {}
-      error:
-        type: string
       message:
         type: string
       status:

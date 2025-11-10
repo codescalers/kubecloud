@@ -3145,9 +3145,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {},
-                "error": {
-                    "type": "string"
-                },
                 "message": {
                     "type": "string"
                 },
