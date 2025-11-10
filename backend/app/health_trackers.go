@@ -46,22 +46,22 @@ func (h *Handler) TrackClusterHealth(ctx context.Context) {
 
 			for _, cluster := range clusters {
 
-			wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to create health tracking workflow")
-				continue
-			}
-			cl, err := cluster.GetClusterResult()
-			if err != nil {
-				log.Error().Err(err).Msg("failed to get cluster result during health tracking")
-				continue
-			}
-			wf.State = ewf.State{
-				"cluster": cl,
-				"config": map[string]interface{}{
-					"user_id": cluster.UserID,
-				},
-			}
+				wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to create health tracking workflow")
+					continue
+				}
+				cl, err := cluster.GetClusterResult()
+				if err != nil {
+					log.Error().Err(err).Msg("failed to get cluster result during health tracking")
+					continue
+				}
+				wf.State = ewf.State{
+					"cluster": cl,
+					"config": map[string]interface{}{
+						"user_id": cluster.UserID,
+					},
+				}
 
 				h.ewfEngine.RunAsync(h.appContext, wf)
 			}
@@ -96,11 +96,12 @@ func (h *Handler) TrackReservedNodeHealth(ctx context.Context, notificationServi
 				continue
 			}
 
-		log.Info().Int("count", len(reservedNodes)).Msg("Starting health check for reserved nodes")
+			log.Info().Int("count", len(reservedNodes)).Msg("Starting health check for reserved nodes")
 
 			h.checkNodesWithWorkerPool(reservedNodes, grid, notificationService)
 
-		log.Info().Int("count", len(reservedNodes)).Msg("Reserved node health check workflows started")
+			log.Info().Int("count", len(reservedNodes)).Msg("Reserved node health check workflows started")
+		}
 	}
 }
 

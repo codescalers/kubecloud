@@ -32,10 +32,10 @@ func hookWorkflowStarted(n *notification.NotificationService) ewf.BeforeWorkflow
 			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
 		}
 		if err != nil {
-			log.Warn().Err(err).Msg("missing or invalid config in workflow state")
+			log.Warn().Err(err).Msg("failed to get user ID from config in workflow state, attempting to retrieve from state directly")
 			userIDVal, ok := w.State["user_id"].(int)
 			if !ok {
-				log.Error().Msg("missing or invalid 'user_id' in workflow state")
+				log.Error().Msg("user ID is missing or invalid in workflow state")
 				return
 			}
 			userID = userIDVal
