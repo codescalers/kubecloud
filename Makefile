@@ -25,7 +25,6 @@ backend-run: backend/config.json
 
 backend/config.json: config.json
 	@cp config.json backend/config.json
-	@touch backend/config.json
 
 frontend-run:frontend/kubecloud/.env
 	@cd frontend/kubecloud && [ -d node_modules ] || npm install 
@@ -33,4 +32,3 @@ frontend-run:frontend/kubecloud/.env
 
 frontend/kubecloud/.env:
 	@cp frontendconfig.env frontend/kubecloud/.env
-	@touch frontend/kubecloud/.env
