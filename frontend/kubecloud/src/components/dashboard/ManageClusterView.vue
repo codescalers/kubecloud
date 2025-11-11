@@ -22,8 +22,12 @@
           </div>
         </div>
         <div v-if="!loading && !notFound && cluster" class="manage-content-wrapper">
-          <div class="status-actions d-flex flex-column flex-sm-row gap-2 justify-sm-end justify-start" style="align-items: start;">
-            <v-btn variant="outlined" class="btn btn-outline" @click="openKubeconfigModal">
+          <div class="status-actions d-flex flex-column flex-sm-row gap-2">
+            <v-btn 
+              variant="outlined" 
+              class="btn btn-outline status-action-btn" 
+              @click="openKubeconfigModal"
+            >
               <v-icon icon="mdi-eye" class="mr-2"></v-icon>
               <span class="d-none d-sm-inline">Show Kubeconfig</span>
               <span class="d-sm-none">Kubeconfig</span>
@@ -31,8 +35,13 @@
 
             <v-tooltip location="top" :disabled="haveEnoughBalance">
               <template #activator="{ props }">
-                <div v-bind="props">
-                  <v-btn variant="outlined" :disabled="!haveEnoughBalance" class="btn btn-outline" @click="openEditClusterNodesDialog">
+                <div v-bind="props" class="status-action-wrapper">
+                  <v-btn 
+                    variant="outlined" 
+                    :disabled="!haveEnoughBalance" 
+                    class="btn btn-outline status-action-btn" 
+                    @click="openEditClusterNodesDialog"
+                  >
                     <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
                     Add Node
                   </v-btn>
@@ -41,7 +50,12 @@
               <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
             </v-tooltip>
 
-            <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
+            <v-btn 
+              variant="outlined" 
+              class="btn btn-outline status-action-btn" 
+              color="error" 
+              @click="openDeleteModal"
+            >
               <v-icon icon="mdi-delete" class="mr-2"></v-icon>
               Delete
             </v-btn>
@@ -499,19 +513,37 @@ const notificationStore = useNotificationStore()
   padding: 1rem !important;
   display: flex;
   gap: var(--space-3);
-}
-.status-actions.align-end {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
+  justify-content: flex-start;
   margin-bottom: var(--space-4);
+}
+.status-action-wrapper {
+  width: 100%;
+}
+.status-action-btn {
+  min-height: 44px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+@media (min-width: 600px) {
+  .status-actions {
+    justify-content: flex-end;
+  }
+  .status-action-wrapper {
+    width: auto;
+  }
+  .status-action-btn {
+    width: auto;
+  }
 }
 @media (max-width: 600px) {
   .status-actions {
-    padding: 1.5rem 1rem 1rem 1rem !important;
+    padding: 1rem !important;
+    gap: 0.75rem;
   }
-  .status-actions.align-end {
-    justify-content: stretch;
+  .status-action-btn {
+    min-height: 48px;
+    font-size: 0.95rem;
   }
 }
 .main-content-card {
@@ -531,7 +563,7 @@ const notificationStore = useNotificationStore()
 .cluster-info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+  gap: 1rem;
 }
 .info-item {
   display: flex;
