@@ -143,6 +143,11 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind debug flag: %w", err)
 	}
 
+	// === Development Mode ===
+	if err := bindBoolFlag(rootCmd, "dev_mode", false, "Enable development mode"); err != nil {
+		return fmt.Errorf("failed to bind dev_mode flag: %w", err)
+	}
+
 	// === Monitor Balance Interval In Hours ===
 	if err := bindIntFlag(rootCmd, "monitor_balance_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
 		return fmt.Errorf("failed to bind monitor_balance_interval_in_minutes flag: %w", err)

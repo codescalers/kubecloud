@@ -91,9 +91,15 @@ func (c *KYCClient) CreateSponsorship(ctx context.Context, sponsorAddress string
 	}
 
 	// Debug logs for troubleshooting
-	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorAddress=%s, sponseeAddress=%s", sponsorAddress, sponseeAddress)
-	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorChallenge=%s, sponseeChallenge=%s", sponsorChallenge, sponseeChallenge)
-	logger.GetLogger().Debug().Msgf("KYC Sponsorship Debug: sponsorSignature=%s, sponseeSignature=%s", sponsorSignature, sponseeSignature)
+	log := logger.ForOperation("kyc_client", "create_sponsorship")
+	log.Debug().
+		Str("sponsor_address", sponsorAddress).
+		Str("sponsee_address", sponseeAddress).
+		Str("sponsor_challenge", sponsorChallenge).
+		Str("sponsee_challenge", sponseeChallenge).
+		Str("sponsor_signature", sponsorSignature).
+		Str("sponsee_signature", sponseeSignature).
+		Msg("Creating sponsorship")
 
 	// Prepare HTTP request
 	url := fmt.Sprintf("%s/api/v1/sponsorships", c.APIURL)
@@ -127,7 +133,10 @@ func (c *KYCClient) CreateSponsorship(ctx context.Context, sponsorAddress string
 		return fmt.Errorf("sponsorship creation failed with status: %s and response: %s", resp.Status, bodyBytes.String())
 	}
 
-	logger.GetLogger().Info().Msgf("Sponsorship created successfully between sponsor %s and sponsee %s", sponsorAddress, sponseeAddress)
+	log.Info().
+		Str("sponsor_address", sponsorAddress).
+		Str("sponsee_address", sponseeAddress).
+		Msg("Sponsorship created successfully")
 	return nil
 }
 

@@ -1,9 +1,10 @@
-package internal
+package mailservice
 
 import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"mime"
 	"path/filepath"
@@ -31,7 +32,7 @@ var notifyPaymentRecordsMail []byte
 var systemAnnouncementMail []byte
 
 // MailService struct hods all functionalities of mail service
-type MailService struct {
+type SendGridMailService struct {
 	client              *sendgrid.Client
 	metrics             *metrics.Metrics
 	systemEmail         string
@@ -45,9 +46,9 @@ type Attachment struct {
 	Data     []byte
 }
 
-// NewMailService creates new instance of mail service
-func NewMailService(mailConfigs MailSender, systemHost string, metrics *metrics.Metrics) MailService {
-	return MailService{
+// NewSendGridMailService creates new instance of sendgrid mail service
+func NewSendGridMailService(mailConfigs internal.MailSender, systemHost string, metrics *metrics.Metrics) SendGridMailService {
+	return SendGridMailService{
 		client:              sendgrid.NewSendClient(mailConfigs.SendGridKey),
 		metrics:             metrics,
 		systemEmail:         mailConfigs.Email,
@@ -57,25 +58,25 @@ func NewMailService(mailConfigs MailSender, systemHost string, metrics *metrics.
 	}
 }
 
-func (service *MailService) SystemMail() string {
+func (service SendGridMailService) SystemMail() string {
 	return service.systemEmail
 }
 
-func (service *MailService) MaxConcurrentSends() int {
+func (service SendGridMailService) MaxConcurrentSends() int {
 	return service.maxConcurrentSends
 }
 
-func (service *MailService) MaxAttachmentSizeInBytes() int64 {
+func (service SendGridMailService) MaxAttachmentSizeInBytes() int64 {
 	return service.maxAttachmentSizeMB * 1024 * 1024
 }
 
 // SendMail sends verification mails
-func (service *MailService) SendMailFromSystem(receiver, subject, body string, attachments ...Attachment) error {
-	return service.sendMail(service.systemEmail, receiver, subject, body, attachments...)
+func (service SendGridMailService) SendMailFromSystem(receiver, subject, body string, attachments ...Attachment) error {
+	return service.SendMail(service.systemEmail, receiver, subject, body, attachments...)
 }
 
 // SendMail sends verification mails
-func (service *MailService) sendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
+func (service SendGridMailService) SendMail(sender, receiver, subject, body string, attachments ...Attachment) error {
 	from := mail.NewEmail("Mycelium Cloud", sender)
 
 	if !IsValidEmail(receiver) {
@@ -109,7 +110,7 @@ func (service *MailService) sendMail(sender, receiver, subject, body string, att
 }
 
 // ResetPasswordMailContent gets the email content for reset password
-func (service *MailService) ResetPasswordMailContent(code, timeout int, username string) (string, string) {
+func (service SendGridMailService) ResetPasswordMailContent(code, timeout int, username string) (string, string) {
 	subject := "Reset password"
 	body := string(resetPassTemplate)
 
@@ -121,19 +122,8 @@ func (service *MailService) ResetPasswordMailContent(code, timeout int, username
 	return subject, body
 }
 
-// WelcomeMailContent gets the email content for welcome messages
-func (service *MailService) WelcomeMailContent(username string) (string, string) {
-	subject := "Welcome to Mycelium Cloud 🎉"
-	body := string(welcomeMail)
-
-	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
-	body = strings.ReplaceAll(body, "-host-", service.systemHost)
-
-	return subject, body
-}
-
 // SignUpMailContent gets the email content for sign up
-func (service *MailService) SignUpMailContent(code int, timeout int, username string) (string, string) {
+func (service SendGridMailService) SignUpMailContent(code int, timeout int, username string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(signUpTemplate)
 
@@ -145,18 +135,19 @@ func (service *MailService) SignUpMailContent(code int, timeout int, username st
 	return subject, body
 }
 
-// NotifyAdminsMailContent gets the content for notifying admins
-func (service *MailService) NotifyAdminsMailContent(recordsNumber int) (string, string) {
-	subject := "There're pending payment requests for you to settle"
-	body := string(notifyPaymentRecordsMail)
+// WelcomeMailContent gets the email content for welcome mail
+func (service SendGridMailService) WelcomeMailContent(username string) (string, string) {
+	subject := "Welcome to Mycelium Cloud 🎉"
+	body := string(welcomeMail)
 
-	body = strings.ReplaceAll(body, "-records-", fmt.Sprint(recordsNumber))
+	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
 	body = strings.ReplaceAll(body, "-host-", service.systemHost)
 
 	return subject, body
 }
 
-func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string) {
+// InvoiceMailContent gets the email content for invoice mail
+func (service SendGridMailService) InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string) {
 	mailBody := "We hope this message finds you well. <br>"
 	mailBody += fmt.Sprintf("Our records show that there is an outstanding invoice (%d) for %v %s associated with your account. ", invoiceID, invoiceTotal, currency)
 
@@ -169,10 +160,22 @@ func (service *MailService) InvoiceMailContent(invoiceTotal float64, currency st
 
 }
 
-func (service *MailService) SystemAnnouncementMailContent(body string) string {
+// SystemAnnouncementMailBody gets the email content for system announcement mail
+func (service SendGridMailService) SystemAnnouncementMailBody(body string) string {
 	template := string(systemAnnouncementMail)
 	body = strings.ReplaceAll(body, "\n", "<br>")
 	template = strings.ReplaceAll(template, "-body-", body)
 
 	return template
+}
+
+// NotifyAdminsMailContent gets the email content for notifying admins about pending payment records
+func (service SendGridMailService) NotifyAdminsMailContent(recordsNumber int) (string, string) {
+	subject := "There're pending payment requests for you to settle"
+	body := string(notifyPaymentRecordsMail)
+
+	body = strings.ReplaceAll(body, "-records-", fmt.Sprint(recordsNumber))
+	body = strings.ReplaceAll(body, "-host-", service.systemHost)
+
+	return subject, body
 }

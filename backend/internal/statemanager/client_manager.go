@@ -39,15 +39,16 @@ func ValidateConfig(config ClientConfig) error {
 
 // GetKubeClient retrieves or creates a kubeclient with proper state management
 func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, error) {
+	log := logger.ForOperation("statemanager", "get_kubeclient")
 	// Try to get existing kubeclient from state
 	if value, ok := state["kubeclient"]; ok {
 		if client, ok := value.(*kubedeployer.Client); ok && client != nil {
-			logger.GetLogger().Debug().Msg("Reusing existing kubeclient from state")
+			log.Debug().Msg("Reusing existing kubeclient from state")
 			return client, nil
 		}
 		// If we found an invalid client, remove it from state
 		delete(state, "kubeclient")
-		logger.GetLogger().Warn().Msg("Removed invalid kubeclient from state")
+		log.Warn().Msg("Removed invalid kubeclient from state")
 	}
 
 	// Validate configuration before creating client
@@ -63,14 +64,14 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 
 	// Restore GridClient state if it exists
 	if err := RestoreGridClientState(state, kubeClient); err != nil {
-		logger.GetLogger().Warn().Err(err).Msg("Failed to restore GridClient state, continuing with fresh state")
+		log.Warn().Err(err).Msg("Failed to restore GridClient state, continuing with fresh state")
 	}
 
 	// Store the new client in state for reuse
 	state["kubeclient"] = kubeClient
 	SaveGridClientState(state, kubeClient)
 
-	logger.GetLogger().Debug().Msg("Created and stored fresh kubeclient")
+	log.Debug().Msg("Created and stored fresh kubeclient")
 	return kubeClient, nil
 }
 
@@ -91,8 +92,9 @@ func GetExistingKubeClient(state ewf.State) (*kubedeployer.Client, error) {
 
 // CloseClient properly closes a kubeclient and cleans up state
 func CloseClient(state ewf.State, kubeClient *kubedeployer.Client) error {
+	log := logger.ForOperation("statemanager", "close_client")
 	if kubeClient == nil {
-		logger.GetLogger().Debug().Msg("No kubeclient to close")
+		log.Debug().Msg("No kubeclient to close")
 		return nil
 	}
 
@@ -100,6 +102,6 @@ func CloseClient(state ewf.State, kubeClient *kubedeployer.Client) error {
 	kubeClient.Close()
 	delete(state, "kubeclient")
 
-	logger.GetLogger().Debug().Msg("Closed kubeclient and cleaned up state")
+	log.Debug().Msg("Closed kubeclient and cleaned up state")
 	return nil
 }

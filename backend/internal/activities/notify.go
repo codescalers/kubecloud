@@ -41,6 +41,7 @@ func workflowToNotificationType(workflowName string) models.NotificationType {
 
 func notifyWorkflowProgress(notificationService *notification.NotificationService) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
+		log := logger.ForOperation("workflow", "notify_workflow_progress").With().Str("workflow_name", wf.Name).Logger()
 		var notifications []*models.Notification
 		notifcationType := workflowToNotificationType(wf.Name)
 		switch notifcationType {
@@ -65,7 +66,7 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 		for _, n := range notifications {
 
 			if err := notificationService.Send(ctx, n); err != nil {
-				logger.GetLogger().Error().
+				log.Error().
 					Str("notification_id", n.ID).
 					Str("notification_type", string(n.Type)).
 					Int("user_id", n.UserID).
@@ -77,9 +78,10 @@ func notifyWorkflowProgress(notificationService *notification.NotificationServic
 }
 
 func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
+	log := logger.ForOperation("workflow", "create_deployment_notification").With().Str("workflow_name", wf.Name).Logger()
 	config, confErr := getConfig(wf.State)
 	if confErr != nil {
-		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'config' in workflow state")
+		log.Error().Msg("Missing or invalid 'config' in workflow state")
 		return &models.Notification{}
 	}
 
@@ -165,13 +167,17 @@ func CreateDeploymentWorkflowNotification(ctx context.Context, wf *ewf.Workflow,
 
 // notifyStepProgress sends step progress notifications
 func notifyStepProgress(notificationService *notification.NotificationService, state ewf.State, workflowName, stepName string, status string, err error, retryCount, maxRetries int) {
+	log := logger.ForOperation("workflow", "notify_step_progress").With().
+		Str("workflow_name", workflowName).
+		Str("step_name", stepName).Logger()
+
 	if stepName != constants.StepDeployNetwork && !isDeployStep(stepName) {
 		return
 	}
 
 	config, confErr := getConfig(state)
 	if confErr != nil {
-		logger.GetLogger().Error().Str("workflow_name", workflowName).Str("step_name", stepName).Msg("Missing or invalid 'config' in workflow state for step notification")
+		log.Error().Msg("Missing or invalid 'config' in workflow state for step notification")
 		return
 	}
 
@@ -230,7 +236,7 @@ func notifyStepProgress(notificationService *notification.NotificationService, s
 	)
 	err = notificationService.Send(context.Background(), notification)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("workflow_name", workflowName).Str("step_name", stepName).Msg("Failed to send notification")
+		log.Error().Err(err).Msg("Failed to send notification")
 	}
 }
 
@@ -299,9 +305,10 @@ func isDeployStep(stepName string) bool {
 }
 
 func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, err error) []*models.Notification {
+	log := logger.ForOperation("workflow", "create_billing_notification").With().Str("workflow_name", wf.Name).Logger()
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -320,35 +327,52 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 	if wf.Name == constants.WorkflowAdminCreditBalance {
 		adminID, ok := wf.State["admin_id"].(int)
 		if !ok {
-			logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'admin_id' in workflow state")
+			log.Error().Msg("Missing or invalid 'admin_id' in workflow state")
 			return nil
 		}
-		payloadData := notification.CommonPayload{
-			Message: fmt.Sprintf("User %d was credited successfully money transferred successfully to their account (Amount: $%.2f)", userID, amountUSD),
-			Subject: "Money transfer to user's account succeeded",
-			Status:  "succeeded",
+		username, ok := wf.State["username"].(string)
+		if !ok {
+			log.Warn().Msg("Missing or invalid 'username' in workflow state")
 		}
-		severity := models.NotificationSeveritySuccess
-		if err != nil {
-			severity = models.NotificationSeverityError
-			payloadData.Message = fmt.Sprintf("Money transfer to user %d's account failed", userID)
-			payloadData.Subject = "Money transfer to user's account failed"
-			payloadData.Error = err.Error()
-			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
-				"workflow_name": getWorkflowDescription(wf.Name),
-				"user_id":       fmt.Sprintf("%d", userID),
-				"admin_id":      fmt.Sprintf("%d", adminID),
-				"timestamp":     time.Now().Local().Format(TimestampFormat),
-			}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
-			return []*models.Notification{adminNotif}
-		}
-		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, map[string]string{
+
+		// Build common payload map
+		payloadMap := map[string]string{
 			"workflow_name": getWorkflowDescription(wf.Name),
 			"user_id":       fmt.Sprintf("%d", userID),
 			"admin_id":      fmt.Sprintf("%d", adminID),
-			"amount":        fmt.Sprintf("%.2f", amountUSD),
 			"timestamp":     time.Now().Local().Format(TimestampFormat),
-		}), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+		}
+		if ok && username != "" {
+			payloadMap["username"] = username
+		}
+
+		payloadData := notification.CommonPayload{}
+		if ok && username != "" {
+			payloadData.Message = fmt.Sprintf("User %s was credited successfully, money transferred successfully to their account (Amount: $%.2f)", username, amountUSD)
+		} else {
+			payloadData.Message = fmt.Sprintf("User was credited successfully, money transferred successfully to their account (Amount: $%.2f)", amountUSD)
+		}
+		payloadData.Subject = "Money transfer to user's account succeeded"
+		payloadData.Status = "succeeded"
+
+		severity := models.NotificationSeveritySuccess
+		if err != nil {
+			severity = models.NotificationSeverityError
+			if ok && username != "" {
+				payloadData.Message = fmt.Sprintf("Money transfer to user %s's account failed", username)
+			} else {
+				payloadData.Message = "Money transfer to user's account failed"
+			}
+			payloadData.Subject = "Money transfer to user's account failed"
+			payloadData.Error = err.Error()
+
+			adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, payloadMap), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
+			return []*models.Notification{adminNotif}
+		}
+
+		payloadMap["amount"] = fmt.Sprintf("%.2f", amountUSD)
+
+		adminNotif := models.NewNotification(adminID, models.NotificationTypeBilling, notification.MergePayload(payloadData, payloadMap), models.WithSeverity(severity), models.WithChannels(notification.ChannelUI))
 		// also notify the user about success
 		userPayload := notification.MergePayload(notification.CommonPayload{
 			Message: fmt.Sprintf("Funds were credited to your account. Amount added: $%.2f.", amountUSD),
@@ -426,9 +450,10 @@ func CreateBillingWorkflowNotifications(ctx context.Context, wf *ewf.Workflow, e
 }
 
 func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
+	log := logger.ForOperation("workflow", "create_node_notification").With().Str("workflow_name", wf.Name).Logger()
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 
@@ -506,9 +531,10 @@ func CreateNodeWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err e
 }
 
 func CreateUserWorkflowNotification(ctx context.Context, wf *ewf.Workflow, err error) *models.Notification {
+	log := logger.ForOperation("workflow", "create_user_notification").With().Str("workflow_name", wf.Name).Logger()
 	userID, ok := wf.State["user_id"].(int)
 	if !ok {
-		logger.GetLogger().Error().Str("workflow_name", wf.Name).Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
 		return nil
 	}
 

@@ -46,7 +46,7 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
-	// Add our custom logging middleware
+	// Add our custom logging middleware (includes request ID generation)
 	router.Use(middlewares.GinLoggerMiddleware())
 
 	stripe.Key = config.StripeSecret
@@ -201,19 +201,16 @@ func (app *App) registerHandlers() {
 }
 
 func (app *App) StartBackgroundWorkers() {
-	go app.invoiceHandler.MonthlyInvoicesHandler()
-	go app.adminHandler.TrackUserDebt(app.infra.gridClient)
-	go app.adminHandler.MonitorSystemBalanceAndHandleSettlement()
-	go app.deploymentHandler.TrackClusterHealth()
-	go app.nodeHandler.TrackReservedNodeHealth(app.communication.notificationService, app.infra.gridClient.GridProxyClient)
+	go app.invoiceHandler.MonthlyInvoicesHandler(app.core.appCtx)
+	go app.adminHandler.TrackUserDebt(app.core.appCtx, app.infra.gridClient)
+	go app.adminHandler.MonitorSystemBalanceAndHandleSettlement(app.core.appCtx)
+	go app.deploymentHandler.TrackClusterHealth(app.core.appCtx)
+	go app.nodeHandler.TrackReservedNodeHealth(app.core.appCtx, app.communication.notificationService, app.infra.gridClient.GridProxyClient)
 }
 
 // Run starts the server
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
-
-	// Start command socket
-	go app.startCommandSocket()
 
 	app.core.ewfEngine.ResumeRunningWorkflows()
 	app.httpServer = &http.Server{
@@ -221,7 +218,10 @@ func (app *App) Run() error {
 		Handler: app.router,
 	}
 
-	logger.GetLogger().Info().Msgf("Starting server at %s:%s", app.config.Server.Host, app.config.Server.Port)
+	logger.GetLogger().Info().
+		Str("host", app.config.Server.Host).
+		Str("port", app.config.Server.Port).
+		Msg("Starting server")
 
 	if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.GetLogger().Error().Err(err).Msg("Failed to start server")
@@ -258,6 +258,7 @@ func (app *App) Shutdown() error {
 	return nil
 }
 
+//nolint:unused
 func (app *App) startCommandSocket() {
 	socketPath := "/tmp/myceliumcloud.sock"
 
@@ -307,6 +308,7 @@ func (app *App) startCommandSocket() {
 	}
 }
 
+//nolint:unused
 func (app *App) handleSocketCommand(conn net.Conn) {
 	defer conn.Close()
 
@@ -339,6 +341,7 @@ func (app *App) handleSocketCommand(conn net.Conn) {
 	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
 }
 
+//nolint:unused
 func (app *App) handleReloadNotifications(conn net.Conn) {
 	err := app.reloadNotificationConfig()
 
@@ -358,6 +361,7 @@ func (app *App) handleReloadNotifications(conn net.Conn) {
 	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
 }
 
+//nolint:unused
 func (app *App) reloadNotificationConfig() error {
 	cfg, err := internal.LoadConfig()
 	if err != nil {

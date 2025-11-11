@@ -57,4 +57,10 @@ const (
 	NodeRentable           = "rentable"
 	NodeRented             = "rented"
 	NodeHasActiveContracts = "NodeHasActiveContracts"
+
+	// Cluster operation names for metrics
+	ClusterOperationAddNode           = "add_node"
+	ClusterOperationRemoveNode        = "remove_node"
+	ClusterOperationDeleteCluster     = "delete_cluster"
+	ClusterOperationDeleteAllClusters = "delete_all_user_clusters"
 )

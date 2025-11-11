@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"kubecloud/internal"
 	"kubecloud/models"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (h *adminHandler) MonitorSystemBalanceAndHandleSettlement() {
+func (h *adminHandler) MonitorSystemBalanceAndHandleSettlement(ctx context.Context) {
 	balanceTicker := time.NewTicker(time.Duration(h.monitorBalanceIntervalInMinutes) * time.Minute)
 	adminNotifyTicker := time.NewTicker(time.Duration(h.notifyAdminsForPendingRecordsInHours) * time.Hour)
 	defer balanceTicker.Stop()
@@ -25,7 +26,7 @@ func (h *adminHandler) MonitorSystemBalanceAndHandleSettlement() {
 			}
 
 			if err := h.settlePendingPayments(records); err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				logger.ForOperation("balance_monitor", "settle_pending_payments").Error().Err(err).Msg("Failed to settle pending payments")
 			}
 
 		case <-adminNotifyTicker.C:
@@ -36,14 +37,18 @@ func (h *adminHandler) MonitorSystemBalanceAndHandleSettlement() {
 
 			if len(records) > 0 {
 				if err := h.notifyAdminWithPendingRecords(records); err != nil {
-					logger.GetLogger().Error().Err(err).Send()
+					logger.ForOperation("balance_monitor", "notify_admins_pending_records").Error().Err(err).Msg("Failed to notify admins with pending records")
 				}
 			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
 func (h *adminHandler) settlePendingPayments(records []models.PendingRecord) error {
+	log := logger.ForOperation("balance_monitor", "settle_pending_payments")
+
 	for _, record := range records {
 		// Already settled
 		if record.TransferredTFTAmount >= record.TFTAmount {
@@ -53,18 +58,22 @@ func (h *adminHandler) settlePendingPayments(records []models.PendingRecord) err
 		// getting balance every time to ensure we have the latest balance
 		systemTFTBalance, err := internal.GetUserTFTBalance(h.substrateClient, h.systemIdentity)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msgf("Failed to get system TFT balance for pending record ID %d", record.ID)
+			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
 		}
 
 		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
 		if systemTFTBalance < amountToTransfer {
-			logger.GetLogger().Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
+			log.Warn().
+				Int("record_id", record.ID).
+				Uint64("system_balance", systemTFTBalance).
+				Uint64("amount_needed", amountToTransfer).
+				Msg("Insufficient system balance to settle pending record")
 			continue
 		}
 
 		if err = h.transferTFTsToUser(record.UserID, record.ID, amountToTransfer); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			log.Error().Err(err).Int("user_id", record.UserID).Int("record_id", record.ID).Msg("Failed to transfer TFTs to user")
 			continue
 		}
 	}
@@ -102,7 +111,7 @@ func (h *adminHandler) notifyAdminWithPendingRecords(records []models.PendingRec
 	for _, admin := range admins {
 		err = h.mailService.SendMailFromSystem(admin.Email, subject, body)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue
 		}
 	}

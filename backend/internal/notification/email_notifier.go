@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"kubecloud/internal"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/models"
 	"os"
 	"path/filepath"
@@ -15,11 +15,11 @@ import (
 var emailTpls *template.Template
 
 type EmailNotifier struct {
-	mailService  internal.MailService
+	mailService  mailservice.MailService
 	templatesDir string
 }
 
-func NewEmailNotifier(mailService internal.MailService, templatesDir string) *EmailNotifier {
+func NewEmailNotifier(mailService mailservice.MailService, templatesDir string) *EmailNotifier {
 	return &EmailNotifier{
 		mailService:  mailService,
 		templatesDir: templatesDir,
@@ -39,8 +39,7 @@ func (n *EmailNotifier) ParseTemplates() error {
 
 		n.templatesDir = os.Getenv("TEMPLATE_DIR")
 		if n.templatesDir == "" {
-
-			n.templatesDir = "./internal/templates/notifications"
+			n.templatesDir = "./internal/mailservice/templates/notifications"
 		}
 	}
 
@@ -56,7 +55,7 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	if len(receiver) < 1 {
 		return fmt.Errorf("at least one email address is required: receiver")
 	}
-	if !internal.IsValidEmail(receiver[0]) {
+	if !mailservice.IsValidEmail(receiver[0]) {
 		return fmt.Errorf("receiver email address must be valid")
 	}
 

@@ -6,8 +6,9 @@ import (
 
 	"kubecloud/kubedeployer"
 
-	"github.com/xmonader/ewf"
 	"kubecloud/internal/logger"
+
+	"github.com/xmonader/ewf"
 )
 
 // GetCluster retrieves a cluster from workflow state with robust deserialization
@@ -47,12 +48,13 @@ func GetCluster(state ewf.State) (kubedeployer.Cluster, error) {
 
 // StoreCluster safely stores the cluster in state using JSON marshaling
 func StoreCluster(state ewf.State, cluster kubedeployer.Cluster) {
+	log := logger.ForOperation("statemanager", "store_cluster")
 	// Use the cluster's custom marshaling and store as JSON string
 	if jsonData, err := json.Marshal(cluster); err == nil {
 		state["cluster"] = string(jsonData)
 	} else {
 		// Fallback to direct storage if marshaling fails
-		logger.GetLogger().Warn().Err(err).Msg("Failed to marshal cluster, falling back to direct storage")
+		log.Warn().Err(err).Msg("Failed to marshal cluster, falling back to direct storage")
 		state["cluster"] = cluster
 	}
 }

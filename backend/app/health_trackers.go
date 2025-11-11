@@ -20,87 +20,95 @@ type NodeHealthResult struct {
 	unhealthyNodeID uint32
 }
 
-func (h *deploymentHandler) TrackClusterHealth() {
+func (h *deploymentHandler) TrackClusterHealth(ctx context.Context) {
+	log := logger.ForOperation("health_tracker", "track_cluster_health")
+
 	interval := time.Duration(h.clusterHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for range ticker.C {
-		logger.GetLogger().Info().Msg("Cluster health check test started")
-		clusters, err := h.svc.clusterRepo.ListAllClusters()
-		if err != nil {
-			logger.GetLogger().Error().Err(err)
-			continue
-		}
-
-		if len(clusters) == 0 {
-			logger.GetLogger().Info().Msg("No clusters to check health for")
-			continue
-		}
-
-		for _, cluster := range clusters {
-
-			wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			log.Info().Msg("Cluster health check started")
+			clusters, err := h.svc.clusterRepo.ListAllClusters()
 			if err != nil {
-				logger.GetLogger().Error().
-					Err(err).
-					Msg("Failed to create health tracking workflow")
+				log.Error().Err(err).Msg("failed to list clusters")
 				continue
 			}
-			cl, err := cluster.GetClusterResult()
-			if err != nil {
-				logger.GetLogger().Error().
-					Err(err).
-					Msg("Failed to get cluster result during health tracking")
+
+			if len(clusters) == 0 {
+				log.Info().Msg("No clusters to check health for")
 				continue
 			}
-			wf.State = ewf.State{
-				"cluster": cl,
-				"config": map[string]interface{}{
-					"user_id": cluster.UserID,
-				},
-			}
 
-			h.ewfEngine.RunAsync(h.appCtx, wf)
+			for _, cluster := range clusters {
+
+				wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowTrackClusterHealth)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to create health tracking workflow")
+					continue
+				}
+				cl, err := cluster.GetClusterResult()
+				if err != nil {
+					log.Error().Err(err).Msg("failed to get cluster result during health tracking")
+					continue
+				}
+				wf.State = ewf.State{
+					"cluster": cl,
+					"config": map[string]interface{}{
+						"user_id": cluster.UserID,
+					},
+				}
+
+				h.ewfEngine.RunAsync(h.appCtx, wf)
+			}
 		}
 
 	}
 }
 
-func (h *nodeHandler) TrackReservedNodeHealth(notificationService *notification.NotificationService, grid proxy.Client) {
+func (h *nodeHandler) TrackReservedNodeHealth(ctx context.Context, notificationService *notification.NotificationService, grid proxy.Client) {
+	log := logger.ForOperation("health_tracker", "track_reserved_node_health")
+
 	interval := time.Duration(h.ReservedNodeHealthCheckIntervalInHours) * time.Hour
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		logger.GetLogger().Info().Msg("Reserved node health check started")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			log.Info().Msg("Reserved node health check started")
 
-		reservedNodes, err := h.svc.nodesRepo.ListAllReservedNodes()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to get reserved nodes for health check")
-			continue
+			reservedNodes, err := h.svc.nodesRepo.ListAllReservedNodes()
+			if err != nil {
+				log.Error().Err(err).Msg("failed to get reserved nodes for health check")
+				continue
+			}
+
+			if len(reservedNodes) == 0 {
+				log.Info().Msg("No reserved nodes to check health for")
+				continue
+			}
+
+			log.Info().Int("count", len(reservedNodes)).Msg("Starting health check for reserved nodes")
+
+			h.checkNodesWithWorkerPool(reservedNodes, grid, notificationService)
+
+			log.Info().Int("count", len(reservedNodes)).Msg("Reserved node health check workflows started")
 		}
-
-		if len(reservedNodes) == 0 {
-			logger.GetLogger().Info().Msg("No reserved nodes to check health for")
-			continue
-		}
-
-		logger.GetLogger().Info().
-			Int("count", len(reservedNodes)).
-			Msg("Starting health check for reserved nodes")
-
-		h.checkNodesWithWorkerPool(reservedNodes, grid, notificationService)
-
-		logger.GetLogger().Info().
-			Int("count", len(reservedNodes)).
-			Msg("Reserved node health check workflows started")
 	}
 }
 
 // checkNodesWithWorkerPool uses a worker pool to check node health concurrently
 func (h *nodeHandler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes, grid proxy.Client, notificationService *notification.NotificationService) {
+	log := logger.ForOperation("health_tracker", "check_nodes_worker_pool")
+
 	timeout := time.Duration(h.ReservedNodeHealthCheckTimeoutInMinutes) * time.Minute
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -124,7 +132,7 @@ func (h *nodeHandler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes,
 		for _, userNode := range reservedNodes {
 			select {
 			case <-ctx.Done():
-				logger.GetLogger().Info().Msg("Context done, stopping health check worker")
+				log.Info().Msg("Context done, stopping health check worker")
 				return
 			case jobs <- userNode:
 			}
@@ -181,19 +189,20 @@ func (h *nodeHandler) checkNodesWithWorkerPool(reservedNodes []models.UserNodes,
 		)
 
 		if err := notificationService.Send(h.appCtx, notif); err != nil {
-			logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to send consolidated notification")
+			log.Error().Err(err).Int("user_id", userID).Msg("failed to send consolidated notification")
 		}
 	}
 }
 
 func (h *nodeHandler) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserNodes, results chan<- NodeHealthResult, grid proxy.Client) {
 	defer wg.Done()
+	log := logger.ForOperation("health_tracker", "health_check_worker")
 
 	for userNode := range jobs {
 
 		node, err := grid.Node(ctx, userNode.NodeID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("Failed to get node for health check")
+			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("failed to get node for health check")
 			continue
 		}
 

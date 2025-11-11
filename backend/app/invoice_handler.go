@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"kubecloud/internal/logger"
+	"kubecloud/internal/mailservice"
 
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -39,7 +41,7 @@ type invoiceHandler struct {
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
 	substrateClient *substrate.Substrate
-	mailService     internal.MailService
+	mailService     mailservice.MailService
 
 	invoiceCompanyData internal.InvoiceCompanyData
 	currency           string
@@ -47,7 +49,7 @@ type invoiceHandler struct {
 
 func newInvoiceHandler(svc invoiceService,
 	firesquidClient, graphql graphql.GraphQl,
-	substrateClient *substrate.Substrate, mailService internal.MailService,
+	substrateClient *substrate.Substrate, mailService mailservice.MailService,
 	invoiceCompanyData internal.InvoiceCompanyData, currency string,
 ) invoiceHandler {
 	return invoiceHandler{
@@ -74,9 +76,10 @@ func newInvoiceHandler(svc invoiceService,
 // @Router /invoices [get]
 // ListAllInvoicesHandler lists all invoices in system
 func (h *invoiceHandler) ListAllInvoicesHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "ListAllInvoicesHandler")
 	invoices, err := h.svc.invoicesRepo.ListInvoices()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve invoices")
 		InternalServerError(c)
 		return
 	}
@@ -99,10 +102,11 @@ func (h *invoiceHandler) ListAllInvoicesHandler(c *gin.Context) {
 // ListUserInvoicesHandler lists user invoices by its ID
 func (h *invoiceHandler) ListUserInvoicesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "ListUserInvoicesHandler")
 
 	invoices, err := h.svc.invoicesRepo.ListUserInvoices(userID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve user invoices")
 		InternalServerError(c)
 		return
 	}
@@ -112,41 +116,52 @@ func (h *invoiceHandler) ListUserInvoicesHandler(c *gin.Context) {
 	})
 }
 
-func (h *invoiceHandler) MonthlyInvoicesHandler() {
+func (h *invoiceHandler) MonthlyInvoicesHandler(ctx context.Context) {
+	baseLog := logger.ForOperation("invoices", "monthly_invoices")
 	var lastProcessedMonth time.Month
 	var lastProcessedYear int
 
 	for {
 		now := time.Now()
 		monthLastDay := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 0, -1)
+
+		// Calculate sleep duration until month-end
+		var sleepDuration time.Duration
 		if now.Day() != monthLastDay.Day() {
-			// sleep till last day of month
-			time.Sleep(monthLastDay.Sub(now))
+			sleepDuration = monthLastDay.Sub(now)
 		}
 
-		// Check if invoices for the current month have already been created
+		//check if invoice for this month and year is already processed
 		if now.Month() == lastProcessedMonth && now.Year() == lastProcessedYear {
-			// Sleep until the first day of the next month to avoid running multiple times on the last day
+			// Already processed, sleep until the first day of the next month to avoid running multiple times on the last day
 			nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 5, 0, 0, now.Location())
-			sleepDuration := nextMonth.Sub(now)
-			time.Sleep(sleepDuration)
+			sleepDuration = nextMonth.Sub(now)
+		}
+
+		// Sleep with context awareness (single select)
+		if sleepDuration > 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(sleepDuration):
+			}
+			continue
+		}
+		// Process invoices (we're on month-end and haven't processed yet)
+		users, err := h.svc.userRepo.ListAllUsers()
+		if err != nil {
+			baseLog.Error().Err(err).Msg("failed to retrieve users for invoice creation")
 			continue
 		}
 
-		users, err := h.svc.userRepo.ListAllUsers()
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
-		}
 		for _, user := range users {
 			if err = h.createUserInvoice(user); err != nil {
-				logger.GetLogger().Error().Err(err).Send()
+				baseLog.Error().Err(err).Int("user_id", user.ID).Msg("failed to create invoice for user")
 			}
 		}
-
-		// Update the last processed month and year
+		//update last processed month and year
 		lastProcessedMonth = now.Month()
 		lastProcessedYear = now.Year()
-
 	}
 }
 
@@ -164,6 +179,7 @@ func (h *invoiceHandler) MonthlyInvoicesHandler() {
 // @Router /user/invoice/{invoice_id} [get]
 func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "DownloadInvoiceHandler")
 
 	invoiceID := c.Param("invoice_id")
 	if invoiceID == "" {
@@ -171,16 +187,19 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 		return
 	}
 
+	logWithInvoice := reqLog.With().Str("invoice_id", invoiceID).Logger()
+	reqLog = &logWithInvoice
+
 	id, err := strconv.Atoi(invoiceID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to parse invoice ID")
 		Error(c, http.StatusBadRequest, "Invalid invoice ID", err.Error())
 		return
 	}
 
 	invoice, err := h.svc.invoicesRepo.GetInvoice(id)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Send()
+		reqLog.Error().Err(err).Msg("failed to retrieve invoice")
 		Error(c, http.StatusNotFound, "Invoice is not found", "")
 		return
 	}
@@ -189,21 +208,21 @@ func (h *invoiceHandler) DownloadInvoiceHandler(c *gin.Context) {
 	if len(invoice.FileData) == 0 {
 		user, err := h.svc.userRepo.GetUserByID(userID)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to retrieve user")
 			InternalServerError(c)
 			return
 		}
 
 		pdfContent, err := internal.CreateInvoicePDF(invoice, user, h.invoiceCompanyData)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to create invoice PDF")
 			InternalServerError(c)
 			return
 		}
 
 		invoice.FileData = pdfContent
 		if err := h.svc.invoicesRepo.UpdateInvoicePDF(id, invoice.FileData); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			reqLog.Error().Err(err).Msg("failed to update invoice PDF")
 			InternalServerError(c)
 			return
 		}
@@ -297,7 +316,7 @@ func (h *invoiceHandler) createUserInvoice(user models.User) error {
 	}
 
 	subject, body := h.mailService.InvoiceMailContent(totalInvoiceCostUSD, h.currency, invoice.ID)
-	err = h.mailService.SendMailFromSystem(user.Email, subject, body, internal.Attachment{
+	err = h.mailService.SendMailFromSystem(user.Email, subject, body, mailservice.Attachment{
 		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
 		Data:     invoice.FileData,
 	})

@@ -13,6 +13,7 @@ import (
 
 func SendNotification(userRepo models.UserRepository, notifier notification.Notifier) ewf.StepFn {
 	return func(ctx context.Context, wf ewf.State) error {
+		log := logger.ForOperation("notification_activities", "send_notification")
 		raw, ok := wf["notification"]
 		if !ok {
 			return fmt.Errorf("missing notification in workflow state")
@@ -22,7 +23,9 @@ func SendNotification(userRepo models.UserRepository, notifier notification.Noti
 			return fmt.Errorf("invalid notification in workflow state")
 		}
 		if !slices.Contains(notif.Channels, notifier.GetType()) {
-			logger.GetLogger().Debug().Msgf("SendNotification: step skipped for channel %s (not in notification channels)", notifier.GetType())
+			log.Debug().
+				Str("channel", notifier.GetType()).
+				Msg("Step skipped, channel not in notification channels")
 			return nil
 		}
 		user, err := userRepo.GetUserByID(notif.UserID)

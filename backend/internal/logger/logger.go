@@ -139,3 +139,22 @@ func pingLoki(lw *LokiWriter) error {
 
 	return nil
 }
+
+func ForRequest(userID int, requestID, handler string) *zerolog.Logger {
+	log := GetLogger().With().
+		Str("request_id", requestID).
+		Str("handler", handler)
+	if userID != 0 {
+		log = log.Int("user_id", userID)
+	}
+	logger := log.Logger()
+	return &logger
+}
+
+func ForOperation(component, operation string) *zerolog.Logger {
+	log := GetLogger().With().
+		Str("component", component).
+		Str("operation", operation)
+	logger := log.Logger()
+	return &logger
+}

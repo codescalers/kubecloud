@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"os"
 
-	"kubecloud/internal/logger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/xmonader/ewf"
 )
@@ -124,6 +122,7 @@ type NodeInput struct {
 // @Router /deployments [get]
 func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "HandleListDeployments")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -131,7 +130,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 
 	clusters, err := h.svc.clusterRepo.ListUserClusters(userID)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("Failed to list user clusters")
+		reqLog.Error().Err(err).Msg("failed to list user clusters")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
 		return
 	}
@@ -140,7 +139,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 	for _, cluster := range clusters {
 		clusterResult, err := cluster.GetClusterResult()
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+			reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("failed to deserialize cluster result")
 			continue
 		}
 
@@ -173,6 +172,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 // @Router /deployments/{name} [get]
 func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "HandleGetDeployment")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -185,13 +185,15 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	}
 
 	projectName = kubedeployer.GetProjectName(userID, projectName)
+	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
+	reqLog = &logWithProject
 	cluster, err := h.svc.clusterRepo.GetClusterByName(userID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
-			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
+			reqLog.Error().Err(err).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Database error when looking up deployment")
+			reqLog.Error().Err(err).Msg("Database error when looking up deployment")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -199,7 +201,7 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
 		return
 	}
@@ -229,6 +231,7 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 // @Router /deployments/{name}/kubeconfig [get]
 func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "HandleGetKubeconfig")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
@@ -241,13 +244,15 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	}
 
 	projectName = kubedeployer.GetProjectName(userID, projectName)
+	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
+	reqLog = &logWithProject
 	cluster, err := h.svc.clusterRepo.GetClusterByName(userID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
-			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Deployment not found")
+			reqLog.Error().Err(err).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("project_name", projectName).Msg("Database error when looking up deployment for kubeconfig")
+			reqLog.Error().Err(err).Msg("Database error when looking up deployment for kubeconfig")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -260,28 +265,28 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
 		return
 	}
 
 	privateKeyBytes, err := os.ReadFile(h.sshPrivateKeyPath)
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Str("key_path", h.sshPrivateKeyPath).Msg("Failed to read SSH private key")
+		reqLog.Error().Err(err).Str("key_path", h.sshPrivateKeyPath).Msg("Failed to read SSH private key")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read SSH configuration"})
 		return
 	}
 
 	kubeconfig, err := clusterResult.GetKubeconfig(c.Request.Context(), string(privateKeyBytes))
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})
 		return
 	}
 
 	cluster.Kubeconfig = kubeconfig
 	if err := h.svc.clusterRepo.UpdateCluster(&cluster); err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
 	}
 
 	c.JSON(http.StatusOK, gin.H{"kubeconfig": kubeconfig})
@@ -321,6 +326,7 @@ func (h *deploymentHandler) getClientConfig(c *gin.Context) (statemanager.Client
 // @Router /deployments [post]
 func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleDeployCluster")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -338,12 +344,14 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
+	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
+	reqLog = &logWithProject
 	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "deployment already exists"})
 		return
 	} else if !errors.Is(err, models.ErrClusterNotFound) {
-		logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when checking for existing deployment")
+		reqLog.Error().Err(err).Msg("Database error when checking for existing deployment")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing deployments"})
 		return
 	}
@@ -382,6 +390,7 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 // @Router /deployments/{name} [delete]
 func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleDeleteCluster")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -393,12 +402,14 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 		return
 	}
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
+	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
+	reqLog = &logWithProject
 	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for deletion")
+			reqLog.Error().Err(err).Msg("Database error when looking up deployment for deletion")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -485,6 +496,7 @@ func (h *deploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 // @Router /deployments/{name}/nodes [post]
 func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleAddNode")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -497,12 +509,14 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
+	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
+	reqLog = &logWithProject
 	existingCluster, err := h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("project_name", projectName).Msg("Database error when looking up deployment for adding node")
+			reqLog.Error().Err(err).Msg("Database error when looking up deployment for adding node")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -510,7 +524,7 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 
 	cl, err := existingCluster.GetClusterResult()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", existingCluster.ID).Msg("Failed to deserialize cluster result")
+		reqLog.Error().Err(err).Int("cluster_id", existingCluster.ID).Msg("Failed to deserialize cluster result")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
 		return
 	}
@@ -566,6 +580,7 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 // @Router /deployments/{name}/nodes/{node_name} [delete]
 func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleRemoveNode")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -585,13 +600,18 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	}
 
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
+	logWithFields := reqLog.With().
+		Str("project_name", projectName).
+		Str("deployment_name", deploymentName).
+		Logger()
+	reqLog = &logWithFields
 	cluster, err := h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
-			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Deployment not found")
+			reqLog.Error().Err(err).Msg("Deployment not found")
 			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
 		} else {
-			logger.GetLogger().Error().Err(err).Int("user_id", config.UserID).Str("deployment_name", deploymentName).Msg("Database error when looking up deployment for node removal")
+			reqLog.Error().Err(err).Msg("Database error when looking up deployment for node removal")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
 		}
 		return
@@ -599,7 +619,7 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 
 	cl, err := cluster.GetClusterResult()
 	if err != nil {
-		logger.GetLogger().Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
 		return
 	}

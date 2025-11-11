@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -78,7 +79,7 @@ func CreateUserStep(config internal.Configuration, userRepo models.UserRepositor
 	}
 }
 
-func SendVerificationEmailStep(mailService internal.MailService, config internal.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, config internal.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -234,6 +235,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
 
 func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("user_activities", "create_kyc_sponsorship")
 		userIDVal, ok := state["user_id"]
 		if !ok {
 			return fmt.Errorf("missing 'user_id' in state")
@@ -264,13 +266,13 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to create keypair for SS58 address")
+			log.Error().Err(err).Msg("failed to create keypair for SS58 address")
 			return err
 		}
 
 		sponseeAddress, err := internal.AccountAddressFromKeypair(sponseeKeyPair)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("failed to get SS58 address")
+			log.Error().Err(err).Msg("failed to get SS58 address")
 			return err
 		}
 
@@ -290,7 +292,7 @@ func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *no
 	}
 }
 
-func SendWelcomeEmailStep(mailService internal.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, config internal.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
@@ -361,6 +363,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 
 func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.UserRepository, pendingRecordRepo models.PendingRecordRepository, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("user_activities", "create_pending_record")
 		amountVal, ok := state["amount"]
 		if !ok {
 			return fmt.Errorf("missing 'amount' in state")
@@ -400,7 +403,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.U
 
 		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
 		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("error converting usd")
+			log.Error().Err(err).Msg("error converting USD to TFT")
 			return err
 		}
 
@@ -410,7 +413,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.U
 			TFTAmount:    requestedTFTs,
 			TransferMode: transferMode,
 		}); err != nil {
-			logger.GetLogger().Error().Err(err).Send()
+			log.Error().Err(err).Msg("failed to create pending record")
 			return err
 		}
 

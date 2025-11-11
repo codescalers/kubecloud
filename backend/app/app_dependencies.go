@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
+	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
@@ -61,7 +62,7 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailService         internal.MailService
+	mailService         mailservice.MailService
 	sseManager          *internal.SSEManager
 	notificationService *notification.NotificationService
 }
@@ -194,7 +195,16 @@ func createAppSecurity(ctx context.Context, config internal.Configuration) (appS
 }
 
 func createAppCommunication(config internal.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
-	mailService := internal.NewMailService(config.MailSender, config.Server.Host, metrics)
+	var mailService mailservice.MailService
+
+	if config.DevMode {
+		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
+		mailService = mailservice.NewFakeMailService(metrics)
+	} else {
+		mailService = mailservice.NewSendGridMailService(config.MailSender, config.Server.Host, metrics)
+	}
+
+	// mailService := internal.NewMailService(config.MailSender, config.Server.Host, metrics)
 	sseManager := internal.NewSSEManager()
 
 	notificationRepo := models.NewGormNotificationRepository(db)

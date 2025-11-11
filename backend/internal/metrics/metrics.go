@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"time"
 
+	"kubecloud/internal/constants"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -26,6 +28,8 @@ type Metrics struct {
 	clusterDeploymentSuccesses prometheus.Counter
 	clusterDeploymentFailures  prometheus.Counter
 	activeClusterCount         prometheus.Gauge
+	clusterOperationsSuccesses *prometheus.CounterVec
+	clusterOperationsFailures  *prometheus.CounterVec
 
 	// User metrics
 	userRegistrations prometheus.Counter
@@ -101,6 +105,20 @@ func NewMetrics() *Metrics {
 				Help: "Number of active clusters",
 			},
 		),
+		clusterOperationsSuccesses: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "cluster_operations_successes",
+				Help: "Number of successful cluster operations",
+			},
+			[]string{"operation"},
+		),
+		clusterOperationsFailures: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "cluster_operations_failures",
+				Help: "Number of failed cluster operations",
+			},
+			[]string{"operation"},
+		),
 
 		// User metrics
 		userRegistrations: prometheus.NewCounter(
@@ -163,6 +181,8 @@ func NewMetrics() *Metrics {
 		m.clusterDeploymentSuccesses,
 		m.clusterDeploymentFailures,
 		m.activeClusterCount,
+		m.clusterOperationsSuccesses,
+		m.clusterOperationsFailures,
 		m.userRegistrations,
 		m.stripePaymentSuccesses,
 		m.stripePaymentFailures,
@@ -174,6 +194,17 @@ func NewMetrics() *Metrics {
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
+
+	operations := []string{
+		constants.ClusterOperationAddNode,
+		constants.ClusterOperationRemoveNode,
+		constants.ClusterOperationDeleteCluster,
+		constants.ClusterOperationDeleteAllClusters,
+	}
+	for _, op := range operations {
+		m.clusterOperationsSuccesses.WithLabelValues(op).Add(0)
+		m.clusterOperationsFailures.WithLabelValues(op).Add(0)
+	}
 
 	return m
 }
@@ -242,6 +273,23 @@ func (m *Metrics) IncActiveClusterCount() {
 // DecActiveClusterCount decrements the active cluster count gauge
 func (m *Metrics) DecActiveClusterCount() {
 	m.activeClusterCount.Dec()
+}
+
+// SubActiveClusterCount subtracts a specific count from the active cluster gauge
+func (m *Metrics) SubActiveClusterCount(count int) {
+	if count > 0 {
+		m.activeClusterCount.Sub(float64(count))
+	}
+}
+
+// IncrementClusterOperationSuccess increments the successful cluster operation counter
+func (m *Metrics) IncrementClusterOperationSuccess(operation string) {
+	m.clusterOperationsSuccesses.WithLabelValues(operation).Inc()
+}
+
+// IncrementClusterOperationFailure increments the failed cluster operation counter
+func (m *Metrics) IncrementClusterOperationFailure(operation string) {
+	m.clusterOperationsFailures.WithLabelValues(operation).Inc()
 }
 
 // IncrementUserRegistration increments the user registration counter
