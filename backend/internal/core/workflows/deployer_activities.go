@@ -30,6 +30,8 @@ var (
 	criticalRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ConstantBackoff(5 * time.Second)}
 	standardRetryPolicy        = &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}
 	longExponentialRetryPolicy = &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(30*time.Second, 5*time.Minute, 2.0)}
+
+	ErrClusterNotHealthy = errors.New("cluster not healthy")
 )
 
 func isWorkloadAlreadyDeployedError(err error) bool {
@@ -947,10 +949,109 @@ func VerifyClusterInDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 			}
 			return nil
 		}
+		existingClusterResult, err := existingCluster.GetClusterResult()
+		if err != nil {
+			return fmt.Errorf("failed to get cluster result for %s (user_id=%d): %w", cluster.ProjectName, config.UserID, err)
+		}
 
+		state["cluster"] = existingClusterResult
+		state["kubeconfig"] = existingCluster.Kubeconfig
 		if existingCluster.ID == 0 {
 			return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)
 		}
 		return nil
 	}
+}
+
+func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		kubeconfig, err := getFromState[string](state, "kubeconfig")
+		if err != nil {
+			return fmt.Errorf("failed to get kubeconfig from state: %w", err)
+		}
+
+		// check if all nodes are healthy
+		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		if err != nil {
+			return fmt.Errorf("failed to parse kubeconfig for cluster %s: %w", cluster.Name, err)
+		}
+
+		clientset, err := kubernetes.NewForConfig(restConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create kubernetes client for cluster %s: %w", cluster.Name, err)
+		}
+
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list nodes for cluster %s: %w", cluster.Name, err)
+		}
+
+		// Create map of k8s node health by node name
+		k8sNodeHealth := make(map[string]bool)
+		for _, n := range nodes.Items {
+			for _, cond := range n.Status.Conditions {
+				if cond.Type != v1.NodeReady {
+					continue
+				}
+				if cond.Status == v1.ConditionTrue {
+					k8sNodeHealth[n.Name] = true
+					break
+				}
+				k8sNodeHealth[n.Name] = false
+			}
+		}
+
+		for i := range cluster.Nodes {
+			if healthy, ok := k8sNodeHealth[cluster.Nodes[i].Name]; ok {
+				cluster.Nodes[i].Healthy = healthy
+				continue
+			}
+			cluster.Nodes[i].Healthy = false
+		}
+
+		dbCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from database: %w", err)
+		}
+		if err := dbCluster.SetClusterResult(cluster); err != nil {
+			return fmt.Errorf("failed to set cluster result: %w", err)
+		}
+		if err := clusterRepo.UpdateCluster(&dbCluster); err != nil {
+			return fmt.Errorf("failed to update cluster in database: %w", err)
+		}
+		return nil
+	}
+}
+
+func CheckClusterHealthStep( privateKeyPath string) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		config, err := getConfig(state)
+		if err != nil {
+			return err
+		}
+		cluster, err := statemanager.GetCluster(state)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster from state: %w", err)
+		}
+
+		privateKeyBytes, err := os.ReadFile(privateKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read SSH private key (user_id=%d): %w", config.UserID, err)
+		}
+		_, err = cluster.GetKubeconfig(ctx, string(privateKeyBytes))
+		if err != nil {
+			return fmt.Errorf("%w for cluster %s: %s", ErrClusterNotHealthy, cluster.Name, err.Error())
+		}
+		return nil
+	}
+
 }

@@ -125,9 +125,8 @@ func hookClusterHealthCheck(notificationService *notification.NotificationDispat
 		if err == nil {
 			return
 		}
-
-		if errors.Is(err, ewf.ErrFailWorkflowNow) {
-			log.Warn().Msg("cluster not found in database")
+		if !errors.Is(err, ErrClusterNotHealthy) {
+			log.Warn().Err(err).Msg("could not check cluster health")
 			return
 		}
 
