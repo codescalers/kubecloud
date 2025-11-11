@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
 
@@ -297,7 +298,11 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRented,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(userID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for reserving node")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
@@ -449,7 +454,11 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRentable,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(userID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for unreserving node")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,

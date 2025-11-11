@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/xmonader/ewf"
@@ -316,7 +317,11 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		"cluster": cluster,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(config.UserID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for cluster deployment")
+		InternalServerError(c)
+		return
+	}
 	Accepted(c, "Deployment workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
@@ -372,7 +377,11 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		"project_name": projectName,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(config.UserID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for cluster deletion")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Deployment deletion workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
@@ -418,7 +427,11 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		"config": config,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(config.UserID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for deleting all deployments")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Delete all deployments workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
@@ -500,7 +513,11 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"node":    cluster.Nodes[0],
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(config.UserID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for adding node")
+		InternalServerError(c)
+		return
+	}
 	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
@@ -589,7 +606,11 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"node_name": nodeName,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(strconv.Itoa(config.UserID))); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for removing node")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Node removal workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
