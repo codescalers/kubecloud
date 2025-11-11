@@ -257,7 +257,7 @@ async function showKubeconfig() {
       timeout: 120000
     })
     const data = response.data as any
-    kubeconfigContent.value = data.kubeconfig || ''
+    kubeconfigContent.value = data.data?.kubeconfig || ''
   } catch (err: any) {
     kubeconfigError.value = err?.message || 'Failed to fetch kubeconfig'
   } finally {

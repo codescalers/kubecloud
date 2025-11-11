@@ -8,7 +8,6 @@ import (
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/models"
-	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -201,7 +200,7 @@ type GetUserResponse struct {
 // @Accept json
 // @Produce json
 // @Param body body RegisterInput true "Register Input"
-// @Success 202 {object} RegisterUserResponse "workflow_id: string, email: string"
+// @Success 202 {object} APIResponse{data=RegisterUserResponse} "workflow_id: string, email: string"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -213,7 +212,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -227,7 +226,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	if getErr != gorm.ErrRecordNotFound {
 		if isUserRegistered(existingUser) {
-			Error(c, http.StatusConflict, "Conflict", "User is already registered")
+			Conflict(c, "User is already registered")
 			return
 		}
 	}
@@ -247,7 +246,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Success(c, http.StatusAccepted, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
+	Accepted(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      request.Email,
 	})
@@ -260,7 +259,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body VerifyCodeInput true "Verification details"
-// @Success 202 {object} VerifyRegisterUserResponse
+// @Success 202 {object} APIResponse{data=VerifyRegisterUserResponse} "workflow_id: string, email: string, token_pair: object"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -271,15 +270,19 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	// get user by email
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			NotFound(c, "User not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("failed to get user by email")
-		Error(c, http.StatusBadRequest, "verification failed", "Make sure you have registered before")
+		InternalServerError(c)
 		return
 	}
 	logWithUser := requestLogger(c, "VerifyRegisterCode").With().Int("user_id", user.ID).Logger()
@@ -287,19 +290,19 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 
 	// check if user is already registered (all required fields are set)
 	if isUserRegistered(user) {
-		Error(c, http.StatusConflict, "verification failed", "User is already registered")
+		Conflict(c, "User is already registered")
 		return
 	}
 
 	// check verification if user is not verified
 	if !user.Verified {
 		if user.Code != request.Code {
-			Error(c, http.StatusBadRequest, "verification failed", "Invalid verification code")
+			BadRequest(c, "Invalid verification code")
 			return
 		}
 
 		if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
-			Error(c, http.StatusBadRequest, "verification failed", "code has expired")
+			BadRequest(c, "code has expired")
 			return
 		}
 
@@ -351,7 +354,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusAccepted, "Verification is in progress", VerifyRegisterUserResponse{
+	Accepted(c, "Verification is in progress", VerifyRegisterUserResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 		TokenPair:  tokenPair,
@@ -365,7 +368,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body LoginInput true "Login Input"
-// @Success 201 {object} internal.TokenPair
+// @Success 201 {object} APIResponse{data=internal.TokenPair} "token pair generated"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Login failed"
 // @Failure 500 {object} APIResponse
@@ -377,7 +380,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -385,7 +388,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user by email")
-		Error(c, http.StatusBadRequest, "verification failed", "email or password is incorrect")
+		BadRequest(c, "email or password is incorrect")
 		return
 	}
 	logWithUser := requestLogger(c, "LoginUserHandler").With().Int("user_id", user.ID).Logger()
@@ -394,7 +397,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 	// verify password
 	match := internal.VerifyPassword(user.Password, request.Password)
 	if !match {
-		Error(c, http.StatusUnauthorized, "login failed", "email or password is incorrect")
+		Unauthorized(c, "email or password is incorrect")
 		return
 	}
 
@@ -419,7 +422,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	Success(c, http.StatusCreated, "token pair generated", tokenPair)
+	Created(c, "token pair generated", tokenPair)
 }
 
 // @Summary Refresh access token
@@ -429,7 +432,7 @@ func (h *Handler) LoginUserHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body RefreshTokenInput true "Refresh Token Input"
-// @Success 201 {object} RefreshTokenResponse
+// @Success 201 {object} APIResponse{data=RefreshTokenResponse} "access token refreshed successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Invalid or expired refresh token"
 // @Failure 500 {object} APIResponse
@@ -441,18 +444,18 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	accessToken, err := h.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("refresh token failed")
-		Error(c, http.StatusUnauthorized, "refresh token failed", "Invalid or expired refresh token")
+		Unauthorized(c, "Invalid or expired refresh token")
 		return
 	}
 
-	Success(c, http.StatusCreated, "access token refreshed successfully", RefreshTokenResponse{
+	Created(c, "access token refreshed successfully", RefreshTokenResponse{
 		AccessToken: accessToken,
 	})
 }
@@ -464,7 +467,7 @@ func (h *Handler) RefreshTokenHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body EmailInput true "Email Input"
-// @Success 200 {object} RegisterResponse
+// @Success 200 {object} APIResponse{data=RegisterResponse} "Verification code sent successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
@@ -476,7 +479,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -484,7 +487,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user ")
-		Error(c, http.StatusNotFound, "user lookup failed", "failed to get user")
+		NotFound(c, "user lookup failed")
 		return
 
 	}
@@ -515,7 +518,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Verification code sent", RegisterResponse{
+	OK(c, "Verification code sent", RegisterResponse{
 		Email:   request.Email,
 		Timeout: fmt.Sprintf("%d minutes", h.config.MailSender.TimeoutMin),
 	})
@@ -529,7 +532,7 @@ func (h *Handler) ForgotPasswordHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body VerifyCodeInput true "Verify Code Input"
-// @Success 201 {object} internal.TokenPair "Verification successful"
+// @Success 201 {object} APIResponse{data=internal.TokenPair} "Verification successful"
 // @Failure 400 {object} APIResponse "Invalid request format or verification failed"
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password/verify [post]
@@ -539,7 +542,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	var request VerifyCodeInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -547,7 +550,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	user, err := h.db.GetUserByEmail(request.Email)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+			NotFound(c, "User not found")
 			return
 
 		}
@@ -560,12 +563,12 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	reqLog = &logWithUser
 
 	if user.Code != request.Code {
-		Error(c, http.StatusBadRequest, "Invalid code", "")
+		BadRequest(c, "Invalid code")
 		return
 	}
 
 	if user.UpdatedAt.Add(time.Duration(h.config.MailSender.TimeoutMin) * time.Minute).Before(time.Now()) {
-		Error(c, http.StatusBadRequest, "code expired", "verification code has expired")
+		BadRequest(c, "verification code has expired")
 		return
 	}
 	isAdmin := internal.Contains(h.config.Admins, request.Email)
@@ -578,7 +581,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusCreated, "Verification successful", tokenPair)
+	Created(c, "Verification successful", tokenPair)
 }
 
 // @Summary Change password
@@ -588,7 +591,7 @@ func (h *Handler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body ChangePasswordInput true "Change Password Input"
-// @Success 202 {object} APIResponse "Password updated successfully"
+// @Success 200 {object} APIResponse "Password updated successfully"
 // @Failure 400 {object} APIResponse "Invalid request format or password mismatch"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
@@ -601,8 +604,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
-
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -617,7 +619,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 	err = h.db.UpdatePassword(request.Email, hashedPassword)
 	if err == gorm.ErrRecordNotFound {
 		reqLog.Error().Err(err).Msg("user is not found")
-		Error(c, http.StatusNotFound, "user is not found", err.Error())
+		NotFound(c, "User is not found")
 
 		return
 	}
@@ -641,8 +643,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 		reqLog.Error().Err(err).Msg("failed to send password changed notification")
 	}
 
-	Success(c, http.StatusAccepted, "password is updated successfully", nil)
-
+	OK(c, "Password is updated successfully", nil)
 }
 
 // @Summary Charge user balance
@@ -652,7 +653,7 @@ func (h *Handler) ChangePasswordHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body ChargeBalanceInput true "Charge Balance Input"
-// @Success 202 {object} ChargeBalanceResponse "workflow_id: string, email: string"
+// @Success 202 {object} APIResponse{data=ChargeBalanceResponse} "workflow_id: string, email: string"
 // @Failure 400 {object} APIResponse "Invalid request format or amount"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -664,14 +665,14 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	var request ChargeBalanceInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("User is not found")
-		Error(c, http.StatusNotFound, "User is not found", "")
+		NotFound(c, "User is not found")
 		return
 	}
 
@@ -679,7 +680,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error creating payment method")
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
@@ -694,7 +695,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error attaching payment method to customer")
 		if stripeErr, ok := err.(*stripe.Error); ok {
-			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code), stripeErr.Msg)
+			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
@@ -721,7 +722,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Success(c, http.StatusAccepted, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
+	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
 		Email:      user.Email,
 	})
@@ -732,7 +733,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} GetUserResponse "User is retrieved successfully"
+// @Success 200 {object} APIResponse{data=GetUserResponse} "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
@@ -743,8 +744,12 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		Error(c, http.StatusNotFound, "User is not found", "")
+		InternalServerError(c)
 		return
 	}
 
@@ -772,7 +777,7 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
 	}
 
-	Success(c, http.StatusOK, "User is retrieved successfully", gin.H{
+	OK(c, "User is retrieved successfully", gin.H{
 		"user": userResponse,
 	})
 }
@@ -782,7 +787,7 @@ func (h *Handler) GetUserHandler(c *gin.Context) {
 // @Tags users
 // @ID get-user-balance
 // @Produce json
-// @Success 200 {object} UserBalanceResponse "Balance fetched successfully"
+// @Success 200 {object} APIResponse{data=UserBalanceResponse} "Balance fetched successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user/balance [get]
@@ -793,8 +798,12 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		Error(c, http.StatusNotFound, "User is not found", "")
+		InternalServerError(c)
 		return
 	}
 
@@ -824,7 +833,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Balance is fetched", UserBalanceResponse{
+	OK(c, "Balance is fetched", UserBalanceResponse{
 		BalanceUSD:        internal.FromUSDMilliCentToUSD(usdMillicentBalance),
 		DebtUSD:           internal.FromUSDMilliCentToUSD(user.Debt),
 		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdPendingAmount),
@@ -837,7 +846,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 // @ID redeem-voucher
 // @Param voucher_code path string true "Voucher Code"
 // @Produce json
-// @Success 202 {object} RedeemVoucherResponse "workflow_id: string, voucher_code: string, amount: float64, email: string"
+// @Success 202 {object} APIResponse{data=RedeemVoucherResponse} "workflow_id: string, voucher_code: string, amount: float64, email: string"
 // @Failure 400 {object} APIResponse "Invalid voucher code, already redeemed, or expired"
 // @Failure 404 {object} APIResponse "User or voucher are not found"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -845,7 +854,7 @@ func (h *Handler) GetUserBalance(c *gin.Context) {
 func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	voucherCodeParam := c.Param("voucher_code")
 	if voucherCodeParam == "" {
-		Error(c, http.StatusBadRequest, "Voucher Code is required", "")
+		BadRequest(c, "Voucher Code is required")
 		return
 	}
 	userID := c.GetInt("user_id")
@@ -853,28 +862,36 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("User is not found")
-		Error(c, http.StatusNotFound, "User is not found", "")
+		InternalServerError(c)
 		return
 	}
 
 	// check voucher exists
 	voucher, err := h.db.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "Voucher is not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("Voucher is not found")
-		Error(c, http.StatusNotFound, "Voucher is not found", "")
+		InternalServerError(c)
 		return
 	}
 
 	// check voucher not redeemed
 	if voucher.Redeemed {
-		Error(c, http.StatusBadRequest, "Voucher is already redeemed", "")
+		BadRequest(c, "Voucher is already redeemed")
 		return
 	}
 
 	// check on expiration time of voucher
 	if voucher.ExpiresAt.Before(time.Now()) {
-		Error(c, http.StatusBadRequest, "Voucher is already expired", "")
+		BadRequest(c, "Voucher is already expired")
 		return
 	}
 
@@ -900,7 +917,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Success(c, http.StatusAccepted, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
+	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
@@ -915,7 +932,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {array} models.SSHKey
+// @Success 200 {object} APIResponse{data=[]models.SSHKey}
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [get]
@@ -924,7 +941,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListSSHKeysHandler")
 	if userID == 0 {
-		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
+		Unauthorized(c, "user not authenticated")
 		return
 	}
 
@@ -935,7 +952,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "SSH keys retrieved successfully", sshKeys)
+	OK(c, "SSH keys retrieved successfully", sshKeys)
 }
 
 // @Summary Add SSH key
@@ -946,7 +963,7 @@ func (h *Handler) ListSSHKeysHandler(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @Param body body SSHKeyInput true "SSH Key Input"
-// @Success 201 {object} models.SSHKey
+// @Success 201 {object} APIResponse{data=models.SSHKey}
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse
@@ -956,20 +973,20 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "AddSSHKeyHandler")
 	if userID == 0 {
-		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
+		Unauthorized(c, "user not authenticated")
 		return
 	}
 
 	var request SSHKeyInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	// Validate SSH key format
 	if err := internal.ValidateSSH(request.PublicKey); err != nil {
-		Error(c, http.StatusBadRequest, "Validation Error", "invalid SSH key format")
+		BadRequest(c, "Invalid SSH key format")
 		return
 	}
 
@@ -981,7 +998,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 
 	if err := h.db.CreateSSHKey(&sshKey); err != nil {
 		if isUniqueViolation(err) {
-			Error(c, http.StatusBadRequest, "Duplicate SSH key", "SSH key name or public key already exists for this user.")
+			BadRequest(c, "SSH key name or public key already exists for this user.")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to create SSH key")
@@ -1000,7 +1017,7 @@ func (h *Handler) AddSSHKeyHandler(c *gin.Context) {
 		reqLog.Error().Err(err).Msg("failed to send ssh key added notification")
 	}
 
-	Success(c, http.StatusCreated, "SSH key added successfully", sshKey)
+	Created(c, "SSH key added successfully", sshKey)
 }
 
 // @Summary Delete SSH key
@@ -1022,13 +1039,13 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "DeleteSSHKeyHandler")
 	if userID == 0 {
-		Error(c, http.StatusUnauthorized, "Unauthorized", "user not authenticated")
+		Unauthorized(c, "user not authenticated")
 		return
 	}
 
 	sshKeyID := c.Param("ssh_key_id")
 	if sshKeyID == "" {
-		Error(c, http.StatusBadRequest, "Invalid request", "SSH key ID is required")
+		BadRequest(c, "SSH key ID is required")
 		return
 	}
 
@@ -1036,14 +1053,14 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 	var keyID int
 	keyID, err := strconv.Atoi(sshKeyID)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Invalid request", "invalid SSH key ID format")
+		BadRequest(c, "invalid SSH key ID format")
 		return
 	}
 
 	sshKey, err := h.db.GetSSHKeyByID(keyID, userID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
+			NotFound(c, "SSH key not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get SSH key before deletion")
@@ -1053,7 +1070,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 
 	if err := h.db.DeleteSSHKey(keyID, userID); err != nil {
 		if err.Error() == fmt.Sprintf("no SSH key found with ID %d for user %d", keyID, userID) {
-			Error(c, http.StatusNotFound, "Not Found", "SSH key not found")
+			NotFound(c, "SSH key not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to delete SSH key")
@@ -1071,7 +1088,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 		reqLog.Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 
-	Success(c, http.StatusOK, "SSH key deleted successfully", nil)
+	OK(c, "SSH key deleted successfully", nil)
 }
 
 // @Summary Get workflow status
@@ -1081,7 +1098,7 @@ func (h *Handler) DeleteSSHKeyHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param workflow_id path string true "Workflow ID"
-// @Success 200 {object} string "Workflow status returned successfully"
+// @Success 200 {object} APIResponse{data=string} "Workflow status returned successfully"
 // @Failure 400 {object} APIResponse "Invalid request or missing workflow ID"
 // @Failure 404 {object} APIResponse "Workflow not found"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -1091,7 +1108,7 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 
 	workflowID := c.Param("workflow_id")
 	if workflowID == "" {
-		Error(c, http.StatusBadRequest, "Invalid request", "Workflow ID is required")
+		BadRequest(c, "Workflow ID is required")
 		return
 	}
 
@@ -1101,7 +1118,7 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
-	Success(c, http.StatusOK, "Status returned successfully", workflow.Status)
+	OK(c, "Status returned successfully", workflow.Status)
 }
 
 // @Summary List user pending records
@@ -1110,7 +1127,7 @@ func (h *Handler) GetWorkflowStatus(c *gin.Context) {
 // @ID list-user-pending-records
 // @Accept json
 // @Produce json
-// @Success 200 {array} PendingRecordsResponse
+// @Success 200 {object} APIResponse{data=PendingRecordsResponse} "Pending records returned successfully"
 // @Failure 500 {object} APIResponse
 // @Security BearerAuth
 // @Router /user/pending-records [get]
@@ -1149,7 +1166,7 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 		})
 	}
 
-	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
+	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsResponse,
 	})
 }

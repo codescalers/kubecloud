@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal"
-	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -84,14 +83,14 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 	limit.RetCount = true
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		BadRequest(c, "Invalid limit params")
 		return
 	}
 
 	filter := proxyTypes.NodeFilter{}
 	err = queryParamsToStruct(query, &filter)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		BadRequest(c, "Invalid filter params")
 		return
 	}
 
@@ -102,7 +101,7 @@ func (h *Handler) ListAllGridNodesHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "All grid nodes retrieved successfully", ListNodesResponse{
+	OK(c, "All grid nodes retrieved successfully", ListNodesResponse{
 		Total: count,
 		Nodes: nodes,
 	})
@@ -140,14 +139,14 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 	limit.Randomize = true
 	err = queryParamsToStruct(query, &limit)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		BadRequest(c, "Invalid limit params")
 		return
 	}
 
 	filter := proxyTypes.NodeFilter{}
 	err = queryParamsToStruct(query, &filter)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		BadRequest(c, "Invalid filter params")
 		return
 	}
 
@@ -189,7 +188,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 		}
 	}
 
-	Success(c, http.StatusOK, "Nodes retrieved successfully", ListNodesResponse{
+	OK(c, "Nodes retrieved successfully", ListNodesResponse{
 		Total: rentedNodesCount + availableNodesCount - duplicatesCount,
 		Nodes: allNodes,
 	})
@@ -202,7 +201,7 @@ func (h *Handler) ListNodesHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param node_id path string true "Node ID"
-// @Success 202 {object} ReserveNodeResponse
+// @Success 202 {object} APIResponse{data=ReserveNodeResponse} "Node reservation in progress"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 404 {object} APIResponse "No nodes are available for rent."
 // @Failure 500 {object} APIResponse
@@ -214,7 +213,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ReserveNodeHandler")
 	if nodeIDParam == "" {
-		Error(c, http.StatusBadRequest, "Node ID is required", "")
+		BadRequest(c, "Node ID is required")
 		return
 	}
 
@@ -229,6 +228,10 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve user")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
 		InternalServerError(c)
 		return
 	}
@@ -246,13 +249,13 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 	if len(nodes) == 0 {
 		reqLog.Error().Msg("no nodes are available for rent")
-		Error(c, http.StatusNotFound, "No nodes are available for rent.", "")
+		NotFound(c, "No nodes are available for rent.")
 		return
 	}
 	node := nodes[0]
 
 	if node.Rented {
-		Error(c, http.StatusBadRequest, "Node is already reserved.", "")
+		BadRequest(c, "Node is already reserved.")
 		return
 	}
 
@@ -263,7 +266,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 	if err == nil && userNode.NodeID != 0 {
-		Error(c, http.StatusBadRequest, "Node is already reserved.", "")
+		BadRequest(c, "Node is already reserved.")
 		return
 	}
 	// validate user has enough balance for reserving node
@@ -276,7 +279,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	//TODO: check price in month constant
 	if usdMillicentBalance-user.Debt < internal.FromUSDToUSDMillicent(node.PriceUsd)/24/30 {
-		Error(c, http.StatusBadRequest, "You should at least have enough balance for one hour", "")
+		BadRequest(c, "You should at least have enough balance for one hour")
 		return
 	}
 
@@ -296,12 +299,11 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Success(c, http.StatusAccepted, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
+	Accepted(c, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wf.UUID,
 		NodeID:     nodeID,
 		Email:      user.Email,
 	})
-
 }
 
 // @Summary List rentable nodes
@@ -340,10 +342,11 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
+	OK(c, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
 		Nodes: nodesWithDiscount,
 	})
+
 }
 
 // @Summary List reserved nodes
@@ -359,6 +362,7 @@ func (h *Handler) ListRentableNodesHandler(c *gin.Context) {
 // ListReservedNodeHandler list reserved nodes for user on tfchain
 func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
+
 	nodes, count, err := h.getRentedNodesForUser(c.Request.Context(), userID, false)
 	if err != nil {
 		InternalServerError(c)
@@ -372,7 +376,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
-	Success(c, http.StatusOK, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
+	OK(c, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
 		Nodes: nodesWithDiscount,
 	})
@@ -385,7 +389,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param contract_id path string true "Contract ID"
-// @Success 202 {object} UnreserveNodeResponse
+// @Success 202 {object} APIResponse{data=UnreserveNodeResponse}
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
@@ -395,7 +399,7 @@ func (h *Handler) ListRentedNodesHandler(c *gin.Context) {
 func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	contractIDParam := c.Param("contract_id")
 	if contractIDParam == "" {
-		Error(c, http.StatusBadRequest, "Contract ID is required", "")
+		BadRequest(c, "Contract ID is required")
 		return
 	}
 
@@ -405,7 +409,11 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	user, err := h.db.GetUserByID(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve user")
-		Error(c, http.StatusNotFound, "User is not found", "")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
+		InternalServerError(c)
 		return
 	}
 
@@ -418,7 +426,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	userNode, err := h.db.GetUserNodeByContractID(contractID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Error(c, http.StatusNotFound, "Contract ID not found", "Could not find contract ID in user nodes")
+			NotFound(c, "Contract ID not found for user")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get user node by contract id")
@@ -443,7 +451,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appContext, wf)
 
-	Success(c, http.StatusAccepted, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
+	Accepted(c, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wf.UUID,
 		ContractID: contractID,
 		Email:      user.Email,
@@ -586,7 +594,7 @@ func (h *Handler) getRentedNodesForUser(ctx context.Context, userID int, healthy
 // @Param limit query int false "Pagination limit"
 // @Param offset query int false "Pagination offset"
 // @Param filterParam  query string false "Other optional filter params"
-// @Success 200 {object} TwinResponse "Account ID is retrieved successfully"
+// @Success 200 {object} APIResponse{data=TwinResponse} "Account ID is retrieved successfully"
 // @Failure 400 {object} APIResponse "Bad Request or Invalid params"
 // @Failure 404 {object} APIResponse "Twin ID not found"
 // @Failure 500 {object} APIResponse "Internal Server Error"
@@ -595,7 +603,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "GetAccountIDHandler")
 	twinIDParam := c.Param("twin_id")
 	if twinIDParam == "" {
-		Error(c, http.StatusBadRequest, "Twin ID is required", "")
+		BadRequest(c, "Twin ID is required")
 		return
 	}
 
@@ -604,14 +612,14 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	limit := proxyTypes.DefaultLimit()
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid limit params")
+		BadRequest(c, "Invalid limit params")
 		return
 	}
 
 	twinID64, err := strconv.ParseUint(twinIDParam, 10, 64)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to parse twin id")
-		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing twin id")
+		BadRequest(c, "Error parsing twin id")
 		return
 	}
 
@@ -619,7 +627,7 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	filter.TwinID = &twinID64
 	err = queryParamsToStruct(query, &filter)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Bad Request", "Invalid filter params")
+		BadRequest(c, "Invalid filter params")
 		return
 	}
 
@@ -631,10 +639,10 @@ func (h *Handler) GetAccountIDHandler(c *gin.Context) {
 	}
 
 	if len(twins) == 0 {
-		Error(c, http.StatusNotFound, "Twin ID not found", "")
+		NotFound(c, "Twin ID not found")
 		return
 	}
-	Success(c, http.StatusOK, "Twin Details are retrieved successfully", TwinResponse{
+	OK(c, "Twin Details are retrieved successfully", TwinResponse{
 		AccountID: twins[0].AccountID,
 		TwinID:    twins[0].TwinID,
 		Relay:     twins[0].Relay,
@@ -671,25 +679,25 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "GetNodeStoragePoolHandler")
 	nodeIDParam := c.Param("node_id")
 	if nodeIDParam == "" {
-		Error(c, http.StatusBadRequest, "Node ID is required", "")
+		BadRequest(c, "Node ID is required")
 		return
 	}
 
 	nodeID, err := strconv.ParseUint(nodeIDParam, 10, 32)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to parse node id")
-		Error(c, http.StatusBadRequest, "Bad Request", "Error parsing node id")
+		BadRequest(c, "Error parsing node id")
 		return
 	}
 
 	res, _, err := h.proxyClient.Nodes(c.Request.Context(), proxyTypes.NodeFilter{NodeID: &nodeID}, proxyTypes.DefaultLimit())
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get node from proxy")
-		Error(c, http.StatusNotFound, "failed to get node", "")
+		InternalServerError(c)
 		return
 	}
 	if len(res) == 0 {
-		Error(c, http.StatusNotFound, "Node not found", "")
+		NotFound(c, "Node not found")
 		return
 	}
 
@@ -714,5 +722,5 @@ func (h *Handler) GetNodeStoragePoolHandler(c *gin.Context) {
 		})
 	}
 
-	Success(c, http.StatusOK, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
+	OK(c, "Node storage pool is retrieved successfully", NodeStoragePoolResponse{Pools: pools})
 }

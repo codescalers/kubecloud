@@ -268,7 +268,7 @@ func TestListVouchersHandler(t *testing.T) {
 		var vouchersResp map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &vouchersResp)
 		assert.NoError(t, err)
-		assert.Equal(t, "Vouchers are Retrieved successfully", vouchersResp["message"])
+		assert.Equal(t, "Vouchers are retrieved successfully", vouchersResp["message"])
 		data, ok := vouchersResp["data"].(map[string]interface{})
 		assert.True(t, ok)
 		vouchersRaw, ok := data["vouchers"]
@@ -379,7 +379,7 @@ func TestCreditUserHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusInternalServerError, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("Test Credit user with no token", func(t *testing.T) {
