@@ -23,10 +23,11 @@ const (
 
 // SSEManager handles Server-Sent Events for real-time notifications
 type SSEManager struct {
-	clients map[int][]chan SSEMessage // userID -> client channels
-	mu      sync.RWMutex
-	ctx     context.Context
-	cancel  context.CancelFunc
+	clients      map[int][]chan SSEMessage // userID -> client channels
+	mu           sync.RWMutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	tokenManager TokenManager
 }
 
 // SSEMessage represents a server-sent event message
@@ -40,12 +41,13 @@ type SSEMessage struct {
 }
 
 // NewSSEManager creates a new SSE manager
-func NewSSEManager() *SSEManager {
+func NewSSEManager(tokenManager TokenManager) *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
-		clients: make(map[int][]chan SSEMessage),
-		ctx:     ctx,
-		cancel:  cancel,
+		clients:      make(map[int][]chan SSEMessage),
+		ctx:          ctx,
+		cancel:       cancel,
+		tokenManager: tokenManager,
 	}
 
 	return manager
@@ -132,12 +134,39 @@ func (s *SSEManager) Notify(userID int, msgType string, severity models.Notifica
 
 }
 
+// setupExpiryTimer creates a timer that fires when the token expires
+func (s *SSEManager) setupExpiryTimer(tokenStr string) *time.Timer {
+	if tokenStr == "" || s.tokenManager == nil {
+		return nil
+	}
+
+	claims, err := s.tokenManager.VerifyToken(tokenStr)
+	if err != nil || claims.ExpiresAt == nil {
+		return nil
+	}
+
+	return time.NewTimer(time.Until(claims.ExpiresAt.Time))
+}
+
 // HandleSSE handles SSE HTTP connections
 func (s *SSEManager) HandleSSE(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
+	}
+
+	// Extract token from query or Authorization header
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Setup token expiry enforcement timer
+	expiryTimer := s.setupExpiryTimer(tokenStr)
+	if expiryTimer != nil {
+		defer expiryTimer.Stop()
 	}
 
 	// Set SSE headers
@@ -170,6 +199,10 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			c.SSEvent("message", string(data))
 			return true
+
+		case <-expiryTimer.C:
+			// Token expired
+			return false
 
 		case <-c.Request.Context().Done():
 			log.Debug().Msg("Client disconnected")

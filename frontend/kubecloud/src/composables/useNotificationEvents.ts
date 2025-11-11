@@ -31,6 +31,7 @@ const MAX_RECONNECT_ATTEMPTS = 5
 const RECONNECT_DELAY = 2000
 const NOTIFICATION_DELAY = 2000
 const MAX_NOTIFICATIONS_QUEUE = 10
+const TOKEN_REFRESH_THRESHOLD = 2 * 60 * 1000 // Refresh 2 minutes before expiry
 
 /**
  * Vue composable for managing real-time notification events via Server-Sent Events (SSE)
@@ -54,6 +55,35 @@ export function useNotificationEvents() {
   const isPageVisible = ref(true)
   const shouldReconnectOnVisibility = ref(false)
   const eventListenersInitialized = ref(false)
+  const tokenRefreshTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
+  function getTokenExpiry(token: string): number | null {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      return payload.exp ? payload.exp * 1000 : null
+    } catch {
+      return null
+    }
+  }
+
+  function setupTokenRefresh() {
+    if (tokenRefreshTimer.value) clearTimeout(tokenRefreshTimer.value)
+    
+    const expiry = getTokenExpiry(userStore.token || '')
+    if (!expiry) return
+
+    const refreshIn = expiry - Date.now() - TOKEN_REFRESH_THRESHOLD
+    if (refreshIn > 0) {
+      tokenRefreshTimer.value = setTimeout(async () => {
+        try {
+          await userStore.refreshToken()
+          await disconnect()
+          connect()
+          setupTokenRefresh()
+        } catch {}
+      }, refreshIn)
+    }
+  }
 
   /**
    * Establishes SSE connection to the backend notification service
@@ -70,8 +100,7 @@ export function useNotificationEvents() {
       (typeof window !== 'undefined' && (window as any).__ENV__?.VITE_API_BASE_URL) ||
       import.meta.env.VITE_API_BASE_URL ||
       'http://localhost:8080/api'
-    const token = userStore.token
-    const url = backendBaseUrl + '/v1/events?token=' + encodeURIComponent(token)
+    const url = backendBaseUrl + '/v1/events?token=' + encodeURIComponent(userStore.token)
 
     eventSource.value = new EventSource(url, { withCredentials: true })
 
@@ -79,13 +108,12 @@ export function useNotificationEvents() {
       isConnected.value = true
       reconnectAttempts.value = 0
       shouldReconnectOnVisibility.value = false
-      console.log('[SSE] Notification SSE connection established successfully')
+      setupTokenRefresh()
     }
 
     eventSource.value.onmessage = (event) => {
       try {
         const eventData = JSON.parse(event.data) as SSEMessage
-        // Remove the oldest notification if the queue is full to prevent memory overflow
         if (notificationQueue.value.length >= MAX_NOTIFICATIONS_QUEUE) {
           notificationQueue.value.shift()
         }
@@ -95,16 +123,10 @@ export function useNotificationEvents() {
       }
     }
 
-    eventSource.value.onerror = (err) => {
+    eventSource.value.onerror = () => {
       isConnected.value = false
-      console.error('[SSE Debug] Notification SSE connection error:', err)
 
-      // Only attempt reconnection if we're online and the page is visible
-      if (
-        isOnline.value &&
-        isPageVisible.value &&
-        reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS
-      ) {
+      if (isOnline.value && isPageVisible.value && reconnectAttempts.value < MAX_RECONNECT_ATTEMPTS) {
         const delay = RECONNECT_DELAY * 2 ** reconnectAttempts.value
         setTimeout(async () => {
           reconnectAttempts.value++
@@ -113,9 +135,6 @@ export function useNotificationEvents() {
       }
       if (!isPageVisible.value) {
         shouldReconnectOnVisibility.value = true
-      }
-      if (!isOnline.value) {
-        console.log('[SSE] Device offline, will reconnect when network is restored')
       }
     }
   }
@@ -320,25 +339,21 @@ export function useNotificationEvents() {
 
   /**
    * Handles user-related notifications
-   *
-   * Currently logs the notification; can be extended for user-specific logic.
    */
   async function handleUserNotification() {
-    console.log('User notification received')
     await userStore.loadUser()
     router.push('/dashboard')
   }
 
-  /**
-   * Closes the SSE connection
-   *
-   * Properly terminates the EventSource connection and updates connection state.
-   */
   function disconnect(): Promise<void> {
     return new Promise((resolve) => {
       if (eventSource.value) {
         eventSource.value.close()
         eventSource.value = null
+      }
+      if (tokenRefreshTimer.value) {
+        clearTimeout(tokenRefreshTimer.value)
+        tokenRefreshTimer.value = null
       }
       isConnected.value = false
       resolve()
@@ -347,9 +362,6 @@ export function useNotificationEvents() {
 
   /**
    * Refreshes all cluster-related data from the backend
-   *
-   * Fetches updated cluster information and rented nodes data in parallel
-   * to ensure UI reflects the latest state after deployment notifications.
    */
   async function refreshClusterData() {
     try {
@@ -415,6 +427,7 @@ export function useNotificationEvents() {
 
   async function cleanup() {
     removeNetworkAndVisibilityListeners()
+    if (tokenRefreshTimer.value) clearTimeout(tokenRefreshTimer.value)
     notificationQueue.value = []
     processingQueue.value = false
     shouldReconnectOnVisibility.value = false
