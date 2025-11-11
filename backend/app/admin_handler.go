@@ -231,33 +231,35 @@ func (h *adminHandler) DeleteUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "DeleteUsersHandler")
 
 	if userID == "" {
-		Error(c, http.StatusBadRequest, "User ID is required", "")
+		BadRequest(c, "User ID is required")
 		return
 	}
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
 		reqLog.Error().Err(err).Msg("invalid user id to delete")
-		Error(c, http.StatusBadRequest, "Invalid user ID", err.Error())
+		BadRequest(c, "Invalid user ID")
 		return
 	}
 
 	if id == authUserID {
-		Error(c, http.StatusForbidden, "Admins cannot delete their own account", "")
+		Forbidden(c, "Admins cannot delete their own account")
 		return
 	}
 
 	err = h.svc.userRepo.DeleteUserByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
-			Error(c, http.StatusNotFound, "User not found", "")
+			NotFound(c, "User not found")
 			return
 		}
+		logger.GetLogger().Error().Err(err).Msg("failed to delete user by id")
 		InternalServerError(c)
+
 		return
 	}
+	OK(c, "User is deleted successfully", nil)
 
-	Success(c, http.StatusOK, "User is deleted successfully", nil)
 }
 
 // @Summary Generate vouchers
@@ -267,7 +269,7 @@ func (h *adminHandler) DeleteUsersHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body GenerateVouchersInput true "Generate Vouchers Input"
-// @Success 201 {array} models.Voucher
+// @Success 201 {object} APIResponse{data=[]models.Voucher}
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
@@ -280,7 +282,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -326,7 +328,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 		}
 	}
 
-	Success(c, http.StatusCreated, "Vouchers are generated successfully", map[string]interface{}{
+	Created(c, "Vouchers are generated successfully", gin.H{
 		"vouchers": vouchers,
 	})
 }
@@ -337,7 +339,7 @@ func (h *adminHandler) GenerateVouchersHandler(c *gin.Context) {
 // @ID list-vouchers
 // @Accept json
 // @Produce json
-// @Success 200 {array} models.Voucher
+// @Success 200 {object} APIResponse{data=[]models.Voucher}
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /vouchers [get]
@@ -351,7 +353,7 @@ func (h *adminHandler) ListVouchersHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Vouchers are Retrieved successfully", map[string]interface{}{
+	OK(c, "Vouchers are retrieved successfully", gin.H{
 		"vouchers": vouchers,
 	})
 }
@@ -364,7 +366,7 @@ func (h *adminHandler) ListVouchersHandler(c *gin.Context) {
 // @Produce json
 // @Param user_id path string true "User ID"
 // @Param body body CreditRequestInput true "Credit Request Input"
-// @Success 202 {object} CreditUserResponse
+// @Success 202 {object} APIResponse{data=CreditUserResponse}
 // @Failure 400 {object} APIResponse "Invalid request format or user ID"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
@@ -376,26 +378,30 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "CreditUserHandler")
 	adminID := c.GetInt("user_id")
 	if userID == "" {
-		Error(c, http.StatusBadRequest, "User ID is required", "")
+		BadRequest(c, "User ID is required")
 		return
 	}
 
 	var request CreditRequestInput
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
 		reqLog.Error().Err(err).Msg("invalid user ID format")
-		Error(c, http.StatusBadRequest, "Invalid user ID format", "")
+		BadRequest(c, "Invalid user ID format")
 		return
 	}
 
 	user, err := h.svc.userRepo.GetUserByID(id)
 	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("failed to get user by id")
 		InternalServerError(c)
 		return
@@ -432,11 +438,12 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 	}
 	h.ewfEngine.RunAsync(h.appCtx, wf)
 
-	Success(c, http.StatusAccepted, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	Accepted(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
 	})
+
 }
 
 // @Summary List pending records
@@ -445,7 +452,7 @@ func (h *adminHandler) CreditUserHandler(c *gin.Context) {
 // @ID list-pending-records
 // @Accept json
 // @Produce json
-// @Success 200 {array} PendingRecordsResponse
+// @Success 200 {object} APIResponse{data=PendingRecordsResponse} "Pending records are retrieved successfully"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /pending-records [get]
@@ -482,7 +489,7 @@ func (h *adminHandler) ListPendingRecordsHandler(c *gin.Context) {
 		})
 	}
 
-	Success(c, http.StatusOK, "Pending records are retrieved successfully", map[string]any{
+	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsResponse,
 	})
 }
@@ -506,7 +513,7 @@ func (h *adminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "SendMailToAllUsersHandler")
 	var input AdminMailInput
 	if err := c.ShouldBind(&input); err != nil {
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -567,14 +574,15 @@ func (h *adminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	}
 
 	if responseData.SuccessfulEmails == 0 {
-		Error(c, http.StatusInternalServerError, "failed to send mail to all users", "")
+		logger.GetLogger().Error().Msg("failed to send email to all users")
+		InternalServerError(c)
 		return
 	}
 	if responseData.FailedEmailsCount > 0 {
-		Success(c, http.StatusOK, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
+		OK(c, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
 		return
 	}
-	Success(c, http.StatusOK, "Mail sent successfully to all users", responseData)
+	OK(c, "Mail sent successfully to all users", responseData)
 }
 
 func (h *adminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {
@@ -669,7 +677,7 @@ func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
-		Error(c, http.StatusBadRequest, "Invalid request format", err.Error())
+		BadRequest(c, "Invalid request format")
 		return
 	}
 
@@ -679,7 +687,7 @@ func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Maintenance mode is set successfully", nil)
+	OK(c, "Maintenance mode is set successfully", nil)
 }
 
 // @Summary Get maintenance mode
@@ -688,7 +696,7 @@ func (h *adminHandler) SetMaintenanceModeHandler(c *gin.Context) {
 // @ID get-maintenance-mode
 // @Accept json
 // @Produce json
-// @Success 200 {object} APIResponse
+// @Success 200 {object} APIResponse{data=MaintenanceModeStatus}
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /system/maintenance/status [get]
@@ -702,7 +710,7 @@ func (h *adminHandler) GetMaintenanceModeHandler(c *gin.Context) {
 		return
 	}
 
-	Success(c, http.StatusOK, "Maintenance mode is retrieved successfully", MaintenanceModeStatus{
+	OK(c, "Maintenance mode is retrieved successfully", MaintenanceModeStatus{
 		Enabled: enabled,
 	})
 }

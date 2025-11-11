@@ -153,7 +153,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "User is already registered")
+		assert.Contains(t, result["message"], "User is already registered")
 	})
 
 	t.Run("Test Verify Register Code with wrong code", func(t *testing.T) {
@@ -174,7 +174,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "Invalid verification code")
+		assert.Contains(t, result["message"], "Invalid verification code")
 
 	})
 
@@ -196,7 +196,7 @@ func TestVerifyRegisterCode(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "code has expired")
+		assert.Contains(t, result["message"], "code has expired")
 
 	})
 
@@ -234,7 +234,7 @@ func TestLoginUserHandler(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "email or password is incorrect")
+		assert.Contains(t, result["message"], "email or password is incorrect")
 	})
 	t.Run("Test LoginUserHandler with wrong password", func(t *testing.T) {
 		payload := LoginInput{
@@ -250,7 +250,7 @@ func TestLoginUserHandler(t *testing.T) {
 		var result map[string]interface{}
 		err := json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "email or password is incorrect")
+		assert.Contains(t, result["message"], "email or password is incorrect")
 	})
 }
 
@@ -304,7 +304,7 @@ func TestRefreshTokenHandler(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "Invalid or expired refresh token")
+		assert.Contains(t, result["message"], "Invalid or expired refresh token")
 	})
 }
 
@@ -355,7 +355,7 @@ func TestForgotPasswordHandler(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "failed to get user")
+		assert.Contains(t, result["message"], "user lookup failed")
 	})
 
 }
@@ -433,7 +433,7 @@ func TestVerifyForgetPasswordCodeHandler(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "code has expired")
+		assert.Contains(t, result["message"], "code has expired")
 	})
 
 	t.Run("Test VerifyForgetPasswordCodeHandler with non-existing user", func(t *testing.T) {
@@ -447,11 +447,11 @@ func TestVerifyForgetPasswordCodeHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusBadRequest, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], models.ErrUserNotFound.Error())
+		assert.Contains(t, result["message"], "User not found")
 	})
 }
 
@@ -476,11 +476,11 @@ func TestChangePasswordHandler(t *testing.T) {
 
 		resp := httptest.NewRecorder()
 		router.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusAccepted, resp.Code)
+		assert.Equal(t, http.StatusOK, resp.Code)
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Equal(t, "password is updated successfully", result["message"])
+		assert.Equal(t, "Password is updated successfully", result["message"])
 	})
 
 	t.Run("Test ChangePasswordHandler with Invalid Request format", func(t *testing.T) {
@@ -858,7 +858,7 @@ func TestAddSSHKeyHandler(t *testing.T) {
 		var result map[string]interface{}
 		err = json.Unmarshal(resp.Body.Bytes(), &result)
 		assert.NoError(t, err)
-		assert.Contains(t, result["error"], "invalid SSH key format")
+		assert.Contains(t, result["message"], "Invalid SSH key format")
 	})
 
 	t.Run("Add SSH key with duplicate public key", func(t *testing.T) {

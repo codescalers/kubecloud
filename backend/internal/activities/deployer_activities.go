@@ -87,8 +87,11 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 			}
 		}
 		statemanager.StoreCluster(state, cluster)
-
-		if err := kubeClient.DeployNetwork(ctx, &cluster); err != nil {
+		err = kubeClient.DeployNetwork(ctx, &cluster)
+		// Save GridClient state after network deployment
+		statemanager.SaveGridClientState(state, kubeClient)
+		statemanager.StoreCluster(state, cluster)
+		if err != nil {
 			nodeIDs := make([]uint32, 0, len(cluster.Nodes))
 			for _, node := range cluster.Nodes {
 				nodeIDs = append(nodeIDs, node.NodeID)
@@ -103,9 +106,6 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 			return fmt.Errorf("failed to deploy network for cluster %s (user_id=%d, node_ids=%v): %w", cluster.Name, config.UserID, nodeIDs, err)
 		}
 
-		// Save GridClient state after network deployment
-		statemanager.SaveGridClientState(state, kubeClient)
-		statemanager.StoreCluster(state, cluster)
 		return nil
 	}
 }

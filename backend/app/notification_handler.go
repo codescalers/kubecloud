@@ -3,8 +3,8 @@ package app
 import (
 	"errors"
 	"fmt"
+	"kubecloud/internal/logger"
 	"kubecloud/models"
-	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -143,7 +143,7 @@ func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
 func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	reqLog := requestLogger(c, "GetAllNotificationsHandler")
@@ -154,14 +154,15 @@ func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 
 	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+		BadRequest(c, "Invalid pagination parameters")
 		return
 	}
 
 	notifications, err := h.svc.notifRepo.GetUserNotifications(userID, limit, offset)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve notifications")
-		Error(c, http.StatusInternalServerError, "Failed to retrieve notifications", err.Error())
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("failed to retrieve notifications")
+		InternalServerError(c)
 		return
 	}
 
@@ -171,7 +172,7 @@ func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 		response = append(response, convertToNotificationResponse(notification))
 	}
 
-	Success(c, http.StatusOK, "Notifications retrieved successfully", gin.H{
+	OK(c, "Notifications retrieved successfully", gin.H{
 		"notifications": response,
 		"limit":         limit,
 		"offset":        offset,
@@ -195,12 +196,12 @@ func (h *notificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 func (h *notificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
-		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
+		BadRequest(c, "Invalid notification ID")
 		return
 	}
 
@@ -211,15 +212,16 @@ func (h *notificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 	err = h.svc.notifRepo.MarkNotificationAsRead(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
-			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to mark notification as read")
-		Error(c, http.StatusInternalServerError, "Database error", "Failed to mark notification as read")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("notification_id", notificationIDStr).Msg("failed to mark notification as read")
+		InternalServerError(c)
 		return
 	}
 
-	Success(c, http.StatusOK, "Notification marked as read", nil)
+	OK(c, "Notification marked as read successfully", nil)
 }
 
 // @Summary Mark all notifications as read
@@ -236,7 +238,7 @@ func (h *notificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 func (h *notificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	reqLog := requestLogger(c, "MarkAllNotificationsReadHandler")
@@ -244,11 +246,12 @@ func (h *notificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 	err = h.svc.notifRepo.MarkAllNotificationsAsRead(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to mark notifications as read")
-		Error(c, http.StatusInternalServerError, "Failed to mark notifications as read", err.Error())
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("failed to mark all notifications as read")
+		InternalServerError(c)
 		return
 	}
 
-	Success(c, http.StatusOK, "All notifications marked as read", nil)
+	OK(c, "All notifications marked as read successfully", nil)
 }
 
 // @Summary Delete a specific notification
@@ -267,12 +270,12 @@ func (h *notificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 func (h *notificationHandler) DeleteNotificationHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
-		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
+		BadRequest(c, "Invalid notification ID")
 		return
 	}
 
@@ -283,15 +286,16 @@ func (h *notificationHandler) DeleteNotificationHandler(c *gin.Context) {
 	err = h.svc.notifRepo.DeleteNotification(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
-			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to delete notification")
-		Error(c, http.StatusInternalServerError, "Database error", "Failed to delete notification")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("notification_id", notificationIDStr).Msg("failed to delete notification")
+		InternalServerError(c)
 		return
 	}
 
-	Success(c, http.StatusOK, "Notification deleted successfully", nil)
+	OK(c, "Notification deleted successfully", nil)
 }
 
 // @Summary Get unread notifications
@@ -309,7 +313,7 @@ func (h *notificationHandler) DeleteNotificationHandler(c *gin.Context) {
 func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	reqLog := requestLogger(c, "GetUnreadNotificationsHandler")
@@ -320,14 +324,15 @@ func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 
 	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
 	if err != nil {
-		Error(c, http.StatusBadRequest, "Invalid pagination parameters", err.Error())
+		BadRequest(c, "Invalid pagination parameters")
 		return
 	}
 
 	notifications, err := h.svc.notifRepo.GetUnreadNotifications(userID, limit, offset)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve unread notifications")
-		Error(c, http.StatusInternalServerError, "Failed to retrieve unread notifications", err.Error())
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("failed to retrieve unread notifications")
+		InternalServerError(c)
 		return
 	}
 
@@ -337,7 +342,7 @@ func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 		response = append(response, convertToNotificationResponse(notification))
 	}
 
-	Success(c, http.StatusOK, "Unread notifications retrieved successfully", gin.H{
+	OK(c, "Unread notifications retrieved successfully", gin.H{
 		"notifications": response,
 		"limit":         limit,
 		"offset":        offset,
@@ -358,7 +363,7 @@ func (h *notificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 func (h *notificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	reqLog := requestLogger(c, "DeleteAllNotificationsHandler")
@@ -366,11 +371,12 @@ func (h *notificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 	err = h.svc.notifRepo.DeleteAllNotifications(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to delete notifications")
-		Error(c, http.StatusInternalServerError, "Failed to delete notifications", err.Error())
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Msg("failed to delete notifications")
+		InternalServerError(c)
 		return
 	}
 
-	Success(c, http.StatusOK, "All notifications deleted successfully", nil)
+	OK(c, "All notifications deleted successfully", nil)
 }
 
 // @Summary Mark a specific notification as unread
@@ -389,12 +395,12 @@ func (h *notificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 func (h *notificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		Error(c, http.StatusUnauthorized, "Authentication required", err.Error())
+		Unauthorized(c, "Authentication required")
 		return
 	}
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
-		Error(c, http.StatusBadRequest, "Invalid notification ID", "notification_id must be a valid UUID")
+		BadRequest(c, "Invalid notification ID")
 		return
 	}
 
@@ -405,13 +411,14 @@ func (h *notificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 	err = h.svc.notifRepo.MarkNotificationAsUnread(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
-			Error(c, http.StatusNotFound, "Notification not found", "The notification does not exist or you don't have access to it")
+			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to mark notification as unread")
-		Error(c, http.StatusInternalServerError, "Database error", "Failed to mark notification as unread")
+		logger.GetLogger().Error().Err(err).Int("user_id", userID).Str("notification_id", notificationIDStr).Msg("failed to mark notification as unread")
+		InternalServerError(c)
 		return
 	}
 
-	Success(c, http.StatusOK, "Notification marked as unread", nil)
+	OK(c, "Notification marked as unread successfully", nil)
 }

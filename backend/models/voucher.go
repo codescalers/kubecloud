@@ -1,13 +1,15 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-// Voucher struct holds all data for vouchers, voucher used only by one user.db.
+var ErrVoucherNotFound = fmt.Errorf("voucher is not found")
+
 // Voucher struct holds all data for vouchers, voucher used only by one user.db.
 type Voucher struct {
 	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
@@ -46,6 +48,11 @@ func (r *GormVoucherRepository) ListAllVouchers() ([]Voucher, error) {
 func (r *GormVoucherRepository) GetVoucherByCode(code string) (Voucher, error) {
 	var voucher Voucher
 	query := r.db.First(&voucher, "code = ?", code)
+
+	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
+		return Voucher{}, ErrVoucherNotFound
+	}
+
 	return voucher, query.Error
 }
 

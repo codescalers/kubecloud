@@ -8,7 +8,6 @@ import (
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"kubecloud/models"
-	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -63,10 +62,9 @@ func newDeploymentHandler(appCtx context.Context, svc deploymentService, ewfEngi
 }
 
 // Response represents the response structure for deployment requests
-type Response struct {
+type DeploymentWorkflowResponse struct {
 	WorkflowID string `json:"task_id"`
 	Status     string `json:"status"`
-	Message    string `json:"message"`
 }
 
 // DeploymentResponse represents the response for deployment operations
@@ -116,7 +114,7 @@ type NodeInput struct {
 // @Tags deployments
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {object} DeploymentListResponse "Deployments retrieved successfully"
+// @Success 200 {object} APIResponse{data=DeploymentListResponse} "Deployments retrieved successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments [get]
@@ -124,14 +122,14 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleListDeployments")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		Unauthorized(c, "user not authenticated")
 		return
 	}
 
 	clusters, err := h.svc.clusterRepo.ListUserClusters(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list user clusters")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
+		InternalServerError(c)
 		return
 	}
 
@@ -152,7 +150,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	OK(c, "Deployments retrieved successfully", gin.H{
 		"deployments": deployments,
 		"count":       len(deployments),
 	})
@@ -164,7 +162,7 @@ func (h *deploymentHandler) HandleListDeployments(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param name path string true "Deployment name"
-// @Success 200 {object} DeploymentResponse "Deployment details retrieved successfully"
+// @Success 200 {object} APIResponse{data=DeploymentResponse} "Deployment details retrieved successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -174,13 +172,13 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleGetDeployment")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		Unauthorized(c, "unauthorized")
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project name is required"})
+		BadRequest(c, "Project name is required")
 		return
 	}
 
@@ -191,10 +189,10 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			InternalServerError(c)
 		}
 		return
 	}
@@ -202,7 +200,7 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
+		InternalServerError(c)
 		return
 	}
 
@@ -214,7 +212,7 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 		"updated_at":   cluster.UpdatedAt,
 	}
 
-	c.JSON(http.StatusOK, response)
+	OK(c, "Deployment details retrieved successfully", response)
 }
 
 // @Summary Get kubeconfig
@@ -223,7 +221,7 @@ func (h *deploymentHandler) HandleGetDeployment(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param name path string true "Deployment name"
-// @Success 200 {object} KubeconfigResponse "Kubeconfig retrieved successfully"
+// @Success 200 {object} APIResponse{data=KubeconfigResponse} "Kubeconfig retrieved successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -233,13 +231,13 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleGetKubeconfig")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		Unauthorized(c, "User not authenticated")
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "project name is required"})
+		BadRequest(c, "Project name is required")
 		return
 	}
 
@@ -250,37 +248,37 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for kubeconfig")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			InternalServerError(c)
 		}
 		return
 	}
 
 	if cluster.Kubeconfig != "" {
-		c.JSON(http.StatusOK, gin.H{"kubeconfig": cluster.Kubeconfig})
+		OK(c, "Kubeconfig retrieved successfully", gin.H{"kubeconfig": cluster.Kubeconfig})
 		return
 	}
 
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
+		InternalServerError(c)
 		return
 	}
 
 	privateKeyBytes, err := os.ReadFile(h.sshPrivateKeyPath)
 	if err != nil {
 		reqLog.Error().Err(err).Str("key_path", h.sshPrivateKeyPath).Msg("Failed to read SSH private key")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read SSH configuration"})
+		InternalServerError(c)
 		return
 	}
 
 	kubeconfig, err := clusterResult.GetKubeconfig(c.Request.Context(), string(privateKeyBytes))
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to retrieve kubeconfig via SSH")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve kubeconfig: " + err.Error()})
+		InternalServerError(c)
 		return
 	}
 
@@ -289,14 +287,11 @@ func (h *deploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to save kubeconfig to database")
 	}
 
-	c.JSON(http.StatusOK, gin.H{"kubeconfig": kubeconfig})
+	OK(c, "Kubeconfig retrieved successfully", gin.H{"kubeconfig": kubeconfig})
 }
 
 func (h *deploymentHandler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, error) {
 	userID := c.GetInt("user_id")
-	if userID == 0 {
-		return statemanager.ClientConfig{}, fmt.Errorf("user_id not found in context")
-	}
 
 	user, err := h.svc.userRepo.GetUserByID(userID)
 	if err != nil {
@@ -319,7 +314,7 @@ func (h *deploymentHandler) getClientConfig(c *gin.Context) (statemanager.Client
 // @Accept json
 // @Produce json
 // @Param cluster body ClusterInput true "Cluster configuration"
-// @Success 202 {object} Response "Deployment workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Deployment workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
@@ -328,18 +323,19 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeployCluster")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		reqLog.Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		BadRequest(c, "Invalid request json format")
 		return
 	}
 
 	if err := cluster.Validate(); err != nil {
-		Error(c, http.StatusBadRequest, "Validation failed", err.Error())
+		BadRequest(c, "Validation failed: "+err.Error())
 		return
 	}
 
@@ -348,17 +344,18 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	reqLog = &logWithProject
 	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err == nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "deployment already exists"})
+		Conflict(c, "Deployment already exists")
 		return
 	} else if !errors.Is(err, models.ErrClusterNotFound) {
 		reqLog.Error().Err(err).Msg("Database error when checking for existing deployment")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing deployments"})
+		InternalServerError(c)
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deployment")
+		InternalServerError(c)
 		return
 	}
 
@@ -368,12 +365,7 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 	}
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
-
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "Deployment workflow started successfully",
-	})
+	Accepted(c, "Deployment workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Delete deployment
@@ -382,7 +374,7 @@ func (h *deploymentHandler) HandleDeployCluster(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Param name path string true "Deployment name"
-// @Success 202 {object} Response "Deployment deletion workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Deployment deletion workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -392,13 +384,14 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleDeleteCluster")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		reqLog.Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
 	deploymentName := c.Param("name")
 	if deploymentName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "deployment name is required"})
+		BadRequest(c, "Deployment name is required")
 		return
 	}
 	projectName := kubedeployer.GetProjectName(config.UserID, deploymentName)
@@ -407,17 +400,18 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	_, err = h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for deletion")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			InternalServerError(c)
 		}
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deletion")
+		InternalServerError(c)
 		return
 	}
 
@@ -428,11 +422,7 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
 
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "Deployment deletion workflow started successfully",
-	})
+	Accepted(c, "Deployment deletion workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Delete all deployments
@@ -440,31 +430,35 @@ func (h *deploymentHandler) HandleDeleteCluster(c *gin.Context) {
 // @Tags deployments
 // @Security BearerAuth
 // @Produce json
-// @Success 202 {object} Response "Delete all deployments workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Delete all deployments workflow started successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /deployments [delete]
 func (h *deploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 	config, err := h.getClientConfig(c)
+	reqLog := requestLogger(c, "HandleDeleteAllDeployments")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		reqLog.Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
 	clusters, err := h.svc.clusterRepo.ListUserClusters(config.UserID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployments"})
+		reqLog.Error().Err(err).Msg("Failed to list user clusters for deletion")
+		InternalServerError(c)
 		return
 	}
 
 	if len(clusters) == 0 {
-		c.JSON(http.StatusOK, gin.H{"message": "No deployments found to delete"})
+		OK(c, "No deployments found to delete", nil)
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		reqLog.Error().Err(err).Msg("failed to create workflow for deleting all deployments")
+		InternalServerError(c)
 		return
 	}
 
@@ -474,11 +468,7 @@ func (h *deploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
 
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "Delete all deployments workflow started successfully",
-	})
+	Accepted(c, "Delete all deployments workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Add node to deployment
@@ -488,7 +478,7 @@ func (h *deploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param cluster body ClusterInput true "Cluster configuration with new node"
-// @Success 202 {object} Response "Node addition workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Node addition workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -498,13 +488,14 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleAddNode")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		reqLog.Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request json format"})
+		BadRequest(c, "Invalid request json format")
 		return
 	}
 
@@ -514,10 +505,10 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	existingCluster, err := h.svc.clusterRepo.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for adding node")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			InternalServerError(c)
 		}
 		return
 	}
@@ -525,7 +516,7 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	cl, err := existingCluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", existingCluster.ID).Msg("Failed to deserialize cluster result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
+		InternalServerError(c)
 		return
 	}
 
@@ -534,19 +525,20 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 
 	for _, node := range cl.Nodes {
 		if node.OriginalName == cluster.Nodes[0].OriginalName {
-			c.JSON(http.StatusConflict, gin.H{"error": "Node with the same name already exists"})
+			Conflict(c, "Node with the same name already exists")
 			return
 		}
 
 		if node.NodeID == cluster.Nodes[0].NodeID {
-			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID)})
+			Conflict(c, fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID))
 			return
 		}
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		reqLog.Error().Err(err).Msg("failed to create workflow for adding node")
+		InternalServerError(c)
 		return
 	}
 
@@ -557,12 +549,7 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 	}
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
-
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "Node addition workflow started successfully",
-	})
+	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
 // @Summary Remove node from deployment
@@ -572,7 +559,7 @@ func (h *deploymentHandler) HandleAddNode(c *gin.Context) {
 // @Produce json
 // @Param name path string true "Deployment name"
 // @Param node_name path string true "Node name to remove"
-// @Success 202 {object} Response "Node removal workflow started successfully"
+// @Success 202 {object} APIResponse{data=DeploymentWorkflowResponse} "Node removal workflow started successfully"
 // @Failure 400 {object} APIResponse "Invalid request"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Deployment not found"
@@ -582,7 +569,8 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.getClientConfig(c)
 	reqLog := requestLogger(c, "HandleRemoveNode")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		reqLog.Error().Err(err).Msg("failed to get client config")
+		InternalServerError(c)
 		return
 	}
 
@@ -590,12 +578,12 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	nodeName := c.Param("node_name")
 
 	if deploymentName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "deployment name is required"})
+		BadRequest(c, "Deployment name is required")
 		return
 	}
 
 	if nodeName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "node name is required"})
+		BadRequest(c, "Node name is required")
 		return
 	}
 
@@ -609,10 +597,10 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
-			c.JSON(http.StatusNotFound, gin.H{"error": "deployment not found"})
+			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for node removal")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup deployment"})
+			InternalServerError(c)
 		}
 		return
 	}
@@ -620,7 +608,7 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	cl, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve deployment details"})
+		InternalServerError(c)
 		return
 	}
 
@@ -632,13 +620,14 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 	}
 
 	if !nodeExists {
-		c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("node %q not found in cluster %q", nodeName, deploymentName)})
+		NotFound(c, fmt.Sprintf("node %q not found in cluster %q", nodeName, deploymentName))
 		return
 	}
 
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create workflow"})
+		reqLog.Error().Err(err).Msg("failed to create workflow for removing node")
+		InternalServerError(c)
 		return
 	}
 
@@ -650,9 +639,5 @@ func (h *deploymentHandler) HandleRemoveNode(c *gin.Context) {
 
 	h.ewfEngine.RunAsync(h.appCtx, wf)
 
-	c.JSON(http.StatusAccepted, Response{
-		WorkflowID: wf.UUID,
-		Status:     string(wf.Status),
-		Message:    "Node removal workflow started successfully",
-	})
+	Accepted(c, "Node removal workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }

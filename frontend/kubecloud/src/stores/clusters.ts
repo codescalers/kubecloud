@@ -56,8 +56,8 @@ export const useClusterStore = defineStore('clusters', () => {
     error.value = null
 
     try {
-      const response = await api.get('/v1/deployments', { requiresAuth: true })
-      const deployments = (response.data as { deployments: Cluster[] }).deployments
+      const response = await api.get('/v1/deployments', { requiresAuth: true }) as { data: { data: { deployments: Cluster[] } } }
+      const deployments = (response.data.data as { deployments: Cluster[] }).deployments
       clusters.value = Array.isArray(deployments) ? deployments : []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch clusters'
@@ -100,8 +100,8 @@ export const useClusterStore = defineStore('clusters', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await api.get(`/v1/deployments/${name}`, { requiresAuth: true })
-      return response.data as Cluster
+      const response = await api.get(`/v1/deployments/${name}`, { requiresAuth: true }) as { data: { data: Cluster } }
+      return response.data.data as Cluster
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch cluster'
       return null

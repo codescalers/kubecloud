@@ -23,12 +23,12 @@ export class StatsService {
 
   // Get system statistics
   async getStats(): Promise<SystemStats> {
-    const response = await api.get<SystemStats>('/v1/stats', {
+    const response = await api.get<{data: SystemStats}>('/v1/stats', {
       requiresAuth: false,
       showNotifications: false,
       errorMessage: 'Failed to load system statistics'
     })
-    return response.data
+    return response.data.data
   }
 }
 
