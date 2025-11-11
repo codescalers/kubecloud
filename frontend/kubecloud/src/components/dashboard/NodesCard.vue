@@ -1,5 +1,5 @@
 <template>
-  <div class="nodes-card">
+  <div class="nodes-card mb-6">
     <!-- Header Section -->
     <div class="card-header">
       <div class="header-content">
