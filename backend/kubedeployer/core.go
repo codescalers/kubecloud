@@ -3,6 +3,7 @@ package kubedeployer
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"kubecloud/internal/logger"
 
@@ -255,14 +256,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 		net = cluster.Network
 
 		for _, nodeID := range nodeIDs {
-			found := false
-			for _, existingNodeID := range net.Nodes {
-				if existingNodeID == nodeID {
-					found = true
-					break
-				}
-			}
-			if !found {
+			if !slices.Contains(net.Nodes, nodeID) {
 				net.Nodes = append(net.Nodes, nodeID)
 			}
 		}
@@ -301,11 +295,11 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 		Str("network", net.Name).
 		Interface("nodes", net.Nodes).
 		Msg("Deploying network")
-	if err := c.GridClient.NetworkDeployer.Deploy(ctx, &net); err != nil {
+	err = c.GridClient.NetworkDeployer.Deploy(ctx, &net)
+	cluster.Network = net
+	if err != nil {
 		return fmt.Errorf("failed to deploy network: %v", err)
 	}
-
-	cluster.Network = net
 
 	log.Info().
 		Str("network", net.Name).
