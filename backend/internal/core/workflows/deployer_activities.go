@@ -954,7 +954,7 @@ func VerifyClusterInDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 			return fmt.Errorf("failed to get cluster result for %s (user_id=%d): %w", cluster.ProjectName, config.UserID, err)
 		}
 
-		state["cluster"] = existingClusterResult
+		statemanager.StoreCluster(state, existingClusterResult)
 		state["kubeconfig"] = existingCluster.Kubeconfig
 		if existingCluster.ID == 0 {
 			return fmt.Errorf("cluster %s not found in database: %w", cluster.ProjectName, ewf.ErrFailWorkflowNow)
@@ -1011,7 +1011,8 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 		}
 
 		for i := range cluster.Nodes {
-			if healthy, ok := k8sNodeHealth[cluster.Nodes[i].Name]; ok {
+			nodeName := strings.ToLower(cluster.Nodes[i].Name)
+			if healthy, ok := k8sNodeHealth[nodeName]; ok {
 				cluster.Nodes[i].Healthy = healthy
 				continue
 			}
