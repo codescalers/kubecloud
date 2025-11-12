@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useUserStore } from '../stores/user'
 import ClustersCard from '../components/dashboard/ClustersCard.vue'
 import BillingCard from '../components/dashboard/BillingCard.vue'
@@ -17,9 +18,13 @@ import UserPendingRecordsCard from '../components/dashboard/UserPendingRecordsCa
 
 const userStore = useUserStore()
 const userName = computed(() => userStore.user?.username || 'User')
+const { mobile } = useDisplay()
 
 // Initialize selected section from localStorage or default to 'overview'
 const selected = ref('overview')
+
+// Drawer state for mobile
+const drawer = ref(false)
 
 const clusterStore = useClusterStore()
 const notificationStore = useNotificationStore()
@@ -97,6 +102,10 @@ function handleSidebarSelect(val: string) {
   selected.value = val
   // Save to localStorage for persistence
   localStorage.setItem(STORAGE_KEY_DASHBOARD_SECTION, val)
+  // Close drawer on mobile when item is selected
+  if (mobile.value) {
+    drawer.value = false
+  }
 }
 
 function handleNavigate(section: string) {
@@ -112,17 +121,46 @@ function handleNavigateToFund() {
 </script>
 
 <template>
-  <div class="dashboard-container">
+  <div class="dashboard-container mt-16">
     <v-container fluid class="pa-0">
-      <div class="dashboard-header mb-6">
+      <div 
+        class="dashboard-header mb-6 text-center"
+        @click="mobile && drawer ? drawer = false : null"
+      >
         <h1 class="hero-title">Welcome back, {{ userName }}!</h1>
         <p class="section-subtitle">Manage your clusters, billing, and account settings from your dashboard.</p>
       </div>
+      <div v-if="mobile" class="menu-toggle-row mb-4">
+        <div class="menu-toggle-wrapper">
+          <v-btn
+            icon
+            variant="text"
+            color="primary"
+            class="menu-toggle-btn"
+            @click.stop="drawer = !drawer"
+          >
+            <v-icon>mdi-menu</v-icon>
+          </v-btn>
+          <v-divider class="menu-divider"></v-divider>
+        </div>
+      </div>
       <div class="dashboard-content-wrapper">
         <div class="dashboard-layout">
-          <div class="dashboard-sidebar">
-            <DashboardSidebar :selected="selected" @update:selected="handleSidebarSelect" />
-          </div>
+          <!-- Sidebar: Permanent on desktop, drawer on mobile -->
+          <v-navigation-drawer
+            v-model="drawer"
+            :permanent="!mobile"
+            :temporary="mobile"
+            location="left"
+            class="dashboard-sidebar-drawer mt-16 mt-md-0"
+            :width="280"
+            :floating="!mobile"
+            @click.stop
+          >
+            <div @click.stop>
+              <DashboardSidebar :selected="selected" @update:selected="handleSidebarSelect" />
+            </div>
+          </v-navigation-drawer>
           <div class="dashboard-main">
             <div class="dashboard-cards">
               <OverviewCard
@@ -157,30 +195,58 @@ function handleNavigateToFund() {
 }
 
 .hero-title {
-  font-size: var(--font-size-4xl);
-  font-weight: var(--font-weight-bold);
-  margin-bottom: 1.5rem;
-  line-height: 1.1;
-  letter-spacing: -1px;
-  color: var(--mycelium-cloud-text);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  margin-bottom: 0.5rem;
 }
 
 .section-subtitle {
-  font-size: var(--font-size-xl);
-  color: var(--mycelium-cloud-text-muted);
-  line-height: 1.5;
-  opacity: 0.92;
-  margin-bottom: 0;
-  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted, #7c7fa5);
+  font-size: 1.1rem;
 }
 
 .dashboard-header {
-  text-align: center;
   max-width: 900px;
   margin: 7rem auto 3rem auto;
   position: relative;
   z-index: 2;
   padding: 0 1rem;
+}
+
+.menu-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.menu-toggle-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.menu-toggle-btn {
+  margin: 0;
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.menu-toggle-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+.menu-divider {
+  border-color: rgba(96, 165, 250, 0.2) !important;
+  opacity: 1;
 }
 
 .dashboard-content-wrapper {
@@ -202,26 +268,49 @@ function handleNavigateToFund() {
   margin-top: 0;
 }
 
-.dashboard-sidebar {
-  flex: 0 0 280px;
-  display: flex;
-  flex-direction: column;
-  height: fit-content;
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  margin-top: 0;
+/* Navigation Drawer Styling */
+:deep(.dashboard-sidebar-drawer) {
+  background: transparent !important;
+  border: none !important;
 }
 
-.dashboard-sidebar :deep(.v-list),
-.dashboard-sidebar :deep(.v-list-item) {
+:deep(.dashboard-sidebar-drawer .v-navigation-drawer__content) {
+  background: transparent !important;
+}
+
+:deep(.dashboard-sidebar-drawer .v-navigation-drawer__scrim) {
+  background: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+  pointer-events: auto !important;
+  cursor: pointer;
+}
+
+/* Desktop: make sidebar sticky */
+@media (min-width: 960px) {
+  :deep(.dashboard-sidebar-drawer) {
+    position: sticky !important;
+    top: 0 !important;
+    height: fit-content !important;
+  }
+  
+  :deep(.dashboard-sidebar-drawer .v-navigation-drawer__content) {
+    overflow: visible !important;
+  }
+  
+  :deep(.dashboard-sidebar-drawer) {
+    transform: none !important;
+  }
+}
+
+.dashboard-sidebar-drawer :deep(.v-list),
+.dashboard-sidebar-drawer :deep(.v-list-item) {
   background: transparent !important;
   box-shadow: none !important;
   border: none !important;
   color: inherit !important;
 }
 
-.dashboard-sidebar :deep(.v-list-item) {
+.dashboard-sidebar-drawer :deep(.v-list-item) {
   margin-bottom: 0.25rem;
   min-height: 44px;
   padding: 0.25rem 0.75rem;
@@ -231,44 +320,44 @@ function handleNavigateToFund() {
   gap: 0.75rem;
 }
 
-.dashboard-sidebar :deep(.v-list-item:last-child) {
+.dashboard-sidebar-drawer :deep(.v-list-item:last-child) {
   margin-bottom: 0;
 }
 
-.dashboard-sidebar :deep(.v-list-item--active),
-.dashboard-sidebar :deep(.sidebar-item--active) {
+.dashboard-sidebar-drawer :deep(.v-list-item--active),
+.dashboard-sidebar-drawer :deep(.sidebar-item--active) {
   background: transparent !important;
   border-left: 3px solid #3B82F6 !important;
   border-radius: 0 !important;
   color: #fff !important;
 }
 
-.dashboard-sidebar :deep(.v-list-item__prepend) {
+.dashboard-sidebar-drawer :deep(.v-list-item__prepend) {
   margin-right: 0.5rem !important;
   display: flex;
   align-items: center;
 }
 
-.dashboard-sidebar :deep(.v-list-item__prepend) .v-icon,
-.dashboard-sidebar :deep(.sidebar-icon) {
+.dashboard-sidebar-drawer :deep(.v-list-item__prepend) .v-icon,
+.dashboard-sidebar-drawer :deep(.sidebar-icon) {
   color: #f3f4f6 !important;
   background: none !important;
   filter: none !important;
 }
 
-.dashboard-sidebar :deep(.v-list-item--active) .v-list-item__prepend .v-icon,
-.dashboard-sidebar :deep(.sidebar-item--active) .sidebar-icon {
+.dashboard-sidebar-drawer :deep(.v-list-item--active) .v-list-item__prepend .v-icon,
+.dashboard-sidebar-drawer :deep(.sidebar-item--active) .sidebar-icon {
   color: #3B82F6 !important;
 }
 
-.dashboard-sidebar :deep(.logout-item),
-.dashboard-sidebar :deep(.v-list-item.logout-item) {
+.dashboard-sidebar-drawer :deep(.logout-item),
+.dashboard-sidebar-drawer :deep(.v-list-item.logout-item) {
   color: #ef4444 !important;
   fill: #ef4444 !important;
 }
 
-.dashboard-sidebar :deep(.logout-item .v-icon),
-.dashboard-sidebar :deep(.v-list-item.logout-item .v-icon) {
+.dashboard-sidebar-drawer :deep(.logout-item .v-icon),
+.dashboard-sidebar-drawer :deep(.v-list-item.logout-item .v-icon) {
   color: #ef4444 !important;
   fill: #ef4444 !important;
 }
@@ -276,6 +365,39 @@ function handleNavigateToFund() {
 .dashboard-main {
   flex: 1;
   min-width: 0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 959px) {
+  .dashboard-header {
+    margin-top: 3rem;
+    text-align: left;
+  }
+  
+  .hero-title {
+    font-size: var(--font-size-2xl);
+  }
+  
+  .section-subtitle {
+    font-size: var(--font-size-base);
+  }
+  
+  .dashboard-content-wrapper {
+    margin-top: 2rem;
+  }
+  
+  .dashboard-layout {
+    gap: 0;
+  }
+  
+  .dashboard-main {
+    width: 100%;
+  }
+  
+  .dashboard-cards {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
 }
 
 .dashboard-cards {

@@ -1,37 +1,66 @@
 <template>
-  <div class="use-cases-view">
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-content container-padding">
-        <div class="hero-text text-center">
-          <h1 class="hero-title">Use Cases</h1>
-          <p class="section-subtitle">Explore how Mycelium Cloud empowers different industries and teams.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Use Cases Content -->
-    <section class="use-cases-content section-padding">
-      <div class="container-padding">
-        <v-row class="use-cases-cards-row">
-          <v-col cols="12" md="6" lg="4" v-for="useCase in useCases" :key="useCase.title" class="use-case-col">
-            <div class="use-case-card card-enhanced fade-in">
-              <div class="use-case-icon">
-                <v-icon :icon="useCase.icon" size="48" color="primary"></v-icon>
-              </div>
-              <h2 class="section-title">{{ useCase.title }}</h2>
-              <p class="use-case-description card-subtitle">{{ useCase.description }}</p>
-              <div class="use-case-features">
-                <div class="feature-tag" v-for="feature in useCase.features" :key="feature">
-                  {{ feature }}
-                </div>
-              </div>
-            </div>
+  <section class="d-flex align-center justify-center use-cases-section">
+    <v-container fluid class="py-16">
+      <!-- Hero Section -->
+      <v-container fluid class="pt-16 pt-md-20">
+        <v-row justify="center" align="center" class="text-center">
+          <v-col cols="12" sm="10" md="8" lg="6">
+            <h1 class="text-h4 text-md-h2 font-weight-medium mb-8 text-white">
+              Use Cases
+            </h1>
+            <p class="text-h6 text-blue-lighten-2 line-height-1-7 opacity-92">
+              Explore how Mycelium Cloud empowers different industries and teams.
+            </p>
           </v-col>
         </v-row>
-      </div>
-    </section>
-  </div>
+      </v-container>
+
+      <!-- Use Cases Content -->
+      <v-container class="py-12 py-md-16">
+        <v-row justify="center" class="mx-auto" style="max-width: 1200px;">
+          <v-col 
+            cols="12" 
+            sm="6" 
+            md="4" 
+            v-for="useCase in useCases" 
+            :key="useCase.title"
+            class="mb-6"
+          >
+            <v-card 
+              class="use-case-card fade-in h-100 d-flex flex-column"
+              elevation="8"
+              rounded="xl"
+            >
+              <v-card-text class="text-center pa-8 pa-md-10 d-flex flex-column flex-grow-1">
+                <div class="mb-6">
+                  <v-icon :icon="useCase.icon" size="48" color="primary"></v-icon>
+                </div>
+                
+                <h2 class="text-h4 text-md-h5 font-weight-medium mb-4 text-white">
+                  {{ useCase.title }}
+                </h2>
+                
+                <p class="text-body-1 text-subtitle-1 font-weight-normal text-grey-300 mb-6 flex-grow-1">
+                  {{ useCase.description }}
+                </p>
+                
+                <div class="d-flex flex-wrap justify-center gap-2 mt-auto">
+                  <v-chip
+                    v-for="feature in useCase.features"
+                    :key="feature"
+                    size="small"
+                    class="ma-1"
+                  >
+                    {{ feature }}
+                  </v-chip>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-container>
+    </v-container>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -58,7 +87,7 @@ const useCases = [
   }
 ]
 
-// Add scroll animation observer
+// Simple scroll animation observer for fade-in effect
 onMounted(() => {
   const observerOptions = {
     threshold: 0.1,
@@ -80,115 +109,44 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.use-cases-view {
+/* Background gradient for the entire section */
+.use-cases-section {
+  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), 
+              radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
-  background: linear-gradient(120deg, #0a192f 60%, #1e293b 100%), radial-gradient(ellipse at 70% 30%, #60a5fa33 0%, #0a192f 80%);
 }
 
-.hero-section {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 2;
-  padding: 6rem 0 4rem 0;
-}
-
-.hero-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.hero-text {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.hero-title {
-  font-size: clamp(2.5rem, 5vw, 3.5rem);
-  font-weight: 500;
-  margin-bottom: 2.5rem;
-  line-height: 1.1;
-  letter-spacing: -1px;
-  color: #fff;
-}
-
-.section-subtitle {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
-  color: #60a5fa;
-  line-height: 1.7;
-  opacity: 0.92;
-  margin-bottom: 0;
-  font-weight: 400;
-}
-
-.use-cases-content {
-  position: relative;
-  z-index: 2;
-  padding: 0 0 6rem 0;
-}
-
-.use-cases-cards-row {
-  margin: 0 10rem;
-}
-
+/* Use case card styling */
 .use-case-card {
-  text-align: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.use-case-icon {
-  margin-bottom: 2rem;
-}
-
-.use-case-description {
-  margin-bottom: 2rem;
-  flex: 1;
-}
-
-.use-case-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-top: auto;
-}
-
-.feature-tag {
-  background: transparent;
-  color: #fff;
-  padding: 0.4rem 0.8rem;
-  border-radius: 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
 }
 
-@media (max-width: 900px) {
-  .hero-section {
-    padding: 3rem 0 2rem 0;
-  }
-  .use-cases-content {
-    padding: 3rem 0 3rem 0;
-  }
-  .use-case-card {
-    padding: 1.5rem;
-  }
+.use-case-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
 }
-@media (max-width: 600px) {
-  .hero-title {
-    font-size: clamp(2rem, 8vw, 3rem);
-  }
-  .use-cases-content {
-    padding: 2rem 0 2rem 0;
-  }
+
+
+/* Fade-in animation */
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom gap utility for chips */
+.gap-2 {
+  gap: 8px;
 }
 </style>
 

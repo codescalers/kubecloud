@@ -3,7 +3,7 @@
     <div class="footer-content">
       <div class="footer-brand">
         <router-link to="/" class="footer-logo" aria-label="Mycelium Cloud logo">
-          <img :src="logo" alt="Mycelium Cloud Logo" class="logo" width="110">
+          <img :src="logo" alt="Mycelium Cloud Logo" class="logo" width="130">
         </router-link>
       </div>
       <nav class="footer-links">
@@ -11,6 +11,7 @@
         <a href="https://github.com/codescalers/kubecloud" target="_blank" rel="noopener" class="footer-link">GitHub</a>
       </nav>
     </div>
+    <v-divider class="my-4 w-75 mx-auto"></v-divider>
     <div class="footer-bottom">
       <span class="footer-copyright">© {{ new Date().getFullYear() }} Mycelium Cloud. All rights reserved.</span>
     </div>
@@ -129,17 +130,23 @@
 @media (max-width: 900px) {
   .footer-content {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 1.5rem;
     padding: 0 1.2rem;
   }
 
   .footer-links {
     gap: 0.7rem;
+    justify-content: center;
   }
 
   .footer-title {
     font-size: 1rem;
+  }
+
+  .footer-brand {
+    justify-content: center;
+    width: 100%;
   }
 }
 
@@ -150,7 +157,7 @@
 
   .footer-content {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 1rem;
     padding: 0 0.5rem;
   }
@@ -158,6 +165,7 @@
   .footer-links {
     gap: 0.7rem;
     flex-wrap: wrap;
+    justify-content: center;
   }
 
   .footer-title {

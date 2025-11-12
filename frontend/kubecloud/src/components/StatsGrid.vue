@@ -3,7 +3,7 @@
     <div v-for="stat in props.stats" :key="stat.label" class="stat-item">
       <v-icon :icon="stat.icon" size="24" :color="stat.color || 'var(--color-primary)'"></v-icon>
       <div class="stat-info">
-        <div class="stat-number">{{ stat.value }}</div>
+        <div class="stat-number mt-4">{{ stat.value }}</div>
         <div v-if="stat.subvalue" class="stat-subvalue">{{ stat.subvalue }}</div>
         <div class="stat-label">{{ stat.label }}</div>
       </div>
@@ -32,12 +32,7 @@ const props = defineProps<{ stats: Stat[] }>()
   gap: var(--space-4);
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
-}
+
 
 .stat-info {
   display: flex;
