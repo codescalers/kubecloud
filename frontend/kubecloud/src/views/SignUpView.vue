@@ -1,8 +1,12 @@
 <template>
-  <div class="auth-view">
+  <div class="auth-view pa-4">
     <LoadingComponent v-if="loading" fullPage message="Creating account..." />
-    <div class="auth-content">
+    <div class="auth-content pa-6">
       <div class="auth-header">
+        <div class="text-center">
+          <img src="/src/assets/logo.png" alt="Mycelium Cloud Logo" class="w-50 auth-logo">
+        </div>
+        <v-divider class="my-4"></v-divider>
         <h1 class="auth-title">Create Account</h1>
         <p class="auth-subtitle">Join Mycelium Cloud and start your journey</p>
       </div>
@@ -42,7 +46,7 @@
           <small class="text-muted">
             Password must contain at least 8 characters, including:
           </small>
-          <ul class="requirements-list">
+          <ul class="requirements-list text-muted mt-2">
             <li>One uppercase letter (A-Z)</li>
             <li>One lowercase letter (a-z)</li>
             <li>One number (0-9)</li>
@@ -75,20 +79,20 @@
       </v-form>
       <div class="auth-footer">
         <span class="auth-footer-text">Already have an account?</span>
-        <v-btn
-          variant="outlined"
-          color="white"
+        <router-link
           to="/sign-in"
+          class="text-blue-lighten-2 sign-in-link"
         >
           Sign In
-        </v-btn>
+        </router-link>
       </div>
-      <router-link
-        to="/"
-        class="d-block text-white back-home-link"
-      >
-        Back to Home
-      </router-link>
+     <router-link
+          to="/"
+          class="text-white back-home-link justify-center"
+        >
+          <v-icon icon="mdi-arrow-left" size="16" class="mr-1 text-center"></v-icon>
+          Back to Home
+        </router-link>
     </div>
   </div>
 </template>
@@ -178,14 +182,14 @@ const handleSignUp = async () => {
   margin-bottom: var(--space-8);
 }
 .auth-title {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
 .auth-subtitle {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   color: #fff;
   opacity: 0.92;
   font-weight: var(--font-weight-normal);
@@ -266,12 +270,19 @@ const handleSignUp = async () => {
   margin-bottom: var(--space-4);
 }
 
+.sign-in-link {
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
 .text-muted {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .requirements-list {
+  font-size: 0.758rem;
   list-style-type: disc;
   padding-left: var(--space-4);
 }

@@ -58,9 +58,13 @@
           {{ loading ? 'Verifying...' : 'Verify Code' }}
         </v-btn>
       </v-form>
-      <div class="auth-footer">
-        <v-btn variant="text" color="white" to="/sign-in">Back to Sign In</v-btn>
-      </div>
+        <router-link
+          to="/sign-in"
+          class="text-white back-home-link justify-center"
+        >
+          <v-icon icon="mdi-arrow-left" size="16" class="mr-1 text-center"></v-icon>
+          Back to Sign In
+        </router-link>
     </div>
   </div>
 </template>
@@ -154,14 +158,17 @@ const handleVerifyCode = async () => {
   text-align: center;
 }
 .auth-title {
-  font-size: 2.2rem;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 0.5rem;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 .auth-subtitle {
+  font-size: var(--font-size-md);
   color: #fff;
-  font-size: 1.1rem;
+  opacity: 0.92;
+  font-weight: var(--font-weight-normal);
 }
 .auth-form {
   width: 100%;
@@ -172,10 +179,19 @@ const handleVerifyCode = async () => {
 .auth-field {
   width: 100%;
 }
-.auth-footer {
-  margin-top: 2rem;
-  text-align: center;
+
+.back-home-link {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
+.back-home-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

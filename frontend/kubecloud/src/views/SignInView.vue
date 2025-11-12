@@ -1,8 +1,12 @@
 <template>
-  <div class="auth-view">
+  <div class="auth-view pa-4">
     <div class="auth-background"></div>
-    <div class="auth-content">
-      <div class="auth-header">
+    <div class="auth-content pa-6">
+      <div class="auth-header ">
+        <div class="text-center">
+          <img src="/src/assets/logo.png" alt="Mycelium Cloud Logo" class="w-50 auth-logo">
+        </div>
+        <v-divider class="my-4"></v-divider>
         <h1 class="auth-title">Welcome Back!</h1>
         <p class="auth-subtitle">Sign in to your Mycelium Cloud account</p>
       </div>
@@ -57,21 +61,21 @@
       </v-form>
       <div class="auth-footer">
         <span class="auth-footer-text">Don't have an account?</span>
-        <v-btn
-          variant="outlined"
-          color="white"
+        <router-link
           to="/sign-up"
-          :disabled="loading"
+          class="text-blue-lighten-2 sign-up-link"
+          :class="{ 'disabled': loading }"
         >
           Sign Up
-        </v-btn>
+        </router-link>
 
-            <router-link
-              to="/"
-              class="text-white back-home-link"
-            >
-              Back to Home
-            </router-link>
+        <router-link
+          to="/"
+          class="text-white back-home-link justify-center"
+        >
+          <v-icon icon="mdi-arrow-left" size="16" class="mr-1 text-center"></v-icon>
+          Back to Home
+        </router-link>
       </div>
     </div>
   </div>
@@ -156,14 +160,14 @@ const handleSignIn = async () => {
   margin-bottom: var(--space-8);
 }
 .auth-title {
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text);
   letter-spacing: -0.5px;
   line-height: 1.1;
 }
 .auth-subtitle {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   color: #fff;
   opacity: 0.92;
   font-weight: var(--font-weight-normal);
@@ -230,12 +234,29 @@ const handleSignIn = async () => {
   font-size: 1.2rem;
 }
 
+.sign-up-link {
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+.sign-up-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
+.sign-up-link.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .back-home-link {
-  display: block;
+  display: flex;
+  align-items: center;
   margin-top: 1rem;
   text-decoration: none;
+  transition: all 0.2s ease;
 }
 .back-home-link:hover {
   text-decoration: underline;
+  opacity: 0.8;
 }
 </style>

@@ -1,8 +1,8 @@
 <template>
   <div class="dashboard-card">
     <div class="mb-8">
-      <h3 class="dashboard-card-title">Dashboard Overview</h3>
-      <p class="dashboard-card-subtitle">Your Mycelium Cloud platform at a glance</p>
+      <h3 class="text-h5 font-weight-bold mb-1">Dashboard Overview</h3>
+      <p class="text-body-1 dashboard-card-subtitle">Your Mycelium Cloud platform at a glance</p>
     </div>
     <!-- Stats Grid -->
     <StatsGrid :stats="statsData" />
@@ -135,12 +135,6 @@ const emit = defineEmits(['navigate'])
   color: var(--color-text);
 }
 
-.dashboard-card-subtitle {
-  font-size: var(--font-size-base);
-  color: var(--color-primary);
-  font-weight: var(--font-weight-medium);
-  opacity: 0.9;
-}
 
 .section-title {
   font-size: var(--font-size-lg);

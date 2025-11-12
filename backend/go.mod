@@ -22,9 +22,9 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.2
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.2
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
@@ -139,8 +139,8 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.0 // indirect
-	github.com/threefoldtech/zosbase v0.1.10 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.2 // indirect
+	github.com/threefoldtech/zosbase v1.0.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
