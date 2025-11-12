@@ -37,6 +37,7 @@ export const useUserStore = defineStore('user',
     const error = ref<string | null>(null)
     const netBalance = ref(0)
     const pendingBalance = ref(0)
+    const isBalanceLoading = ref(true)
     const balanceInterval = ref<ReturnType<typeof setInterval> | null>(null)
 
     // Computed properties
@@ -84,6 +85,7 @@ export const useUserStore = defineStore('user',
       user.value = null
       token.value = null
       error.value = null
+      isBalanceLoading.value = true
       // Clear localStorage
       authService.clearTokens()
       // Clear notifications and related ephemeral state
@@ -177,9 +179,14 @@ export const useUserStore = defineStore('user',
     }
 
     const updateNetBalance = async () => {
-      const balance = await userService.fetchBalance()
-      netBalance.value = balance.balance
-      pendingBalance.value = balance.pending_balance
+      isBalanceLoading.value = true
+      try {
+        const balance = await userService.fetchBalance()
+        netBalance.value = balance.balance
+        pendingBalance.value = balance.pending_balance
+      } finally {
+        isBalanceLoading.value = false
+      }
     }
 
     return {
@@ -190,6 +197,7 @@ export const useUserStore = defineStore('user',
       error,
       netBalance,
       pendingBalance,
+      isBalanceLoading,
 
       // Computed
       isAdmin,
