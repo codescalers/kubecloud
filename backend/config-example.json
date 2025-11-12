@@ -19,6 +19,12 @@
     "max_concurrent_sends": 20,
     "max_attachment_size_mb": 10
   },
+  "redis": {
+    "hostname": "localhost",
+    "port": 6379,
+    "password": "pass",
+    "db": 0
+  },
   "currency": "USD",
   "stripe_secret": "sk_test_your_stripe_secret_key_here",
   "voucher_name_length": 8,
