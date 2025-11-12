@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ type Client struct {
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 30 * time.Second},
-		baseURL:    "http://localhost:8080/api/v1",
+		baseURL:    "http://localhost:8090/api/v1",
 	}
 }
 
@@ -125,10 +126,17 @@ func (c *Client) DeployCluster(cluster kubedeployer.Cluster) (string, error) {
 		return "", fmt.Errorf("deploy request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var deployResp app.Response
-	if err := json.NewDecoder(resp.Body).Decode(&deployResp); err != nil {
-		return "", err
+	var deployResp app.DeploymentWorkflowResponse
+	// if err := json.NewDecoder(resp.Body).Decode(&deployResp); err != nil {
+	// 	return "", err
+	// }
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read deploy response: %w", err)
 	}
+	
+	log.Printf("res %v",string(body))
 
 	return deployResp.WorkflowID, nil
 }
@@ -279,7 +287,7 @@ func (c *Client) DeleteAllDeployments() (string, error) {
 		return "", fmt.Errorf("delete all deployments failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var deleteResp app.Response
+	var deleteResp app.DeploymentWorkflowResponse
 	if err := json.NewDecoder(resp.Body).Decode(&deleteResp); err != nil {
 		return "", fmt.Errorf("failed to decode delete all response: %w", err)
 	}
