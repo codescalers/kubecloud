@@ -19,7 +19,16 @@
         <div class="profile-row">
           <div class="profile-col">
             <label class="profile-label">Balance</label>
-            <v-text-field :model-value="`$${userStore.netBalance.toFixed(2)}${userStore.pendingBalance > 0 ? ` (+$${userStore.pendingBalance.toFixed(2)} pending)` : ''}`" variant="outlined" class="profile-field compact" color="accent" bg-color="transparent" hide-details="auto" disabled density="compact" />
+            <v-text-field
+              :model-value="formattedBalance"
+              variant="outlined"
+              class="profile-field compact"
+              color="accent"
+              bg-color="transparent"
+              hide-details="auto"
+              disabled
+              density="compact"
+            />
           </div>
           <div class="profile-col">
             <label class="profile-label">Verified</label>
@@ -85,13 +94,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '../../stores/user'
 import { authService } from '../../utils/authService'
 
-const { user } = storeToRefs(useUserStore())
 const userStore = useUserStore()
+const { user, netBalance, pendingBalance, isBalanceLoading } = storeToRefs(userStore)
+
+const formattedBalance = computed(() => {
+  if (isBalanceLoading.value) return 'Loading...'
+  const balance = netBalance.value || 0
+  const pending = pendingBalance.value || 0
+  const base = `$${balance.toFixed(2)}`
+  return pending > 0 ? `${base} (+$${pending.toFixed(2)} pending)` : base
+})
 
 // Change password form data
 const passwordFormData = ref({
