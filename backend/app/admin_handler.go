@@ -371,7 +371,11 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,
 	}
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for crediting user balance")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		User:      user.Email,

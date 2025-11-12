@@ -77,6 +77,12 @@ func SetUp(t testing.TB) (*App, error) {
     "mnemonic": "%s",
     "network": "dev"
   },
+  "redis": {
+    "hostname": "localhost",
+    "port": 6379,
+    "password": "pass",
+    "db": 0
+  },
   "graphql_url": "https://graphql.dev.grid.tf/graphql",
   "firesquid_url": "https://firesquid.dev.grid.tf/graphql",
   "deployer_workers_num": 3,

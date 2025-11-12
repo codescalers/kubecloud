@@ -244,7 +244,11 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 		"password": request.Password,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule registration workflow")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
 		WorkflowID: wf.UUID,
@@ -345,7 +349,11 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		"user_id": user.ID,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule user verification workflow")
+		InternalServerError(c)
+		return
+	}
 
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
@@ -720,7 +728,11 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+		reqLog.Error().Err(err).Msg("error scheduling workflow")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wf.UUID,
@@ -915,7 +927,11 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		"username":      user.Username,
 		"transfer_mode": models.RedeemVoucherMode,
 	}
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+		reqLog.Error().Err(err).Msg("error scheduling workflow")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
 		WorkflowID:  wf.UUID,

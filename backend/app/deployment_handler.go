@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
+	"kubecloud/internal/utils"
 	"kubecloud/kubedeployer"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
@@ -259,6 +261,19 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 	}, nil
 }
 
+func (h *Handler) createUserQueue(c *gin.Context, reqLog *zerolog.Logger, userID int) (string, error) {
+	queueConfig := utils.GetChainQueueConfig()
+
+	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, userID)
+
+	err := h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
+	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
+		return "", err
+	}
+
+	return queueName, nil
+}
+
 // @Summary Deploy cluster
 // @Description Creates and deploys a new Kubernetes cluster
 // @Tags deployments
@@ -316,7 +331,18 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		"cluster": cluster,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for cluster deployment")
+		InternalServerError(c)
+		return
+	}
+
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for cluster deployment")
+		InternalServerError(c)
+		return
+	}
 	Accepted(c, "Deployment workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
@@ -372,7 +398,18 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		"project_name": projectName,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+		InternalServerError(c)
+		return
+	}
+
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for cluster deletion")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Deployment deletion workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
@@ -418,7 +455,18 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		"config": config,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for all deployment deletion")
+		InternalServerError(c)
+		return
+	}
+
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for deleting all deployments")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Delete all deployments workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
@@ -500,7 +548,18 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"node":    cluster.Nodes[0],
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for adding node")
+		InternalServerError(c)
+		return
+	}
+
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for adding node")
+		InternalServerError(c)
+		return
+	}
 	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
 
@@ -589,7 +648,18 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"node_name": nodeName,
 	}
 
-	h.ewfEngine.RunAsync(h.appContext, wf)
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for remove node")
+		InternalServerError(c)
+		return
+	}
+
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+		reqLog.Error().Err(err).Msg("failed to schedule workflow for removing node")
+		InternalServerError(c)
+		return
+	}
 
 	Accepted(c, "Node removal workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
 }
