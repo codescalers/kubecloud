@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"kubecloud/internal/constants"
-	"kubecloud/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
@@ -299,12 +298,9 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRented,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, userID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, userID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for reserving node")
 		InternalServerError(c)
 		return
 	}
@@ -465,12 +461,9 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRentable,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, userID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, userID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for cluster deployment")
 		InternalServerError(c)
 		return
 	}

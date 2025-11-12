@@ -6,7 +6,7 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func GetChaintQueueConfig() *ewf.QueueMetadata {
+func GetChainQueueConfig() *ewf.QueueMetadata {
 	return &ewf.QueueMetadata{
 		Name: "chain_operations_queue",
 		WorkersDef: ewf.WorkersDefinition{

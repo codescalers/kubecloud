@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
@@ -260,6 +261,19 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 	}, nil
 }
 
+func (h *Handler) createUserQueue(c *gin.Context, reqLog *zerolog.Logger, userID int) (string, error) {
+	queueConfig := utils.GetChainQueueConfig()
+
+	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, userID)
+
+	err := h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
+	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
+		return "", err
+	}
+
+	return queueName, nil
+}
+
 // @Summary Deploy cluster
 // @Description Creates and deploys a new Kubernetes cluster
 // @Tags deployments
@@ -317,12 +331,9 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		"cluster": cluster,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, config.UserID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for cluster deployment")
 		InternalServerError(c)
 		return
 	}
@@ -387,11 +398,8 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		"project_name": projectName,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, config.UserID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
 		InternalServerError(c)
 		return
@@ -447,12 +455,9 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		"config": config,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, config.UserID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for all deployment deletion")
 		InternalServerError(c)
 		return
 	}
@@ -543,12 +548,9 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"node":    cluster.Nodes[0],
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, config.UserID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for adding node")
 		InternalServerError(c)
 		return
 	}
@@ -646,12 +648,9 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"node_name": nodeName,
 	}
 
-	queueConfig := utils.GetChaintQueueConfig()
-
-	queueName := fmt.Sprintf("%s:user_%d", queueConfig.Name, config.UserID)
-	err = h.ewfEngine.CreateQueue(h.appContext, queueName, queueConfig.WorkersDef, queueConfig.QueueOptions)
-	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deletion")
+	queueName, err := h.createUserQueue(c, reqLog, config.UserID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to create queue for remove node")
 		InternalServerError(c)
 		return
 	}
