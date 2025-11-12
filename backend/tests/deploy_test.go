@@ -145,7 +145,7 @@ func TestClient_DeployCluster_queueing(t *testing.T) {
 		},
 	}
 
-	taskID, err := client.DeployCluster(cluster)
+	_, err = client.DeployCluster(cluster)
 	if err != nil {
 		t.Errorf("Deployment failed: %v", err)
 		return
@@ -153,7 +153,7 @@ func TestClient_DeployCluster_queueing(t *testing.T) {
 	t.Logf("Deployment started")
 
 
-	taskID, err = client.DeployCluster(cluster2)
+	_, err = client.DeployCluster(cluster2)
 	if err != nil {
 		t.Errorf("Deployment failed: %v", err)
 		return
