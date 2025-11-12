@@ -28,7 +28,7 @@ require (
 	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
-	golang.org/x/sync v0.17.0
+	golang.org/x/sync v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/driver/sqlite v1.6.0
