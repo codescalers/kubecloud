@@ -3,6 +3,7 @@ module kubecloud
 go 1.25
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gin-gonic/gin v1.11.0
 	github.com/google/uuid v1.6.0
