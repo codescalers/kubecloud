@@ -151,7 +151,7 @@ type NotificationTemplateTypeConfig struct {
 	ByStatus map[string]ChannelRuleConfig `json:"by_status"`
 }
 
-var DefaultQueueConfig ewf.QueueMetadata = ewf.QueueMetadata{
+var DefaultQueueConfig = ewf.QueueMetadata{
 	Name: "chain_operations_queue",
 	WorkersDef: ewf.WorkersDefinition{
 		Count:        1,
