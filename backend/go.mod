@@ -1,6 +1,6 @@
 module kubecloud
 
-go 1.24.3
+go 1.25
 
 require (
 	github.com/google/uuid v1.6.0
@@ -12,6 +12,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
+	github.com/redis/go-redis/v9 v9.16.0
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/signintech/gopdf v0.33.0
 	github.com/spf13/cobra v1.10.1
@@ -22,10 +23,10 @@ require (
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.2
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.2
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.3
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.3
 	github.com/vedhavyas/go-subkey v1.0.3
-	github.com/xmonader/ewf v0.0.0-20250729141004-1f7a4a1c7838
+	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
 	golang.org/x/sync v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	gorm.io/driver/postgres v1.5.7
@@ -37,6 +38,7 @@ require (
 )
 
 require (
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 )
@@ -136,8 +138,8 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.2 // indirect
-	github.com/threefoldtech/zosbase v1.0.0 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3 // indirect
+	github.com/threefoldtech/zosbase v1.0.3 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect

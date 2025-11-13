@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
@@ -147,6 +149,17 @@ func (svc *DeploymentService) GetClientConfig(userID int) (statemanager.ClientCo
 	}, nil
 }
 
+func (svc *DeploymentService) runAsyncWithQueue(userID int, wf *ewf.Workflow) error {
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, userID)
+
+	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, internal.DefaultQueueConfig.WorkersDef, internal.DefaultQueueConfig.QueueOptions)
+	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
+		return err
+	}
+
+	return svc.ewfEngine.RunAsync(svc.appCtx, wf, ewf.WithQueue(queueName))
+}
+
 func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
 	wf, err := svc.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
 	if err != nil {
@@ -158,7 +171,10 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster": cluster,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
+		return "", "", err
+	}
+
 	return wf.UUID, wf.Status, nil
 }
 
@@ -173,12 +189,15 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 		"project_name": projectName,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
+		return "", "", err
+	}
+
 	return wf.UUID, wf.Status, nil
 }
 
-func (h *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientConfig) (string, ewf.WorkflowStatus, error) {
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
+func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientConfig) (string, ewf.WorkflowStatus, error) {
+	wf, err := svc.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
 	if err != nil {
 		return "", "", err
 	}
@@ -187,7 +206,10 @@ func (h *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientCon
 		"config": config,
 	}
 
-	h.ewfEngine.RunAsync(h.appCtx, wf)
+	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
+		return "", "", err
+	}
+
 	return wf.UUID, wf.Status, nil
 }
 
@@ -203,12 +225,15 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"node":    node,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
+		return "", "", err
+	}
+
 	return wf.UUID, wf.Status, nil
 }
 
-func (h *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, nodeName string) (string, ewf.WorkflowStatus, error) {
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
+func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, nodeName string) (string, ewf.WorkflowStatus, error) {
+	wf, err := svc.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
 	if err != nil {
 		return "", "", err
 	}
@@ -219,6 +244,9 @@ func (h *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl
 		"node_name": nodeName,
 	}
 
-	h.ewfEngine.RunAsync(h.appCtx, wf)
+	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
+		return "", "", err
+	}
+
 	return wf.UUID, wf.Status, nil
 }

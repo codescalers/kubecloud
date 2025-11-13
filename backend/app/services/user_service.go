@@ -210,9 +210,8 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 		"password": password,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
-
-	return wf.UUID, nil
+	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	return wf.UUID, err
 }
 
 func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, userID int, userEmail, username string) (string, error) {
@@ -232,8 +231,8 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 		"user_id": userID,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
-	return wf.UUID, nil
+	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	return wf.UUID, err
 }
 
 func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
@@ -252,8 +251,8 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
-	return wf.UUID, nil
+	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	return wf.UUID, err
 }
 
 func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, userMnemonic, userUsername, voucherCode string) (string, error) {
@@ -275,8 +274,8 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		"transfer_mode": models.RedeemVoucherMode,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
-	return wf.UUID, nil
+	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	return wf.UUID, err
 }
 
 func (svc *UserService) GetWorkflowStatus(ctx context.Context, wfUUID string) (ewf.WorkflowStatus, error) {

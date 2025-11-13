@@ -141,8 +141,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		"admin_id":      transaction.AdminID,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
-	return nil
+	return svc.ewfEngine.RunAsync(svc.appCtx, wf)
 }
 
 func (svc *AdminService) GenerateVouchers(count, expireAfterDays int, voucherValue float64) ([]models.Voucher, error) {

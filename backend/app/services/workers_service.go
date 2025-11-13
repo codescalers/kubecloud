@@ -433,8 +433,7 @@ func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
 		},
 	}
 
-	svc.ewfEngine.RunAsync(svc.ctx, wf)
-	return nil
+	return svc.ewfEngine.RunAsync(svc.ctx, wf)
 }
 
 func getHoursOfGivenPeriod(startDate, endDate time.Time) int {

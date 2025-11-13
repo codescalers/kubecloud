@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/vedhavyas/go-subkey"
@@ -125,8 +126,20 @@ func createAppCore(ctx context.Context, config internal.Configuration) (appCore,
 	// create storage for workflows
 	ewfStore := models.NewGormEWFRepository(db)
 
+	client := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", config.Redis.Hostname, config.Redis.Port),
+		Password: config.Redis.Password,
+		DB:       config.Redis.DB,
+	})
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return appCore{}, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	qEngine := ewf.NewRedisQueueEngine(client)
+
 	// initialize workflow ewfEngine
-	ewfEngine, err := ewf.NewEngine(ewfStore)
+	ewfEngine, err := ewf.NewEngine(ewf.WithQueueEngine(qEngine), ewf.WithStore(ewfStore))
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to init EWF engine")
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)

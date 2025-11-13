@@ -33,8 +33,17 @@ type serializableTemplate struct {
 	Steps []ewf.Step `json:"steps"`
 }
 
+type QueueMetadataRecord struct {
+	Name string `gorm:"primaryKey;column:name"`
+	Data []byte `gorm:"column:data;not null"`
+}
+
+func NewGormStore(db *gorm.DB) *GormEWFRepository {
+	return &GormEWFRepository{db: db}
+}
+
 func (r *GormEWFRepository) Setup() error {
-	return r.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{})
+	return r.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{}, &QueueMetadataRecord{})
 }
 
 func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
@@ -133,6 +142,45 @@ func (r *GormEWFRepository) SaveWorkflowTemplate(ctx context.Context, name strin
 	}
 
 	return r.db.WithContext(ctx).Save(&gormTemplate).Error
+}
+
+func (r *GormEWFRepository) SaveQueueMetadata(ctx context.Context, metadata *ewf.QueueMetadata) error {
+	if metadata == nil {
+		return fmt.Errorf("metadata cannot be nil")
+	}
+
+	data, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("failed to marshal queue metadata: %w", err)
+	}
+
+	gormMetadata := QueueMetadataRecord{
+		Name: metadata.Name,
+		Data: data,
+	}
+	return r.db.WithContext(ctx).Save(&gormMetadata).Error
+}
+
+func (r *GormEWFRepository) LoadAllQueueMetadata(ctx context.Context) ([]*ewf.QueueMetadata, error) {
+	var gormQueuesMetadata []QueueMetadataRecord
+	err := r.db.WithContext(ctx).Find(&gormQueuesMetadata).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var queues []*ewf.QueueMetadata
+	for _, record := range gormQueuesMetadata {
+		var metadata ewf.QueueMetadata
+		if err := json.Unmarshal(record.Data, &metadata); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal queue metadata: %w", err)
+		}
+		queues = append(queues, &metadata)
+	}
+	return queues, nil
+}
+
+func (r *GormEWFRepository) DeleteQueueMetadata(ctx context.Context, name string) error {
+	return r.db.WithContext(ctx).Delete(&QueueMetadataRecord{}, "name = ?", name).Error
 }
 
 func (r *GormEWFRepository) Close() error {

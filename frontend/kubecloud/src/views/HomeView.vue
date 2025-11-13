@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, defineAsyncComponent } from 'vue'
+import { onMounted, onUnmounted, ref, computed, defineAsyncComponent } from 'vue'
 const FeatureGlobe = defineAsyncComponent(() => import('../components/features/FeatureGlobe.vue'))
 import { useUserStore } from '../stores/user'
 import { statsService } from '../utils/statsService'
@@ -9,6 +9,8 @@ import { processGridNodesForGlobe } from '../utils/globeUtils'
 
 const userStore = useUserStore()
 const globeSize = ref(900)
+const globeWrapperRef = ref<HTMLElement | null>(null)
+let globeResizeObserver: ResizeObserver | null = null
 const isLoading = ref(true)
 const { gridNodes, fetchGridNodes } = useGridNodes()
 
@@ -50,12 +52,29 @@ async function fetchStats() {
 }
 
 function updateGlobeSize() {
-  globeSize.value = Math.max(600, Math.min(800, Math.floor(window.innerWidth * 0.6)))
+  const el = globeWrapperRef.value
+  if (el) {
+    const w = el.clientWidth
+    globeSize.value = Math.max(200, Math.min(800, Math.floor(w)))
+    return
+  }
+  const vw = window.innerWidth
+  if (vw <= 600) {
+    globeSize.value = Math.max(220, Math.floor(vw * 0.9))
+  } else if (vw <= 1100) {
+    globeSize.value = Math.max(360, Math.min(700, Math.floor(vw * 0.6)))
+  } else {
+    globeSize.value = 800
+  }
 }
 
 onMounted(async () => {
   updateGlobeSize()
   window.addEventListener('resize', updateGlobeSize)
+  if ('ResizeObserver' in window) {
+    globeResizeObserver = new ResizeObserver(() => updateGlobeSize())
+    if (globeWrapperRef.value) globeResizeObserver.observe(globeWrapperRef.value)
+  }
   await fetchStats()
   try {
     await fetchGridNodes({ healthy: true, size: 1000 })
@@ -70,6 +89,14 @@ onMounted(async () => {
     })
   }, { threshold: 0.1 })
   document.querySelectorAll('.fade-in').forEach(el => observer.observe(el))
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateGlobeSize)
+  if (globeResizeObserver && globeWrapperRef.value) {
+    globeResizeObserver.unobserve(globeWrapperRef.value)
+    globeResizeObserver.disconnect()
+  }
 })
 
 const features = [
@@ -115,11 +142,11 @@ const features = [
           <h1 class="hero-title">Mycelium&nbsp;Cloud</h1>
           <p class="hero-subtitle">Revolutionary Kubernetes platform that transforms how teams deploy and manage cloud-native applications at scale</p>
         </div>
-        <div class="globe-wrapper">
+        <div class="globe-wrapper" ref="globeWrapperRef">
           <FeatureGlobe :width="globeSize" :height="globeSize" :nodes="globeNodes" :labels="globeLabels" />
         </div>
       </div>
-      <div class="hero-stats">
+      <div class="hero-stats px-4">
         <div class="stat-card fade-in" v-for="stat in gridCards" :key="stat.label">
           <div v-if="isGridStatsLoading" class="d-flex justify-center align-center" style="height: 2.5rem;">
             <v-progress-circular
@@ -136,55 +163,75 @@ const features = [
     </section>
 
     <!-- Features Section -->
-    <section class="home-section section-padding fade-in">
-      <div class="container-padding">
-        <div class="section-header text-center mb-8">
-          <h2 class="section-title">
+    <v-container fluid class="py-16 py-md-20">
+      <v-row justify="center" class="mx-auto" style="max-width: 1200px;">
+        <v-col cols="12" class="text-center mb-6">
+          <h2 class="text-h4 text-md-h3 font-weight-medium mb-4 text-white">
             Everything You Need to Succeed
           </h2>
-          <p class="section-subtitle">
+          <p class="text-md-h6 text-boady-2 line-height-1-7 opacity-92" style="color: #60a5fa;">
             Powerful tools and features designed for modern cloud-native applications
           </p>
-        </div>
-        <v-row class="feature-cards-row">
-          <v-col cols="12" md="4" v-for="feature in features" :key="feature.title" class="feature-col">
-            <div class="home-card card-enhanced fade-in">
-              <div class="home-icon">
+        </v-col>
+        
+        <v-col 
+          cols="12" 
+          md="6" 
+          lg="4" 
+          v-for="feature in features" 
+          :key="feature.title"
+          class="mb-4"
+        >
+          <v-card 
+            class="feature-card fade-in h-100 d-flex flex-column"
+            elevation="8"
+            rounded="xl"
+          >
+            <v-card-text class="text-center d-flex flex-column flex-grow-1">
+              <div class="mb-6">
                 <v-icon :icon="feature.icon" size="48" color="primary"></v-icon>
               </div>
-              <h3 class="home-title">{{ feature.title }}</h3>
-              <p class="home-description">{{ feature.description }}</p>
-            </div>
-          </v-col>
-        </v-row>
-      </div>
-    </section>
+              
+              <h2 class="text-h5 font-weight-medium mb-4 text-white">
+                {{ feature.title }}
+              </h2>
+              
+              <p class="text-body-1 text-grey-300 flex-grow-1">
+                {{ feature.description }}
+              </p>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
     <!-- CTA Section -->
-    <section class="cta-section section-padding fade-in">
-      <div class="container-padding">
+    <section class="fade-in py-16 py-md-20">
+      <div class="container">
         <div class="cta-content text-center">
-          <h2 class="cta-title">
+          <h2 class="text-h4 text-md-h3 font-weight-medium text-white mb-4">
             Ready to Transform Your Kubernetes Experience?
           </h2>
-          <p class="cta-description">
+          <p class="text-md-h6 text-boady-1 opacity-92 mb-8" style="color: #60a5fa;">
             Join thousands of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
           </p>
           <v-btn
             v-if="userStore.isLoggedIn"
             variant="outlined"
             color="white"
-            size="x-large"
+            size="large"
             to="/deploy"
           >
             Deploy Cluster
           </v-btn>
           <v-btn
-            v-else
-            variant="outlined"
-            color="white"
-            size="x-large"
-            to="/deploy"
-          >
+  v-else
+  variant="flat"
+  color="blue"
+  size="large"
+  to="/deploy"
+  class="hover-btn"
+>
+
             Start Your Free Trial
           </v-btn>
         </div>
@@ -219,15 +266,13 @@ const features = [
   margin: 0;
   position: relative;
   z-index: 1;
+  overflow: hidden;
 }
 
 .home-section {
-  padding-top: 3rem;
+  padding: 6rem 0rem;
 }
 
-.cta-section {
-  padding-bottom: 8rem;
-}
 
 /* Remove any margin between sections */
 .hero-globe-section + .home-section {
@@ -257,7 +302,7 @@ const features = [
 }
 
 .section-subtitle {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-size: clamp(1.2rem, 2vw, 1.3rem);
   color: #60a5fa;
   opacity: 0.85;
   max-width: 700px;
@@ -271,7 +316,7 @@ const features = [
 }
 
 .feature-cards-row {
-  margin: 4rem;
+  margin: 2rem 0rem;
 }
 
 .feature-col {
@@ -279,13 +324,13 @@ const features = [
 }
 
 .home-icon {
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .home-title {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   color: #fff;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.6rem;
   font-weight: 500;
 }
 
@@ -302,44 +347,34 @@ const features = [
   max-width: 700px;
   margin: 0 auto;
   text-align: center;
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3rem;
 }
 
 .cta-title {
   font-size: clamp(2.5rem, 6vw, 3.5rem);
   font-weight: 500;
-  margin-bottom: 2rem;
   line-height: 1.2;
   color: #fff;
   letter-spacing: -1px;
 }
 
 .cta-description {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-size: clamp(1.2rem, 2vw, 1.3rem);
   color: #60a5fa;
-  margin-bottom: 3rem;
   opacity: 0.92;
   line-height: 1.7;
   font-weight: 400;
 }
 
-.cta-btn {
-  font-size: 1.25rem;
-  padding: 1.3rem 3.5rem;
-  border-radius: 1.5rem;
-  font-weight: 400;
-  box-shadow: 0 4px 24px 0 rgba(59,130,246,0.18);
-  background: linear-gradient(90deg, #60a5fa 0%, #38bdf8 100%);
-  color: #fff;
-  transition: box-shadow 0.2s, transform 0.2s;
+
+.hover-btn {
+  transition: all 0.3s ease;
 }
 
-.cta-btn:hover {
-  box-shadow: 0 8px 32px 0 rgba(59,130,246,0.28);
-  transform: translateY(-2px) scale(1.04);
+.hover-btn:hover {
+  background-color: #1e88e5; /* darker blue on hover */
+  transform: translateY(-2px); /* small lift */
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); /* soft glow */
 }
 
 /* Responsive Design */
@@ -357,17 +392,35 @@ const features = [
   .globe-wrapper {
     justify-content: center;
     max-width: 90vw;
-    width: 60vw;
+    width: 70vw;
   }
   .hero-globe-section {
     padding: 2rem 0;
+  }
+  .feature-cards-row {
+    margin: 1.5rem 1rem;
+  }
+  .feature-col {
+    padding: 0.75rem;
   }
 }
 
 @media (max-width: 600px) {
   .globe-wrapper {
-    width: 90vw;
+    width: 100%;
+    max-width: 480px;
     min-width: 0;
+    margin: 0 auto;
+  }
+  .hero-globe-text {
+    min-width: auto;
+    padding: 0 1rem;
+  }
+  .hero-globe-content {
+    padding: 0 1rem;
+  }
+  .feature-cards-row {
+    margin: 1rem 0.5rem;
   }
 }
 
@@ -394,15 +447,14 @@ const features = [
   z-index: 2;
 }
 .hero-title {
-  font-size: clamp(3rem, 7vw, 5rem);
+  font-size: clamp(3rem, 7vw, 4rem);
   font-weight: 500;
   color: #fff;
-  margin-bottom: 3rem;
   letter-spacing: -1px;
   line-height: 1.1;
 }
 .hero-subtitle {
-  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-size: clamp(1.2rem, 2vw, 1.3rem);
   color: #60a5fa;
   opacity: 0.95;
   max-width: 500px;
@@ -413,6 +465,7 @@ const features = [
   filter: drop-shadow(0 0 10px #60a5fa11) drop-shadow(0 0 5px #38bdf811);
   width: 40vw;
   aspect-ratio: 1/1;
+  position: relative;
 }
 .globe-wrapper::before {
   content: '';
@@ -420,8 +473,8 @@ const features = [
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 800px;
-  height: 800px;
+  width: clamp(300px, 80vw, 800px);
+  height: clamp(300px, 80vw, 800px);
   background: radial-gradient(circle, rgba(96, 165, 250, 0.1) 0%, transparent 70%);
   border-radius: 50%;
   z-index: -1;
@@ -438,12 +491,15 @@ const features = [
   }
 }
 .hero-stats {
-  display: flex;
-  justify-content: center;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  justify-items: stretch;
+  align-items: stretch;
+  gap: 1rem;
   opacity: 0.85;
-  flex-wrap: wrap;
-  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto 2rem;
 }
 .stat-card {
   background: rgba(59, 130, 246, 0.05);
@@ -452,7 +508,13 @@ const features = [
   padding: 1rem 1.5rem;
   box-shadow: none;
   text-align: center;
-  min-width: 140px;
+  min-width: 0;
+  width: 100%;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
 }
@@ -470,10 +532,23 @@ const features = [
   font-weight: 500;
 }
 .stat-label {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: #94a3b8;
   line-height: 1.2;
   font-weight: 400;
+}
+
+/* Features card styling */
+.feature-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
 }
 
 .fade-in {
@@ -490,14 +565,33 @@ const features = [
 }
 @media (max-width: 900px) {
   .hero-stats {
-    gap: 1rem;
+    gap: 0.75rem;
+  }
+  .hero-globe-content {
+    flex-direction: column-reverse;
+  }
+  .globe-wrapper {
+    width: 90vw;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .hero-globe-text {
+    min-width: auto;
+    max-width: 680px;
+    padding: 0 1rem;
+    text-align: center;
   }
 }
 @media (max-width: 600px) {
   .hero-stats {
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero-stats {
+    grid-template-columns: 1fr;
   }
 }
 </style>

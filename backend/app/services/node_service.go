@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/substrate"
 	"kubecloud/models"
@@ -164,7 +166,10 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 		"target_status": constants.NodeRented,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
+		return "", err
+	}
+
 	return wf.UUID, nil
 }
 
@@ -182,6 +187,20 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 		"target_status": constants.NodeRentable,
 	}
 
-	svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
+		return "", err
+	}
+
 	return wf.UUID, nil
+}
+
+func (svc *NodeService) runAsyncWithQueue(userID int, wf *ewf.Workflow) error {
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, userID)
+
+	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, internal.DefaultQueueConfig.WorkersDef, internal.DefaultQueueConfig.QueueOptions)
+	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
+		return err
+	}
+
+	return svc.ewfEngine.RunAsync(svc.appCtx, wf, ewf.WithQueue(queueName))
 }

@@ -1,8 +1,8 @@
 <template>
   <div class="dashboard-card vouchers-card spacious">
-    <div class="dashboard-card-header">
-      <h3 class="dashboard-card-title single-line">Redeem Voucher</h3>
-      <p class="dashboard-card-subtitle">Add credits to your balance using a voucher code</p>
+    <div class="header-content">
+      <h3 class="text-h5 font-weight-bold mb-1">Redeem Voucher</h3>
+      <p class="text-body-1 dashboard-card-subtitle">Add credits to your balance using a voucher code</p>
     </div>
     <div class="dashboard-card-content">
       <v-text-field
@@ -76,13 +76,8 @@ async function onRedeem() {
   display: flex;
   flex-direction: column;
 }
-.dashboard-card-header {
-  margin-bottom: 1.5rem;
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
+.header-content {
+  margin-bottom: var(--space-6);
 }
 .dashboard-card-title {
   font-size: 1.5rem;
@@ -99,7 +94,6 @@ async function onRedeem() {
   font-size: 1.05rem;
   color: #60a5fa;
   margin-bottom: 0.5rem;
-  margin-left: 1.5rem;
   flex-shrink: 1;
   white-space: nowrap;
   overflow: hidden;

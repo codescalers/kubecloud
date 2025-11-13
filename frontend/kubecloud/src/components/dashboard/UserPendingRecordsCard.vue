@@ -3,8 +3,8 @@
     <div class="dashboard-card-header">
       <div class="dashboard-card-title-section">
         <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Payments</h3>
-          <p class="dashboard-card-subtitle">View your payment records</p>
+          <h3 class="text-h5 font-weight-bold mb-1">Payments</h3>
+          <p class="text-body-1 dashboard-card-subtitle">View your payment records</p>
         </div>
       </div>
     </div>

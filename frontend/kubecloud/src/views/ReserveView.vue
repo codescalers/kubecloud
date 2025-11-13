@@ -15,13 +15,13 @@
       </div>
     </section>
     <!-- Hero Section -->
-    <section class="hero-section">
+    <section class="hero-section px-6">
       <div class="hero-content container-padding">
         <div class="hero-text text-center">
           <h1 class="hero-title">
             Reserve Your Node
           </h1>
-          <p class="hero-description">
+          <p class="section-subtitle">
             Choose and reserve your dedicated Kubernetes node from our global network.
           </p>
         </div>
@@ -89,15 +89,18 @@
           <!-- Nodes Column -->
           <v-col cols="12" md="9">
             <v-card class="reservation-card">
-              <div class="nodes-header" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                <div style="display: flex; align-items: center; gap: 1.2rem;">
-                  <h2 class="card-title">
-                    Available Nodes
-                  </h2>
-                  <div class="nodes-count">
-                    {{ filteredNodes.length }}  of {{ nodes.length }} nodes
-                  </div>
+              <div class="nodes-header" style="display: flex; align-items: start; justify-content: space-between; gap: 1rem;">
+                <div
+                class="d-flex flex-column flex-sm-row align-center gap-4"
+                >
+                <h2 class="text-h5 text-md-h4">
+                  Available Nodes
+                </h2>
+
+                <div class="nodes-count text-body-1">
+                  {{ filteredNodes.length }} of {{ nodes.length }} nodes
                 </div>
+             </div>
                 <v-btn
                   color="primary"
                   variant="outlined"
@@ -373,11 +376,10 @@ watch(filteredNodes, () => {
 }
 
 .hero-title {
-  font-size: clamp(2.5rem, 5vw, 4rem);
-  font-weight: 400;
-  margin-bottom: 1.5rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--color-text, #fff);
+  margin-bottom: 0.5rem;
 }
 
 .hero-description {
@@ -385,6 +387,11 @@ watch(filteredNodes, () => {
   color: #CBD5E1;
   line-height: 1.7;
   opacity: 0.8;
+}
+
+.section-subtitle {
+  color: var(--color-text-muted, #7c7fa5);
+  font-size: 1.1rem;
 }
 
 /* Reservation Content */
@@ -456,7 +463,7 @@ watch(filteredNodes, () => {
   margin-bottom: 1rem;
 }
 
-.card-title {
+.text-h4 text-md-h3 {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 400;
   margin: 0;

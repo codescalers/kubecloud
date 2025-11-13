@@ -3,8 +3,8 @@
     <div class="dashboard-card-header">
       <div class="dashboard-card-title-section">
         <div class="dashboard-card-title-content">
-          <h3 class="dashboard-card-title">Billing History</h3>
-          <p class="dashboard-card-subtitle">View and manage your billing history and invoices</p>
+          <h3 class="text-h5 font-weight-bold mb-1">Billing History</h3>
+          <p class="text-body-1 dashboard-card-subtitle">View and manage your billing history and invoices</p>
         </div>
       </div>
     </div>

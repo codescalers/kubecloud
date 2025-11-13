@@ -6,10 +6,12 @@ import (
 	"kubecloud/internal/utils"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"github.com/xmonader/ewf"
 )
 
 type Configuration struct {
@@ -27,6 +29,7 @@ type Configuration struct {
 	DeployerWorkersNum                   int                           `json:"deployer_workers_num" default:"1"`
 	Invoice                              InvoiceCompanyData            `json:"invoice"`
 	SSH                                  SSHConfig                     `json:"ssh" validate:"required,dive"`
+	Redis                                RedisConfig                   `json:"redis" validate:"dive"`
 	Debug                                bool                          `json:"debug"`
 	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
@@ -45,6 +48,13 @@ type Configuration struct {
 type SSHConfig struct {
 	PrivateKeyPath string `json:"private_key_path" validate:"required"`
 	PublicKeyPath  string `json:"public_key_path" validate:"required"`
+}
+
+type RedisConfig struct {
+	Hostname string `json:"hostname" validate:"hostname|ip|url"`
+	Port     int    `json:"port" validate:"min=1,max=65535"`
+	Password string `json:"password"`
+	DB       int    `json:"db" validate:"min=0"`
 }
 
 // Server struct holds server's information
@@ -135,6 +145,20 @@ type ReservedNodeHealthCheckConfig struct {
 	ReservedNodeHealthCheckIntervalInHours  int `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckTimeoutInMinutes int `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckWorkersNum       int `json:"reserved_node_health_check_workers_num" validate:"required,gt=0" default:"10"`
+}
+
+var DefaultQueueConfig = ewf.QueueMetadata{
+	Name: "chain_operations_queue",
+	WorkersDef: ewf.WorkersDefinition{
+		Count:        1,
+		PollInterval: 1 * time.Second,
+		WorkTimeout:  10 * time.Minute,
+	},
+	QueueOptions: ewf.QueueOptions{
+		AutoDelete:  true,
+		DeleteAfter: 10 * time.Minute,
+		PopTimeout:  1 * time.Second,
+	},
 }
 
 // LoadNotificationConfig loads notification configuration from a separate file

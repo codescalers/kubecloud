@@ -7,21 +7,17 @@ export default function useNodeStoragePool() {
   const nodesStoragePool = ref<Map<number, StoragePool[]>>(new Map());
 
   const getStoragePool = async (nodeId: number) => {
-    const storagePool = nodesStoragePool.value.get(nodeId);
-    if (!storagePool) {
-      try {
-        const nodeStoragePoolResponse: ApiResponse<ApiResponse<NodeStoragePool>> = await api.get(`/v1/nodes/${nodeId}/storage-pool`, {
-          showNotifications: false
-        })
-        const pools = nodeStoragePoolResponse.data.data.pools.filter((pool) => pool.type === "ssd")
-        nodesStoragePool.value.set(nodeId, pools)
-        return pools
-      } catch (error) {
-        console.error(error)
-        throw failedToCheckStoragePoolError()
-      }
+    try {
+      const nodeStoragePoolResponse: ApiResponse<ApiResponse<NodeStoragePool>> = await api.get(`/v1/nodes/${nodeId}/storage-pool`, {
+        showNotifications: false
+      })
+      const pools = nodeStoragePoolResponse.data.data.pools.filter((pool) => pool.type === "ssd")
+      nodesStoragePool.value.set(nodeId, pools)
+      return pools
+    } catch (error) {
+      console.error(error)
+      throw failedToCheckStoragePoolError()
     }
-    return storagePool;
   };
 
   const validateNodeStoragePool = async (requiredStorage: number, nodeId: number) => {

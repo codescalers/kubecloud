@@ -211,7 +211,7 @@ async function getClusterPayload(): Promise<Cluster> {
 
       cpu = node.total.cru
       ram = Math.floor((node.total.mru * 0.99 - node.used.mru) / 1024 ** 3)
-      disk = Math.floor((node.total.sru * 0.995 - node.used.sru) / 1024 ** 3)
+      disk = Math.floor((node.total.sru * 0.985 - node.used.sru) / 1024 ** 3)
     }
 
     const fs = vm.rootfs * 1024
@@ -347,9 +347,10 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .deploy-header {
   text-align: center;
   margin-bottom: 2.5rem;
+  padding: 0 1rem;
 }
 .hero-title {
-  font-size: 2.2rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--color-text, #fff);
   margin-bottom: 0.5rem;
@@ -361,6 +362,7 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .deploy-content-wrapper {
   display: flex;
   justify-content: center;
+  padding: 0 1rem;
 }
 .deploy-card {
   background: var(--color-surface-1, #18192b);
@@ -446,23 +448,89 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .step.completed:not(:last-child)::after {
   background: var(--color-success, #22d3ee);
 }
-@media (max-width: 900px) {
+@media (max-width: 960px) {
+  .deploy-container {
+    padding-top: 2rem;
+    margin-top: 5rem;
+  }
+  .deploy-header {
+    margin-bottom: 1.5rem;
+  }
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  .section-subtitle {
+    font-size: 1rem;
+  }
   .deploy-card {
-    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    padding: 2rem 1.5rem;
+    margin-top: 1.5rem;
+    border-radius: 16px;
+  }
+  .progress-section {
+    margin-bottom: 2rem;
   }
   .stepper {
     flex-direction: column;
     gap: 1.2rem;
+    margin-bottom: 1.5rem;
   }
   .step {
     flex-direction: row;
     align-items: center;
     gap: 0.7rem;
+    width: 100%;
   }
   .step-label {
     margin-top: 0;
     margin-left: 0.7rem;
     text-align: left;
+  }
+  .step:not(:last-child)::after {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .deploy-container {
+    padding-top: 1.5rem;
+    margin-top: 4rem;
+  }
+  .deploy-header {
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+  }
+  .hero-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+  }
+  .section-subtitle {
+    font-size: 0.9rem;
+    padding: 0 0.5rem;
+  }
+  .deploy-content-wrapper {
+    padding: 0 0.5rem;
+  }
+  .deploy-card {
+    padding: 1.5rem 1rem;
+    margin-top: 1rem;
+    border-radius: 12px;
+  }
+  .progress-section {
+    margin-bottom: 1.5rem;
+  }
+  .stepper {
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .step-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  .step-label {
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
   }
 }
 </style>
