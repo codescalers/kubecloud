@@ -131,6 +131,10 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		DB:       config.Redis.DB,
 	})
 
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
 	qEngine := ewf.NewRedisQueueEngine(client)
 
 	// initialize workflow ewfEngine
