@@ -85,7 +85,72 @@ docker run -it --name master2 \
 
 The K3s image is available as a Flist for ThreeFold Grid deployment:
 
-[https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-k3s_1.26.0-latest.flist](https://hub.grid.tf/samehabouelsaad.3bot/abouelsaad-k3s_1.26.0-latest.flist)
+[https://hub.threefold.me/omarabdulaziz.3bot/omarabdul3ziz-k3s-opt_crypto.flist](https://hub.threefold.me/omarabdulaziz.3bot/omarabdul3ziz-k3s-opt_crypto.flist)
+
+### Dual-Stack Networking with Mycelium
+
+This k3s deployment provides secure dual-stack Kubernetes networking that integrates seamlessly with Mycelium on ThreeFold Grid.
+
+#### Architecture Overview
+
+The cluster implements a **layered security model** with private pod networking and controlled external access:
+
+- **Private Pod Network**: Pods run in an isolated Flannel overlay network with private IPv4 (`10.42.0.0/16`) and IPv6 (`2001:cafe:42::/56`) address ranges
+- **Mycelium Integration**: Each node has a Mycelium interface managed by ZOS or a DaemonSet, providing secure end-to-end encrypted connectivity
+- **Controlled Exposure**: Pods remain secure by default; only explicitly exposed services are accessible via Mycelium
+
+#### How It Works
+
+1. **Secure by Default**: All pods communicate internally using private Flannel overlay networks (IPv4 and IPv6). These addresses are not directly accessible from outside the cluster.
+
+2. **Mycelium Access**: The Mycelium interface on each node enables secure access to cluster services without exposing the underlying pod network. Access is controlled through standard Kubernetes primitives:
+   - **Ingress Rules**: Route external traffic to internal services
+   - **ClusterIP Services**: Expose pods through stable service endpoints accessible via Mycelium
+   - **No Helm Chart Modifications**: Works out-of-the-box with existing applications
+
+3. **Development Workflow**: For testing and development, use `kubectl expose` to quickly make pods/services accessible through the Mycelium network.
+
+#### Network Configuration
+
+The cluster uses **Flannel with VXLAN backend** for dual-stack support:
+
+- **IPv4 Cluster CIDR**: `10.42.0.0/16` (private)
+- **IPv6 Cluster CIDR**: `2001:cafe:42::/56` (private)
+- **IPv4 Service CIDR**: `10.43.0.0/16`
+- **IPv6 Service CIDR**: `2001:cafe:43::/112`
+
+#### Required Network Interfaces
+
+- **IPv4 Interface**: `eth0` - Primary network interface for IPv4 connectivity
+- **IPv6 Interface**: `eth2` or Mycelium interface - Dedicated interface for IPv6 connectivity
+
+#### Deployment Steps
+
+1. **Enable Dual-Stack**: Set `DUAL_STACK="true"` environment variable
+2. **Interface Configuration**: The entrypoint script automatically creates a bridge interface (`flannel-br`) that merges IPv4 (eth0) and IPv6 interfaces
+3. **Flannel Interface**: The `K3S_FLANNEL_IFACE` defaults to `flannel-br` when dual-stack is enabled
+
+#### Example Deployment
+
+```bash
+# Deploy with dual-stack enabled
+docker run -it --name k3s-master \
+  -e K3S_URL="" \
+  -e K3S_TOKEN="<YOUR_CLUSTER_TOKEN>" \
+  -e MASTER="true" \
+  -e DUAL_STACK="true" \
+  --privileged \
+  threefoldtech/k3s:latest
+```
+
+**Note**: All Kubernetes services created on the cluster will automatically have `ipFamilyPolicy: RequireDualStack` set, ensuring both IPv4 and IPv6 addresses are assigned.
+
+#### Security Benefits
+
+- **Network Isolation**: Pods run in private networks, reducing attack surface
+- **Selective Exposure**: Only services you explicitly expose are accessible
+- **Zero Trust**: Mycelium provides end-to-end encryption for all external access
+- **No Configuration Overhead**: Standard Kubernetes networking works without modification
 
 ### Entrypoint
 
@@ -104,7 +169,7 @@ zinit init
 | `K3S_URL` | URL of the leader node. Empty for leader, `https://<LEADER_IP>:6443` for workers/additional masters | - | Yes |
 | `K3S_TOKEN` | Authentication token for the cluster (must be identical across all nodes) | - | Yes |
 | `K3S_DATA_DIR` | Data directory for Kubernetes | `/var/lib/rancher/k3s/` | No |
-| `K3S_FLANNEL_IFACE` | Network interface used by Flannel | `eth0` (or `mycelium-br` for dual stack) | No |
+| `K3S_FLANNEL_IFACE` | Network interface used by Flannel | `eth0` (single stack) or `flannel-br` (dual stack) | No |
 | `K3S_DATASTORE_ENDPOINT` | External datastore endpoint (etcd, sqlite, postgres, mysql) | - | No |
 | `K3S_NODE_NAME` | Custom node name | Hostname | No |
 | `DUAL_STACK` | Enable dual stack (IPv4/IPv6) networking | `false` | No |
