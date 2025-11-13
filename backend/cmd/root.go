@@ -84,6 +84,11 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind voucher_name_length flag: %w", err)
 	}
 
+	// === Verification Code ===
+	if err := bindIntFlag(rootCmd, "verification_code_length", 4, "Verification code length"); err != nil {
+		return fmt.Errorf("failed to bind verification_code_length flag: %w", err)
+	}
+
 	// === Terms and Conditions ===
 	if err := bindStringFlag(rootCmd, "terms_and_conditions.document_link", "", "Terms document link"); err != nil {
 		return fmt.Errorf("failed to bind terms_and_conditions.document_link flag: %w", err)

@@ -1,83 +1,45 @@
-package app
+package handlers
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"kubecloud/app/services"
 	"kubecloud/internal"
 	"kubecloud/internal/mailservice"
-	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
-	"github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/paymentmethod"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/xmonader/ewf"
-
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	"github.com/stripe/stripe-go/v82"
+	"github.com/stripe/stripe-go/v82/paymentmethod"
+	"golang.org/x/crypto/ssh"
 )
 
-type userService struct {
-	userRepo    models.UserRepository
-	voucherRepo models.VoucherRepository
-	prRepo      models.PendingRecordRepository
+type UserHandler struct {
+	svc                services.UserService
+	notificationSender notification.NotificationSender
+	mailService        mailservice.MailService
+	tokenManager       internal.TokenManager
 }
 
-func NewUserService(
-	userRepo models.UserRepository,
-	voucherRepo models.VoucherRepository,
-	pendingRecordRepo models.PendingRecordRepository,
-) userService {
-	return userService{
-		userRepo:    userRepo,
-		voucherRepo: voucherRepo,
-		prRepo:      pendingRecordRepo,
-	}
-}
-
-type userHandler struct {
-	svc userService
-
-	appCtx              context.Context
-	ewfEngine           *ewf.Engine
-	metrics             *metrics.Metrics
-	security            appSecurity
-	substrateClient     *substrate.Substrate
-	notificationService *notification.NotificationService
-	mailService         mailservice.MailService
-
-	// configs
-	codeTimeoutMin int
-	systemAdmins   []string
-}
-
-func newUserHandler(
-	appCtx context.Context, svc userService, security appSecurity,
-	metrics *metrics.Metrics, ewfEngine *ewf.Engine,
-	substrateClient *substrate.Substrate, notificationService *notification.NotificationService,
-	mailService mailservice.MailService, codeTimeoutMin int, systemAdmins []string,
-) userHandler {
-	return userHandler{
-		svc: svc,
-
-		appCtx:              appCtx,
-		ewfEngine:           ewfEngine,
-		metrics:             metrics,
-		security:            security,
-		notificationService: notificationService,
-		substrateClient:     substrateClient,
-		mailService:         mailService,
-
-		codeTimeoutMin: codeTimeoutMin,
-		systemAdmins:   systemAdmins,
+func NewUserHandler(
+	svc services.UserService,
+	notificationSender notification.NotificationSender,
+	mailService mailservice.MailService,
+	tokenManager internal.TokenManager,
+) UserHandler {
+	return UserHandler{
+		svc:                svc,
+		notificationSender: notificationSender,
+		mailService:        mailService,
+		tokenManager:       tokenManager,
 	}
 }
 
@@ -175,11 +137,6 @@ type RedeemVoucherResponse struct {
 	Email       string  `json:"email"`
 }
 
-type GetUserResponse struct {
-	models.User
-	PendingBalanceUSD float64 `json:"pending_balance_usd"`
-}
-
 // RegisterHandler registers user to the system
 // @Summary Register user (with KYC sponsorship)
 // @Description Registers a new user, sets up blockchain account, and creates KYC sponsorship. Sends verification code to email.
@@ -193,7 +150,7 @@ type GetUserResponse struct {
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register [post]
-func (h *userHandler) RegisterHandler(c *gin.Context) {
+func (h *UserHandler) RegisterHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "RegisterHandler")
 	var request RegisterInput
 
@@ -205,7 +162,7 @@ func (h *userHandler) RegisterHandler(c *gin.Context) {
 	}
 
 	// check if user previously exists
-	existingUser, getErr := h.svc.userRepo.GetUserByEmail(request.Email)
+	existingUser, getErr := h.svc.GetUserByEmail(request.Email)
 	if getErr != nil && getErr != models.ErrUserNotFound {
 		reqLog.Error().Err(getErr).Msg("failed to get user by email")
 		InternalServerError(c)
@@ -219,23 +176,15 @@ func (h *userHandler) RegisterHandler(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUserRegistration)
+	wfUUID, err := h.svc.AsyncRegisterUser(request.Name, request.Email, request.Password)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to start registration workflow")
+		reqLog.Error().Err(err).Msg("failed to register user")
 		InternalServerError(c)
 		return
 	}
 
-	wf.State = ewf.State{
-		"name":     request.Name,
-		"email":    request.Email,
-		"password": request.Password,
-	}
-
-	h.ewfEngine.RunAsync(h.appCtx, wf)
-
 	Accepted(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
-		WorkflowID: wf.UUID,
+		WorkflowID: wfUUID,
 		Email:      request.Email,
 	})
 }
@@ -252,7 +201,7 @@ func (h *userHandler) RegisterHandler(c *gin.Context) {
 // @Failure 409 {object} APIResponse "User is already registered"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/register/verify [post]
-func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
+func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 	reqLog := requestLogger(c, "VerifyRegisterCode")
 	var request VerifyCodeInput
 
@@ -263,7 +212,7 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			NotFound(c, "User not found")
@@ -289,53 +238,36 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 			return
 		}
 
-		if user.UpdatedAt.Add(time.Duration(h.codeTimeoutMin) * time.Minute).Before(time.Now()) {
-			BadRequest(c, "code has expired")
+		if h.svc.IsVerificationCodeExpired(user.UpdatedAt) {
+			BadRequest(c, "Code has expired")
 			return
 		}
 
-		if err := h.svc.userRepo.UpdateUserByID(&models.User{
-			ID:       user.ID,
-			Verified: true,
-		}); err != nil {
+		if err := h.svc.UpdateUserByID(&models.User{ID: user.ID, Verified: true}); err != nil {
+			if errors.Is(err, models.ErrUserNotFound) {
+				NotFound(c, "User not found")
+				return
+			}
 			reqLog.Error().Err(err).Msg("failed to update user data")
 			InternalServerError(c)
 			return
 		}
-		payload := notification.CommonPayload{
-			Message: "User email is verified successfully",
-			Subject: "User email verified",
-		}
-		notification := models.NewNotification(user.ID, "user_registration", notification.MergePayload(payload, map[string]string{}), models.WithNoPersist(), models.WithChannels(notification.ChannelUI), models.WithSeverity(models.NotificationSeveritySuccess))
-		err = h.notificationService.Send(h.appCtx, notification)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to send user registration notification")
+
+		if err := h.notificationSender.SendUserVerificationNotification(user.ID); err != nil {
+			reqLog.Error().Err(err).Msg("failed to send user verification notification")
+			InternalServerError(c)
+			return
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUserVerification)
+	wfUUID, err := h.svc.AsyncVerifyUserRegistration(c.Request.Context(), user.ID, user.Email, user.Username)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start user verification workflow")
 		InternalServerError(c)
 		return
 	}
 
-	if err = h.ewfEngine.Store().SaveWorkflow(c.Request.Context(), wf); err != nil {
-		reqLog.Error().Err(err).Msg("failed to save user verification workflow")
-		InternalServerError(c)
-		return
-	}
-
-	// Start the user-verification workflow
-	wf.State = ewf.State{
-		"email":   user.Email,
-		"name":    user.Username,
-		"user_id": user.ID,
-	}
-
-	h.ewfEngine.RunAsync(h.appCtx, wf)
-
-	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
@@ -343,7 +275,7 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 	}
 
 	Accepted(c, "Verification is in progress", VerifyRegisterUserResponse{
-		WorkflowID: wf.UUID,
+		WorkflowID: wfUUID,
 		Email:      user.Email,
 		TokenPair:  tokenPair,
 	})
@@ -362,7 +294,7 @@ func (h *userHandler) VerifyRegisterCode(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/login [post]
 // LoginUserHandler logs user into the system
-func (h *userHandler) LoginUserHandler(c *gin.Context) {
+func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "LoginUserHandler")
 	var request LoginInput
 
@@ -373,12 +305,13 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user by email")
 		BadRequest(c, "email or password is incorrect")
 		return
 	}
+
 	logWithUser := requestLogger(c, "LoginUserHandler").With().Int("user_id", user.ID).Logger()
 	reqLog = &logWithUser
 
@@ -389,27 +322,20 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 		return
 	}
 
-	// Check KYC verification status without blocking login
-	sponsored, err := h.security.kycClient.IsUserVerified(c.Request.Context(), user.AccountAddress)
-	if err != nil {
+	if err := h.svc.CheckKYCVerification(c.Request.Context(), user.ID, user.Sponsored, user.AccountAddress); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check KYC verification status")
 		InternalServerError(c)
 		return
 	}
-	if user.Sponsored != sponsored {
-		user.Sponsored = sponsored
-		if err := h.svc.userRepo.UpdateUserByID(&user); err != nil {
-			reqLog.Error().Err(err).Msg("failed to update user sponsorship status")
-		}
-	}
 
 	// create token pairs
-	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
 		return
 	}
+
 	Created(c, "token pair generated", tokenPair)
 }
 
@@ -426,7 +352,7 @@ func (h *userHandler) LoginUserHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/refresh [post]
 // RefreshTokenHandler handles token refresh requests
-func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
+func (h *UserHandler) RefreshTokenHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "RefreshTokenHandler")
 	var request RefreshTokenInput
 
@@ -436,7 +362,7 @@ func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := h.security.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
+	accessToken, err := h.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("refresh token failed")
 		Unauthorized(c, "Invalid or expired refresh token")
@@ -461,7 +387,7 @@ func (h *userHandler) RefreshTokenHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password [post]
 // ForgotPasswordHandler sends user verification code
-func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
+func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "ForgotPasswordHandler")
 	var request EmailInput
 
@@ -472,35 +398,37 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user ")
 		NotFound(c, "user lookup failed")
 		return
-
 	}
+
 	logWithUser := requestLogger(c, "ForgotPasswordHandler").With().Int("user_id", user.ID).Logger()
 	reqLog = &logWithUser
 
-	code := internal.GenerateRandomCode()
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.codeTimeoutMin, user.Username)
-	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
+	code := h.svc.GenerateRandomCode()
 
+	subject, body := h.mailService.ResetPasswordMailContent(code, h.svc.CodeTimeoutInMinutes(), user.Username)
+	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to send verification code")
 		InternalServerError(c)
 		return
 	}
 
-	err = h.svc.userRepo.UpdateUserByID(
+	if err = h.svc.UpdateUserByID(
 		&models.User{
 			ID:        user.ID,
 			UpdatedAt: time.Now(),
 			Code:      code,
 		},
-	)
-
-	if err != nil {
+	); err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User not found")
+			return
+		}
 		reqLog.Error().Err(err).Msg("error updating user data")
 		InternalServerError(c)
 		return
@@ -508,9 +436,8 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	OK(c, "Verification code sent", RegisterResponse{
 		Email:   request.Email,
-		Timeout: fmt.Sprintf("%d minutes", h.codeTimeoutMin),
+		Timeout: fmt.Sprintf("%d minutes", h.svc.CodeTimeoutInMinutes()),
 	})
-
 }
 
 // @Summary Verify forgot password code
@@ -525,7 +452,7 @@ func (h *userHandler) ForgotPasswordHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password/verify [post]
 // VerifyForgetPasswordCodeHandler verifies code sent to user when forgetting password
-func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
+func (h *UserHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "VerifyForgetPasswordCodeHandler")
 	var request VerifyCodeInput
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -535,18 +462,18 @@ func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	}
 
 	// get user by email
-	user, err := h.svc.userRepo.GetUserByEmail(request.Email)
+	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		if err == models.ErrUserNotFound {
 			NotFound(c, "User not found")
 			return
-
 		}
+
 		reqLog.Error().Err(err).Msg("failed to get user by email")
 		InternalServerError(c)
 		return
-
 	}
+
 	logWithUser := requestLogger(c, "VerifyForgetPasswordCodeHandler").With().Int("user_id", user.ID).Logger()
 	reqLog = &logWithUser
 
@@ -555,14 +482,15 @@ func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 		return
 	}
 
-	if user.UpdatedAt.Add(time.Duration(h.codeTimeoutMin) * time.Minute).Before(time.Now()) {
+	if h.svc.IsVerificationCodeExpired(user.UpdatedAt) {
 		BadRequest(c, "verification code has expired")
 		return
 	}
-	isAdmin := internal.Contains(h.systemAdmins, request.Email)
+
+	isAdmin := h.svc.IsSystemAdmin(user.Email)
 
 	// create token pairs
-	tokenPair, err := h.security.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
+	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
 		InternalServerError(c)
@@ -585,7 +513,7 @@ func (h *userHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/change_password [put]
 // ChangePasswordHandler changes password of user
-func (h *userHandler) ChangePasswordHandler(c *gin.Context) {
+func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 	var request ChangePasswordInput
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ChangePasswordHandler")
@@ -604,30 +532,21 @@ func (h *userHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.userRepo.UpdatePassword(request.Email, hashedPassword)
-	if err == models.ErrUserNotFound {
-		reqLog.Error().Err(err).Msg("user is not found")
-		NotFound(c, "User is not found")
+	if err = h.svc.UpdateUserByID(&models.User{ID: userID, Password: hashedPassword}); err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
 
-		return
-	}
-
-	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to update password")
 		InternalServerError(c)
 		return
 	}
 
-	payload := notification.CommonPayload{
-		Status:  "password_changed",
-		Subject: "Your password was changed",
-		Message: "Your account password has been successfully updated.",
-	}
-
-	notification := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err = h.notificationService.Send(h.appCtx, notification)
-	if err != nil {
+	if err := h.notificationSender.SendPasswordChangeNotification(userID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send password changed notification")
+		InternalServerError(c)
+		return
 	}
 
 	OK(c, "Password is updated successfully", nil)
@@ -645,7 +564,7 @@ func (h *userHandler) ChangePasswordHandler(c *gin.Context) {
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/balance/charge [post]
-func (h *userHandler) ChargeBalance(c *gin.Context) {
+func (h *UserHandler) ChargeBalance(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ChargeBalance")
 
@@ -656,19 +575,24 @@ func (h *userHandler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.userRepo.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("User is not found")
-		NotFound(c, "User is not found")
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
+		reqLog.Error().Err(err).Msg("failed to get user by id")
+		InternalServerError(c)
 		return
 	}
 
 	paymentMethod, err := internal.CreatePaymentMethod(request.CardType, request.PaymentToken)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error creating payment method")
+		h.svc.IncrementStripePaymentFailure()
+
 		if stripeErr, ok := err.(*stripe.Error); ok {
 			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
-			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
 
@@ -681,36 +605,26 @@ func (h *userHandler) ChargeBalance(c *gin.Context) {
 	})
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error attaching payment method to customer")
+		h.svc.IncrementStripePaymentFailure()
+
 		if stripeErr, ok := err.(*stripe.Error); ok {
 			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
-			h.metrics.IncrementStripePaymentFailure()
 			return
 		}
+
 		InternalServerError(c)
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowChargeBalance)
+	wfUUID, err := h.svc.AsyncStripeChargeBalance(userID, user.StripeCustomerID, paymentMethod.ID, user.Mnemonic, user.Username, request.Amount)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("error creating workflow")
+		reqLog.Error().Err(err).Msg("failed to create async stripe charge balance workflow")
 		InternalServerError(c)
 		return
 	}
-
-	wf.State = ewf.State{
-		"user_id":            userID,
-		"stripe_customer_id": user.StripeCustomerID,
-		"payment_method_id":  paymentMethod.ID,
-		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
-		"mnemonic":           user.Mnemonic,
-		"username":           user.Username,
-		"transfer_mode":      models.ChargeBalanceMode,
-	}
-
-	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
-		WorkflowID: wf.UUID,
+		WorkflowID: wfUUID,
 		Email:      user.Email,
 	})
 }
@@ -720,52 +634,29 @@ func (h *userHandler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} APIResponse{data=GetUserResponse} "User is retrieved successfully"
+// @Success 200 {object} APIResponse{data=services.UserWithPendingBalance} "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
 // GetUserHandler retrieves all data of the user
-func (h *userHandler) GetUserHandler(c *gin.Context) {
+func (h *UserHandler) GetUserHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "GetUserHandler")
 
-	user, err := h.svc.userRepo.GetUserByID(userID)
+	userWithPendingBalance, err := h.svc.GetUserWithPendingBalance(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			NotFound(c, "User is not found")
 			return
 		}
-		reqLog.Error().Err(err).Msg("User is not found")
+
+		reqLog.Error().Err(err).Msg("Failed to get user with pending balance")
 		InternalServerError(c)
 		return
-	}
-
-	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to list pending records")
-		InternalServerError(c)
-		return
-	}
-
-	var tftPendingAmount uint64
-	for _, record := range pendingRecords {
-		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-	}
-
-	usdMillicentPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to convert tft to usd millicent")
-		InternalServerError(c)
-		return
-	}
-
-	userResponse := GetUserResponse{
-		User:              user,
-		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
 	}
 
 	OK(c, "User is retrieved successfully", gin.H{
-		"user": userResponse,
+		"user": userWithPendingBalance,
 	})
 }
 
@@ -779,11 +670,11 @@ func (h *userHandler) GetUserHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/balance [get]
 // GetUserBalance returns user's balance in usd
-func (h *userHandler) GetUserBalance(c *gin.Context) {
+func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "GetUserBalance")
 
-	user, err := h.svc.userRepo.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			NotFound(c, "User is not found")
@@ -794,36 +685,24 @@ func (h *userHandler) GetUserBalance(c *gin.Context) {
 		return
 	}
 
-	usdMillicentBalance, err := internal.GetUserBalanceUSDMillicent(h.substrateClient, user.Mnemonic)
+	usdMillicentBalance, err := h.svc.GetUserBalanceInUSDMillicent(user.Mnemonic)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to get user balance")
+		reqLog.Error().Err(err).Msg("failed to get user balance in usd millicent")
 		InternalServerError(c)
 		return
 	}
 
-	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
+	pendingAmountInUSDMillicent, err := h.svc.GetUserPendingBalanceInUSDMillicent(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list pending records")
 		InternalServerError(c)
 		return
 	}
 
-	var tftPendingAmount uint64
-	for _, record := range pendingRecords {
-		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-	}
-
-	usdPendingAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, tftPendingAmount)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to convert tft to usd millicent")
-		InternalServerError(c)
-		return
-	}
-
 	OK(c, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        internal.FromUSDMilliCentToUSD(usdMillicentBalance),
-		DebtUSD:           internal.FromUSDMilliCentToUSD(user.Debt),
-		PendingBalanceUSD: internal.FromUSDMilliCentToUSD(usdPendingAmount),
+		BalanceUSD:        substrate.FromUSDMilliCentToUSD(usdMillicentBalance),
+		DebtUSD:           substrate.FromUSDMilliCentToUSD(user.Debt),
+		PendingBalanceUSD: substrate.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
 	})
 }
 
@@ -838,7 +717,7 @@ func (h *userHandler) GetUserBalance(c *gin.Context) {
 // @Failure 404 {object} APIResponse "User or voucher are not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/redeem/{voucher_code} [put]
-func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
+func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 	voucherCodeParam := c.Param("voucher_code")
 	if voucherCodeParam == "" {
 		BadRequest(c, "Voucher Code is required")
@@ -847,7 +726,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "RedeemVoucherHandler")
 
-	user, err := h.svc.userRepo.GetUserByID(userID)
+	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			NotFound(c, "User is not found")
@@ -859,7 +738,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 	}
 
 	// check voucher exists
-	voucher, err := h.svc.voucherRepo.GetVoucherByCode(voucherCodeParam)
+	voucher, err := h.svc.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
 		if errors.Is(err, models.ErrVoucherNotFound) {
 			NotFound(c, "Voucher is not found")
@@ -882,30 +761,15 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	err = h.svc.voucherRepo.RedeemVoucher(voucher.Code)
+	wfUUID, err := h.svc.AsyncRedeemVoucher(user.ID, voucher.Value, user.Mnemonic, user.Username, voucher.Code)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("error redeeming voucher")
+		reqLog.Error().Err(err).Msg("failed to redeem voucher")
 		InternalServerError(c)
 		return
 	}
-
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRedeemVoucher)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("error creating workflow")
-		InternalServerError(c)
-		return
-	}
-	wf.State = map[string]interface{}{
-		"user_id":       user.ID,
-		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic":      user.Mnemonic,
-		"username":      user.Username,
-		"transfer_mode": models.RedeemVoucherMode,
-	}
-	h.ewfEngine.RunAsync(h.appCtx, wf)
 
 	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
-		WorkflowID:  wf.UUID,
+		WorkflowID:  wfUUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
 		Email:       user.Email,
@@ -924,7 +788,7 @@ func (h *userHandler) RedeemVoucherHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [get]
 // ListSSHKeysHandler lists all SSH keys for the authenticated user
-func (h *userHandler) ListSSHKeysHandler(c *gin.Context) {
+func (h *UserHandler) ListSSHKeysHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListSSHKeysHandler")
 	if userID == 0 {
@@ -932,7 +796,7 @@ func (h *userHandler) ListSSHKeysHandler(c *gin.Context) {
 		return
 	}
 
-	sshKeys, err := h.svc.userRepo.ListUserSSHKeys(userID)
+	sshKeys, err := h.svc.ListUserSSHKeys(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list SSH keys")
 		InternalServerError(c)
@@ -956,7 +820,7 @@ func (h *userHandler) ListSSHKeysHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys [post]
 // AddSSHKeyHandler adds a new SSH key for the authenticated user
-func (h *userHandler) AddSSHKeyHandler(c *gin.Context) {
+func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "AddSSHKeyHandler")
 	if userID == 0 {
@@ -972,36 +836,28 @@ func (h *userHandler) AddSSHKeyHandler(c *gin.Context) {
 	}
 
 	// Validate SSH key format
-	if err := internal.ValidateSSH(request.PublicKey); err != nil {
+	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(request.PublicKey)); err != nil {
+		reqLog.Error().Err(err).Msg("Invalid SSH key format")
 		BadRequest(c, "Invalid SSH key format")
 		return
 	}
 
-	sshKey := models.SSHKey{
-		UserID:    userID,
-		Name:      request.Name,
-		PublicKey: request.PublicKey,
-	}
-
-	if err := h.svc.userRepo.CreateSSHKey(&sshKey); err != nil {
+	sshKey, err := h.svc.CreateSSHKey(userID, request.Name, request.PublicKey)
+	if err != nil {
 		if errors.Is(err, models.ErrSSHKeyAlreadyExists) {
 			BadRequest(c, "SSH key name or public key already exists for this user.")
 			return
 		}
+
 		reqLog.Error().Err(err).Msg("failed to create SSH key")
 		InternalServerError(c)
 		return
 	}
 
-	payload := notification.CommonPayload{
-		Status:  "ssh_key_added",
-		Subject: "New SSH key added",
-		Message: fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name),
-	}
-	notification := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}))
-	err := h.notificationService.Send(h.appCtx, notification)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to send ssh key added notification")
+	if err := h.notificationSender.SendNewSSHKeyAddedNotification(userID, sshKey.Name); err != nil {
+		reqLog.Error().Err(err).Msg("failed to send notification")
+		InternalServerError(c)
+		return
 	}
 
 	Created(c, "SSH key added successfully", sshKey)
@@ -1022,7 +878,7 @@ func (h *userHandler) AddSSHKeyHandler(c *gin.Context) {
 // @Failure 500 {object} APIResponse
 // @Router /user/ssh-keys/{ssh_key_id} [delete]
 // DeleteSSHKeyHandler deletes an SSH key for the authenticated user
-func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
+func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "DeleteSSHKeyHandler")
 	if userID == 0 {
@@ -1044,18 +900,8 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	sshKey, err := h.svc.userRepo.GetSSHKeyByID(keyID, userID)
+	sshKeyName, err := h.svc.DeleteSSHKey(userID, keyID)
 	if err != nil {
-		if err == models.ErrSSHKeyNotFound {
-			NotFound(c, "SSH key not found")
-			return
-		}
-		reqLog.Error().Err(err).Msg("failed to get SSH key before deletion")
-		InternalServerError(c)
-		return
-	}
-
-	if err := h.svc.userRepo.DeleteSSHKey(keyID, userID); err != nil {
 		if err.Error() == fmt.Sprintf("no SSH key found with ID %d for user %d", keyID, userID) {
 			NotFound(c, "SSH key not found")
 			return
@@ -1065,13 +911,7 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	payload := notification.CommonPayload{
-		Status:  "ssh_key_deleted",
-		Subject: "SSH key deleted",
-		Message: fmt.Sprintf("SSH key '%s' was deleted from your account.", sshKey.Name),
-	}
-	n := models.NewNotification(userID, models.NotificationTypeUser, notification.MergePayload(payload, map[string]string{}), models.WithSeverity(models.NotificationSeveritySuccess))
-	if err := h.notificationService.Send(h.appCtx, n); err != nil {
+	if err := h.notificationSender.SendDeletedSSHKeyNotification(userID, sshKeyName); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 
@@ -1090,7 +930,7 @@ func (h *userHandler) DeleteSSHKeyHandler(c *gin.Context) {
 // @Failure 404 {object} APIResponse "Workflow not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /workflow/{workflow_id} [get]
-func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
+func (h *UserHandler) GetWorkflowStatus(c *gin.Context) {
 	reqLog := requestLogger(c, "GetWorkflowStatus")
 
 	workflowID := c.Param("workflow_id")
@@ -1099,13 +939,14 @@ func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
 		return
 	}
 
-	workflow, err := h.ewfEngine.Store().LoadWorkflowByUUID(c, workflowID)
+	workflowStatus, err := h.svc.GetWorkflowStatus(c.Request.Context(), workflowID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to load workflow by UUID")
 		InternalServerError(c)
 		return
 	}
-	OK(c, "Status returned successfully", workflow.Status)
+
+	OK(c, "Status returned successfully", workflowStatus)
 }
 
 // @Summary List user pending records
@@ -1119,42 +960,19 @@ func (h *userHandler) GetWorkflowStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Router /user/pending-records [get]
 // ListUserPendingRecordsHandler returns user pending records in the system
-func (h *userHandler) ListUserPendingRecordsHandler(c *gin.Context) {
+func (h *UserHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListUserPendingRecordsHandler")
 
-	pendingRecords, err := h.svc.prRepo.ListUserPendingRecords(userID)
+	pendingRecordsWithUSDAmounts, err := h.svc.ListUserPendingRecordsWithUSDAmounts(userID)
 	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to list pending records")
+		reqLog.Error().Err(err).Msg("failed to list pending records with usd amounts")
 		InternalServerError(c)
 		return
 	}
 
-	var pendingRecordsResponse []PendingRecordsResponse
-	for _, record := range pendingRecords {
-		usdMillicentAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TFTAmount)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to convert tft to usd amount")
-			InternalServerError(c)
-			return
-		}
-
-		usdMillicentTransferredAmount, err := internal.FromTFTtoUSDMillicent(h.substrateClient, record.TransferredTFTAmount)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to convert tft to usd transferred amount")
-			InternalServerError(c)
-			return
-		}
-
-		pendingRecordsResponse = append(pendingRecordsResponse, PendingRecordsResponse{
-			PendingRecord:        record,
-			USDAmount:            internal.FromUSDMilliCentToUSD(usdMillicentAmount),
-			TransferredUSDAmount: internal.FromUSDMilliCentToUSD(usdMillicentTransferredAmount),
-		})
-	}
-
 	OK(c, "Pending records are retrieved successfully", gin.H{
-		"pending_records": pendingRecordsResponse,
+		"pending_records": pendingRecordsWithUSDAmounts,
 	})
 }
 

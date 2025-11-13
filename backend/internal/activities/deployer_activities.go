@@ -608,8 +608,8 @@ func deploymentFailureHook(engine *ewf.Engine) ewf.AfterWorkflowHook {
 	}
 }
 
-func createDeployerWorkflowTemplate(notificationService *notification.NotificationService, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
-	template := newKubecloudWorkflowTemplate(notificationService)
+func createDeployerWorkflowTemplate(notificationSender notification.NotificationSender, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+	template := newKubecloudWorkflowTemplate(notificationSender)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		metricsSuccessHook(metrics),
 		metricsFailureHook(metrics),
@@ -620,8 +620,8 @@ func createDeployerWorkflowTemplate(notificationService *notification.Notificati
 	return template
 }
 
-func createBaseDeployerWorkflowTemplate(notificationService *notification.NotificationService) ewf.WorkflowTemplate {
-	template := newKubecloudWorkflowTemplate(notificationService)
+func createBaseDeployerWorkflowTemplate(notificationSender notification.NotificationSender) ewf.WorkflowTemplate {
+	template := newKubecloudWorkflowTemplate(notificationSender)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		closeClient,
 	)
@@ -629,8 +629,8 @@ func createBaseDeployerWorkflowTemplate(notificationService *notification.Notifi
 	return template
 }
 
-func createAddNodeWorkflowTemplate(notificationService *notification.NotificationService, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
-	template := newKubecloudWorkflowTemplate(notificationService)
+func createAddNodeWorkflowTemplate(notificationSender notification.NotificationSender, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+	template := newKubecloudWorkflowTemplate(notificationSender)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		metricsSuccessHook(metrics),
 		addNodeFailureHook(engine, metrics),
@@ -639,7 +639,7 @@ func createAddNodeWorkflowTemplate(notificationService *notification.Notificatio
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, clusterRepo models.ClusterRepository, notificationService *notification.NotificationService, config internal.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, clusterRepo models.ClusterRepository, notificationSender notification.NotificationSender, config internal.Configuration) {
 	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(constants.StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
 	engine.Register(constants.StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
@@ -656,7 +656,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
 	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo, metrics))
 
-	deployWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	deployWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: constants.StepDeployLeaderNode, RetryPolicy: criticalRetryPolicy},
@@ -666,18 +666,18 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	deployWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
-		notifyStepHook(notificationService),
+		notifyStepHook(notificationSender),
 	}
 	engine.RegisterTemplate(constants.WorkflowDeployCluster, &deployWFTemplate)
 
-	deleteWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	deleteWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deleteWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(constants.WorkflowDeleteCluster, &deleteWFTemplate)
 
-	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
@@ -685,7 +685,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(constants.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
-	addNodeWFTemplate := createAddNodeWorkflowTemplate(notificationService, engine, metrics)
+	addNodeWFTemplate := createAddNodeWorkflowTemplate(notificationSender, engine, metrics)
 	addNodeWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
 		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
@@ -695,7 +695,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(constants.WorkflowAddNode, &addNodeWFTemplate)
 
-	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
@@ -703,13 +703,13 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, 
 	}
 	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
 
-	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationService, engine, metrics)
+	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	rollbackWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 	}
 	engine.RegisterTemplate(constants.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
 
-	rollbackAddNodeWFTemplate := createBaseDeployerWorkflowTemplate(notificationService)
+	rollbackAddNodeWFTemplate := createBaseDeployerWorkflowTemplate(notificationSender)
 	rollbackAddNodeWFTemplate.Steps = []ewf.Step{
 		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
 		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},

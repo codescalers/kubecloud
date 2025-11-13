@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"kubecloud/app/workers"
 	"kubecloud/internal"
 	"kubecloud/internal/activities"
 	"kubecloud/internal/metrics"
@@ -30,8 +31,10 @@ type App struct {
 	httpServer *http.Server
 	config     internal.Configuration
 
+	workers  workers.Workers
+	handlers appHandlers
+
 	*appDependencies
-	*handlers
 }
 
 // NewApp create new instance of the app with all configs
@@ -62,8 +65,8 @@ func NewApp(ctx context.Context, config internal.Configuration) (*App, error) {
 		appDependencies: &appDependencies,
 	}
 
-	handlers := app.createHandlers()
-	app.handlers = &handlers
+	app.handlers = app.createHandlers()
+	app.workers = app.createWorkers()
 
 	app.registerEWFWorkflows()
 	app.registerHandlers()
@@ -82,8 +85,9 @@ func (app *App) registerEWFWorkflows() {
 		app.security.sponsorAddress,
 		app.security.sponsorKeyPair,
 		app.core.metrics,
-		app.communication.notificationService,
+		app.communication.notificationSender,
 		app.infra.gridClient.GridProxyClient,
+		app.core.randomizer,
 	)
 }
 
@@ -99,31 +103,31 @@ func (app *App) registerHandlers() {
 
 	v1 := app.router.Group("/api/v1")
 	{
-		v1.GET("/health", app.healthHandler.HealthHandler)
-		v1.GET("/workflow/:workflow_id", app.userHandler.GetWorkflowStatus)
-		v1.GET("/twins/:twin_id/account", app.nodeHandler.GetAccountIDHandler)
-		v1.GET("/system/maintenance/status", app.adminHandler.GetMaintenanceModeHandler)
-		v1.GET("/stats", app.statsHandler.GetStatsHandler)
-		v1.GET("/nodes", app.nodeHandler.ListAllGridNodesHandler)
-		v1.GET("/nodes/:node_id/storage-pool", app.nodeHandler.GetNodeStoragePoolHandler)
+		v1.GET("/health", app.handlers.healthHandler.HealthHandler)
+		v1.GET("/workflow/:workflow_id", app.handlers.userHandler.GetWorkflowStatus)
+		v1.GET("/system/maintenance/status", app.handlers.settingsHandler.GetMaintenanceModeHandler)
+		v1.GET("/stats", app.handlers.statsHandler.GetStatsHandler)
+		v1.GET("/twins/:twin_id/account", app.handlers.nodeHandler.GetAccountIDHandler)
+		v1.GET("/nodes", app.handlers.nodeHandler.ListAllGridNodesHandler)
+		v1.GET("/nodes/:node_id/storage-pool", app.handlers.nodeHandler.GetNodeStoragePoolHandler)
 
 		adminGroup := v1.Group("")
 		adminGroup.Use(middlewares.AdminMiddleware(app.security.tokenManager))
 		{
 			usersGroup := adminGroup.Group("/users")
 			{
-				usersGroup.GET("", app.adminHandler.ListUsersHandler)
-				usersGroup.DELETE("/:user_id", app.adminHandler.DeleteUsersHandler)
-				usersGroup.POST("/:user_id/credit", app.adminHandler.CreditUserHandler)
+				usersGroup.GET("", app.handlers.adminHandler.ListUsersHandler)
+				usersGroup.DELETE("/:user_id", app.handlers.adminHandler.DeleteUsersHandler)
+				usersGroup.POST("/:user_id/credit", app.handlers.adminHandler.CreditUserHandler)
 			}
-			usersGroup.POST("/mail", app.adminHandler.SendMailToAllUsersHandler)
-			adminGroup.GET("/pending-records", app.adminHandler.ListPendingRecordsHandler)
-			adminGroup.GET("/invoices", app.invoiceHandler.ListAllInvoicesHandler)
+			usersGroup.POST("/mail", app.handlers.adminHandler.SendMailToAllUsersHandler)
+			adminGroup.GET("/pending-records", app.handlers.adminHandler.ListPendingRecordsHandler)
+			adminGroup.GET("/invoices", app.handlers.invoiceHandler.ListAllInvoicesHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{
-				vouchersGroup.POST("/generate", app.adminHandler.GenerateVouchersHandler)
-				vouchersGroup.GET("", app.adminHandler.ListVouchersHandler)
+				vouchersGroup.POST("/generate", app.handlers.adminHandler.GenerateVouchersHandler)
+				vouchersGroup.GET("", app.handlers.adminHandler.ListVouchersHandler)
 
 			}
 
@@ -131,40 +135,40 @@ func (app *App) registerHandlers() {
 
 		systemGroup := adminGroup.Group("/system")
 		{
-			systemGroup.PUT("/maintenance/status", app.adminHandler.SetMaintenanceModeHandler)
+			systemGroup.PUT("/maintenance/status", app.handlers.settingsHandler.SetMaintenanceModeHandler)
 		}
 
 		userGroup := v1.Group("/user")
 		{
-			userGroup.POST("/register", app.userHandler.RegisterHandler)
-			userGroup.POST("/register/verify", app.userHandler.VerifyRegisterCode)
-			userGroup.POST("/login", app.userHandler.LoginUserHandler)
-			userGroup.POST("/refresh", app.userHandler.RefreshTokenHandler)
-			userGroup.POST("/forgot_password", app.userHandler.ForgotPasswordHandler)
-			userGroup.POST("/forgot_password/verify", app.userHandler.VerifyForgetPasswordCodeHandler)
+			userGroup.POST("/register", app.handlers.userHandler.RegisterHandler)
+			userGroup.POST("/register/verify", app.handlers.userHandler.VerifyRegisterCode)
+			userGroup.POST("/login", app.handlers.userHandler.LoginUserHandler)
+			userGroup.POST("/refresh", app.handlers.userHandler.RefreshTokenHandler)
+			userGroup.POST("/forgot_password", app.handlers.userHandler.ForgotPasswordHandler)
+			userGroup.POST("/forgot_password/verify", app.handlers.userHandler.VerifyForgetPasswordCodeHandler)
 
 			authGroup := userGroup.Group("")
 			authGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
 			{
-				authGroup.GET("/", app.userHandler.GetUserHandler)
-				authGroup.POST("/balance/charge", app.userHandler.ChargeBalance)
-				authGroup.PUT("/change_password", app.userHandler.ChangePasswordHandler)
-				authGroup.GET("/balance", app.userHandler.GetUserBalance)
-				authGroup.PUT("/redeem/:voucher_code", app.userHandler.RedeemVoucherHandler)
-				authGroup.GET("/pending-records", app.userHandler.ListUserPendingRecordsHandler)
+				authGroup.GET("/", app.handlers.userHandler.GetUserHandler)
+				authGroup.POST("/balance/charge", app.handlers.userHandler.ChargeBalance)
+				authGroup.PUT("/change_password", app.handlers.userHandler.ChangePasswordHandler)
+				authGroup.GET("/balance", app.handlers.userHandler.GetUserBalance)
+				authGroup.PUT("/redeem/:voucher_code", app.handlers.userHandler.RedeemVoucherHandler)
+				authGroup.GET("/pending-records", app.handlers.userHandler.ListUserPendingRecordsHandler)
 
-				authGroup.GET("/nodes", app.nodeHandler.ListNodesHandler)
-				authGroup.GET("/nodes/rentable", app.nodeHandler.ListRentableNodesHandler)
-				authGroup.GET("/nodes/rented", app.nodeHandler.ListRentedNodesHandler)
-				authGroup.POST("/nodes/:node_id", app.nodeHandler.ReserveNodeHandler)
-				authGroup.DELETE("/nodes/unreserve/:contract_id", app.nodeHandler.UnreserveNodeHandler)
+				authGroup.GET("/nodes", app.handlers.nodeHandler.ListNodesHandler)
+				authGroup.GET("/nodes/rentable", app.handlers.nodeHandler.ListRentableNodesHandler)
+				authGroup.GET("/nodes/rented", app.handlers.nodeHandler.ListRentedNodesHandler)
+				authGroup.POST("/nodes/:node_id", app.handlers.nodeHandler.ReserveNodeHandler)
+				authGroup.DELETE("/nodes/unreserve/:contract_id", app.handlers.nodeHandler.UnreserveNodeHandler)
 
-				authGroup.GET("/invoice/:invoice_id", app.invoiceHandler.DownloadInvoiceHandler)
-				authGroup.GET("/invoice", app.invoiceHandler.ListUserInvoicesHandler)
+				authGroup.GET("/invoice/:invoice_id", app.handlers.invoiceHandler.DownloadInvoiceHandler)
+				authGroup.GET("/invoice", app.handlers.invoiceHandler.ListUserInvoicesHandler)
 				// SSH Key management
-				authGroup.GET("/ssh-keys", app.userHandler.ListSSHKeysHandler)
-				authGroup.POST("/ssh-keys", app.userHandler.AddSSHKeyHandler)
-				authGroup.DELETE("/ssh-keys/:ssh_key_id", app.userHandler.DeleteSSHKeyHandler)
+				authGroup.GET("/ssh-keys", app.handlers.userHandler.ListSSHKeysHandler)
+				authGroup.POST("/ssh-keys", app.handlers.userHandler.AddSSHKeyHandler)
+				authGroup.DELETE("/ssh-keys/:ssh_key_id", app.handlers.userHandler.DeleteSSHKeyHandler)
 			}
 		}
 
@@ -175,25 +179,25 @@ func (app *App) registerHandlers() {
 
 			deploymentGroup := deployerGroup.Group("/deployments")
 			{
-				deploymentGroup.POST("", app.deploymentHandler.HandleDeployCluster)
-				deploymentGroup.GET("", app.deploymentHandler.HandleListDeployments)
-				deploymentGroup.DELETE("", app.deploymentHandler.HandleDeleteAllDeployments)
-				deploymentGroup.GET("/:name", app.deploymentHandler.HandleGetDeployment)
-				deploymentGroup.GET("/:name/kubeconfig", app.deploymentHandler.HandleGetKubeconfig)
-				deploymentGroup.DELETE("/:name", app.deploymentHandler.HandleDeleteCluster)
-				deploymentGroup.POST("/:name/nodes", app.deploymentHandler.HandleAddNode)
-				deploymentGroup.DELETE("/:name/nodes/:node_name", app.deploymentHandler.HandleRemoveNode)
+				deploymentGroup.POST("", app.handlers.deploymentHandler.HandleDeployCluster)
+				deploymentGroup.GET("", app.handlers.deploymentHandler.HandleListDeployments)
+				deploymentGroup.DELETE("", app.handlers.deploymentHandler.HandleDeleteAllDeployments)
+				deploymentGroup.GET("/:name", app.handlers.deploymentHandler.HandleGetDeployment)
+				deploymentGroup.GET("/:name/kubeconfig", app.handlers.deploymentHandler.HandleGetKubeconfig)
+				deploymentGroup.DELETE("/:name", app.handlers.deploymentHandler.HandleDeleteCluster)
+				deploymentGroup.POST("/:name/nodes", app.handlers.deploymentHandler.HandleAddNode)
+				deploymentGroup.DELETE("/:name/nodes/:node_name", app.handlers.deploymentHandler.HandleRemoveNode)
 			}
 
 			notificationGroup := deployerGroup.Group("/notifications")
 			{
-				notificationGroup.GET("", app.notificationHandler.GetAllNotificationsHandler)
-				notificationGroup.GET("/unread", app.notificationHandler.GetUnreadNotificationsHandler)
-				notificationGroup.PATCH("/read-all", app.notificationHandler.MarkAllNotificationsReadHandler)
-				notificationGroup.DELETE("", app.notificationHandler.DeleteAllNotificationsHandler)
-				notificationGroup.PATCH("/:notification_id/read", app.notificationHandler.MarkNotificationReadHandler)
-				notificationGroup.PATCH("/:notification_id/unread", app.notificationHandler.MarkNotificationUnreadHandler)
-				notificationGroup.DELETE("/:notification_id", app.notificationHandler.DeleteNotificationHandler)
+				notificationGroup.GET("", app.handlers.notificationHandler.GetAllNotificationsHandler)
+				notificationGroup.GET("/unread", app.handlers.notificationHandler.GetUnreadNotificationsHandler)
+				notificationGroup.PATCH("/read-all", app.handlers.notificationHandler.MarkAllNotificationsReadHandler)
+				notificationGroup.DELETE("", app.handlers.notificationHandler.DeleteAllNotificationsHandler)
+				notificationGroup.PATCH("/:notification_id/read", app.handlers.notificationHandler.MarkNotificationReadHandler)
+				notificationGroup.PATCH("/:notification_id/unread", app.handlers.notificationHandler.MarkNotificationUnreadHandler)
+				notificationGroup.DELETE("/:notification_id", app.handlers.notificationHandler.DeleteNotificationHandler)
 			}
 		}
 	}
@@ -201,11 +205,11 @@ func (app *App) registerHandlers() {
 }
 
 func (app *App) StartBackgroundWorkers() {
-	go app.invoiceHandler.MonthlyInvoicesHandler(app.core.appCtx)
-	go app.adminHandler.TrackUserDebt(app.core.appCtx, app.infra.gridClient)
-	go app.adminHandler.MonitorSystemBalanceAndHandleSettlement(app.core.appCtx)
-	go app.deploymentHandler.TrackClusterHealth(app.core.appCtx)
-	go app.nodeHandler.TrackReservedNodeHealth(app.core.appCtx, app.communication.notificationService, app.infra.gridClient.GridProxyClient)
+	go app.workers.MonthlyInvoicesHandler()
+	go app.workers.TrackUserDebt()
+	go app.workers.MonitorSystemBalanceAndHandleSettlement()
+	go app.workers.TrackClusterHealth()
+	go app.workers.TrackReservedNodeHealth()
 }
 
 // Run starts the server
@@ -368,7 +372,7 @@ func (app *App) reloadNotificationConfig() error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	if err = app.communication.notificationService.ReloadNotificationConfig(cfg.Notification); err != nil {
+	if err = app.communication.notificationSender.ReloadNotificationConfig(cfg.Notification); err != nil {
 		return fmt.Errorf("failed to reload notification config: %w", err)
 	}
 

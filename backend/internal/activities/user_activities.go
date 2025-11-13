@@ -6,13 +6,13 @@ import (
 	"kubecloud/internal"
 	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
-	"kubecloud/internal/notification"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
+	"slices"
 	"strings"
 
 	"kubecloud/internal/logger"
 
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -55,7 +55,7 @@ func CreateUserStep(config internal.Configuration, userRepo models.UserRepositor
 			Username: name,
 			Email:    email,
 			Password: hashedPassword,
-			Admin:    internal.Contains(config.Admins, email),
+			Admin:    slices.Contains(config.Admins, email),
 		}
 
 		existingUser, err := userRepo.GetUserByEmail(email)
@@ -79,7 +79,7 @@ func CreateUserStep(config internal.Configuration, userRepo models.UserRepositor
 	}
 }
 
-func SendVerificationEmailStep(mailService mailservice.MailService, config internal.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, randomizer internal.Randomizer, config internal.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -99,7 +99,7 @@ func SendVerificationEmailStep(mailService mailservice.MailService, config inter
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		code := internal.GenerateRandomCode()
+		code := randomizer.GenerateRandomCode()
 		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name)
 
 		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
@@ -141,7 +141,7 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration, notificationService *notification.NotificationService, userRepo models.UserRepository) ewf.StepFn {
+func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -162,7 +162,7 @@ func SetupTFChainStep(client *substrate.Substrate, config internal.Configuration
 			return nil
 		}
 
-		mnemonic, _, err := internal.SetupUserOnTFChain(client, config)
+		mnemonic, _, err := substrateClient.SetupUserOnTFChain()
 		if err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-func CreateKYCSponsorship(kycClient *internal.KYCClient, notificationService *notification.NotificationService, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
+func CreateKYCSponsorship(kycClient *internal.KYCClient, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_kyc_sponsorship")
 		userIDVal, ok := state["user_id"]
@@ -322,7 +322,7 @@ func SendWelcomeEmailStep(mailService mailservice.MailService, config internal.C
 	}
 }
 
-func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notificationService *notification.NotificationService) ewf.StepFn {
+func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		customerIDVal, ok := state["stripe_customer_id"]
 		if !ok {
@@ -361,7 +361,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, notifica
 	}
 }
 
-func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.UserRepository, pendingRecordRepo models.PendingRecordRepository, systemMnemonic string) ewf.StepFn {
+func CreatePendingRecord(substrateClient substrate.Substrate, userRepo models.UserRepository, pendingRecordRepo models.PendingRecordRepository, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_pending_record")
 		amountVal, ok := state["amount"]
@@ -401,7 +401,7 @@ func CreatePendingRecord(substrateClient *substrate.Substrate, userRepo models.U
 			return fmt.Errorf("'transfer_mode' in state is not a string")
 		}
 
-		requestedTFTs, err := internal.FromUSDMillicentToTFT(substrateClient, amount)
+		requestedTFTs, err := substrateClient.FromUSDMillicentToTFT(amount)
 		if err != nil {
 			log.Error().Err(err).Msg("error converting USD to TFT")
 			return err

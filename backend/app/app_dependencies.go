@@ -3,35 +3,39 @@ package app
 import (
 	"context"
 	"fmt"
+	"kubecloud/app/handlers"
+	"kubecloud/app/services"
+	"kubecloud/app/workers"
 	"kubecloud/internal"
 	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
 
-// handlers contains application handlers
-type handlers struct {
-	userHandler         *userHandler
-	statsHandler        *statsHandler
-	notificationHandler *notificationHandler
-	nodeHandler         *nodeHandler
-	invoiceHandler      *invoiceHandler
-	deploymentHandler   *deploymentHandler
-	adminHandler        *adminHandler
-	healthHandler       *healthHandler
+// Handlers contains application Handlers
+type appHandlers struct {
+	userHandler         handlers.UserHandler
+	statsHandler        handlers.StatsHandler
+	notificationHandler handlers.NotificationHandler
+	nodeHandler         handlers.NodeHandler
+	invoiceHandler      handlers.InvoiceHandler
+	deploymentHandler   handlers.DeploymentHandler
+	adminHandler        handlers.AdminHandler
+	healthHandler       handlers.HealthHandler
+	settingsHandler     handlers.SettingsHandler
 }
 
 type appDependencies struct {
@@ -44,16 +48,16 @@ type appDependencies struct {
 
 // appCore contains essential application services
 type appCore struct {
-	appCtx    context.Context
-	db        models.DB
-	metrics   *metrics.Metrics
-	ewfEngine *ewf.Engine
+	appCtx     context.Context
+	db         models.DB
+	metrics    *metrics.Metrics
+	ewfEngine  *ewf.Engine
+	randomizer internal.Randomizer
 }
 
 // appSecurity contains authentication and security related services
 type appSecurity struct {
 	tokenManager   internal.TokenManager
-	systemIdentity substrate.Identity
 	sponsorKeyPair subkey.KeyPair
 	sponsorAddress string
 	sshPublicKey   string
@@ -62,9 +66,9 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailService         mailservice.MailService
-	sseManager          *internal.SSEManager
-	notificationService *notification.NotificationService
+	mailService        mailservice.MailService
+	sseManager         *internal.SSEManager
+	notificationSender notification.NotificationSender
 }
 
 // appInfrastructure contains grid and blockchain related services
@@ -72,7 +76,7 @@ type appInfrastructure struct {
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
-	substrateClient *substrate.Substrate
+	substrateClient substrate.Substrate
 }
 
 func createAppDependencies(ctx context.Context, config internal.Configuration) (appDependencies, error) {
@@ -91,7 +95,7 @@ func createAppDependencies(ctx context.Context, config internal.Configuration) (
 		return appDependencies{}, err
 	}
 
-	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics)
+	appCommunication, err := createAppCommunication(ctx, config, appCore.db, appCore.ewfEngine, appCore.metrics)
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -128,11 +132,14 @@ func createAppCore(ctx context.Context, config internal.Configuration) (appCore,
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
+	randomizer := internal.NewRandomizer(config.VoucherNameLength, config.VerificationCodeLength)
+
 	return appCore{
-		appCtx:    ctx,
-		db:        db,
-		metrics:   metrics.NewMetrics(),
-		ewfEngine: ewfEngine,
+		appCtx:     ctx,
+		db:         db,
+		metrics:    metrics.NewMetrics(),
+		ewfEngine:  ewfEngine,
+		randomizer: randomizer,
 	}, nil
 }
 
@@ -142,11 +149,6 @@ func createAppSecurity(ctx context.Context, config internal.Configuration) (appS
 		time.Duration(config.JwtToken.AccessExpiryMinutes)*time.Minute,
 		time.Duration(config.JwtToken.RefreshExpiryHours)*time.Hour,
 	)
-
-	systemIdentity, err := substrate.NewIdentityFromSr25519Phrase(config.SystemAccount.Mnemonic)
-	if err != nil {
-		return appSecurity{}, fmt.Errorf("failed to create system identity: %w", err)
-	}
 
 	// Derive sponsor (system) account SS58 address once
 	sponsorKeyPair, err := internal.KeyPairFromMnemonic(config.SystemAccount.Mnemonic)
@@ -186,7 +188,6 @@ func createAppSecurity(ctx context.Context, config internal.Configuration) (appS
 
 	return appSecurity{
 		tokenManager:   tokenManager,
-		systemIdentity: systemIdentity,
 		sponsorKeyPair: sponsorKeyPair,
 		sponsorAddress: sponsorAddress,
 		sshPublicKey:   strings.TrimSpace(string(sshPublicKeyBytes)),
@@ -194,7 +195,7 @@ func createAppSecurity(ctx context.Context, config internal.Configuration) (appS
 	}, nil
 }
 
-func createAppCommunication(config internal.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+func createAppCommunication(ctx context.Context, config internal.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
 	var mailService mailservice.MailService
 
 	if config.DevMode {
@@ -226,10 +227,12 @@ func createAppCommunication(config internal.Configuration, db models.DB, ewfEngi
 		return appCommunication{}, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
+	notificationSender := notification.NewEmailAndUINotificationSender(ctx, notificationService)
+
 	return appCommunication{
-		mailService:         mailService,
-		sseManager:          sseManager,
-		notificationService: notificationService,
+		mailService:        mailService,
+		sseManager:         sseManager,
+		notificationSender: notificationSender,
 	}, nil
 }
 
@@ -256,26 +259,28 @@ func createAppInfrastructure(config internal.Configuration) (appInfrastructure, 
 		return appInfrastructure{}, fmt.Errorf("failed to connect to firesquid client: %w", err)
 	}
 
-	manager := substrate.NewManager(deployer.SubstrateURLs[config.SystemAccount.Network]...)
-	substrateClient, err := manager.Substrate()
-	if err != nil {
-		return appInfrastructure{}, fmt.Errorf("failed to connect to TF chain: %w", err)
-	}
-
 	graphQl, err := graphql.NewGraphQl(deployer.GraphQlURLs[config.SystemAccount.Network]...)
 	if err != nil {
 		return appInfrastructure{}, fmt.Errorf("failed to connect to TF graphql: %w", err)
 	}
 
+	tfChainClient, err := substrate.NewTFChainClient(
+		config.SystemAccount.Network, config.SystemAccount.Mnemonic,
+		config.TermsANDConditions.DocumentLink, config.TermsANDConditions.DocumentHash,
+	)
+	if err != nil {
+		return appInfrastructure{}, fmt.Errorf("failed to create tf chain client: %w", err)
+	}
+
 	return appInfrastructure{
 		gridClient:      gridClient,
 		graphql:         graphQl,
-		substrateClient: substrateClient,
 		firesquidClient: fireSquidClient,
+		substrateClient: tfChainClient,
 	}, nil
 }
 
-func (app *App) createHandlers() handlers {
+func (app *App) createHandlers() appHandlers {
 	// Repositories
 	userRepo := models.NewGormUserRepository(app.core.db)
 	voucherRepo := models.NewGormVoucherRepository(app.core.db)
@@ -288,48 +293,85 @@ func (app *App) createHandlers() handlers {
 	settingsRepo := models.NewGormSettingsRepository(app.core.db)
 
 	// Services
-	userService := NewUserService(userRepo, voucherRepo, pendingRecordRepo)
-	statsService := NewStatsService(userRepo, clusterRepo)
-	notificationService := NewNotificationService(notificationRepo)
-	nodeService := NewNodeService(userNodesRepo, userRepo)
-	invoiceService := NewInvoiceService(invoiceRepo, userRepo, userNodesRepo)
-	deploymentService := NewDeploymentService(clusterRepo, userRepo, userNodesRepo)
-	adminService := NewAdminService(userRepo, userNodesRepo, pendingRecordRepo, voucherRepo, transactionRepo, settingsRepo)
+	userService := services.NewUserService(
+		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
+		app.infra.substrateClient, app.core.randomizer, app.core.ewfEngine,
+		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
+		app.config.Admins,
+	)
+
+	statsService := services.NewStatsService(
+		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
+	)
+
+	notificationService := services.NewNotificationService(notificationRepo)
+
+	nodeService := services.NewNodeService(userNodesRepo, userRepo)
+
+	invoiceService := services.NewInvoiceService(
+		invoiceRepo, userRepo, userNodesRepo,
+		app.infra.firesquidClient, app.infra.graphql, app.infra.substrateClient,
+		app.config.Invoice,
+	)
+
+	deploymentService := services.NewDeploymentService(
+		app.core.appCtx, clusterRepo, userRepo, userNodesRepo, app.core.ewfEngine,
+		app.config.Debug, app.security.sshPublicKey, app.config.SSH.PrivateKeyPath, app.config.SystemAccount.Network,
+	)
+
+	adminService := services.NewAdminService(
+		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
+		transactionRepo, app.infra.substrateClient, app.core.randomizer, app.core.ewfEngine,
+	)
+
+	settingsService := services.NewSettingsService(settingsRepo)
 
 	// Handlers
-	userHandler := newUserHandler(
-		app.core.appCtx, userService, app.security, app.core.metrics,
-		app.core.ewfEngine, app.infra.substrateClient, app.communication.notificationService, app.communication.mailService,
-		app.config.MailSender.TimeoutMin, app.config.Admins,
+	userHandler := handlers.NewUserHandler(
+		userService, app.communication.notificationSender,
+		app.communication.mailService, app.security.tokenManager,
 	)
-	statsHandler := newStatsHandler(statsService, app.infra.gridClient.GridProxyClient)
-	notificationHandler := newNotificationHandler(notificationService)
+	statsHandler := handlers.NewStatsHandler(statsService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	nodeHandler := handlers.NewNodeHandler(nodeService)
+	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, app.communication.mailService)
+	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationSender, app.communication.mailService)
+	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
+	settingsHandler := handlers.NewSettingsHandler(settingsService)
 
-	nodeHandler := newNodeHandler(app.core.appCtx, nodeService, app.core.ewfEngine,
-		app.infra.gridClient, app.infra.substrateClient, app.config.NodeHealthCheck)
+	return appHandlers{
+		userHandler:         userHandler,
+		statsHandler:        statsHandler,
+		notificationHandler: notificationHandler,
+		nodeHandler:         nodeHandler,
+		invoiceHandler:      invoiceHandler,
+		deploymentHandler:   deploymentHandler,
+		adminHandler:        adminHandler,
+		healthHandler:       healthHandler,
+		settingsHandler:     settingsHandler,
+	}
+}
 
-	invoiceHandler := newInvoiceHandler(invoiceService, app.infra.firesquidClient, app.infra.graphql,
-		app.infra.substrateClient, app.communication.mailService, app.config.Invoice, app.config.Currency)
-	deploymentHandler := newDeploymentHandler(app.core.appCtx, deploymentService,
-		app.core.ewfEngine, app.config.SystemAccount.Network, app.config.SSH.PrivateKeyPath,
-		app.config.ClusterHealthCheckIntervalInHours, app.security.sshPublicKey, app.config.Debug,
-	)
-	adminHandler := newAdminHandler(app.core.appCtx, adminService, app.core.ewfEngine,
-		app.communication.notificationService, app.communication.mailService,
-		app.infra.substrateClient, app.security.systemIdentity,
-		app.config.VoucherNameLength, app.config.MonitorBalanceIntervalInMinutes,
+func (app *App) createWorkers() workers.Workers {
+	userRepo := models.NewGormUserRepository(app.core.db)
+	pendingRecordRepo := models.NewGormPendingRecordRepository(app.core.db)
+	clusterRepo := models.NewGormClusterRepository(app.core.db)
+	invoiceRepo := models.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := models.NewGormUserNodesRepository(app.core.db)
+
+	workersService := services.NewWorkersService(
+		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
+		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
+		app.communication.notificationSender, app.infra.graphql, app.infra.firesquidClient,
+		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
+		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
+		app.config.MonitorBalanceIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
 	)
-	healthHandler := newHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 
-	return handlers{
-		userHandler:         &userHandler,
-		statsHandler:        &statsHandler,
-		notificationHandler: &notificationHandler,
-		nodeHandler:         &nodeHandler,
-		invoiceHandler:      &invoiceHandler,
-		deploymentHandler:   &deploymentHandler,
-		adminHandler:        &adminHandler,
-		healthHandler:       &healthHandler,
-	}
+	return workers.NewWorkers(app.core.appCtx, workersService)
 }

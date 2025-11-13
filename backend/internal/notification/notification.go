@@ -65,6 +65,7 @@ type NotificationServiceInterface interface {
 	Send(ctx context.Context, notification *models.Notification) error
 	GetNotifiers() map[string]Notifier
 	RegisterNotifier(notifier Notifier)
+	ReloadNotificationConfig(cfg internal.NotificationConfig) error
 }
 
 type NotificationService struct {

@@ -1,9 +1,9 @@
-package app
+package handlers
 
 import (
-	"context"
 	"fmt"
 	"kubecloud/internal"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
 	"os"
 	"os/exec"
@@ -17,11 +17,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func SetUp(t testing.TB) (*App, error) {
+type setup struct {
+	tokenManager    internal.TokenManager
+	substrateClient substrate.Substrate
+	router          *gin.Engine
+
+	userRepo     models.UserRepository
+	voucherRepo  models.VoucherRepository
+	invoicesRepo models.InvoiceRepository
+}
+
+func SetUp(t testing.TB) (setup, error) {
 	gin.SetMode(gin.TestMode)
 	dir := t.TempDir()
 
 	configPath := filepath.Join(dir, "config.json")
+
 	dbPath := filepath.Join(dir, "testing.db")
 	dsn := "sqlite3://" + dbPath
 	notificationConfigPath := filepath.Join(dir, "notification-config.json")
@@ -33,12 +44,12 @@ func SetUp(t testing.TB) (*App, error) {
 	cmd := exec.Command("ssh-keygen", "-t", "ed25519", "-f", privateKeyPath, "-N", "", "-q")
 	err := cmd.Run()
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
 	mnemonic := os.Getenv("TEST_MNEMONIC")
 	if mnemonic == "" {
-		return nil, fmt.Errorf("TEST_MNEMONIC environment variable is not set")
+		return setup{}, fmt.Errorf("TEST_MNEMONIC environment variable is not set")
 	}
 
 	config := fmt.Sprintf(`
@@ -105,43 +116,59 @@ func SetUp(t testing.TB) (*App, error) {
 
 	err = os.WriteFile(configPath, []byte(config), 0644)
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
 	notificationConfigBytes, err := os.ReadFile("../notification-config-example.json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read notification-config-example.json: %w", err)
+		return setup{}, fmt.Errorf("failed to read notification-config-example.json: %w", err)
 	}
 
 	err = os.WriteFile(notificationConfigPath, notificationConfigBytes, 0644)
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
 	viper.Reset()
 	viper.SetConfigFile(configPath)
 	err = viper.ReadInConfig()
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
 	configuration, err := internal.LoadConfig()
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
-	app, err := NewApp(context.Background(), configuration)
+	substrateClient, err := substrate.NewTFChainClient(
+		configuration.SystemAccount.Network, configuration.SystemAccount.Mnemonic,
+		configuration.TermsANDConditions.DocumentLink, configuration.TermsANDConditions.DocumentHash,
+	)
 	if err != nil {
-		return nil, err
+		return setup{}, err
 	}
 
-	app.httpServer = nil
+	tokenManager := internal.NewTokenHandler(
+		configuration.JwtToken.Secret,
+		time.Duration(configuration.JwtToken.AccessExpiryMinutes)*time.Minute,
+		time.Duration(configuration.JwtToken.RefreshExpiryHours)*time.Hour,
+	)
+	if err != nil {
+		return setup{}, err
+	}
+
+	router := gin.New()
+
+	// Add recovery middleware
+	router.Use(gin.Recovery())
+
+	db, err := models.NewGormDB(configuration.Database.DSN, models.DBPoolConfig{})
+	if err != nil {
+		return setup{}, fmt.Errorf("failed to create user storage: %w", err)
+	}
 
 	t.Cleanup(func() {
-		if err := app.Shutdown(); err != nil {
-			t.Logf("Warning: failed to shutdown app cleanly: %v", err)
-		}
-
 		// Clean up files
 		_ = os.Remove(privateKeyPath)
 		_ = os.Remove(publicKeyPath)
@@ -151,25 +178,34 @@ func SetUp(t testing.TB) (*App, error) {
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()
+		substrateClient.Close()
 	})
 
-	return app, nil
+	return setup{
+		tokenManager:    tokenManager,
+		substrateClient: substrateClient,
+		router:          router,
+
+		userRepo:     models.NewGormUserRepository(db),
+		voucherRepo:  models.NewGormVoucherRepository(db),
+		invoicesRepo: models.NewGormInvoiceRepository(db),
+	}, nil
 }
 
-func GetAuthToken(t *testing.T, app *App, id int, email, username string, isAdmin bool) string {
-	tokenPair, err := app.security.tokenManager.CreateTokenPair(id, username, isAdmin)
+func (s setup) GetAuthToken(t *testing.T, id int, email, username string, isAdmin bool) string {
+	tokenPair, err := s.tokenManager.CreateTokenPair(id, username, isAdmin)
 	assert.NoError(t, err)
 	return tokenPair.AccessToken
 }
 
 // Helper to create a test user
-func CreateTestUser(t *testing.T, app *App, email, username string, hashedPassword []byte, verified, admin bool, mnemonicRequired bool, code int, updatedAt time.Time) *models.User {
+func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPassword []byte, verified, admin bool, mnemonicRequired bool, code int, updatedAt time.Time) *models.User {
 	mnemonic := ""
 	sponseeAddress := ""
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := internal.SetupUserOnTFChain(app.infra.substrateClient, app.config)
+		mnemonic, _, err := s.substrateClient.SetupUserOnTFChain()
 		require.NoError(t, err)
 		sponseeKeyPair, err := internal.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
@@ -187,7 +223,8 @@ func CreateTestUser(t *testing.T, app *App, email, username string, hashedPasswo
 		Mnemonic:       mnemonic,
 		AccountAddress: sponseeAddress,
 	}
-	err := app.userHandler.svc.userRepo.RegisterUser(user)
+
+	err := s.userRepo.RegisterUser(user)
 	require.NoError(t, err)
 	return user
 }

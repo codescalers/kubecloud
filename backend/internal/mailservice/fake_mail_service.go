@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/metrics"
+	"mime/multipart"
 )
 
 // FakeMailService overrides MailService methods for development purposes
@@ -42,6 +43,10 @@ func (service FakeMailService) SendMail(sender, receiver, subject, body string, 
 	}
 	service.metrics.IncrementEmailSent()
 	return nil
+}
+
+func (service FakeMailService) ParseAttachment(fh *multipart.FileHeader) (Attachment, error) {
+	return Attachment{}, nil
 }
 
 // ResetPasswordMailContent displays OTP in a clean format

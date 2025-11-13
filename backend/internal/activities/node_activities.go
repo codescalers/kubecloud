@@ -4,35 +4,15 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/constants"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
 	"time"
 
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
 
-func CreateIdentityStep() ewf.StepFn {
-	return func(ctx context.Context, state ewf.State) error {
-
-		mnemonicVal, ok := state["mnemonic"]
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
-		}
-		mnemonic, ok := mnemonicVal.(string)
-		if !ok {
-			return fmt.Errorf("'mnemonic' in state is not a string")
-		}
-		identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
-		if err != nil {
-			return fmt.Errorf("failed to create identity: %w", err)
-		}
-		state["identity"] = identity
-		return nil
-	}
-}
-
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *substrate.Substrate) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userID, ok := state["user_id"].(int)
 		if !ok {
@@ -42,13 +22,18 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *
 		if !ok {
 			return fmt.Errorf("missing or invalid 'node_id' in state")
 		}
-		identity, ok := state["identity"].(substrate.Identity)
+
+		mnemonicVal, ok := state["mnemonic"]
 		if !ok {
-			return fmt.Errorf("missing or invalid 'identity' in state")
+			return fmt.Errorf("missing 'mnemonic' in state")
+		}
+		mnemonic, ok := mnemonicVal.(string)
+		if !ok {
+			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
 
 		// Reserve the node
-		contractID, err := substrateClient.CreateRentContract(identity, nodeID, nil)
+		contractID, err := substrateClient.CreateRentContract(mnemonic, nodeID, nil)
 		if err != nil {
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
@@ -68,7 +53,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient *substrate.Substrate) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractID, ok := state["contract_id"].(uint64)
 		if !ok {
@@ -79,12 +64,7 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient
 			return fmt.Errorf("missing or invalid 'mnemonic' in state")
 		}
 
-		identity, err := substrate.NewIdentityFromSr25519Phrase(mnemonic)
-		if err != nil {
-			return fmt.Errorf("failed to create identity: %w", err)
-		}
-
-		err = substrateClient.CancelContract(identity, contractID)
+		err := substrateClient.CancelContract(mnemonic, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
@@ -101,7 +81,6 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient
 // VerifyNodeStateStep checks if node has reached the desired state
 func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-
 		targetStatus, ok := state["target_status"].(string)
 		if !ok {
 			return fmt.Errorf("missing or invalid 'target_status' in state")

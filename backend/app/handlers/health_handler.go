@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"context"
@@ -27,19 +27,19 @@ const (
 	UnhealthyStatus = "unhealthy"
 )
 
-type healthHandler struct {
+type HealthHandler struct {
 	db              models.DB
 	systemNetwork   string
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
 }
 
-func newHealthHandler(systemNetwork string,
+func NewHealthHandler(systemNetwork string,
 	firesquidClient graphql.GraphQl,
 	graphql graphql.GraphQl,
 	db models.DB,
-) healthHandler {
-	return healthHandler{
+) HealthHandler {
+	return HealthHandler{
 		db:              db,
 		systemNetwork:   systemNetwork,
 		firesquidClient: firesquidClient,
@@ -63,7 +63,7 @@ func healthStatusFromError(err error) HealthStatus {
 	return HealthStatus{Status: UnhealthyStatus, Message: err.Error()}
 }
 
-func (h *healthHandler) checkDatabase(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkDatabase(ctx context.Context) HealthStatus {
 	type pinger interface {
 		Ping(ctx context.Context) error
 	}
@@ -113,7 +113,7 @@ func healthURL(baseURL string) (string, error) {
 	return url.JoinPath(baseURL, "health")
 }
 
-func (h *healthHandler) checkGridProxy(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkGridProxy(ctx context.Context) HealthStatus {
 	proxyURLs := deployer.ProxyURLs[h.systemNetwork]
 	var validURLs []string
 
@@ -129,7 +129,7 @@ func (h *healthHandler) checkGridProxy(ctx context.Context) HealthStatus {
 	return httpHealthCheck(ctx, validURLs)
 }
 
-func (h *healthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
 	chainURLs := deployer.SubstrateURLs[h.systemNetwork]
 
 	url := strings.Replace(chainURLs[0], "wss://", "https://", 1)
@@ -170,7 +170,7 @@ func (h *healthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
 	return healthStatusFromError(nil)
 }
 
-func (h *healthHandler) checkActivationService(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkActivationService(ctx context.Context) HealthStatus {
 	url, err := healthURL(constants.ActivationServiceURLs[h.systemNetwork])
 	if err != nil {
 		return healthStatusFromError(fmt.Errorf("activation service %s", err.Error()))
@@ -185,11 +185,11 @@ func checkGraphQLClient(client interface {
 	return healthStatusFromError(err)
 }
 
-func (h *healthHandler) checkGraphQL(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkGraphQL(ctx context.Context) HealthStatus {
 	return checkGraphQLClient(&h.graphql)
 }
 
-func (h *healthHandler) checkFiresquid(ctx context.Context) HealthStatus {
+func (h *HealthHandler) checkFiresquid(ctx context.Context) HealthStatus {
 	return checkGraphQLClient(&h.firesquidClient)
 }
 
@@ -201,7 +201,7 @@ func (h *healthHandler) checkFiresquid(ctx context.Context) HealthStatus {
 // @Failure 503 {object} map[string]HealthStatus "One or more systems unhealthy"
 // @Router /health [get]
 
-func (h *healthHandler) HealthHandler(c *gin.Context) {
+func (h *HealthHandler) HealthHandler(c *gin.Context) {
 	ctx := c.Request.Context()
 	checks := map[string]HealthChecker{
 		"database":           h.checkDatabase,
@@ -229,7 +229,7 @@ func (h *healthHandler) HealthHandler(c *gin.Context) {
 	OK(c, "Health check passed", results)
 }
 
-func (h *healthHandler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {
+func (h *HealthHandler) runChecks(ctx context.Context, checks map[string]HealthChecker) map[string]HealthStatus {
 	results := make(map[string]HealthStatus, len(checks))
 	var mu sync.Mutex
 	var g errgroup.Group

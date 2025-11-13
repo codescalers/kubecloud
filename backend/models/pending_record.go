@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 const (
@@ -22,40 +20,4 @@ type PendingRecord struct {
 	TransferMode         string    `json:"transfer_mode"`
 	CreatedAt            time.Time `json:"created_at" gorm:"not null"`
 	UpdatedAt            time.Time `json:"updated_at" gorm:"not null"`
-}
-
-type GormPendingRecordRepository struct {
-	db *gorm.DB
-}
-
-func NewGormPendingRecordRepository(db DB) *GormPendingRecordRepository {
-	return &GormPendingRecordRepository{db: db.GetDB()}
-}
-
-func (r *GormPendingRecordRepository) CreatePendingRecord(record *PendingRecord) error {
-	record.CreatedAt = time.Now()
-	return r.db.Create(record).Error
-}
-
-func (r *GormPendingRecordRepository) ListAllPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, r.db.Find(&pendingRecords).Error
-}
-
-func (r *GormPendingRecordRepository) ListOnlyPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, r.db.Where("tft_amount > transferred_tft_amount").Find(&pendingRecords).Error
-}
-
-func (r *GormPendingRecordRepository) ListUserPendingRecords(userID int) ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
-	return pendingRecords, r.db.Where("user_id = ?", userID).Find(&pendingRecords).Error
-}
-
-func (r *GormPendingRecordRepository) UpdatePendingRecordTransferredAmount(id int, amount uint64) error {
-	return r.db.Model(&PendingRecord{}).
-		Where("id = ?", id).
-		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
-		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
-		Error
 }

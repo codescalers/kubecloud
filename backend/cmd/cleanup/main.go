@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"kubecloud/internal"
+	"kubecloud/internal/substrate"
 	"kubecloud/models"
 	"os"
 
@@ -10,8 +11,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 var config internal.Configuration
@@ -63,14 +63,17 @@ func main() {
 	}
 	defer db.Close()
 
-	substrateClient, err := substrate.NewManager(deployer.SubstrateURLs[config.SystemAccount.Network]...).Substrate()
+	substrateClient, err := substrate.NewTFChainClient(
+		config.SystemAccount.Network, config.SystemAccount.Mnemonic, "", "",
+	)
+
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create substrate client")
+		log.Error().Err(err).Msg("Failed to create TF chain client")
 		return
 	}
+
 	defer substrateClient.Close()
 
 	moneyCollector := moneycollector.NewMoneyCollector(models.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
-
 }

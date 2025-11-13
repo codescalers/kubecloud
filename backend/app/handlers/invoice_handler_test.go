@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"encoding/json"
@@ -15,15 +15,15 @@ import (
 )
 
 func TestListAllInvoicesHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	nonAdminUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test List all invoices with empty list", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", "/api/v1/invoices", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -57,13 +57,13 @@ func TestListAllInvoicesHandler(t *testing.T) {
 		Tax:       20.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice1)
+	err = setup.invoicesRepo.CreateInvoice(invoice1)
 	require.NoError(t, err)
-	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice2)
+	err = setup.invoicesRepo.CreateInvoice(invoice2)
 	require.NoError(t, err)
 
 	t.Run("Test List all invoices successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", "/api/v1/invoices", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -105,7 +105,7 @@ func TestListAllInvoicesHandler(t *testing.T) {
 	})
 
 	t.Run("Test List all invoices with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
+		token := setup.GetAuthToken(t, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/invoices", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -115,14 +115,14 @@ func TestListAllInvoicesHandler(t *testing.T) {
 }
 
 func TestListUserInvoicesHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	user := CreateTestUser(t, app, "user@example.com", "Test User", []byte("securepassword"), true, false, false, 0, time.Now())
+	user := setup.CreateTestUser(t, "user@example.com", "Test User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test List user invoices with empty list", func(t *testing.T) {
-		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
+		token := setup.GetAuthToken(t, user.ID, user.Email, user.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/user/invoice", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -150,11 +150,11 @@ func TestListUserInvoicesHandler(t *testing.T) {
 		Tax:       10.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice1)
+	err = setup.invoicesRepo.CreateInvoice(invoice1)
 	require.NoError(t, err)
 
 	t.Run("Test List user invoices successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
+		token := setup.GetAuthToken(t, user.ID, user.Email, user.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/user/invoice", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -176,11 +176,11 @@ func TestListUserInvoicesHandler(t *testing.T) {
 }
 
 func TestDownloadInvoiceHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	user1 := CreateTestUser(t, app, "user1@example.com", "User One", []byte("securepassword"), true, false, false, 0, time.Now())
+	user1 := setup.CreateTestUser(t, "user1@example.com", "User One", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	invoice := &models.Invoice{
 		ID:        1,
@@ -189,11 +189,11 @@ func TestDownloadInvoiceHandler(t *testing.T) {
 		Tax:       10.0,
 		CreatedAt: time.Now(),
 	}
-	err = app.invoiceHandler.svc.invoicesRepo.CreateInvoice(invoice)
+	err = setup.invoicesRepo.CreateInvoice(invoice)
 	require.NoError(t, err)
 
 	t.Run("Download an invoice successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, user1.ID, user1.Email, user1.Username, false)
+		token := setup.GetAuthToken(t, user1.ID, user1.Email, user1.Username, false)
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/user/invoice/%d", invoice.ID), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -211,7 +211,7 @@ func TestDownloadInvoiceHandler(t *testing.T) {
 	})
 
 	t.Run("Download non-existing invoice", func(t *testing.T) {
-		token := GetAuthToken(t, app, user1.ID, user1.Email, user1.Username, false)
+		token := setup.GetAuthToken(t, user1.ID, user1.Email, user1.Username, false)
 		maxID := invoice.ID + 1
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/user/invoice/%d", maxID), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -221,7 +221,7 @@ func TestDownloadInvoiceHandler(t *testing.T) {
 	})
 
 	t.Run("Download invoice with invalid invoice id", func(t *testing.T) {
-		token := GetAuthToken(t, app, user1.ID, user1.Email, user1.Username, false)
+		token := setup.GetAuthToken(t, user1.ID, user1.Email, user1.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/user/invoice/abc", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()

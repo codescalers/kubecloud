@@ -24,7 +24,6 @@ require (
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.2
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.2
-	github.com/tyler-smith/go-bip39 v1.1.0
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20250729141004-1f7a4a1c7838
 	golang.org/x/sync v0.18.0
@@ -56,7 +55,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/cosmos/go-bip39 v1.0.0 // indirect
+	github.com/cosmos/go-bip39 v1.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.6 // indirect

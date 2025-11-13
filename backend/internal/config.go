@@ -21,6 +21,7 @@ type Configuration struct {
 	Currency                             string                        `json:"currency" validate:"required"`
 	StripeSecret                         string                        `json:"stripe_secret" validate:"required"`
 	VoucherNameLength                    int                           `json:"voucher_name_length"  validate:"required,gt=0"`
+	VerificationCodeLength               int                           `json:"verification_code_length"  validate:"gt=0" default:"4"`
 	TermsANDConditions                   TermsANDConditions            `json:"terms_and_conditions"`
 	SystemAccount                        GridAccount                   `json:"system_account"`
 	DeployerWorkersNum                   int                           `json:"deployer_workers_num" default:"1"`

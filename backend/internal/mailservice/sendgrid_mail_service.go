@@ -4,10 +4,13 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"kubecloud/internal"
 	"kubecloud/internal/metrics"
 	"mime"
+	"mime/multipart"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -39,11 +42,6 @@ type SendGridMailService struct {
 	systemHost          string
 	maxConcurrentSends  int
 	maxAttachmentSizeMB int64
-}
-
-type Attachment struct {
-	FileName string
-	Data     []byte
 }
 
 // NewSendGridMailService creates new instance of sendgrid mail service
@@ -107,6 +105,43 @@ func (service SendGridMailService) SendMail(sender, receiver, subject, body stri
 	}
 	service.metrics.IncrementEmailSent()
 	return nil
+}
+
+func (service SendGridMailService) ParseAttachment(fh *multipart.FileHeader) (Attachment, error) {
+	if !isAttachmentAllowed(fh.Filename) {
+		return Attachment{}, fmt.Errorf("file type not allowed for %s", fh.Filename)
+	}
+
+	maxFileSizeBytes := service.MaxAttachmentSizeInBytes()
+
+	if fh.Size > maxFileSizeBytes {
+		return Attachment{}, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes)
+	}
+
+	file, err := fh.Open()
+	if err != nil {
+		return Attachment{}, fmt.Errorf("failed to open attachment file: %w", err)
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return Attachment{}, fmt.Errorf("failed to read attachment file: %w", err)
+	}
+
+	return Attachment{
+		FileName: fh.Filename,
+		Data:     fileData,
+	}, nil
+}
+
+func isAttachmentAllowed(filename string) bool {
+	allowedAttachmentTypes := []string{
+		".pdf", ".doc", ".docx", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".zip",
+	}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	return slices.Contains(allowedAttachmentTypes, ext)
 }
 
 // ResetPasswordMailContent gets the email content for reset password

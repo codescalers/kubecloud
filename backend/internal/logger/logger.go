@@ -58,6 +58,11 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 		Compress:   config.Compress,
 	}
 
+	// Ensure the file is writable by opening it first
+	if _, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err != nil {
+		return fmt.Errorf("failed to open log file: %w", err)
+	}
+
 	writers := []io.Writer{
 		zerolog.ConsoleWriter{Out: os.Stderr},
 		rotator,
@@ -82,6 +87,9 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 		lokiWriter: lokiWriter,
 	}
 
+	// Log to stderr that we've set up file logging
+	fmt.Fprintf(os.Stderr, "Logger initialized with file output to: %s\n", logFile)
+
 	// Set log level based on debug configuration
 	if debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -97,6 +105,7 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 	instance.logger.Info().
 		Bool("level-debug", debug).
 		Strs("writers", outputTypes).
+		Str("log_file", logFile).
 		Msgf("Logger initialized")
 
 	return nil

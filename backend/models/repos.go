@@ -5,7 +5,6 @@ type UserRepository interface {
 	GetUserByEmail(email string) (User, error)
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
-	UpdatePassword(email string, hashedPassword []byte) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error
@@ -17,7 +16,7 @@ type UserRepository interface {
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)
-	DeleteSSHKey(sshKeyID int, userID int) error
+	DeleteSSHKey(sshKeyID int, userID int) (string, error)
 	GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error)
 }
 

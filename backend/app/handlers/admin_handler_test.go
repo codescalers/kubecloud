@@ -1,4 +1,4 @@
-package app
+package handlers
 
 import (
 	"bytes"
@@ -17,15 +17,15 @@ import (
 )
 
 func TestListUsersHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	normalUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test List all users successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", "/api/v1/users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -68,7 +68,7 @@ func TestListUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test List users with non-admin credentials", func(t *testing.T) {
-		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+		token := setup.GetAuthToken(t, normalUser.ID, normalUser.Email, normalUser.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/users", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -78,15 +78,15 @@ func TestListUsersHandler(t *testing.T) {
 }
 
 func TestDeleteUsersHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	nonAdminUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test Delete user successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/2", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -99,7 +99,7 @@ func TestDeleteUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Admin deletes its account", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/1", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -108,7 +108,7 @@ func TestDeleteUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Delete with invalid user id", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/aaa", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -117,7 +117,7 @@ func TestDeleteUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Delete with no user id", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -126,7 +126,7 @@ func TestDeleteUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Delete non-existing user", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, adminUser.Admin)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/9999", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -142,7 +142,7 @@ func TestDeleteUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Delete with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
+		token := setup.GetAuthToken(t, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
 		req, _ := http.NewRequest("DELETE", "/api/v1/users/2", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -152,15 +152,15 @@ func TestDeleteUsersHandler(t *testing.T) {
 }
 
 func TestGenerateVouchersHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	nonAdminUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test GenerateVouchers successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := GenerateVouchersInput{
 			Count:       2,
 			Value:       10.0,
@@ -191,7 +191,7 @@ func TestGenerateVouchersHandler(t *testing.T) {
 	})
 
 	t.Run("Test GenerateVouchers with invalid request format", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		body, _ := json.Marshal(map[string]interface{}{})
 		req, _ := http.NewRequest("POST", "/api/v1/vouchers/generate", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -216,7 +216,7 @@ func TestGenerateVouchersHandler(t *testing.T) {
 	})
 
 	t.Run("Test GenerateVouchers with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
+		token := setup.GetAuthToken(t, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
 		payload := GenerateVouchersInput{
 			Count:       1,
 			Value:       5.0,
@@ -233,12 +233,12 @@ func TestGenerateVouchersHandler(t *testing.T) {
 }
 
 func TestListVouchersHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	nonAdminUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	voucher1 := &models.Voucher{
 		Code:      "VOUCHER1",
@@ -252,13 +252,13 @@ func TestListVouchersHandler(t *testing.T) {
 		CreatedAt: time.Now(),
 		ExpiresAt: time.Now().Add(48 * time.Hour),
 	}
-	err = app.adminHandler.svc.voucherRepo.CreateVoucher(voucher1)
+	err = setup.voucherRepo.CreateVoucher(voucher1)
 	require.NoError(t, err)
-	err = app.adminHandler.svc.voucherRepo.CreateVoucher(voucher2)
+	err = setup.voucherRepo.CreateVoucher(voucher2)
 	require.NoError(t, err)
 
 	t.Run("Test List Vouchers successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", "/api/v1/vouchers", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -299,7 +299,7 @@ func TestListVouchersHandler(t *testing.T) {
 	})
 
 	t.Run("Test ListVouchersHandler with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
+		token := setup.GetAuthToken(t, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/vouchers", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -309,15 +309,15 @@ func TestListVouchersHandler(t *testing.T) {
 }
 
 func TestCreditUserHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
-	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, true, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+	normalUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, true, 0, time.Now())
 
 	t.Run("Test Credit user successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
 			AmountUSD: 1,
 			Memo:      "Manual credit",
@@ -342,7 +342,7 @@ func TestCreditUserHandler(t *testing.T) {
 	})
 
 	t.Run("Test Credit user with invalid request format", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		body, _ := json.Marshal(map[string]interface{}{}) // missing required fields
 		req, _ := http.NewRequest("POST", "/api/v1/users/2/credit", bytes.NewReader(body))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -353,7 +353,7 @@ func TestCreditUserHandler(t *testing.T) {
 	})
 
 	t.Run("Test Credit user with invalid user id", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
 			AmountUSD: 1,
 			Memo:      "Manual credit",
@@ -368,7 +368,7 @@ func TestCreditUserHandler(t *testing.T) {
 	})
 
 	t.Run("Test Credit non-existing user", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		payload := CreditRequestInput{
 			AmountUSD: 1,
 			Memo:      "Manual credit",
@@ -396,7 +396,7 @@ func TestCreditUserHandler(t *testing.T) {
 	})
 
 	t.Run("Test Credit user with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+		token := setup.GetAuthToken(t, normalUser.ID, normalUser.Email, normalUser.Username, false)
 		payload := CreditRequestInput{
 			AmountUSD: 1,
 			Memo:      "Manual credit",
@@ -412,15 +412,15 @@ func TestCreditUserHandler(t *testing.T) {
 }
 
 func TestListPendingRecordsHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	nonAdminUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	nonAdminUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test ListPendingRecordsHandler successfully", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", "/api/v1/pending-records", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -436,7 +436,7 @@ func TestListPendingRecordsHandler(t *testing.T) {
 	})
 
 	t.Run("Test ListPendingRecordsHandler with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
+		token := setup.GetAuthToken(t, nonAdminUser.ID, nonAdminUser.Email, nonAdminUser.Username, false)
 		req, _ := http.NewRequest("GET", "/api/v1/pending-records", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -445,7 +445,7 @@ func TestListPendingRecordsHandler(t *testing.T) {
 	})
 
 	t.Run("Test ListPendingRecordsHandler with non-existing user", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/pending-records/%d", nonAdminUser.ID+1), nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp := httptest.NewRecorder()
@@ -471,14 +471,14 @@ func extractMaintenanceModeStatus(t *testing.T, responseBody *bytes.Buffer) Main
 }
 
 func TestMaintenanceModeIntegration(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
 
 	t.Run("Test Full maintenance mode workflow", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 
 		req, _ := http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -529,15 +529,15 @@ func TestMaintenanceModeIntegration(t *testing.T) {
 }
 
 func TestSetMaintenanceModeHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
-	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, false, 0, time.Now())
+	normalUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test Set maintenance mode with invalid JSON", func(t *testing.T) {
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 		req, _ := http.NewRequest("PUT", "/api/v1/system/maintenance/status", bytes.NewReader([]byte("{invalid json")))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
@@ -552,7 +552,7 @@ func TestSetMaintenanceModeHandler(t *testing.T) {
 	})
 
 	t.Run("Test Set maintenance mode with non-admin user", func(t *testing.T) {
-		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+		token := setup.GetAuthToken(t, normalUser.ID, normalUser.Email, normalUser.Username, false)
 		payload := MaintenanceModeStatus{
 			Enabled: true,
 		}
@@ -567,9 +567,9 @@ func TestSetMaintenanceModeHandler(t *testing.T) {
 }
 
 func TestGetMaintenanceModeHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
 	t.Run("Test Get maintenance mode successfully (default disabled)", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/system/maintenance/status", nil)
@@ -590,16 +590,16 @@ func TestGetMaintenanceModeHandler(t *testing.T) {
 }
 
 func TestSendMailToAllUsersHandler(t *testing.T) {
-	app, err := SetUp(t)
+	setup, err := SetUp(t)
 	require.NoError(t, err)
-	router := app.router
+	router := setup.router
 
-	adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
-	normalUser := CreateTestUser(t, app, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
+	adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+	normalUser := setup.CreateTestUser(t, "user@example.com", "Normal User", []byte("securepassword"), true, false, false, 0, time.Now())
 
 	t.Run("Test Send email with non-admin user", func(t *testing.T) {
 		body, writer := createMultipartEmailForm(t, "Test Subject", "Test email body")
-		token := GetAuthToken(t, app, normalUser.ID, normalUser.Email, normalUser.Username, false)
+		token := setup.GetAuthToken(t, normalUser.ID, normalUser.Email, normalUser.Username, false)
 
 		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -612,11 +612,11 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 
 	t.Run("Test Send email validates concurrency handling", func(t *testing.T) {
 		for i := 0; i < 25; i++ {
-			CreateTestUser(t, app, fmt.Sprintf("testuser%d@example.com", i), fmt.Sprintf("Test User %d", i), []byte("securepassword"), true, false, false, 0, time.Now())
+			setup.CreateTestUser(t, fmt.Sprintf("testuser%d@example.com", i), fmt.Sprintf("Test User %d", i), []byte("securepassword"), true, false, false, 0, time.Now())
 		}
 
 		body, writer := createMultipartEmailForm(t, "Concurrency Test", "Testing concurrent email delivery")
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 
 		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -631,15 +631,15 @@ func TestSendMailToAllUsersHandler(t *testing.T) {
 	})
 
 	t.Run("Test Send email with partial success - some emails fail", func(t *testing.T) {
-		app, err := SetUp(t)
+		setup, err := SetUp(t)
 		require.NoError(t, err)
-		router := app.router
+		router := setup.router
 
-		adminUser := CreateTestUser(t, app, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
+		adminUser := setup.CreateTestUser(t, "admin@example.com", "Admin User", []byte("securepassword"), true, true, true, 0, time.Now())
 		body, writer := createMultipartEmailForm(t, "Partial Success Test", "Testing partial email delivery success")
-		token := GetAuthToken(t, app, adminUser.ID, adminUser.Email, adminUser.Username, true)
+		token := setup.GetAuthToken(t, adminUser.ID, adminUser.Email, adminUser.Username, true)
 
-		CreateTestUser(t, app, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
+		setup.CreateTestUser(t, "invalid-email", "Invalid User", []byte("password"), true, false, false, 0, time.Now())
 
 		req, _ := http.NewRequest("POST", "/api/v1/users/mail", body)
 		req.Header.Set("Authorization", "Bearer "+token)
