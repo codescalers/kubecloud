@@ -113,7 +113,7 @@ services:
     volumes:
       - ./loki/promtail-config.yaml:/etc/promtail/promtail-config.yaml
       - /var/log:/var/log
-      - ./backend/logs:/app/logs
+      - ./backend/app/logs:/app/logs
     command: -config.file=/etc/promtail/promtail-config.yaml
     depends_on:
       - loki
