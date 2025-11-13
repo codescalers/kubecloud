@@ -70,7 +70,7 @@ func (q *redisQueue) Enqueue(ctx context.Context, workflow *ewf.Workflow) error 
 		return fmt.Errorf("failed to marshal workflow %w", err)
 	}
 
-	err = q.client.LPush(ctx, q.name, data).Err()
+	err = q.client.RPush(ctx, q.name, data).Err()
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (q *redisQueue) Dequeue(ctx context.Context) (*ewf.Workflow, error) {
 		timeout = 1 * time.Second
 	}
 
-	res, err := q.client.BRPop(ctx, timeout, q.name).Result()
+	res, err := q.client.BLPop(ctx, timeout, q.name).Result()
 
 	if err == redis.Nil {
 		return nil, nil
@@ -138,4 +138,23 @@ func (q *redisQueue) Close(ctx context.Context) error {
 	}
 
 	return q.deleteQueue(ctx)
+}
+
+// List returns all workflows currently in the queue
+func (q *redisQueue) List(ctx context.Context) ([]*ewf.Workflow, error) {
+	result, err := q.client.LRange(ctx, q.name, 0, -1).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list workflows in queue %s: %v", q.name, err)
+	}
+
+	workflows := make([]*ewf.Workflow, 0, len(result))
+	for _, item := range result {
+		var wf ewf.Workflow
+		if err := json.Unmarshal([]byte(item), &wf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal workflow in queue %s: %v", q.name, err)
+		}
+		workflows = append(workflows, &wf)
+	}
+
+	return workflows, nil
 }

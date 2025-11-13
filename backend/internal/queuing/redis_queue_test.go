@@ -147,6 +147,11 @@ func TestQueueName(t *testing.T) {
 			ewf.QueueOptions{AutoDelete: false},
 			client,
 		)
+		t.Cleanup(func() {
+			if err := q.Close(context.Background()); err != nil {
+				t.Errorf("failed to close queue: %v", err)
+			}
+		})
 		if err != nil {
 			t.Errorf("expected error to be nil, got %v", err)
 		}
@@ -157,5 +162,50 @@ func TestQueueName(t *testing.T) {
 			t.Errorf("expected queue name to be %s, got %s", name, q.Name())
 		}
 	})
+
+}
+
+func TestList(t *testing.T) {
+	client := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
+	queue, err := NewRedisQueue(
+		"testListQueue",
+		ewf.QueueOptions{AutoDelete: false},
+		client,
+	)
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := queue.Close(context.Background()); err != nil {
+			t.Errorf("failed to close queue: %v", err)
+		}
+	})
+
+	for i := 0; i < 3; i++ {
+		wfName := fmt.Sprintf("test-wf-%d", i)
+		err = queue.Enqueue(t.Context(), ewf.NewWorkflow(wfName))
+		if err != nil {
+			t.Fatalf("failed to enqueue: %v", err)
+		}
+	}
+
+	workflows, err := queue.(*redisQueue).List(t.Context())
+	if err != nil {
+		t.Fatalf("failed to list workflows: %v", err)
+	}
+
+	if len(workflows) != 3 {
+		t.Errorf("expected 3 workflows, got %d", len(workflows))
+	}
+
+	for i, wf := range workflows {
+		expectedName := fmt.Sprintf("test-wf-%d", i)
+		if wf.Name != expectedName {
+			t.Errorf("expected workflow name %s, got %s", expectedName, wf.Name)
+		}
+	}
 
 }
