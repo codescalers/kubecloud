@@ -15,7 +15,6 @@ import (
 	"github.com/gin-gonic/gin"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
-	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
 
@@ -298,16 +297,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRented,
 	}
 
-	queueName, err := h.createUserQueue(c, reqLog, userID)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to create queue for reserving node")
-		InternalServerError(c)
-		return
-	}
-
-	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
-		reqLog.Error().Err(err).Msg("failed to schedule workflow for reserving node")
-		InternalServerError(c)
+	if err = h.runAsyncWithQueue(c, reqLog, userID, wf); err != nil {
 		return
 	}
 
@@ -461,16 +451,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		"target_status": constants.NodeRentable,
 	}
 
-	queueName, err := h.createUserQueue(c, reqLog, userID)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to create queue for cluster deployment")
-		InternalServerError(c)
-		return
-	}
-
-	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
-		reqLog.Error().Err(err).Msg("failed to schedule workflow for unreserving node")
-		InternalServerError(c)
+	if err = h.runAsyncWithQueue(c, reqLog, userID, wf); err != nil {
 		return
 	}
 

@@ -6,10 +6,12 @@ import (
 	"kubecloud/internal/utils"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
+	"github.com/xmonader/ewf"
 )
 
 type Configuration struct {
@@ -147,6 +149,20 @@ type ChannelRuleConfig struct {
 type NotificationTemplateTypeConfig struct {
 	Default  ChannelRuleConfig            `json:"default" validate:"required"`
 	ByStatus map[string]ChannelRuleConfig `json:"by_status"`
+}
+
+var DefaultQueueConfig ewf.QueueMetadata = ewf.QueueMetadata{
+	Name: "chain_operations_queue",
+	WorkersDef: ewf.WorkersDefinition{
+		Count:        1,
+		PollInterval: 1 * time.Second,
+		WorkTimeout:  10 * time.Minute,
+	},
+	QueueOptions: ewf.QueueOptions{
+		AutoDelete:  true,
+		DeleteAfter: 10 * time.Minute,
+		PopTimeout:  1 * time.Second,
+	},
 }
 
 // LoadNotificationConfig loads notification configuration from a separate file
