@@ -894,22 +894,14 @@ func VerifyClusterReadyStep() ewf.StepFn {
 			return fmt.Errorf("kubeconfig not found in workflow state")
 		}
 
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		nodes, err := getNodesOfCluster(ctx, kubeconfig)
 		if err != nil {
-			return fmt.Errorf("failed to parse kubeconfig for cluster %s: %w", cluster.Name, err)
+			return fmt.Errorf("failed to get nodes of cluster: %w", err)
 		}
 
-		clientset, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create kubernetes client for cluster %s: %w", cluster.Name, err)
-		}
-
-		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to list nodes for cluster %s: %w", cluster.Name, err)
-		}
-
-		for _, n := range nodes.Items {
+		// Create map of k8s node health by node name (lowercase for matching)
+		k8sNodeHealth := make(map[string]bool)
+		for _, n := range nodes {
 			ready := false
 			for _, cond := range n.Status.Conditions {
 				if cond.Type == v1.NodeReady && cond.Status == v1.ConditionTrue {
@@ -920,7 +912,20 @@ func VerifyClusterReadyStep() ewf.StepFn {
 			if !ready {
 				return fmt.Errorf("node %s is not ready in cluster %s", n.Name, cluster.Name)
 			}
+			// Store health status (all nodes here are ready since we return early if not)
+			k8sNodeHealth[strings.ToLower(n.Name)] = true
 		}
+
+		// Update health for each node
+		for i := range cluster.Nodes {
+			nodeName := strings.ToLower(cluster.Nodes[i].Name)
+			if healthy, ok := k8sNodeHealth[nodeName]; ok {
+				cluster.Nodes[i].Healthy = healthy
+				continue
+			}
+			cluster.Nodes[i].Healthy = false
+		}
+		statemanager.StoreCluster(state, cluster)
 
 		log.Info().
 			Str("cluster", cluster.Name).
@@ -979,25 +984,14 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 			return fmt.Errorf("failed to get kubeconfig from state: %w", err)
 		}
 
-		// check if all nodes are healthy
-		restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+		nodes, err := getNodesOfCluster(ctx, kubeconfig)
 		if err != nil {
-			return fmt.Errorf("failed to parse kubeconfig for cluster %s: %w", cluster.Name, err)
-		}
-
-		clientset, err := kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create kubernetes client for cluster %s: %w", cluster.Name, err)
-		}
-
-		nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to list nodes for cluster %s: %w", cluster.Name, err)
+			return fmt.Errorf("failed to get nodes of cluster: %w", err)
 		}
 
 		// Create map of k8s node health by node name
 		k8sNodeHealth := make(map[string]bool)
-		for _, n := range nodes.Items {
+		for _, n := range nodes {
 			for _, cond := range n.Status.Conditions {
 				if cond.Type != v1.NodeReady {
 					continue
@@ -1055,4 +1049,20 @@ func CheckClusterHealthStep( privateKeyPath string) ewf.StepFn {
 		return nil
 	}
 
+}
+
+func getNodesOfCluster(ctx context.Context, kubeconfig string) ([]v1.Node, error) {
+	restConfig, err := clientcmd.RESTConfigFromKubeConfig([]byte(kubeconfig))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kubeconfig: %w", err)
+	}
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+	nodes, err := clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list nodes: %w", err)
+	}
+	return nodes.Items, nil
 }
