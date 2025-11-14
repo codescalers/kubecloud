@@ -29,76 +29,76 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 // - Missing status field in response
 func TestIsUserVerified(t *testing.T) {
 	tests := []struct {
-		name          string
-		responseBody  string
-		statusCode    int
-		expectErr     bool
+		name           string
+		responseBody   string
+		statusCode     int
+		expectErr      bool
 		expectVerified bool
-		description   string
+		description    string
 	}{
 		{
-			name:          "verified_user",
-			responseBody:  `{"result":{"status":"VERIFIED"}}`,
-			statusCode:    http.StatusOK,
-			expectErr:     false,
+			name:           "verified_user",
+			responseBody:   `{"result":{"status":"VERIFIED"}}`,
+			statusCode:     http.StatusOK,
+			expectErr:      false,
 			expectVerified: true,
-			description:   "user is verified",
+			description:    "user is verified",
 		},
 		{
-			name:          "unverified_user",
-			responseBody:  `{"result":{"status":"NOT_VERIFIED"}}`,
-			statusCode:    http.StatusOK,
-			expectErr:     false,
+			name:           "unverified_user",
+			responseBody:   `{"result":{"status":"NOT_VERIFIED"}}`,
+			statusCode:     http.StatusOK,
+			expectErr:      false,
 			expectVerified: false,
-			description:   "user is not verified",
+			description:    "user is not verified",
 		},
 		{
-			name:          "pending_status",
-			responseBody:  `{"result":{"status":"PENDING"}}`,
-			statusCode:    http.StatusOK,
-			expectErr:     false,
+			name:           "pending_status",
+			responseBody:   `{"result":{"status":"PENDING"}}`,
+			statusCode:     http.StatusOK,
+			expectErr:      false,
 			expectVerified: false,
-			description:   "user verification is pending",
+			description:    "user verification is pending",
 		},
 		{
-			name:          "server_error",
-			responseBody:  `{"error":"server error"}`,
-			statusCode:    http.StatusInternalServerError,
-			expectErr:     true,
+			name:           "server_error",
+			responseBody:   `{"error":"server error"}`,
+			statusCode:     http.StatusInternalServerError,
+			expectErr:      true,
 			expectVerified: false,
-			description:   "server returns 500 error",
+			description:    "server returns 500 error",
 		},
 		{
-			name:          "malformed_json",
-			responseBody:  `not a json`,
-			statusCode:    http.StatusOK,
-			expectErr:     true,
+			name:           "malformed_json",
+			responseBody:   `not a json`,
+			statusCode:     http.StatusOK,
+			expectErr:      true,
 			expectVerified: false,
-			description:   "response body is not valid JSON",
+			description:    "response body is not valid JSON",
 		},
 		{
-			name:          "missing_status_field",
-			responseBody:  `{"result":{}}`,
-			statusCode:    http.StatusOK,
-			expectErr:     false,
+			name:           "missing_status_field",
+			responseBody:   `{"result":{}}`,
+			statusCode:     http.StatusOK,
+			expectErr:      false,
 			expectVerified: false,
-			description:   "status field is missing from result",
+			description:    "status field is missing from result",
 		},
 		{
-			name:          "empty_status",
-			responseBody:  `{"result":{"status":""}}`,
-			statusCode:    http.StatusOK,
-			expectErr:     false,
+			name:           "empty_status",
+			responseBody:   `{"result":{"status":""}}`,
+			statusCode:     http.StatusOK,
+			expectErr:      false,
 			expectVerified: false,
-			description:   "status field is empty string",
+			description:    "status field is empty string",
 		},
 		{
-			name:          "unauthorized",
-			responseBody:  `{"error":"unauthorized"}`,
-			statusCode:    http.StatusUnauthorized,
-			expectErr:     true,
+			name:           "unauthorized",
+			responseBody:   `{"error":"unauthorized"}`,
+			statusCode:     http.StatusUnauthorized,
+			expectErr:      true,
 			expectVerified: false,
-			description:   "request is unauthorized (401)",
+			description:    "request is unauthorized (401)",
 		},
 	}
 
@@ -179,52 +179,52 @@ func TestIsUserVerified_ContextCancelled(t *testing.T) {
 // - Missing response fields
 func TestIsValidSponsor(t *testing.T) {
 	tests := []struct {
-		name          string
-		responseBody  string
-		statusCode    int
-		expectErr     bool
-		expectValid   bool
-		description   string
+		name         string
+		responseBody string
+		statusCode   int
+		expectErr    bool
+		expectValid  bool
+		description  string
 	}{
 		{
-			name:        "valid_sponsor",
+			name:         "valid_sponsor",
 			responseBody: `{"result":{"status":"VERIFIED","idenfyRef":"ref123"}}`,
-			statusCode:  http.StatusOK,
-			expectErr:   false,
-			expectValid: true,
-			description: "user is verified with idenfyRef",
+			statusCode:   http.StatusOK,
+			expectErr:    false,
+			expectValid:  true,
+			description:  "user is verified with idenfyRef",
 		},
 		{
-			name:        "verified_no_idenfy_ref",
+			name:         "verified_no_idenfy_ref",
 			responseBody: `{"result":{"status":"VERIFIED","idenfyRef":""}}`,
-			statusCode:  http.StatusOK,
-			expectErr:   false,
-			expectValid: false,
-			description: "verified user but missing idenfyRef",
+			statusCode:   http.StatusOK,
+			expectErr:    false,
+			expectValid:  false,
+			description:  "verified user but missing idenfyRef",
 		},
 		{
-			name:        "unverified_user",
+			name:         "unverified_user",
 			responseBody: `{"result":{"status":"NOT_VERIFIED","idenfyRef":"ref123"}}`,
-			statusCode:  http.StatusOK,
-			expectErr:   false,
-			expectValid: false,
-			description: "unverified user cannot be sponsor",
+			statusCode:   http.StatusOK,
+			expectErr:    false,
+			expectValid:  false,
+			description:  "unverified user cannot be sponsor",
 		},
 		{
-			name:        "server_error",
+			name:         "server_error",
 			responseBody: `{"error":"server error"}`,
-			statusCode:  http.StatusInternalServerError,
-			expectErr:   true,
-			expectValid: false,
-			description: "server returns 500 error",
+			statusCode:   http.StatusInternalServerError,
+			expectErr:    true,
+			expectValid:  false,
+			description:  "server returns 500 error",
 		},
 		{
-			name:        "malformed_json",
+			name:         "malformed_json",
 			responseBody: `invalid json`,
-			statusCode:  http.StatusOK,
-			expectErr:   true,
-			expectValid: false,
-			description: "response body is not valid JSON",
+			statusCode:   http.StatusOK,
+			expectErr:    true,
+			expectValid:  false,
+			description:  "response body is not valid JSON",
 		},
 	}
 
@@ -288,46 +288,46 @@ func TestCreateSponsorship(t *testing.T) {
 	sponseeKp, _ := sr25519.Scheme{}.FromPhrase("bottom drive obey lake curtain smoke basket hold race lonely fit walk", "")
 
 	tests := []struct {
-		name           string
-		statusCode     int
-		responseBody   string
-		expectErr      bool
-		description    string
+		name         string
+		statusCode   int
+		responseBody string
+		expectErr    bool
+		description  string
 	}{
 		{
-			name:        "success",
-			statusCode:  http.StatusCreated,
+			name:         "success",
+			statusCode:   http.StatusCreated,
 			responseBody: `{"result":"ok"}`,
-			expectErr:   false,
-			description: "sponsorship created successfully",
+			expectErr:    false,
+			description:  "sponsorship created successfully",
 		},
 		{
-			name:        "bad_request",
-			statusCode:  http.StatusBadRequest,
+			name:         "bad_request",
+			statusCode:   http.StatusBadRequest,
 			responseBody: `{"error":"invalid signature"}`,
-			expectErr:   true,
-			description: "server rejects request with 400",
+			expectErr:    true,
+			description:  "server rejects request with 400",
 		},
 		{
-			name:        "unauthorized",
-			statusCode:  http.StatusUnauthorized,
+			name:         "unauthorized",
+			statusCode:   http.StatusUnauthorized,
 			responseBody: `{"error":"unauthorized"}`,
-			expectErr:   true,
-			description: "authentication fails (401)",
+			expectErr:    true,
+			description:  "authentication fails (401)",
 		},
 		{
-			name:        "conflict",
-			statusCode:  http.StatusConflict,
+			name:         "conflict",
+			statusCode:   http.StatusConflict,
 			responseBody: `{"error":"sponsorship already exists"}`,
-			expectErr:   true,
-			description: "sponsorship already exists (409)",
+			expectErr:    true,
+			description:  "sponsorship already exists (409)",
 		},
 		{
-			name:        "server_error",
-			statusCode:  http.StatusInternalServerError,
+			name:         "server_error",
+			statusCode:   http.StatusInternalServerError,
 			responseBody: `{"error":"database error"}`,
-			expectErr:   true,
-			description: "server error (500)",
+			expectErr:    true,
+			description:  "server error (500)",
 		},
 	}
 
@@ -345,7 +345,7 @@ func TestCreateSponsorship(t *testing.T) {
 				if r.Header.Get("X-Signature") == "" {
 					t.Errorf("missing X-Signature header")
 				}
-				
+
 				w.WriteHeader(tt.statusCode)
 				w.Write([]byte(tt.responseBody))
 			}))
@@ -403,7 +403,7 @@ func TestCreateSponsorship_InvalidInput(t *testing.T) {
 // - Challenge timestamp portion is numeric (Unix timestamp)
 func TestCreateChallenge(t *testing.T) {
 	client := NewKYCClient("http://localhost", "mydomain.test", nil)
-	
+
 	challenge := client.createChallengeMessage()
 
 	// Challenge should have the format "domain:timestamp"

@@ -69,12 +69,12 @@ func TestFakeMailService_SendMail(t *testing.T) {
 	service := NewFakeMailService(metrics)
 
 	tests := []struct {
-		name       string
-		sender     string
-		receiver   string
-		subject    string
-		body       string
-		expectErr  bool
+		name        string
+		sender      string
+		receiver    string
+		subject     string
+		body        string
+		expectErr   bool
 		description string
 	}{
 		{
@@ -438,8 +438,8 @@ func TestSendGridMailService_NotifyAdminsMailContent(t *testing.T) {
 // - Case-insensitive file extension checking
 func TestIsAttachmentAllowed(t *testing.T) {
 	tests := []struct {
-		filename string
-		allowed  bool
+		filename    string
+		allowed     bool
 		description string
 	}{
 		{"document.pdf", true, "PDF file allowed"},
