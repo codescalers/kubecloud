@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"kubecloud/internal"
-	"kubecloud/internal/substrate"
-	"kubecloud/internal/models"
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/shared"
 	"os"
 
 	moneycollector "kubecloud/cmd/cleanup/moneycollector"
@@ -14,7 +14,7 @@ import (
 	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-var config internal.Configuration
+var config shared.Configuration
 
 func loadConfig(configPath string) {
 	viper.SetConfigFile(configPath)
@@ -23,19 +23,19 @@ func loadConfig(configPath string) {
 		os.Exit(1)
 	}
 
-	config = internal.Configuration{
-		Database: internal.DB{
+	config = shared.Configuration{
+		Database: shared.DB{
 			DSN:                    viper.GetString("database.dsn"),
 			MaxOpenConns:           viper.GetInt("database.max_open_conns"),
 			MaxIdleConns:           viper.GetInt("database.max_idle_conns"),
 			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
 			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
-		SystemAccount: internal.GridAccount{
+		SystemAccount: shared.GridAccount{
 			Mnemonic: viper.GetString("system_account.mnemonic"),
 			Network:  viper.GetString("system_account.network"),
 		},
-		MailSender: internal.MailSender{
+		MailSender: shared.MailSender{
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
 	}
