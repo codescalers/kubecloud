@@ -9,10 +9,10 @@ import (
 
 // MockStripeClient is a mock implementation of StripeClient for testing.
 type MockStripeClient struct {
-	CreateCustomerFunc       func(username, email string) (*stripe.Customer, error)
-	CreatePaymentMethodFunc  func(cardType, paymentMethodID string) (*stripe.PaymentMethod, error)
-	CreatePaymentIntentFunc  func(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error)
-	CancelPaymentIntentFunc  func(paymentIntentID string) error
+	CreateCustomerFunc      func(username, email string) (*stripe.Customer, error)
+	CreatePaymentMethodFunc func(cardType, paymentMethodID string) (*stripe.PaymentMethod, error)
+	CreatePaymentIntentFunc func(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error)
+	CancelPaymentIntentFunc func(paymentIntentID string) error
 }
 
 func (m *MockStripeClient) CreateCustomer(username, email string) (*stripe.Customer, error) {
@@ -462,4 +462,3 @@ func TestAmountConversionAccuracy(t *testing.T) {
 		})
 	}
 }
-

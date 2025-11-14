@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
 	"os"
@@ -74,6 +75,6 @@ func main() {
 
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(models.NewGormUserRepository(db), config, substrateClient)
+	moneyCollector := moneycollector.NewMoneyCollector(persistence.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
 }
