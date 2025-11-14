@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/api/middlewares"
+	"kubecloud/internal/billing"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/deployment/activities"
 	"kubecloud/internal/infrastructure/metrics"
@@ -75,6 +76,7 @@ func NewApp(ctx context.Context, config shared.Configuration) (*App, error) {
 }
 
 func (app *App) registerEWFWorkflows() {
+	stripeClient := &billing.DefaultStripeClient{}
 	activities.RegisterEWFWorkflows(
 		app.core.ewfEngine,
 		app.config,
@@ -87,6 +89,7 @@ func (app *App) registerEWFWorkflows() {
 		app.core.metrics,
 		app.communication.notificationSender,
 		app.infra.gridClient.GridProxyClient,
+		stripeClient,
 	)
 }
 

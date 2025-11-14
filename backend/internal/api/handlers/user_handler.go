@@ -28,6 +28,7 @@ type UserHandler struct {
 	notificationSender notification.NotificationSender
 	mailService        mailservice.MailService
 	tokenManager       auth.TokenManager
+	stripeClient       billing.StripeClient
 }
 
 func NewUserHandler(
@@ -35,12 +36,14 @@ func NewUserHandler(
 	notificationSender notification.NotificationSender,
 	mailService mailservice.MailService,
 	tokenManager auth.TokenManager,
+	stripeClient billing.StripeClient,
 ) UserHandler {
 	return UserHandler{
 		svc:                svc,
 		notificationSender: notificationSender,
 		mailService:        mailService,
 		tokenManager:       tokenManager,
+		stripeClient:       stripeClient,
 	}
 }
 
@@ -587,7 +590,7 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	paymentMethod, err := billing.CreatePaymentMethod(request.CardType, request.PaymentToken)
+	paymentMethod, err := h.stripeClient.CreatePaymentMethod(request.CardType, request.PaymentToken)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error creating payment method")
 		h.svc.IncrementStripePaymentFailure()

@@ -1,6 +1,7 @@
 package activities
 
 import (
+	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/notification"
 	"kubecloud/internal/infrastructure/kyc"
@@ -43,6 +44,7 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationSender notification.NotificationSender,
 	proxyClient proxy.Client,
+	stripeClient billing.StripeClient,
 ) {
 	userRepo := models.NewGormUserRepository(db)
 	clusterRepo := models.NewGormClusterRepository(db)
@@ -53,10 +55,10 @@ func RegisterEWFWorkflows(
 	engine.Register(shared.StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(shared.StepUpdateCode, UpdateCodeStep(userRepo))
 	engine.Register(shared.StepSetupTFChain, SetupTFChainStep(substrate, userRepo))
-	engine.Register(shared.StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo))
+	engine.Register(shared.StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(shared.StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
 	engine.Register(shared.StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
-	engine.Register(shared.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics))
+	engine.Register(shared.StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
 	engine.Register(shared.StepCreatePendingRecord, CreatePendingRecord(substrate, userRepo, pendingRecordRepo, config.SystemAccount.Mnemonic))
 	engine.Register(shared.StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
 	engine.Register(shared.StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal/api/handlers"
 	"kubecloud/internal/auth"
+	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/notification"
 	"kubecloud/internal/core/services"
@@ -338,9 +339,10 @@ func (app *App) createHandlers() appHandlers {
 	settingsService := services.NewSettingsService(settingsRepo)
 
 	// Handlers
+	stripeClient := &billing.DefaultStripeClient{}
 	userHandler := handlers.NewUserHandler(
 		userService, app.communication.notificationSender,
-		app.communication.mailService, app.security.tokenManager,
+		app.communication.mailService, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)

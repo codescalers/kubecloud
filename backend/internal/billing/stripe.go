@@ -9,8 +9,19 @@ import (
 	"github.com/stripe/stripe-go/v82/paymentmethod"
 )
 
-// CreateStripeCustomer create a customer in stripe
-func CreateStripeCustomer(username, email string) (*stripe.Customer, error) {
+// StripeClient defines the interface for Stripe operations.
+type StripeClient interface {
+	CreateCustomer(username, email string) (*stripe.Customer, error)
+	CreatePaymentMethod(cardType, paymentMethodID string) (*stripe.PaymentMethod, error)
+	CreatePaymentIntent(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error)
+	CancelPaymentIntent(paymentIntentID string) error
+}
+
+// DefaultStripeClient is the real implementation using Stripe SDK.
+type DefaultStripeClient struct{}
+
+// CreateCustomer creates a customer in Stripe.
+func (c *DefaultStripeClient) CreateCustomer(username, email string) (*stripe.Customer, error) {
 	params := &stripe.CustomerParams{
 		Name:  stripe.String(username),
 		Email: stripe.String(email),
@@ -22,7 +33,8 @@ func CreateStripeCustomer(username, email string) (*stripe.Customer, error) {
 	return res, nil
 }
 
-func CreatePaymentMethod(cardType, paymentMethodID string) (*stripe.PaymentMethod, error) {
+// CreatePaymentMethod creates a payment method in Stripe.
+func (c *DefaultStripeClient) CreatePaymentMethod(cardType, paymentMethodID string) (*stripe.PaymentMethod, error) {
 	paymentMethodParams := &stripe.PaymentMethodParams{
 		Type: stripe.String(cardType),
 		Card: &stripe.PaymentMethodCardParams{Token: stripe.String(paymentMethodID)},
@@ -31,7 +43,8 @@ func CreatePaymentMethod(cardType, paymentMethodID string) (*stripe.PaymentMetho
 	return paymentmethod.New(paymentMethodParams)
 }
 
-func CreatePaymentIntent(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error) {
+// CreatePaymentIntent creates a payment intent in Stripe.
+func (c *DefaultStripeClient) CreatePaymentIntent(customerID, paymentMethodID, currency string, usdMillicentAmount uint64) (*stripe.PaymentIntent, error) {
 	params := &stripe.PaymentIntentParams{
 		Amount:        stripe.Int64(int64(usdMillicentAmount / 10)),
 		Currency:      stripe.String(currency),
@@ -51,7 +64,8 @@ func CreatePaymentIntent(customerID, paymentMethodID, currency string, usdMillic
 	return result, err
 }
 
-func CancelPaymentIntent(paymentIntentID string) error {
+// CancelPaymentIntent cancels a payment intent in Stripe.
+func (c *DefaultStripeClient) CancelPaymentIntent(paymentIntentID string) error {
 	_, err := paymentintent.Cancel(paymentIntentID, nil)
 	if err != nil {
 		return fmt.Errorf("failed to cancel payment intent: %w", err)

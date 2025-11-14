@@ -182,7 +182,7 @@ func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserR
 	}
 }
 
-func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
+func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billing.StripeClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -220,7 +220,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		customer, err := billing.CreateStripeCustomer(name, email)
+		customer, err := stripeClient.CreateCustomer(name, email)
 		if err != nil {
 			return err
 		}
@@ -325,7 +325,7 @@ func SendWelcomeEmailStep(mailService mailservice.MailService, config shared.Con
 	}
 }
 
-func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.StepFn {
+func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeClient billing.StripeClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		customerIDVal, ok := state["stripe_customer_id"]
 		if !ok {
@@ -352,7 +352,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics) ewf.Step
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		intent, err := billing.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
+		intent, err := stripeClient.CreatePaymentIntent(customerID, paymentMethodID, currency, amount)
 		if err != nil {
 			metrics.IncrementStripePaymentFailure()
 			return fmt.Errorf("error creating payment intent: %w", err)
