@@ -1,17 +1,16 @@
 package activities
 
 import (
+	"kubecloud/internal"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"kubecloud/internal"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
-	"kubecloud/kubedeployer"
-	"kubecloud/models"
+	"kubecloud/internal/kubedeployer"
+	"kubecloud/internal/models"
 	"os"
 	"strings"
 	"time"
@@ -407,7 +406,7 @@ func RemoveClusterFromDBStep(clusterRepo models.ClusterRepository, metrics *metr
 		}
 
 		metrics.DecActiveClusterCount()
-		metrics.IncrementClusterOperationSuccess(constants.ClusterOperationDeleteCluster)
+		metrics.IncrementClusterOperationSuccess(internal.ClusterOperationDeleteCluster)
 		return nil
 	}
 }
@@ -515,7 +514,7 @@ func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *me
 
 		// Decrement by the actual number of clusters deleted
 		metrics.SubActiveClusterCount(clusterCount)
-		metrics.IncrementClusterOperationSuccess(constants.ClusterOperationDeleteAllClusters)
+		metrics.IncrementClusterOperationSuccess(internal.ClusterOperationDeleteAllClusters)
 		return nil
 	}
 }
@@ -583,7 +582,7 @@ func deploymentFailureHook(engine *ewf.Engine) ewf.AfterWorkflowHook {
 
 			log.Info().Str("project_name", cluster.ProjectName).Msg("triggering rollback workflow for failed deployment")
 
-			rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedDeployment)
+			rollbackWf, rollbackErr := engine.NewWorkflow(internal.WorkflowRollbackFailedDeployment)
 			if rollbackErr != nil {
 				log.Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("failed to create rollback workflow")
 				return
@@ -640,81 +639,81 @@ func createAddNodeWorkflowTemplate(notificationSender notification.NotificationS
 }
 
 func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, clusterRepo models.ClusterRepository, notificationSender notification.NotificationSender, config internal.Configuration) {
-	engine.Register(constants.StepDeployNetwork, DeployNetworkStep(metrics))
-	engine.Register(constants.StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
-	engine.Register(constants.StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
-	engine.Register(constants.StepRemoveCluster, CancelDeploymentStep(clusterRepo, metrics))
-	engine.Register(constants.StepAddNode, AddNodeStep(metrics))
-	engine.Register(constants.StepUpdateNetwork, UpdateNetworkStep(metrics))
-	engine.Register(constants.StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(constants.StepStoreDeployment, StoreDeploymentStep(clusterRepo, metrics))
-	engine.Register(constants.StepFetchKubeconfig, FetchKubeconfigStep(clusterRepo, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepVerifyClusterReady, VerifyClusterReadyStep())
-	engine.Register(constants.StepVerifyNewNodes, VerifyAddedNodeStep(clusterRepo, config.SSH.PrivateKeyPath))
-	engine.Register(constants.StepRemoveClusterFromDB, RemoveClusterFromDBStep(clusterRepo, metrics))
-	engine.Register(constants.StepGatherAllContractIDs, GatherAllContractIDsStep(clusterRepo))
-	engine.Register(constants.StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(constants.StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo, metrics))
+	engine.Register(internal.StepDeployNetwork, DeployNetworkStep(metrics))
+	engine.Register(internal.StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
+	engine.Register(internal.StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
+	engine.Register(internal.StepRemoveCluster, CancelDeploymentStep(clusterRepo, metrics))
+	engine.Register(internal.StepAddNode, AddNodeStep(metrics))
+	engine.Register(internal.StepUpdateNetwork, UpdateNetworkStep(metrics))
+	engine.Register(internal.StepRemoveNode, RemoveDeploymentNodeStep())
+	engine.Register(internal.StepStoreDeployment, StoreDeploymentStep(clusterRepo, metrics))
+	engine.Register(internal.StepFetchKubeconfig, FetchKubeconfigStep(clusterRepo, config.SSH.PrivateKeyPath))
+	engine.Register(internal.StepVerifyClusterReady, VerifyClusterReadyStep())
+	engine.Register(internal.StepVerifyNewNodes, VerifyAddedNodeStep(clusterRepo, config.SSH.PrivateKeyPath))
+	engine.Register(internal.StepRemoveClusterFromDB, RemoveClusterFromDBStep(clusterRepo, metrics))
+	engine.Register(internal.StepGatherAllContractIDs, GatherAllContractIDsStep(clusterRepo))
+	engine.Register(internal.StepBatchCancelContracts, BatchCancelContractsStep())
+	engine.Register(internal.StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo, metrics))
 
 	deployWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepDeployLeaderNode, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepBatchDeployAllNodes, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepDeployNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: internal.StepDeployLeaderNode, RetryPolicy: criticalRetryPolicy},
+		{Name: internal.StepBatchDeployAllNodes, RetryPolicy: criticalRetryPolicy},
+		{Name: internal.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
+		{Name: internal.StepVerifyClusterReady, RetryPolicy: longExponentialRetryPolicy},
+		{Name: internal.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
 	deployWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
 		notifyStepHook(notificationSender),
 	}
-	engine.RegisterTemplate(constants.WorkflowDeployCluster, &deployWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowDeployCluster, &deployWFTemplate)
 
 	deleteWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deleteWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowDeleteCluster, &deleteWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowDeleteCluster, &deleteWFTemplate)
 
 	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	deleteAllDeploymentsWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepGatherAllContractIDs, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
 	addNodeWFTemplate := createAddNodeWorkflowTemplate(notificationSender, engine, metrics)
 	addNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
-		{Name: constants.StepAddNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepUpdateNetwork, RetryPolicy: criticalRetryPolicy},
+		{Name: internal.StepAddNode, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
+		{Name: internal.StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
+		{Name: internal.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowAddNode, &addNodeWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowAddNode, &addNodeWFTemplate)
 
 	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	removeNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
+		{Name: internal.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowRemoveNode, &removeNodeWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowRemoveNode, &removeNodeWFTemplate)
 
 	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationSender, engine, metrics)
 	rollbackWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowRollbackFailedDeployment, &rollbackWFTemplate)
 
 	rollbackAddNodeWFTemplate := createBaseDeployerWorkflowTemplate(notificationSender)
 	rollbackAddNodeWFTemplate.Steps = []ewf.Step{
-		{Name: constants.StepRemoveNode, RetryPolicy: standardRetryPolicy},
-		{Name: constants.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepRemoveNode, RetryPolicy: standardRetryPolicy},
+		{Name: internal.StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
-	engine.RegisterTemplate(constants.WorkflowRollbackFailedAddNode, &rollbackAddNodeWFTemplate)
+	engine.RegisterTemplate(internal.WorkflowRollbackFailedAddNode, &rollbackAddNodeWFTemplate)
 }
 
 func getFromState[T any](state ewf.State, key string) (T, error) {

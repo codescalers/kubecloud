@@ -1,13 +1,13 @@
 package activities
 
 import (
+	"kubecloud/internal"
 	"context"
 	"fmt"
-	"kubecloud/internal"
 	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/substrate"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"slices"
 	"strings"
 

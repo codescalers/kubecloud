@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/notification"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"slices"
 
 	"github.com/xmonader/ewf"

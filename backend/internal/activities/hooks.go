@@ -1,15 +1,15 @@
 package activities
 
 import (
+	"kubecloud/internal"
 	"context"
 	"errors"
 	"time"
 
-	"kubecloud/internal/constants"
 	"kubecloud/internal/logger"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/statemanager"
-	"kubecloud/kubedeployer"
+	"kubecloud/internal/kubedeployer"
 
 	"kubecloud/internal/notification"
 
@@ -157,17 +157,17 @@ func newKubecloudWorkflowTemplate(n notification.NotificationSender) ewf.Workflo
 func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.ForOperation("workflow", "hook_add_node_failure").With().Str("workflow_name", wf.Name).Logger()
-		if err == nil || wf.Name != constants.WorkflowAddNode {
+		if err == nil || wf.Name != internal.WorkflowAddNode {
 			return
 		}
-		metrics.IncrementClusterOperationFailure(constants.ClusterOperationAddNode)
+		metrics.IncrementClusterOperationFailure(internal.ClusterOperationAddNode)
 		node, err := getFromState[kubedeployer.Node](wf.State, "node")
 		if err != nil {
 			log.Error().Err(err).Msg("missing or invalid 'node' in workflow state")
 			return
 		}
 
-		rollbackWf, rollbackErr := engine.NewWorkflow(constants.WorkflowRollbackFailedAddNode)
+		rollbackWf, rollbackErr := engine.NewWorkflow(internal.WorkflowRollbackFailedAddNode)
 		if rollbackErr != nil {
 			log.Error().
 				Err(rollbackErr).
@@ -203,11 +203,11 @@ func metricsSuccessHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 		if err != nil {
 			return
 		}
-		if wf.Name == constants.WorkflowAddNode {
-			metrics.IncrementClusterOperationSuccess(constants.ClusterOperationAddNode)
+		if wf.Name == internal.WorkflowAddNode {
+			metrics.IncrementClusterOperationSuccess(internal.ClusterOperationAddNode)
 		}
-		if wf.Name == constants.WorkflowRemoveNode {
-			metrics.IncrementClusterOperationSuccess(constants.ClusterOperationRemoveNode)
+		if wf.Name == internal.WorkflowRemoveNode {
+			metrics.IncrementClusterOperationSuccess(internal.ClusterOperationRemoveNode)
 		}
 		if isDeployWorkflow(wf.Name) {
 			metrics.IncActiveClusterCount()
@@ -226,12 +226,12 @@ func metricsFailureHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 			return
 		}
 		switch wf.Name {
-		case constants.WorkflowDeleteCluster:
-			metrics.IncrementClusterOperationFailure(constants.ClusterOperationDeleteCluster)
-		case constants.WorkflowRemoveNode:
-			metrics.IncrementClusterOperationFailure(constants.ClusterOperationRemoveNode)
-		case constants.WorkflowDeleteAllClusters:
-			metrics.IncrementClusterOperationFailure(constants.ClusterOperationDeleteAllClusters)
+		case internal.WorkflowDeleteCluster:
+			metrics.IncrementClusterOperationFailure(internal.ClusterOperationDeleteCluster)
+		case internal.WorkflowRemoveNode:
+			metrics.IncrementClusterOperationFailure(internal.ClusterOperationRemoveNode)
+		case internal.WorkflowDeleteAllClusters:
+			metrics.IncrementClusterOperationFailure(internal.ClusterOperationDeleteAllClusters)
 		}
 	}
 }

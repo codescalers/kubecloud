@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"net/http"
 	"sync"
 	"time"

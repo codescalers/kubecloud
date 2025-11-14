@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	mailservice "kubecloud/internal/mailservice"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"os"
 	"path/filepath"
 

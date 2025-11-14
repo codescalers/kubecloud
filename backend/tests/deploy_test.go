@@ -3,7 +3,7 @@
 package tests
 
 import (
-	"kubecloud/kubedeployer"
+	"kubecloud/internal/kubedeployer"
 	"testing"
 )
 

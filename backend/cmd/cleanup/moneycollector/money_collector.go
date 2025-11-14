@@ -3,7 +3,7 @@ package moneycollector
 import (
 	"kubecloud/internal"
 	"kubecloud/internal/substrate"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"sync"
 
 	"github.com/rs/zerolog/log"

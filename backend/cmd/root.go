@@ -3,7 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"kubecloud/app"
+	"kubecloud/internal/app"
 	"kubecloud/internal"
 	"kubecloud/internal/logger"
 	"net"

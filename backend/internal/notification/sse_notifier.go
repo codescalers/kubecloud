@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"kubecloud/internal"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 )
 
 type SSENotifier struct {

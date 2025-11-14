@@ -4,7 +4,7 @@ import (
 	"flag"
 	"kubecloud/internal"
 	"kubecloud/internal/substrate"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"os"
 
 	moneycollector "kubecloud/cmd/cleanup/moneycollector"

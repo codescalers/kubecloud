@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/constants"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"sync"
 
 	"github.com/xmonader/ewf"
@@ -150,7 +149,7 @@ func (s *NotificationService) Send(ctx context.Context, notification *models.Not
 		}
 	}
 
-	workflow, err := s.engine.NewWorkflow(constants.WorkflowSendNotification)
+	workflow, err := s.engine.NewWorkflow(internal.WorkflowSendNotification)
 	if err != nil {
 		return fmt.Errorf("failed to create workflow: %w", err)
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	"kubecloud/models"
+	"kubecloud/internal/models"
 
 	"github.com/rs/zerolog/log"
 )

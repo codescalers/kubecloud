@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"strings"
 
 	"github.com/rs/zerolog/log"

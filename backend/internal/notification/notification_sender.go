@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
-	"kubecloud/internal/constants"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"strconv"
 	"strings"
 	"time"
@@ -393,7 +392,7 @@ func (s EmailAndUINotificationSender) SendRedeemedVoucherNotification(userID int
 		subject = "Adding Funds Succeeded"
 		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
 
-		if wfName == constants.WorkflowRedeemVoucher {
+		if wfName == internal.WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
 			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
@@ -438,7 +437,7 @@ func (s EmailAndUINotificationSender) SendNodeReservationsNotification(userID in
 	message = fmt.Sprintf("Node %d has been reserved successfully (contract_id=%d)", nodeID, contractID)
 	severity := models.NotificationSeveritySuccess
 	if nodeErr == nil {
-		if wfName == constants.WorkflowUnreserveNode {
+		if wfName == internal.WorkflowUnreserveNode {
 			subject = "Node Unreserved Successfully"
 			message = fmt.Sprintf("Node %d has been unreserved successfully (contract_id=%d)", nodeID, contractID)
 		}
@@ -446,11 +445,11 @@ func (s EmailAndUINotificationSender) SendNodeReservationsNotification(userID in
 		severity = models.NotificationSeverityError
 		subject = "Node Reservation Failed"
 		message = fmt.Sprintf("Failed to reserve node %d: %s", nodeID, nodeErr.Error())
-		if wfName == constants.WorkflowUnreserveNode {
+		if wfName == internal.WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
 			message = fmt.Sprintf("Failed to unreserve node %d: %s", nodeID, nodeErr.Error())
 
-			if strings.Contains(nodeErr.Error(), constants.NodeHasActiveContracts) {
+			if strings.Contains(nodeErr.Error(), internal.NodeHasActiveContracts) {
 				message = fmt.Sprintf("Failed to unreserve node %d (contract_id=%d). This node has active workloads on it, please remove all deployments from it first", nodeID, contractID)
 			}
 		}
@@ -499,7 +498,7 @@ func (s EmailAndUINotificationSender) SendUserRegistrationAndVerificationNotific
 	severity := models.NotificationSeveritySuccess
 
 	if err == nil {
-		if wfName == constants.WorkflowUserRegistration {
+		if wfName == internal.WorkflowUserRegistration {
 			subject = "Registration Completed"
 			message = "Your registration has been completed successfully"
 		}
@@ -507,7 +506,7 @@ func (s EmailAndUINotificationSender) SendUserRegistrationAndVerificationNotific
 		severity = models.NotificationSeverityError
 		subject = "Account Verification Failed"
 		message = fmt.Sprintf("Account verification process failed: %s", err.Error())
-		if wfName == constants.WorkflowUserRegistration {
+		if wfName == internal.WorkflowUserRegistration {
 			subject = "User Registration Failed"
 			message = fmt.Sprintf("User registration process failed: %s", err.Error())
 		}
@@ -539,15 +538,15 @@ func (s EmailAndUINotificationSender) SendUserRegistrationAndVerificationNotific
 }
 
 func calculateCurrentStep(stepName string) int {
-	if stepName == constants.StepDeployNetwork {
+	if stepName == internal.StepDeployNetwork {
 		return 1
 	}
 
-	if stepName == constants.StepDeployLeaderNode {
+	if stepName == internal.StepDeployLeaderNode {
 		return 2
 	}
 
-	if stepName == constants.StepBatchDeployAllNodes {
+	if stepName == internal.StepBatchDeployAllNodes {
 		return 3
 	}
 

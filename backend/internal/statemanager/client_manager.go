@@ -3,7 +3,7 @@ package statemanager
 import (
 	"fmt"
 
-	"kubecloud/kubedeployer"
+	"kubecloud/internal/kubedeployer"
 
 	"kubecloud/internal/logger"
 

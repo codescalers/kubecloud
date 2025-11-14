@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"kubecloud/app"
-	"kubecloud/kubedeployer"
+	"kubecloud/internal/app"
+	"kubecloud/internal/kubedeployer"
 )
 
 type Client struct {

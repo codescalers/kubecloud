@@ -1,14 +1,14 @@
 package activities
 
 import (
+	"kubecloud/internal"
 	"context"
 	"fmt"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/notification"
 	"kubecloud/internal/statemanager"
 	"kubecloud/internal/substrate"
-	"kubecloud/kubedeployer"
-	"kubecloud/models"
+	"kubecloud/internal/kubedeployer"
+	"kubecloud/internal/models"
 	"slices"
 
 	"kubecloud/internal/logger"
@@ -83,7 +83,7 @@ func notifyStepProgress(notificationSender notification.NotificationSender, stat
 		Str("workflow_name", workflowName).
 		Str("step_name", stepName).Logger()
 
-	if stepName != constants.StepDeployNetwork && !isDeployStep(stepName) {
+	if stepName != internal.StepDeployNetwork && !isDeployStep(stepName) {
 		return
 	}
 
@@ -144,12 +144,12 @@ func getWorkflowDescription(workflowName string) string {
 }
 
 func isDeployWorkflow(name string) bool {
-	return name == constants.WorkflowDeployCluster
+	return name == internal.WorkflowDeployCluster
 }
 
 func isDeployStep(stepName string) bool {
-	return stepName == constants.StepDeployLeaderNode ||
-		stepName == constants.StepBatchDeployAllNodes
+	return stepName == internal.StepDeployLeaderNode ||
+		stepName == internal.StepBatchDeployAllNodes
 }
 
 func sendBillingWorkflowNotifications(notificationSender notification.NotificationSender, wf *ewf.Workflow, err error) error {
@@ -172,7 +172,7 @@ func sendBillingWorkflowNotifications(notificationSender notification.Notificati
 		}
 	}
 
-	if wf.Name == constants.WorkflowAdminCreditBalance {
+	if wf.Name == internal.WorkflowAdminCreditBalance {
 		adminID, ok := wf.State["admin_id"].(int)
 		if !ok {
 			log.Error().Msg("Missing or invalid 'admin_id' in workflow state")
@@ -241,10 +241,10 @@ func sendUserWorkflowNotification(notificationSender notification.NotificationSe
 }
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{constants.WorkflowChargeBalance, constants.WorkflowAdminCreditBalance, constants.WorkflowRedeemVoucher}
-	deployWf := []string{constants.WorkflowDeleteAllClusters, constants.WorkflowDeleteCluster, constants.WorkflowRemoveNode, constants.WorkflowAddNode, constants.WorkflowRollbackFailedDeployment}
-	nodesWf := []string{constants.WorkflowReserveNode, constants.WorkflowUnreserveNode}
-	userWf := []string{constants.WorkflowUserVerification, constants.WorkflowUserRegistration}
+	billingWf := []string{internal.WorkflowChargeBalance, internal.WorkflowAdminCreditBalance, internal.WorkflowRedeemVoucher}
+	deployWf := []string{internal.WorkflowDeleteAllClusters, internal.WorkflowDeleteCluster, internal.WorkflowRemoveNode, internal.WorkflowAddNode, internal.WorkflowRollbackFailedDeployment}
+	nodesWf := []string{internal.WorkflowReserveNode, internal.WorkflowUnreserveNode}
+	userWf := []string{internal.WorkflowUserVerification, internal.WorkflowUserRegistration}
 
 	switch {
 	case slices.Contains(billingWf, workflowName):

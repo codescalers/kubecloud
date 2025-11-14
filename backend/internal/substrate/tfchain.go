@@ -12,7 +12,7 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 
-	"kubecloud/internal/constants"
+	"kubecloud/internal"
 	"kubecloud/internal/logger"
 )
 
@@ -213,7 +213,7 @@ func FromUSDToUSDMillicent(amountUSD float64) uint64 {
 
 // Activates user account with activation service
 func (c *TFChainClient) activateAccount(substrateAccountID string) error {
-	activationServiceURL := constants.ActivationServiceURLs[c.network]
+	activationServiceURL := internal.ActivationServiceURLs[c.network]
 
 	body := map[string]string{"substrateAccountID": substrateAccountID}
 	jsonData, err := json.Marshal(body)

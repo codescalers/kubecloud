@@ -1,12 +1,11 @@
 package metrics
 
 import (
-	"kubecloud/models"
+	"kubecloud/internal"
+	"kubecloud/internal/models"
 	"net/http"
 	"runtime"
 	"time"
-
-	"kubecloud/internal/constants"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -196,10 +195,10 @@ func NewMetrics() *Metrics {
 	)
 
 	operations := []string{
-		constants.ClusterOperationAddNode,
-		constants.ClusterOperationRemoveNode,
-		constants.ClusterOperationDeleteCluster,
-		constants.ClusterOperationDeleteAllClusters,
+		internal.ClusterOperationAddNode,
+		internal.ClusterOperationRemoveNode,
+		internal.ClusterOperationDeleteCluster,
+		internal.ClusterOperationDeleteAllClusters,
 	}
 	for _, op := range operations {
 		m.clusterOperationsSuccesses.WithLabelValues(op).Add(0)

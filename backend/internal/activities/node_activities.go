@@ -1,11 +1,11 @@
 package activities
 
 import (
+	"kubecloud/internal"
 	"context"
 	"fmt"
-	"kubecloud/internal/constants"
 	"kubecloud/internal/substrate"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"time"
 
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
@@ -101,7 +101,7 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 			return fmt.Errorf("failed to get node: %w", err)
 		}
 
-		reached := targetStatus == constants.NodeRentable && node.Rentable || targetStatus == constants.NodeRented && !node.Rentable
+		reached := targetStatus == internal.NodeRentable && node.Rentable || targetStatus == internal.NodeRented && !node.Rentable
 
 		if !reached {
 			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeIDUint32, targetStatus, node.Rentable)

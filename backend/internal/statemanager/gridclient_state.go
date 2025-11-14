@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"kubecloud/kubedeployer"
+	"kubecloud/internal/kubedeployer"
 
 	"kubecloud/internal/logger"
 

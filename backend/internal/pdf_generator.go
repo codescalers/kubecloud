@@ -4,7 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
-	"kubecloud/models"
+	"kubecloud/internal/models"
 	"strconv"
 	"time"
 
