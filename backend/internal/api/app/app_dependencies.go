@@ -51,11 +51,10 @@ type appDependencies struct {
 
 // appCore contains essential application services
 type appCore struct {
-	appCtx     context.Context
-	db         models.DB
-	metrics    *metrics.Metrics
-	ewfEngine  *ewf.Engine
-	randomizer shared.Randomizer
+	appCtx    context.Context
+	db        models.DB
+	metrics   *metrics.Metrics
+	ewfEngine *ewf.Engine
 }
 
 // appSecurity contains authentication and security related services
@@ -147,14 +146,11 @@ func createAppCore(ctx context.Context, config shared.Configuration) (appCore, e
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
-	randomizer := shared.NewRandomizer(config.VoucherNameLength, config.VerificationCodeLength)
-
 	return appCore{
-		appCtx:     ctx,
-		db:         db,
-		metrics:    metrics.NewMetrics(),
-		ewfEngine:  ewfEngine,
-		randomizer: randomizer,
+		appCtx:    ctx,
+		db:        db,
+		metrics:   metrics.NewMetrics(),
+		ewfEngine: ewfEngine,
 	}, nil
 }
 
@@ -310,7 +306,7 @@ func (app *App) createHandlers() appHandlers {
 	// Services
 	userService := services.NewUserService(
 		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
-		app.infra.substrateClient, app.core.randomizer, app.core.ewfEngine,
+		app.infra.substrateClient, app.core.ewfEngine,
 		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
 		app.config.Admins,
 	)
@@ -336,7 +332,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.randomizer, app.core.ewfEngine,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)

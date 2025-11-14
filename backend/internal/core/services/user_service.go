@@ -20,7 +20,6 @@ type UserService struct {
 
 	appCtx          context.Context
 	substrateClient substrate.Substrate
-	randomizer      shared.Randomizer
 	ewfEngine       *ewf.Engine
 	kycClient       *kyc.KYCClient
 	metrics         *metrics.Metrics
@@ -35,7 +34,6 @@ func NewUserService(appCtx context.Context,
 	voucherRepo models.VoucherRepository,
 	pendingRecordRepo models.PendingRecordRepository,
 	substrateClient substrate.Substrate,
-	randomizer shared.Randomizer,
 	ewfEngine *ewf.Engine,
 	kycClient *kyc.KYCClient,
 	metrics *metrics.Metrics,
@@ -49,7 +47,6 @@ func NewUserService(appCtx context.Context,
 
 		appCtx:          appCtx,
 		substrateClient: substrateClient,
-		randomizer:      randomizer,
 		ewfEngine:       ewfEngine,
 		kycClient:       kycClient,
 		metrics:         metrics,
@@ -183,7 +180,7 @@ func (svc *UserService) GetVoucherByCode(voucherCode string) (models.Voucher, er
 }
 
 func (svc *UserService) GenerateRandomCode() int {
-	return svc.randomizer.GenerateRandomCode()
+	return shared.GenerateVerificationCode(4) // Default to 4-digit verification codes
 }
 
 func (svc *UserService) IsVerificationCodeExpired(userLastUpdatedAt time.Time) bool {

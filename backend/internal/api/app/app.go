@@ -87,7 +87,6 @@ func (app *App) registerEWFWorkflows() {
 		app.core.metrics,
 		app.communication.notificationSender,
 		app.infra.gridClient.GridProxyClient,
-		app.core.randomizer,
 	)
 }
 

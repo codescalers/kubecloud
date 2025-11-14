@@ -82,7 +82,7 @@ func CreateUserStep(config shared.Configuration, userRepo models.UserRepository)
 	}
 }
 
-func SendVerificationEmailStep(mailService mailservice.MailService, randomizer shared.Randomizer, config shared.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, config shared.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -102,7 +102,7 @@ func SendVerificationEmailStep(mailService mailservice.MailService, randomizer s
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		code := randomizer.GenerateRandomCode()
+		code := shared.GenerateVerificationCode(config.VerificationCodeLength)
 		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name)
 
 		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {

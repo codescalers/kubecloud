@@ -22,7 +22,6 @@ type AdminService struct {
 
 	appCtx          context.Context
 	substrateClient substrate.Substrate
-	randomizer      shared.Randomizer
 	ewfEngine       *ewf.Engine
 }
 
@@ -33,7 +32,6 @@ func NewAdminService(appCtx context.Context,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
 	substrateClient substrate.Substrate,
-	randomizer shared.Randomizer,
 	ewfEngine *ewf.Engine,
 ) AdminService {
 	return AdminService{
@@ -45,7 +43,6 @@ func NewAdminService(appCtx context.Context,
 
 		appCtx:          appCtx,
 		substrateClient: substrateClient,
-		randomizer:      randomizer,
 		ewfEngine:       ewfEngine,
 	}
 }
@@ -196,7 +193,7 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 }
 
 func (svc *AdminService) generateVoucherWithTimestamp() string {
-	voucherCode := svc.randomizer.GenerateRandomVoucher()
+	voucherCode := shared.GenerateVoucherCode(8) // Default to 8-character vouchers
 	timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 	return fmt.Sprintf("%s-%s", voucherCode, timestampPart)
 }

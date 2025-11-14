@@ -43,14 +43,13 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationSender notification.NotificationSender,
 	proxyClient proxy.Client,
-	randomizer shared.Randomizer,
 ) {
 	userRepo := models.NewGormUserRepository(db)
 	clusterRepo := models.NewGormClusterRepository(db)
 	userNodesRepo := models.NewGormUserNodesRepository(db)
 	pendingRecordRepo := models.NewGormPendingRecordRepository(db)
 
-	engine.Register(shared.StepSendVerificationEmail, SendVerificationEmailStep(mail, randomizer, config))
+	engine.Register(shared.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(shared.StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(shared.StepUpdateCode, UpdateCodeStep(userRepo))
 	engine.Register(shared.StepSetupTFChain, SetupTFChainStep(substrate, userRepo))

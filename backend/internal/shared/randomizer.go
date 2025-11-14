@@ -7,35 +7,20 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-type Randomizer interface {
-	GenerateRandomVoucher() string
-	GenerateRandomCode() int
-}
-
-type randomizer struct {
-	voucherLength int
-	codeLength    int
-}
-
-func NewRandomizer(voucherLength int, codeLength int) randomizer {
-	return randomizer{
-		voucherLength: voucherLength,
-		codeLength:    codeLength,
-	}
-}
-
-// GenerateRandomVoucher generates a random voucher
-func (r randomizer) GenerateRandomVoucher() string {
-	b := make([]byte, r.voucherLength)
+// GenerateVoucherCode generates a random alphanumeric voucher code of the specified length
+// that users can redeem. For example, a 8-character voucher code: "aB3xK9mL"
+func GenerateVoucherCode(length int) string {
+	b := make([]byte, length)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
 }
 
-// GenerateRandomCode generates random code of 4 digits
-func (r randomizer) GenerateRandomCode() int {
-	min := int(math.Pow(10, float64(r.codeLength-1)))
-	max := int(math.Pow(10, float64(r.codeLength)) - 1)
+// GenerateVerificationCode generates a random numeric code of the specified length
+// for user email/phone verification during signup. For example, a 4-digit code: 7392
+func GenerateVerificationCode(length int) int {
+	min := int(math.Pow(10, float64(length-1)))
+	max := int(math.Pow(10, float64(length)) - 1)
 	return rand.Intn(max-min) + min
 }
