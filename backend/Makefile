@@ -1,4 +1,7 @@
 
+
+.PHONY: run listen cleanup fix-rentables example migrate-db update-swagger update-postman-collection update-docs check-swag-deps check-postman-deps build test test-unit test-verbose test-coverage start-db
+
 run:
 	@CGO_ENABLED=1 go run . --config config.json
 
@@ -35,8 +38,27 @@ check-postman-deps:
 build:
 	@CGO_ENABLED=1 go build -o bin/app .
 
+# Test targets
 test:
 	@go test ./...
+
+test-unit:
+	@go test ./internal/core/services -v
+
+test-verbose:
+	@go test ./... -v
+
+test-coverage:
+	@go test ./... -cover -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html && echo "Coverage report generated: coverage.html"
+
+test-services:
+	@go test ./internal/core/services -v
+
+test-handlers:
+	@go test ./internal/api/handlers -v 2>&1 | grep -E "(PASS|FAIL|RUN)" || true
+
+test-quick:
+	@go test ./internal/core/services ./internal/core/models ./internal/auth -v
 
 start-db:
 	@docker run -d \
@@ -45,3 +67,23 @@ start-db:
 		-e POSTGRES_PASSWORD=password \
 		-p 5432:5432 \
 		postgres
+
+help:
+	@echo "Available targets:"
+	@echo "  run                      - Run the application"
+	@echo "  build                    - Build the application"
+	@echo "  test                     - Run all tests"
+	@echo "  test-unit                - Run unit tests (services)"
+	@echo "  test-verbose             - Run all tests with verbose output"
+	@echo "  test-coverage            - Run tests and generate coverage report"
+	@echo "  test-services            - Run service tests"
+	@echo "  test-handlers            - Run handler tests (may require TEST_MNEMONIC)"
+	@echo "  test-quick               - Run quick tests (services, models, auth)"
+	@echo "  cleanup                  - Run cleanup command"
+	@echo "  fix-rentables            - Run fix-rentables command"
+	@echo "  migrate-db               - Run database migration"
+	@echo "  update-docs              - Update Swagger and Postman documentation"
+	@echo "  listen                   - Listen to SSE events test"
+	@echo "  example                  - Run example test"
+	@echo "  start-db                 - Start PostgreSQL database in Docker"
+	@echo ""
