@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 	"github.com/mattn/go-sqlite3"
 	"gorm.io/gorm"
 )
@@ -17,7 +18,7 @@ var (
 	ErrNotificationNotFound = errors.New("notification is not found")
 )
 
-func isUniqueViolation(err error) bool {
+func IsUniqueViolation(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -26,10 +27,15 @@ func isUniqueViolation(err error) bool {
 		return true
 	}
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
+	if pgErr, ok := err.(*pq.Error); ok {
 		// 23505 is the code for unique constraint violation
 		return pgErr.Code == "23505"
+	}
+
+	var pgxErr *pgconn.PgError
+	if errors.As(err, &pgxErr) {
+		// 23505 is the code for unique constraint violation
+		return pgxErr.Code == "23505"
 	}
 
 	var sqlLiteErr sqlite3.Error

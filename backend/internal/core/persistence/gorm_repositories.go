@@ -126,7 +126,7 @@ func (r *GormUserRepository) CreateSSHKey(sshKey *models.SSHKey) error {
 	sshKey.UpdatedAt = time.Now()
 	query := r.db.Create(sshKey)
 
-	if isUniqueViolation(query.Error) {
+	if models.IsUniqueViolation(query.Error) {
 		return models.ErrSSHKeyAlreadyExists
 	}
 	return query.Error
