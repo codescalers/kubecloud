@@ -11,7 +11,7 @@ import (
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/deployment/kubedeployer"
 
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 
 	"github.com/xmonader/ewf"
 )

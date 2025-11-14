@@ -3,7 +3,8 @@ package activities
 import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/kyc"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
@@ -46,10 +47,10 @@ func RegisterEWFWorkflows(
 	proxyClient proxy.Client,
 	stripeClient billing.StripeClient,
 ) {
-	userRepo := models.NewGormUserRepository(db)
-	clusterRepo := models.NewGormClusterRepository(db)
-	userNodesRepo := models.NewGormUserNodesRepository(db)
-	pendingRecordRepo := models.NewGormPendingRecordRepository(db)
+	userRepo := persistence.NewGormUserRepository(db)
+	clusterRepo := persistence.NewGormClusterRepository(db)
+	userNodesRepo := persistence.NewGormUserNodesRepository(db)
+	pendingRecordRepo := persistence.NewGormPendingRecordRepository(db)
 
 	engine.Register(shared.StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(shared.StepCreateUser, CreateUserStep(config, userRepo))

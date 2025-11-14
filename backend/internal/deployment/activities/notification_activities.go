@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/core/models"
 	"slices"
 

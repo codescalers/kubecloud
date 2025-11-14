@@ -7,7 +7,8 @@ import (
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/infrastructure/kyc"
@@ -220,7 +221,7 @@ func createAppCommunication(ctx context.Context, config shared.Configuration, db
 	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
 	sseManager := realtime.NewSSEManager()
 
-	notificationRepo := models.NewGormNotificationRepository(db)
+	notificationRepo := persistence.NewGormNotificationRepository(db)
 	notificationService, err := notification.NewNotificationService(notificationRepo, ewfEngine, config.Notification)
 	if err != nil {
 		return appCommunication{}, fmt.Errorf("failed to create notification service: %w", err)
@@ -294,15 +295,15 @@ func createAppInfrastructure(config shared.Configuration) (appInfrastructure, er
 
 func (app *App) createHandlers() appHandlers {
 	// Repositories
-	userRepo := models.NewGormUserRepository(app.core.db)
-	voucherRepo := models.NewGormVoucherRepository(app.core.db)
-	pendingRecordRepo := models.NewGormPendingRecordRepository(app.core.db)
-	notificationRepo := models.NewGormNotificationRepository(app.core.db)
-	clusterRepo := models.NewGormClusterRepository(app.core.db)
-	invoiceRepo := models.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := models.NewGormUserNodesRepository(app.core.db)
-	transactionRepo := models.NewGormTransactionRepository(app.core.db)
-	settingsRepo := models.NewGormSettingsRepository(app.core.db)
+	userRepo := persistence.NewGormUserRepository(app.core.db)
+	voucherRepo := persistence.NewGormVoucherRepository(app.core.db)
+	pendingRecordRepo := persistence.NewGormPendingRecordRepository(app.core.db)
+	notificationRepo := persistence.NewGormNotificationRepository(app.core.db)
+	clusterRepo := persistence.NewGormClusterRepository(app.core.db)
+	invoiceRepo := persistence.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := persistence.NewGormUserNodesRepository(app.core.db)
+	transactionRepo := persistence.NewGormTransactionRepository(app.core.db)
+	settingsRepo := persistence.NewGormSettingsRepository(app.core.db)
 
 	// Services
 	userService := services.NewUserService(
@@ -367,11 +368,11 @@ func (app *App) createHandlers() appHandlers {
 }
 
 func (app *App) createWorkers() workers.Workers {
-	userRepo := models.NewGormUserRepository(app.core.db)
-	pendingRecordRepo := models.NewGormPendingRecordRepository(app.core.db)
-	clusterRepo := models.NewGormClusterRepository(app.core.db)
-	invoiceRepo := models.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := models.NewGormUserNodesRepository(app.core.db)
+	userRepo := persistence.NewGormUserRepository(app.core.db)
+	pendingRecordRepo := persistence.NewGormPendingRecordRepository(app.core.db)
+	clusterRepo := persistence.NewGormClusterRepository(app.core.db)
+	invoiceRepo := persistence.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := persistence.NewGormUserNodesRepository(app.core.db)
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,

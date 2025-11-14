@@ -1,5 +1,6 @@
 package models
 
+// UserRepository defines operations for user data persistence
 type UserRepository interface {
 	RegisterUser(user *User) error
 	GetUserByEmail(email string) (User, error)
@@ -20,45 +21,7 @@ type UserRepository interface {
 	GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error)
 }
 
-type UserNodesRepository interface {
-	CreateUserNode(userNode *UserNodes) error
-	DeleteUserNode(contractID uint64) error
-	ListUserNodes(userID int) ([]UserNodes, error)
-	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
-	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
-	ListAllReservedNodes() ([]UserNodes, error)
-}
-
-type VoucherRepository interface {
-	CreateVoucher(voucher *Voucher) error
-	ListAllVouchers() ([]Voucher, error)
-	GetVoucherByCode(code string) (Voucher, error)
-	RedeemVoucher(code string) error
-}
-
-type TransactionRepository interface {
-	CreateTransaction(transaction *Transaction) error
-}
-
-type InvoiceRepository interface {
-	CreateInvoice(invoice *Invoice) error
-	GetInvoice(id int) (Invoice, error)
-	ListUserInvoices(userID int) ([]Invoice, error)
-	ListInvoices() ([]Invoice, error)
-	UpdateInvoicePDF(id int, data []byte) error
-}
-
-type NotificationRepository interface {
-	CreateNotification(notification *Notification) error
-	GetUserNotifications(userID int, limit, offset int) ([]Notification, error)
-	GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error)
-	MarkNotificationAsRead(notificationID string, userID int) error
-	MarkNotificationAsUnread(notificationID string, userID int) error
-	MarkAllNotificationsAsRead(userID int) error
-	DeleteNotification(notificationID string, userID int) error
-	DeleteAllNotifications(userID int) error
-}
-
+// ClusterRepository defines operations for cluster data persistence
 type ClusterRepository interface {
 	CreateCluster(userID int, cluster *Cluster) error
 	ListUserClusters(userID int) ([]Cluster, error)
@@ -72,6 +35,51 @@ type ClusterRepository interface {
 	ListAllClusters() ([]Cluster, error)
 }
 
+// UserNodesRepository defines operations for user nodes data persistence
+type UserNodesRepository interface {
+	CreateUserNode(userNode *UserNodes) error
+	DeleteUserNode(contractID uint64) error
+	ListUserNodes(userID int) ([]UserNodes, error)
+	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
+	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
+	ListAllReservedNodes() ([]UserNodes, error)
+}
+
+// VoucherRepository defines operations for voucher data persistence
+type VoucherRepository interface {
+	CreateVoucher(voucher *Voucher) error
+	ListAllVouchers() ([]Voucher, error)
+	GetVoucherByCode(code string) (Voucher, error)
+	RedeemVoucher(code string) error
+}
+
+// TransactionRepository defines operations for transaction data persistence
+type TransactionRepository interface {
+	CreateTransaction(transaction *Transaction) error
+}
+
+// InvoiceRepository defines operations for invoice data persistence
+type InvoiceRepository interface {
+	CreateInvoice(invoice *Invoice) error
+	GetInvoice(id int) (Invoice, error)
+	ListUserInvoices(userID int) ([]Invoice, error)
+	ListInvoices() ([]Invoice, error)
+	UpdateInvoicePDF(id int, data []byte) error
+}
+
+// NotificationRepository defines operations for notification data persistence
+type NotificationRepository interface {
+	CreateNotification(notification *Notification) error
+	GetUserNotifications(userID int, limit, offset int) ([]Notification, error)
+	GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error)
+	MarkNotificationAsRead(notificationID string, userID int) error
+	MarkNotificationAsUnread(notificationID string, userID int) error
+	MarkAllNotificationsAsRead(userID int) error
+	DeleteNotification(notificationID string, userID int) error
+	DeleteAllNotifications(userID int) error
+}
+
+// PendingRecordRepository defines operations for pending record data persistence
 type PendingRecordRepository interface {
 	CreatePendingRecord(record *PendingRecord) error
 	ListAllPendingRecords() ([]PendingRecord, error)
@@ -80,6 +88,7 @@ type PendingRecordRepository interface {
 	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
 }
 
+// SettingsRepository defines operations for settings data persistence
 type SettingsRepository interface {
 	GetSetting(name string) (string, error)
 	SetSetting(name, value string) error

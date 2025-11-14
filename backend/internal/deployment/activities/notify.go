@@ -4,7 +4,7 @@ import (
 	"kubecloud/internal/shared"
 	"context"
 	"fmt"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/deployment/kubedeployer"

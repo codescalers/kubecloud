@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
 	"os"
@@ -193,9 +194,9 @@ func SetUp(t testing.TB) (setup, error) {
 		substrateClient: substrateClient,
 		router:          router,
 
-		userRepo:     models.NewGormUserRepository(db),
-		voucherRepo:  models.NewGormVoucherRepository(db),
-		invoicesRepo: models.NewGormInvoiceRepository(db),
+		userRepo:     persistence.NewGormUserRepository(db),
+		voucherRepo:  persistence.NewGormVoucherRepository(db),
+		invoicesRepo: persistence.NewGormInvoiceRepository(db),
 	}, nil
 }
 

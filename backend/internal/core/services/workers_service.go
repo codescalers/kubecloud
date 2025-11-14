@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/substrate"

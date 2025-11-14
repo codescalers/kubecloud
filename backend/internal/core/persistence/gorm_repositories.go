@@ -1,74 +1,79 @@
-package models
+package persistence
 
 import (
 	"errors"
 	"fmt"
+	"kubecloud/internal/core/models"
 	"time"
 
 	"gorm.io/gorm"
 )
 
+// User Repository
+
+var _ models.UserRepository = (*GormUserRepository)(nil)
+
 type GormUserRepository struct {
 	db *gorm.DB
 }
 
-func NewGormUserRepository(db DB) *GormUserRepository {
+func NewGormUserRepository(db models.DB) models.UserRepository {
 	return &GormUserRepository{db: db.GetDB()}
 }
 
 // RegisterUser registers a new user to the system
-func (r *GormUserRepository) RegisterUser(user *User) error {
+func (r *GormUserRepository) RegisterUser(user *models.User) error {
 	return r.db.Create(user).Error
 }
 
 // GetUserByEmail returns user by its email if found
-func (r *GormUserRepository) GetUserByEmail(email string) (User, error) {
-	var user User
+func (r *GormUserRepository) GetUserByEmail(email string) (models.User, error) {
+	var user models.User
 	query := r.db.First(&user, "email = ?", email)
 
 	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return User{}, ErrUserNotFound
+		return models.User{}, models.ErrUserNotFound
 	}
 
 	return user, query.Error
 }
 
-// GetUserByEmail returns user by its email if found
-func (r *GormUserRepository) GetUserByID(userID int) (User, error) {
-	var user User
+// GetUserByID returns user by its ID
+func (r *GormUserRepository) GetUserByID(userID int) (models.User, error) {
+	var user models.User
 	query := r.db.First(&user, "id = ?", userID)
 	return user, query.Error
 }
 
 // UpdateUserByID updates user data by its ID
-func (r *GormUserRepository) UpdateUserByID(user *User) error {
+func (r *GormUserRepository) UpdateUserByID(user *models.User) error {
 	if user.ID == 0 {
-		return ErrUserNotFound
+		return models.ErrUserNotFound
 	}
 
 	user.UpdatedAt = time.Now()
-	query := r.db.Model(&User{}).
+	query := r.db.Model(&models.User{}).
 		Where("id = ?", user.ID).
 		Updates(user)
 
 	if query.Error != nil {
 		if errors.Is(query.Error, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
+			return models.ErrUserNotFound
 		}
 
 		return query.Error
 	}
 
 	if query.RowsAffected == 0 {
-		return ErrUserNotFound
+		return models.ErrUserNotFound
 	}
 
 	return nil
 }
 
 // ListAllUsers lists all users in system
-func (r *GormUserRepository) ListAllUsers() ([]User, error) {
-	var users []User
+func (r *GormUserRepository) ListAllUsers() ([]models.User, error) {
+	var users []models.User
 
 	err := r.db.Find(&users).Error
 	if err != nil {
@@ -78,31 +83,31 @@ func (r *GormUserRepository) ListAllUsers() ([]User, error) {
 }
 
 // ListAdmins gets all admins
-func (r *GormUserRepository) ListAdmins() ([]User, error) {
-	var admins []User
+func (r *GormUserRepository) ListAdmins() ([]models.User, error) {
+	var admins []models.User
 	return admins, r.db.Where("admin = true and verified = true").Find(&admins).Error
 }
 
 // DeleteUserByID deletes user by its ID
 func (r *GormUserRepository) DeleteUserByID(userID int) error {
-	result := r.db.Where("id = ?", userID).Delete(&User{})
+	result := r.db.Where("id = ?", userID).Delete(&models.User{})
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
+			return models.ErrUserNotFound
 		}
 
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrUserNotFound
+		return models.ErrUserNotFound
 	}
 	return nil
 }
 
 // CreditUserBalance add credited balance to user by its ID
 func (r *GormUserRepository) CreditUserBalance(userID int, amount uint64) error {
-	return r.db.Model(&User{}).
+	return r.db.Model(&models.User{}).
 		Where("id = ?", userID).
 		UpdateColumn("credited_balance", gorm.Expr("credited_balance + ?", amount)).
 		Error
@@ -111,26 +116,25 @@ func (r *GormUserRepository) CreditUserBalance(userID int, amount uint64) error 
 // CountAllUsers returns the total number of users in the system
 func (r *GormUserRepository) CountAllUsers() (int64, error) {
 	var count int64
-	err := r.db.Model(&User{}).Count(&count).Error
+	err := r.db.Model(&models.User{}).Count(&count).Error
 	return count, err
 }
 
-// CreateNotification creates a new notification
 // CreateSSHKey creates a new SSH key for a user
-func (r *GormUserRepository) CreateSSHKey(sshKey *SSHKey) error {
+func (r *GormUserRepository) CreateSSHKey(sshKey *models.SSHKey) error {
 	sshKey.CreatedAt = time.Now()
 	sshKey.UpdatedAt = time.Now()
 	query := r.db.Create(sshKey)
 
 	if isUniqueViolation(query.Error) {
-		return ErrSSHKeyAlreadyExists
+		return models.ErrSSHKeyAlreadyExists
 	}
 	return query.Error
 }
 
 // ListUserSSHKeys returns all SSH keys for a user
-func (r *GormUserRepository) ListUserSSHKeys(userID int) ([]SSHKey, error) {
-	var sshKeys []SSHKey
+func (r *GormUserRepository) ListUserSSHKeys(userID int) ([]models.SSHKey, error) {
+	var sshKeys []models.SSHKey
 	err := r.db.Where("user_id = ?", userID).Find(&sshKeys).Error
 	if err != nil {
 		return nil, err
@@ -147,120 +151,119 @@ func (r *GormUserRepository) DeleteSSHKey(sshKeyID int, userID int) (string, err
 	}
 
 	// Then delete the SSH key
-	result := r.db.Where("id = ? AND user_id = ?", sshKeyID, userID).Delete(&SSHKey{})
+	result := r.db.Where("id = ? AND user_id = ?", sshKeyID, userID).Delete(&models.SSHKey{})
 	if result.Error != nil {
 		return "", result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return "", ErrSSHKeyNotFound
+		return "", models.ErrSSHKeyNotFound
 	}
 
 	return sshKey.Name, nil
 }
 
 // GetSSHKeyByID returns an SSH key by ID for a specific user
-func (r *GormUserRepository) GetSSHKeyByID(sshKeyID int, userID int) (SSHKey, error) {
-	var sshKey SSHKey
+func (r *GormUserRepository) GetSSHKeyByID(sshKeyID int, userID int) (models.SSHKey, error) {
+	var sshKey models.SSHKey
 	query := r.db.Where("id = ? AND user_id = ?", sshKeyID, userID).First(&sshKey)
 
 	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return SSHKey{}, ErrSSHKeyNotFound
+		return models.SSHKey{}, models.ErrSSHKeyNotFound
 	}
 
 	return sshKey, query.Error
 }
 
+// Cluster Repository
+
+var _ models.ClusterRepository = (*GormClusterRepository)(nil)
+
 type GormClusterRepository struct {
 	db *gorm.DB
 }
 
-func NewGormClusterRepository(db DB) *GormClusterRepository {
+func NewGormClusterRepository(db models.DB) models.ClusterRepository {
 	return &GormClusterRepository{db: db.GetDB()}
 }
 
-// CreateCluster creates a new cluster in the database
-func (r *GormClusterRepository) CreateCluster(userID int, cluster *Cluster) error {
+func (r *GormClusterRepository) CreateCluster(userID int, cluster *models.Cluster) error {
 	cluster.CreatedAt = time.Now()
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
 	return r.db.Create(cluster).Error
 }
 
-// ListUserClusters returns all clusters for a specific user
-func (r *GormClusterRepository) ListUserClusters(userID int) ([]Cluster, error) {
-	var clusters []Cluster
+func (r *GormClusterRepository) ListUserClusters(userID int) ([]models.Cluster, error) {
+	var clusters []models.Cluster
 	query := r.db.Where("user_id = ?", userID).Find(&clusters)
 	return clusters, query.Error
 }
 
-// GetClusterByName returns a cluster by name for a specific user
-func (r *GormClusterRepository) GetClusterByName(userID int, projectName string) (Cluster, error) {
-	var cluster Cluster
+func (r *GormClusterRepository) GetClusterByName(userID int, projectName string) (models.Cluster, error) {
+	var cluster models.Cluster
 	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).First(&cluster)
 
 	if query.Error != nil && errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return Cluster{}, ErrClusterNotFound
+		return models.Cluster{}, models.ErrClusterNotFound
 	}
 	return cluster, query.Error
 }
 
-// UpdateCluster updates an existing cluster
-func (r *GormClusterRepository) UpdateCluster(cluster *Cluster) error {
+func (r *GormClusterRepository) UpdateCluster(cluster *models.Cluster) error {
 	cluster.UpdatedAt = time.Now()
-	return r.db.Model(&Cluster{}).
+	return r.db.Model(&models.Cluster{}).
 		Where("user_id = ? AND project_name = ?", cluster.UserID, cluster.ProjectName).
 		Updates(cluster).Error
 }
 
-// DeleteCluster deletes a cluster by name for a specific user
 func (r *GormClusterRepository) DeleteCluster(userID int, projectName string) error {
-	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&Cluster{})
+	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&models.Cluster{})
 
 	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return ErrClusterNotFound
+		return models.ErrClusterNotFound
 	}
 
 	if query.RowsAffected == 0 {
-		return ErrClusterNotFound
+		return models.ErrClusterNotFound
 	}
 
 	return query.Error
 }
 
-// DeleteAllUserClusters deletes all clusters for a specific user
 func (r *GormClusterRepository) DeleteAllUserClusters(userID int) error {
-	return r.db.Where("user_id = ?", userID).Delete(&Cluster{}).Error
+	return r.db.Where("user_id = ?", userID).Delete(&models.Cluster{}).Error
 }
 
-// CountAllClusters returns the total number of clusters in the system
 func (r *GormClusterRepository) CountAllClusters() (int64, error) {
 	var count int64
-	err := r.db.Model(&Cluster{}).Count(&count).Error
+	err := r.db.Model(&models.Cluster{}).Count(&count).Error
 	return count, err
 }
 
-func (r *GormClusterRepository) ListAllClusters() ([]Cluster, error) {
-	var clusters []Cluster
+func (r *GormClusterRepository) ListAllClusters() ([]models.Cluster, error) {
+	var clusters []models.Cluster
 	return clusters, r.db.Find(&clusters).Error
 }
+
+// Voucher Repository
+
+var _ models.VoucherRepository = (*GormVoucherRepository)(nil)
 
 type GormVoucherRepository struct {
 	db *gorm.DB
 }
 
-func NewGormVoucherRepository(db DB) *GormVoucherRepository {
+func NewGormVoucherRepository(db models.DB) models.VoucherRepository {
 	return &GormVoucherRepository{db: db.GetDB()}
 }
 
-// CreateVoucher creates new voucher in system
-func (r *GormVoucherRepository) CreateVoucher(voucher *Voucher) error {
+func (r *GormVoucherRepository) CreateVoucher(voucher *models.Voucher) error {
 	return r.db.Create(voucher).Error
 }
 
-// ListAllVouchers gets all vouchers in system
-func (r *GormVoucherRepository) ListAllVouchers() ([]Voucher, error) {
-	var vouchers []Voucher
+func (r *GormVoucherRepository) ListAllVouchers() ([]models.Voucher, error) {
+	var vouchers []models.Voucher
 
 	err := r.db.Find(&vouchers).Error
 	if err != nil {
@@ -269,21 +272,19 @@ func (r *GormVoucherRepository) ListAllVouchers() ([]Voucher, error) {
 	return vouchers, nil
 }
 
-// GetVoucherByCode returns voucher by its code
-func (r *GormVoucherRepository) GetVoucherByCode(code string) (Voucher, error) {
-	var voucher Voucher
+func (r *GormVoucherRepository) GetVoucherByCode(code string) (models.Voucher, error) {
+	var voucher models.Voucher
 	query := r.db.First(&voucher, "code = ?", code)
 
 	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return Voucher{}, ErrVoucherNotFound
+		return models.Voucher{}, models.ErrVoucherNotFound
 	}
 
 	return voucher, query.Error
 }
 
-// RedeemVoucher updates status if voucher
 func (r *GormVoucherRepository) RedeemVoucher(code string) error {
-	result := r.db.Model(&Voucher{}).
+	result := r.db.Model(&models.Voucher{}).
 		Where("code = ?", code).
 		Update("redeemed", true)
 
@@ -298,81 +299,92 @@ func (r *GormVoucherRepository) RedeemVoucher(code string) error {
 	return nil
 }
 
+// UserNodes Repository
+
+var _ models.UserNodesRepository = (*GormUserNodesRepository)(nil)
+
 type GormUserNodesRepository struct {
 	db *gorm.DB
 }
 
-func NewGormUserNodesRepository(db DB) *GormUserNodesRepository {
+func NewGormUserNodesRepository(db models.DB) models.UserNodesRepository {
 	return &GormUserNodesRepository{db: db.GetDB()}
 }
 
-// CreateUserNode creates new node record for user
-func (r *GormUserNodesRepository) CreateUserNode(userNode *UserNodes) error {
+func (r *GormUserNodesRepository) CreateUserNode(userNode *models.UserNodes) error {
 	return r.db.Create(&userNode).Error
 }
 
-// DeleteUserNode deletes a node record for user by its contract ID
 func (r *GormUserNodesRepository) DeleteUserNode(contractID uint64) error {
-	return r.db.Where("contract_id = ?", contractID).Delete(&UserNodes{}).Error
+	return r.db.Where("contract_id = ?", contractID).Delete(&models.UserNodes{}).Error
 }
 
-// ListUserNodes returns all nodes records for user by its ID
-func (r *GormUserNodesRepository) ListUserNodes(userID int) ([]UserNodes, error) {
-	var userNodes []UserNodes
+func (r *GormUserNodesRepository) ListUserNodes(userID int) ([]models.UserNodes, error) {
+	var userNodes []models.UserNodes
 	return userNodes, r.db.Where("user_id = ?", userID).Find(&userNodes).Error
 }
 
-// ListAllReservedNodes returns all reserved nodes from all users
-func (r *GormUserNodesRepository) ListAllReservedNodes() ([]UserNodes, error) {
-	var userNodes []UserNodes
+func (r *GormUserNodesRepository) ListAllReservedNodes() ([]models.UserNodes, error) {
+	var userNodes []models.UserNodes
 	return userNodes, r.db.Find(&userNodes).Error
 }
 
-func (r *GormUserNodesRepository) GetUserNodeByNodeID(nodeID uint64) (UserNodes, error) {
-	var userNode UserNodes
+func (r *GormUserNodesRepository) GetUserNodeByNodeID(nodeID uint64) (models.UserNodes, error) {
+	var userNode models.UserNodes
 	result := r.db.Where("node_id = ?", nodeID).First(&userNode)
 
 	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return UserNodes{}, ErrUserNodeNotFound
+		return models.UserNodes{}, models.ErrUserNodeNotFound
 	}
 
 	return userNode, result.Error
 }
 
-func (r *GormUserNodesRepository) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
-	var userNode UserNodes
+func (r *GormUserNodesRepository) GetUserNodeByContractID(contractID uint64) (models.UserNodes, error) {
+	var userNode models.UserNodes
 	result := r.db.Where("contract_id = ?", contractID).First(&userNode)
 	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return UserNodes{}, ErrUserNodeNotFound
+		return models.UserNodes{}, models.ErrUserNodeNotFound
 	}
 
 	return userNode, result.Error
 }
+
+// Transaction Repository
+
+var _ models.TransactionRepository = (*GormTransactionRepository)(nil)
 
 type GormTransactionRepository struct {
 	db *gorm.DB
 }
 
-func NewGormTransactionRepository(db DB) *GormTransactionRepository {
+func NewGormTransactionRepository(db models.DB) models.TransactionRepository {
 	return &GormTransactionRepository{db: db.GetDB()}
 }
 
-// CreateTransaction creates a payment transaction
-func (r *GormTransactionRepository) CreateTransaction(transaction *Transaction) error {
+func (r *GormTransactionRepository) CreateTransaction(transaction *models.Transaction) error {
 	return r.db.Create(transaction).Error
 }
+
+// Settings Repository
+
+var _ models.SettingsRepository = (*GormSettingsRepository)(nil)
 
 type GormSettingsRepository struct {
 	db *gorm.DB
 }
 
-func NewGormSettingsRepository(db DB) *GormSettingsRepository {
+func NewGormSettingsRepository(db models.DB) models.SettingsRepository {
 	return &GormSettingsRepository{db: db.GetDB()}
 }
 
-// GetSetting retrieves a setting value by name
+const (
+	maintenanceModeEnabled  = "enabled"
+	maintenanceModeDisabled = "disabled"
+)
+
 func (r *GormSettingsRepository) GetSetting(name string) (string, error) {
-	var setting Settings
+	var setting models.Settings
 	err := r.db.Where("name = ?", name).First(&setting).Error
 	if err != nil {
 		return "", err
@@ -381,9 +393,8 @@ func (r *GormSettingsRepository) GetSetting(name string) (string, error) {
 	return setting.Value, nil
 }
 
-// SetSetting sets a setting value (creates or updates)
 func (r *GormSettingsRepository) SetSetting(name, value string) error {
-	setting := Settings{
+	setting := models.Settings{
 		Name:  name,
 		Value: value,
 	}
@@ -391,7 +402,6 @@ func (r *GormSettingsRepository) SetSetting(name, value string) error {
 	return r.db.Save(&setting).Error
 }
 
-// SetMaintenanceMode sets the maintenance mode
 func (r *GormSettingsRepository) SetMaintenanceMode(enabled bool) error {
 	value := maintenanceModeDisabled
 	if enabled {
@@ -400,7 +410,6 @@ func (r *GormSettingsRepository) SetMaintenanceMode(enabled bool) error {
 	return r.SetSetting("maintenance_mode", value)
 }
 
-// GetMaintenanceMode gets the current maintenance mode status
 func (r *GormSettingsRepository) GetMaintenanceMode() (bool, error) {
 	value, err := r.GetSetting("maintenance_mode")
 	if err != nil {
@@ -417,58 +426,64 @@ func (r *GormSettingsRepository) GetMaintenanceMode() (bool, error) {
 	return value == maintenanceModeEnabled, nil
 }
 
+// PendingRecord Repository
+
+var _ models.PendingRecordRepository = (*GormPendingRecordRepository)(nil)
+
 type GormPendingRecordRepository struct {
 	db *gorm.DB
 }
 
-func NewGormPendingRecordRepository(db DB) *GormPendingRecordRepository {
+func NewGormPendingRecordRepository(db models.DB) models.PendingRecordRepository {
 	return &GormPendingRecordRepository{db: db.GetDB()}
 }
 
-func (r *GormPendingRecordRepository) CreatePendingRecord(record *PendingRecord) error {
+func (r *GormPendingRecordRepository) CreatePendingRecord(record *models.PendingRecord) error {
 	record.CreatedAt = time.Now()
 	return r.db.Create(record).Error
 }
 
-func (r *GormPendingRecordRepository) ListAllPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
+func (r *GormPendingRecordRepository) ListAllPendingRecords() ([]models.PendingRecord, error) {
+	var pendingRecords []models.PendingRecord
 	return pendingRecords, r.db.Find(&pendingRecords).Error
 }
 
-func (r *GormPendingRecordRepository) ListOnlyPendingRecords() ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
+func (r *GormPendingRecordRepository) ListOnlyPendingRecords() ([]models.PendingRecord, error) {
+	var pendingRecords []models.PendingRecord
 	return pendingRecords, r.db.Where("tft_amount > transferred_tft_amount").Find(&pendingRecords).Error
 }
 
-func (r *GormPendingRecordRepository) ListUserPendingRecords(userID int) ([]PendingRecord, error) {
-	var pendingRecords []PendingRecord
+func (r *GormPendingRecordRepository) ListUserPendingRecords(userID int) ([]models.PendingRecord, error) {
+	var pendingRecords []models.PendingRecord
 	return pendingRecords, r.db.Where("user_id = ?", userID).Find(&pendingRecords).Error
 }
 
 func (r *GormPendingRecordRepository) UpdatePendingRecordTransferredAmount(id int, amount uint64) error {
-	return r.db.Model(&PendingRecord{}).
+	return r.db.Model(&models.PendingRecord{}).
 		Where("id = ?", id).
 		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
 		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
 		Error
 }
 
+// Notification Repository
+
+var _ models.NotificationRepository = (*GormNotificationRepository)(nil)
+
 type GormNotificationRepository struct {
 	db *gorm.DB
 }
 
-func NewGormNotificationRepository(db DB) *GormNotificationRepository {
+func NewGormNotificationRepository(db models.DB) models.NotificationRepository {
 	return &GormNotificationRepository{db: db.GetDB()}
 }
 
-// CreateNotification creates a new notification
-func (r *GormNotificationRepository) CreateNotification(notification *Notification) error {
+func (r *GormNotificationRepository) CreateNotification(notification *models.Notification) error {
 	return r.db.Create(notification).Error
 }
 
-// GetUserNotifications retrieves notifications for a user with pagination
-func (r *GormNotificationRepository) GetUserNotifications(userID int, limit, offset int) ([]Notification, error) {
-	var notifications []Notification
+func (r *GormNotificationRepository) GetUserNotifications(userID int, limit, offset int) ([]models.Notification, error) {
+	var notifications []models.Notification
 	err := r.db.Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(limit).
@@ -477,133 +492,128 @@ func (r *GormNotificationRepository) GetUserNotifications(userID int, limit, off
 	return notifications, err
 }
 
-// MarkNotificationAsRead marks a specific notification as read
 func (r *GormNotificationRepository) MarkNotificationAsRead(notificationID string, userID int) error {
 	now := time.Now()
-	result := r.db.Model(&Notification{}).
+	result := r.db.Model(&models.Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{
-			"status":  NotificationStatusRead,
+			"status":  models.NotificationStatusRead,
 			"read_at": &now,
 		})
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return ErrNotificationNotFound
+			return models.ErrNotificationNotFound
 		}
 
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrNotificationNotFound
+		return models.ErrNotificationNotFound
 	}
 
 	return nil
 }
 
-// MarkAllNotificationsAsRead marks all notifications as read for a user
 func (r *GormNotificationRepository) MarkAllNotificationsAsRead(userID int) error {
 	now := time.Now()
-	return r.db.Model(&Notification{}).
-		Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
+	return r.db.Model(&models.Notification{}).
+		Where("user_id = ? AND status = ?", userID, models.NotificationStatusUnread).
 		Updates(map[string]interface{}{
-			"status":  NotificationStatusRead,
+			"status":  models.NotificationStatusRead,
 			"read_at": &now,
 		}).Error
 }
 
-// DeleteNotification deletes a notification for a user
 func (r *GormNotificationRepository) DeleteNotification(notificationID string, userID int) error {
-	result := r.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&Notification{})
+	result := r.db.Where("id = ? AND user_id = ?", notificationID, userID).Delete(&models.Notification{})
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return ErrNotificationNotFound
+			return models.ErrNotificationNotFound
 		}
 
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrNotificationNotFound
+		return models.ErrNotificationNotFound
 	}
 
 	return nil
 }
 
-// GetUnreadNotifications retrieves only unread notifications for a user with pagination
-func (r *GormNotificationRepository) GetUnreadNotifications(userID int, limit, offset int) ([]Notification, error) {
-	var notifications []Notification
-	err := r.db.Where("user_id = ? AND status = ?", userID, NotificationStatusUnread).
+func (r *GormNotificationRepository) GetUnreadNotifications(userID int, limit, offset int) ([]models.Notification, error) {
+	var notifications []models.Notification
+	err := r.db.Where("user_id = ? AND status = ?", userID, models.NotificationStatusUnread).
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&notifications).Error
 	return notifications, err
 }
 
-// DeleteAllNotifications deletes all notifications for a user
 func (r *GormNotificationRepository) DeleteAllNotifications(userID int) error {
-	return r.db.Where("user_id = ?", userID).Delete(&Notification{}).Error
+	return r.db.Where("user_id = ?", userID).Delete(&models.Notification{}).Error
 }
 
-// MarkNotificationAsUnread marks a specific notification as unread
 func (r *GormNotificationRepository) MarkNotificationAsUnread(notificationID string, userID int) error {
-	result := r.db.Model(&Notification{}).
+	result := r.db.Model(&models.Notification{}).
 		Where("id = ? AND user_id = ?", notificationID, userID).
 		Updates(map[string]interface{}{
-			"status":  NotificationStatusUnread,
+			"status":  models.NotificationStatusUnread,
 			"read_at": nil,
 		})
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return ErrNotificationNotFound
+			return models.ErrNotificationNotFound
 		}
 
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrNotificationNotFound
+		return models.ErrNotificationNotFound
 	}
 
 	return nil
 }
 
+// Invoice Repository
+
+var _ models.InvoiceRepository = (*GormInvoiceRepository)(nil)
+
 type GormInvoiceRepository struct {
 	db *gorm.DB
 }
 
-func NewGormInvoiceRepository(db DB) *GormInvoiceRepository {
+func NewGormInvoiceRepository(db models.DB) models.InvoiceRepository {
 	return &GormInvoiceRepository{db: db.GetDB()}
 }
 
-// CreateInvoice creates new invoice
-func (r *GormInvoiceRepository) CreateInvoice(invoice *Invoice) error {
+func (r *GormInvoiceRepository) CreateInvoice(invoice *models.Invoice) error {
 	return r.db.Create(&invoice).Error
 }
 
-// GetInvoice returns an invoice by ID
-func (r *GormInvoiceRepository) GetInvoice(id int) (Invoice, error) {
-	var invoice Invoice
+func (r *GormInvoiceRepository) GetInvoice(id int) (models.Invoice, error) {
+	var invoice models.Invoice
 	err := r.db.First(&invoice, id).Error
 	if err != nil {
-		return Invoice{}, err
+		return models.Invoice{}, err
 	}
 
-	var nodes []NodeItem
+	var nodes []models.NodeItem
 	if err = r.db.Model(&invoice).Association("Nodes").Find(&nodes); err != nil {
-		return Invoice{}, err
+		return models.Invoice{}, err
 	}
 
 	invoice.Nodes = nodes
 	return invoice, nil
 }
 
-// ListUserInvoices returns all invoices of user
-func (r *GormInvoiceRepository) ListUserInvoices(userID int) ([]Invoice, error) {
-	var invoices []Invoice
+func (r *GormInvoiceRepository) ListUserInvoices(userID int) ([]models.Invoice, error) {
+	var invoices []models.Invoice
 	err := r.db.Where("user_id = ?", userID).Find(&invoices).Error
 	if err != nil {
 		return nil, err
@@ -618,9 +628,8 @@ func (r *GormInvoiceRepository) ListUserInvoices(userID int) ([]Invoice, error) 
 	return invoices, nil
 }
 
-// ListInvoices returns all invoices (admin)
-func (r *GormInvoiceRepository) ListInvoices() ([]Invoice, error) {
-	var invoices []Invoice
+func (r *GormInvoiceRepository) ListInvoices() ([]models.Invoice, error) {
+	var invoices []models.Invoice
 	err := r.db.Find(&invoices).Error
 
 	if err != nil {
@@ -637,5 +646,5 @@ func (r *GormInvoiceRepository) ListInvoices() ([]Invoice, error) {
 }
 
 func (r *GormInvoiceRepository) UpdateInvoicePDF(id int, data []byte) error {
-	return r.db.Model(&Invoice{}).Where("id = ?", id).Updates(map[string]interface{}{"file_data": data}).Error
+	return r.db.Model(&models.Invoice{}).Where("id = ?", id).Updates(map[string]interface{}{"file_data": data}).Error
 }

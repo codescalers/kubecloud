@@ -13,7 +13,7 @@ import (
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"

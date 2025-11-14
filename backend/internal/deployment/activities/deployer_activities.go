@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/core/notification"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/core/models"
