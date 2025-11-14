@@ -3,15 +3,15 @@ package notification
 import (
 	"fmt"
 
-	"kubecloud/internal/shared"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/realtime"
 )
 
 type SSENotifier struct {
-	sse *shared.SSEManager
+	sse *realtime.SSEManager
 }
 
-func NewSSENotifier(sse *shared.SSEManager) *SSENotifier {
+func NewSSENotifier(sse *realtime.SSEManager) *SSENotifier {
 	return &SSENotifier{sse: sse}
 }
 
@@ -43,6 +43,6 @@ func (n *SSENotifier) Notify(notification models.Notification, receiver ...strin
 	return nil
 }
 
-func (n *SSENotifier) GetSSEManager() *shared.SSEManager {
+func (n *SSENotifier) GetSSEManager() *realtime.SSEManager {
 	return n.sse
 }

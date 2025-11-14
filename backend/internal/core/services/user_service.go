@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure"
+	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
@@ -22,7 +22,7 @@ type UserService struct {
 	substrateClient substrate.Substrate
 	randomizer      shared.Randomizer
 	ewfEngine       *ewf.Engine
-	kycClient       *infrastructure.KYCClient
+	kycClient       *kyc.KYCClient
 	metrics         *metrics.Metrics
 
 	// configs
@@ -37,7 +37,7 @@ func NewUserService(appCtx context.Context,
 	substrateClient substrate.Substrate,
 	randomizer shared.Randomizer,
 	ewfEngine *ewf.Engine,
-	kycClient *infrastructure.KYCClient,
+	kycClient *kyc.KYCClient,
 	metrics *metrics.Metrics,
 	codeTimeoutMin int,
 	systemAdmins []string,

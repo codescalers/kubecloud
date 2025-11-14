@@ -9,10 +9,11 @@ import (
 	"kubecloud/internal/core/notification"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
-	"kubecloud/internal/infrastructure"
+	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
+	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/substrate"
 	shared "kubecloud/internal/shared"
 	"net/url"
@@ -63,13 +64,13 @@ type appSecurity struct {
 	sponsorKeyPair subkey.KeyPair
 	sponsorAddress string
 	sshPublicKey   string
-	kycClient      *infrastructure.KYCClient
+	kycClient      *kyc.KYCClient
 }
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
 	mailService        mailservice.MailService
-	sseManager         *shared.SSEManager
+	sseManager         *realtime.SSEManager
 	notificationSender notification.NotificationSender
 }
 
@@ -182,7 +183,7 @@ func createAppSecurity(ctx context.Context, config shared.Configuration) (appSec
 	}
 	kycChallengeDomain := parsedUrl.Hostname()
 
-	kycClient := infrastructure.NewKYCClient(
+	kycClient := kyc.NewKYCClient(
 		kycVerifierAPIURL,
 		kycChallengeDomain,
 		nil, // Use default http.Client
@@ -220,7 +221,7 @@ func createAppCommunication(ctx context.Context, config shared.Configuration, db
 	}
 
 	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
-	sseManager := shared.NewSSEManager()
+	sseManager := realtime.NewSSEManager()
 
 	notificationRepo := models.NewGormNotificationRepository(db)
 	notificationService, err := notification.NewNotificationService(notificationRepo, ewfEngine, config.Notification)

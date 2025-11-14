@@ -6,7 +6,7 @@ import (
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure"
+	"kubecloud/internal/infrastructure/kyc"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
@@ -236,7 +236,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-func CreateKYCSponsorship(kycClient *infrastructure.KYCClient, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
+func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_kyc_sponsorship")
 		userIDVal, ok := state["user_id"]
