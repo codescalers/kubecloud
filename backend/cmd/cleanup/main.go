@@ -3,7 +3,8 @@ package main
 import (
 	"flag"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/persistence"
+	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
 	"os"
@@ -56,7 +57,7 @@ func main() {
 		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
-	db, err := models.NewGormDB(config.Database.DSN, dbPoolConfig)
+	db, err := persistence.NewGormDB(config.Database.DSN, dbPoolConfig)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
@@ -75,6 +76,6 @@ func main() {
 
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(persistence.NewGormUserRepository(db), config, substrateClient)
+	moneyCollector := moneycollector.NewMoneyCollector(corepersistence.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
 }

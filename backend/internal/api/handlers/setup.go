@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/persistence"
+	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
 	"os"
@@ -159,7 +160,7 @@ func SetUp(t testing.TB) (setup, error) {
 	// Add recovery middleware
 	router.Use(gin.Recovery())
 
-	db, err := models.NewGormDB(configuration.Database.DSN, models.DBPoolConfig{})
+	db, err := persistence.NewGormDB(configuration.Database.DSN, models.DBPoolConfig{})
 	if err != nil {
 		return setup{}, fmt.Errorf("failed to create user storage: %w", err)
 	}
@@ -181,9 +182,9 @@ func SetUp(t testing.TB) (setup, error) {
 		substrateClient: substrateClient,
 		router:          router,
 
-		userRepo:     persistence.NewGormUserRepository(db),
-		voucherRepo:  persistence.NewGormVoucherRepository(db),
-		invoicesRepo: persistence.NewGormInvoiceRepository(db),
+		userRepo:     corepersistence.NewGormUserRepository(db),
+		voucherRepo:  corepersistence.NewGormVoucherRepository(db),
+		invoicesRepo: corepersistence.NewGormInvoiceRepository(db),
 	}, nil
 }
 

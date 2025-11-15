@@ -1,10 +1,11 @@
-package models
+package persistence
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 
+	"kubecloud/internal/core/models"
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
@@ -13,7 +14,7 @@ type GormEWFRepository struct {
 	db *gorm.DB
 }
 
-func NewGormEWFRepository(db DB) *GormEWFRepository {
+func NewGormEWFRepository(db models.DB) *GormEWFRepository {
 	return &GormEWFRepository{db: db.GetDB()}
 }
 

@@ -1,11 +1,13 @@
-package models
+package persistence
 
 import (
 	"context"
 	"fmt"
+
+	"kubecloud/internal/core/models"
 )
 
-func MigrateAll(ctx context.Context, src DB, dst DB) error {
+func MigrateAll(ctx context.Context, src models.DB, dst models.DB) error {
 	srcGormDB := &GormDB{db: src.GetDB()}
 	dstGormDB := &GormDB{db: dst.GetDB()}
 
@@ -50,7 +52,7 @@ func insertOnConflictReturnError[T any](ctx context.Context, dst *GormDB, rows [
 }
 
 func migrateUsers(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []User
+	var rows []models.User
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -58,7 +60,7 @@ func migrateUsers(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateSSHKeys(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []SSHKey
+	var rows []models.SSHKey
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -66,7 +68,7 @@ func migrateSSHKeys(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateVouchers(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []Voucher
+	var rows []models.Voucher
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -74,7 +76,7 @@ func migrateVouchers(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateTransactions(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []Transaction
+	var rows []models.Transaction
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -82,7 +84,7 @@ func migrateTransactions(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateInvoices(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []Invoice
+	var rows []models.Invoice
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -90,7 +92,7 @@ func migrateInvoices(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateNodeItems(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []NodeItem
+	var rows []models.NodeItem
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -98,7 +100,7 @@ func migrateNodeItems(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateUserNodes(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []UserNodes
+	var rows []models.UserNodes
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func migrateUserNodes(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migrateClusters(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []Cluster
+	var rows []models.Cluster
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -114,7 +116,7 @@ func migrateClusters(ctx context.Context, src *GormDB, dst *GormDB) error {
 }
 
 func migratePendingRecords(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []PendingRecord
+	var rows []models.PendingRecord
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -122,7 +124,7 @@ func migratePendingRecords(ctx context.Context, src *GormDB, dst *GormDB) error 
 }
 
 func migrateNotificationsToDst(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []Notification
+	var rows []models.Notification
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}

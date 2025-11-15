@@ -7,7 +7,8 @@ import (
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/core/persistence"
+	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/infrastructure/kyc"
@@ -122,13 +123,13 @@ func createAppCore(ctx context.Context, config shared.Configuration) (appCore, e
 		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
-	db, err := models.NewGormDB(config.Database.DSN, dbPoolConfig)
+	db, err := persistence.NewGormDB(config.Database.DSN, dbPoolConfig)
 	if err != nil {
 		return appCore{}, fmt.Errorf("failed to create user storage: %w", err)
 	}
 
 	// create storage for workflows
-	ewfStore := models.NewGormEWFRepository(db)
+	ewfStore := corepersistence.NewGormEWFRepository(db)
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", config.Redis.Hostname, config.Redis.Port),
@@ -222,8 +223,8 @@ func createAppCommunication(ctx context.Context, config shared.Configuration, db
 	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
 	sseManager := realtime.NewSSEManager()
 
-	notificationRepo := persistence.NewGormNotificationRepository(db)
-	userRepo := persistence.NewGormUserRepository(db)
+	notificationRepo := corepersistence.NewGormNotificationRepository(db)
+	userRepo := corepersistence.NewGormUserRepository(db)
 	notificationDispatcher, err := notification.NewNotificationDispatcher(notificationRepo, userRepo, ewfEngine)
 	if err != nil {
 		return appCommunication{}, fmt.Errorf("failed to create notification dispatcher: %w", err)
@@ -298,15 +299,15 @@ func createAppInfrastructure(config shared.Configuration) (appInfrastructure, er
 
 func (app *App) createHandlers() appHandlers {
 	// Repositories
-	userRepo := persistence.NewGormUserRepository(app.core.db)
-	voucherRepo := persistence.NewGormVoucherRepository(app.core.db)
-	pendingRecordRepo := persistence.NewGormPendingRecordRepository(app.core.db)
-	notificationRepo := persistence.NewGormNotificationRepository(app.core.db)
-	clusterRepo := persistence.NewGormClusterRepository(app.core.db)
-	invoiceRepo := persistence.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := persistence.NewGormUserNodesRepository(app.core.db)
-	transactionRepo := persistence.NewGormTransactionRepository(app.core.db)
-	settingsRepo := persistence.NewGormSettingsRepository(app.core.db)
+	userRepo := corepersistence.NewGormUserRepository(app.core.db)
+	voucherRepo := corepersistence.NewGormVoucherRepository(app.core.db)
+	pendingRecordRepo := corepersistence.NewGormPendingRecordRepository(app.core.db)
+	notificationRepo := corepersistence.NewGormNotificationRepository(app.core.db)
+	clusterRepo := corepersistence.NewGormClusterRepository(app.core.db)
+	invoiceRepo := corepersistence.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
+	transactionRepo := corepersistence.NewGormTransactionRepository(app.core.db)
+	settingsRepo := corepersistence.NewGormSettingsRepository(app.core.db)
 
 	// Services
 	userService := services.NewUserService(
@@ -374,11 +375,11 @@ func (app *App) createHandlers() appHandlers {
 }
 
 func (app *App) createWorkers() workers.Workers {
-	userRepo := persistence.NewGormUserRepository(app.core.db)
-	pendingRecordRepo := persistence.NewGormPendingRecordRepository(app.core.db)
-	clusterRepo := persistence.NewGormClusterRepository(app.core.db)
-	invoiceRepo := persistence.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := persistence.NewGormUserNodesRepository(app.core.db)
+	userRepo := corepersistence.NewGormUserRepository(app.core.db)
+	pendingRecordRepo := corepersistence.NewGormPendingRecordRepository(app.core.db)
+	clusterRepo := corepersistence.NewGormClusterRepository(app.core.db)
+	invoiceRepo := corepersistence.NewGormInvoiceRepository(app.core.db)
+	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,

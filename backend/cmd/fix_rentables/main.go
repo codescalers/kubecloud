@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/persistence"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -31,7 +32,7 @@ func main() {
 	}
 
 	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetimeMinutes: maxLife, ConnMaxIdleTimeMinutes: maxIdleTime}
-	db, err := models.NewGormDB(dsn, pool)
+	db, err := persistence.NewGormDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return

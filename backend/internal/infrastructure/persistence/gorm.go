@@ -1,12 +1,13 @@
-package models
+package persistence
 
 import (
 	"context"
 
+	"kubecloud/internal/core/models"
 	"gorm.io/gorm"
 )
 
-// GormDB struct implements db interface with gorm
+// GormDB struct implements models.DB interface with gorm
 type GormDB struct {
 	db *gorm.DB
 }
@@ -24,17 +25,17 @@ func NewGormStorage(dialector gorm.Dialector) (*GormDB, error) {
 func newGormDB(db *gorm.DB) (*GormDB, error) {
 	// Migrate models
 	err := db.AutoMigrate(
-		&User{},
-		&Voucher{},
-		Transaction{},
-		Invoice{},
-		NodeItem{},
-		UserNodes{},
-		&Notification{},
-		&SSHKey{},
-		&Cluster{},
-		&PendingRecord{},
-		&Settings{},
+		&models.User{},
+		&models.Voucher{},
+		models.Transaction{},
+		models.Invoice{},
+		models.NodeItem{},
+		models.UserNodes{},
+		&models.Notification{},
+		&models.SSHKey{},
+		&models.Cluster{},
+		&models.PendingRecord{},
+		&models.Settings{},
 	)
 	if err != nil {
 		return nil, err

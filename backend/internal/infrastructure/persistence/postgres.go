@@ -1,20 +1,14 @@
-package models
+package persistence
 
 import (
 	"time"
 
+	"kubecloud/internal/core/models"
 	"gorm.io/driver/postgres"
 )
 
-type DBPoolConfig struct {
-	MaxOpenConns           int `json:"max_open_conns"`
-	MaxIdleConns           int `json:"max_idle_conns"`
-	ConnMaxLifetimeMinutes int `json:"conn_max_lifetime_minutes"`
-	ConnMaxIdleTimeMinutes int `json:"conn_max_idle_time_minutes"`
-}
-
 // NewPostgresGormDB returns a models.DB using Postgres as the backend (with AutoMigrate)
-func NewPostgresGormDB(dsn string, cfg DBPoolConfig) (*GormDB, error) {
+func NewPostgresGormDB(dsn string, cfg models.DBPoolConfig) (models.DB, error) {
 	dialector := postgres.Open(dsn)
 	storage, err := NewGormStorage(dialector)
 	if err != nil {
@@ -24,7 +18,7 @@ func NewPostgresGormDB(dsn string, cfg DBPoolConfig) (*GormDB, error) {
 	return storage, nil
 }
 
-func ConfigureSQLPool(storage DB, cfg DBPoolConfig) {
+func ConfigureSQLPool(storage models.DB, cfg models.DBPoolConfig) {
 	if storage == nil {
 		return
 	}

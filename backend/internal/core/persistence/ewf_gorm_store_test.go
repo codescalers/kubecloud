@@ -1,4 +1,4 @@
-package models
+package persistence
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	infrapers "kubecloud/internal/infrastructure/persistence"
 	"github.com/stretchr/testify/require"
 	"github.com/xmonader/ewf"
 	"gorm.io/driver/sqlite"
@@ -25,7 +26,7 @@ func TestGormStore_SaveAndLoad(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
+	sqlDB, err := infrapers.NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -77,7 +78,7 @@ func TestGormStore_LoadNotFound(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
+	sqlDB, err := infrapers.NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -116,7 +117,7 @@ func TestGormStore_SaveAndLoadQueues(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
+	sqlDB, err := infrapers.NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -193,7 +194,7 @@ func TestGormStore_DeleteQueue(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	sqlDB, err := NewGormStorage(sqlite.Open(dbFile))
+	sqlDB, err := infrapers.NewGormStorage(sqlite.Open(dbFile))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
