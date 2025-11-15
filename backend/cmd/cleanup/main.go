@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"os"
 
 	moneycollector "kubecloud/cmd/cleanup/moneycollector"
@@ -16,7 +17,7 @@ import (
 	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-var config shared.Configuration
+var config cfg.Configuration
 
 func loadConfig(configPath string) {
 	viper.SetConfigFile(configPath)
@@ -25,19 +26,19 @@ func loadConfig(configPath string) {
 		os.Exit(1)
 	}
 
-	config = shared.Configuration{
-		Database: shared.DB{
+	config = cfg.Configuration{
+		Database: cfg.DB{
 			DSN:                    viper.GetString("database.dsn"),
 			MaxOpenConns:           viper.GetInt("database.max_open_conns"),
 			MaxIdleConns:           viper.GetInt("database.max_idle_conns"),
 			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
 			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
-		SystemAccount: shared.GridAccount{
+		SystemAccount: cfg.GridAccount{
 			Mnemonic: viper.GetString("system_account.mnemonic"),
 			Network:  viper.GetString("system_account.network"),
 		},
-		MailSender: shared.MailSender{
+		MailSender: cfg.MailSender{
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
 	}

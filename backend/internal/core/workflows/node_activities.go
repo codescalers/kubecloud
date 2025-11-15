@@ -1,15 +1,21 @@
 package workflows
 
 import (
-	"kubecloud/internal/shared"
 	"context"
 	"fmt"
-	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
+)
+
+// Node status constants
+const (
+	NodeRentable           = "rentable"
+	NodeRented             = "rented"
+	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
 func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
@@ -101,7 +107,7 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 			return fmt.Errorf("failed to get node: %w", err)
 		}
 
-		reached := targetStatus == shared.NodeRentable && node.Rentable || targetStatus == shared.NodeRented && !node.Rentable
+		reached := targetStatus == NodeRentable && node.Rentable || targetStatus == NodeRented && !node.Rentable
 
 		if !reached {
 			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeIDUint32, targetStatus, node.Rentable)

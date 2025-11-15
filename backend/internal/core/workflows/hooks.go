@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"kubecloud/internal/shared"
+	metricsLib "kubecloud/internal/infrastructure/metrics"
+
 	"time"
 
 	"kubecloud/internal/deployment/kubedeployer"
@@ -170,17 +171,17 @@ func newKubecloudWorkflowTemplate(n *notification.NotificationDispatcher) ewf.Wo
 func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.ForOperation("workflow", "hook_add_node_failure").With().Str("workflow_name", wf.Name).Logger()
-		if err == nil || wf.Name != shared.WorkflowAddNode {
+		if err == nil || wf.Name != WorkflowAddNode {
 			return
 		}
-		metrics.IncrementClusterOperationFailure(shared.ClusterOperationAddNode)
+		metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationAddNode)
 		node, err := getFromState[kubedeployer.Node](wf.State, "node")
 		if err != nil {
 			log.Error().Err(err).Msg("missing or invalid 'node' in workflow state")
 			return
 		}
 
-		rollbackWf, rollbackErr := engine.NewWorkflow(shared.WorkflowRollbackFailedAddNode)
+		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode)
 		if rollbackErr != nil {
 			log.Error().
 				Err(rollbackErr).
@@ -216,11 +217,11 @@ func metricsSuccessHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 		if err != nil {
 			return
 		}
-		if wf.Name == shared.WorkflowAddNode {
-			metrics.IncrementClusterOperationSuccess(shared.ClusterOperationAddNode)
+		if wf.Name == WorkflowAddNode {
+			metrics.IncrementClusterOperationSuccess(metricsLib.ClusterOperationAddNode)
 		}
-		if wf.Name == shared.WorkflowRemoveNode {
-			metrics.IncrementClusterOperationSuccess(shared.ClusterOperationRemoveNode)
+		if wf.Name == WorkflowRemoveNode {
+			metrics.IncrementClusterOperationSuccess(metricsLib.ClusterOperationRemoveNode)
 		}
 		if isDeployWorkflow(wf.Name) {
 			metrics.IncActiveClusterCount()
@@ -239,12 +240,12 @@ func metricsFailureHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 			return
 		}
 		switch wf.Name {
-		case shared.WorkflowDeleteCluster:
-			metrics.IncrementClusterOperationFailure(shared.ClusterOperationDeleteCluster)
-		case shared.WorkflowRemoveNode:
-			metrics.IncrementClusterOperationFailure(shared.ClusterOperationRemoveNode)
-		case shared.WorkflowDeleteAllClusters:
-			metrics.IncrementClusterOperationFailure(shared.ClusterOperationDeleteAllClusters)
+		case WorkflowDeleteCluster:
+			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationDeleteCluster)
+		case WorkflowRemoveNode:
+			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationRemoveNode)
+		case WorkflowDeleteAllClusters:
+			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationDeleteAllClusters)
 		}
 	}
 }

@@ -1,7 +1,7 @@
-package shared
+package workflows
 
+// Workflow names
 const (
-	// Workflow names
 	WorkflowChargeBalance            = "charge-balance"
 	WorkflowAdminCreditBalance       = "admin-credit-balance"
 	WorkflowUserRegistration         = "user-registration"
@@ -18,8 +18,10 @@ const (
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
 	WorkflowTrackClusterHealth       = "track-cluster-health"
 	WorkflowRollbackFailedAddNode    = "rollback-add-node"
+)
 
-	// Step names
+// Step names
+const (
 	StepCreatePaymentIntent     = "create_payment_intent"
 	StepCreatePendingRecord     = "create_pending_record"
 	StepUpdateCreditCardBalance = "update_user_balance"
@@ -53,14 +55,4 @@ const (
 	StepSendUINotification      = "send-ui-notification"
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
-
-	NodeRentable           = "rentable"
-	NodeRented             = "rented"
-	NodeHasActiveContracts = "NodeHasActiveContracts"
-
-	// Cluster operation names for metrics
-	ClusterOperationAddNode           = "add_node"
-	ClusterOperationRemoveNode        = "remove_node"
-	ClusterOperationDeleteCluster     = "delete_cluster"
-	ClusterOperationDeleteAllClusters = "delete_all_user_clusters"
 )

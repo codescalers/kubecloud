@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"sync"
 	"time"
 
@@ -127,7 +129,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		return err
 	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowAdminCreditBalance)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance)
 	if err != nil {
 		return err
 	}
@@ -197,7 +199,7 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 }
 
 func (svc *AdminService) generateVoucherWithTimestamp() string {
-	voucherCode := shared.GenerateVoucherCode(8) // Default to 8-character vouchers
+	voucherCode := generators.GenerateVoucherCode(8) // Default to 8-character vouchers
 	timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 	return fmt.Sprintf("%s-%s", voucherCode, timestampPart)
 }

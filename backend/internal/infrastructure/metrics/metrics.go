@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/shared"
+
 	"net/http"
 	"runtime"
 	"time"
@@ -13,7 +13,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const MetricsCollectorInterval = 10 * time.Second
+const (
+	MetricsCollectorInterval = 10 * time.Second
+
+	// Cluster operation names for metrics
+	ClusterOperationAddNode           = "add_node"
+	ClusterOperationRemoveNode        = "remove_node"
+	ClusterOperationDeleteCluster     = "delete_cluster"
+	ClusterOperationDeleteAllClusters = "delete_all_user_clusters"
+)
 
 // Metrics holds all the Prometheus metrics for the application
 type Metrics struct {
@@ -195,10 +203,10 @@ func NewMetrics() *Metrics {
 	)
 
 	operations := []string{
-		shared.ClusterOperationAddNode,
-		shared.ClusterOperationRemoveNode,
-		shared.ClusterOperationDeleteCluster,
-		shared.ClusterOperationDeleteAllClusters,
+		ClusterOperationAddNode,
+		ClusterOperationRemoveNode,
+		ClusterOperationDeleteCluster,
+		ClusterOperationDeleteAllClusters,
 	}
 	for _, op := range operations {
 		m.clusterOperationsSuccesses.WithLabelValues(op).Add(0)

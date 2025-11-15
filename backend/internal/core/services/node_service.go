@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -159,7 +160,7 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 }
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowReserveNode)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode)
 	if err != nil {
 		return "", err
 	}
@@ -168,7 +169,7 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 		"user_id":       userID,
 		"mnemonic":      userMnemonic,
 		"node_id":       nodeID,
-		"target_status": shared.NodeRented,
+		"target_status": workflows.NodeRented,
 	}
 
 	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
@@ -179,7 +180,7 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 }
 
 func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, contractID uint64, nodeID uint32) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowUnreserveNode)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +190,7 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 		"mnemonic":      userMnemonic,
 		"contract_id":   contractID,
 		"node_id":       nodeID,
-		"target_status": shared.NodeRentable,
+		"target_status": workflows.NodeRentable,
 	}
 
 	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
@@ -200,9 +201,9 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 }
 
 func (svc *NodeService) runAsyncWithQueue(userID int, wf *ewf.Workflow) error {
-	queueName := fmt.Sprintf("%s:user_%d", shared.DefaultQueueConfig.Name, userID)
+	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 
-	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, shared.DefaultQueueConfig.WorkersDef, shared.DefaultQueueConfig.QueueOptions)
+	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, cfg.DefaultQueueConfig.WorkersDef, cfg.DefaultQueueConfig.QueueOptions)
 	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
 		return err
 	}

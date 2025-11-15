@@ -6,19 +6,21 @@ import (
 	"kubecloud/internal/api/handlers"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
-	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
+	grid "kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
+	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/substrate"
-	shared "kubecloud/internal/shared"
+
 	"net/url"
 	"os"
 	"strings"
@@ -45,7 +47,7 @@ type appHandlers struct {
 }
 
 type appDependencies struct {
-	config        shared.Configuration
+	config        cfg.Configuration
 	core          appCore
 	security      appSecurity
 	communication appCommunication
@@ -71,10 +73,10 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailService             mailservice.MailService
-	sseManager              *realtime.SSEManager
-	notificationDispatcher  *notification.NotificationDispatcher
-	notificationSender      notification.NotificationSender
+	mailService            mailservice.MailService
+	sseManager             *realtime.SSEManager
+	notificationDispatcher *notification.NotificationDispatcher
+	notificationSender     notification.NotificationSender
 }
 
 // appInfrastructure contains grid and blockchain related services
@@ -85,7 +87,7 @@ type appInfrastructure struct {
 	substrateClient substrate.Substrate
 }
 
-func createAppDependencies(ctx context.Context, config shared.Configuration) (appDependencies, error) {
+func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDependencies, error) {
 	appCore, err := createAppCore(ctx, config)
 	if err != nil {
 		return appDependencies{}, err
@@ -115,7 +117,7 @@ func createAppDependencies(ctx context.Context, config shared.Configuration) (ap
 	}, nil
 }
 
-func createAppCore(ctx context.Context, config shared.Configuration) (appCore, error) {
+func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, error) {
 	dbPoolConfig := models.DBPoolConfig{
 		MaxOpenConns:           config.Database.MaxOpenConns,
 		MaxIdleConns:           config.Database.MaxIdleConns,
@@ -158,7 +160,7 @@ func createAppCore(ctx context.Context, config shared.Configuration) (appCore, e
 	}, nil
 }
 
-func createAppSecurity(ctx context.Context, config shared.Configuration) (appSecurity, error) {
+func createAppSecurity(ctx context.Context, config cfg.Configuration) (appSecurity, error) {
 	tokenManager := auth.NewTokenHandler(
 		config.JwtToken.Secret,
 		time.Duration(config.JwtToken.AccessExpiryMinutes)*time.Minute,
@@ -176,7 +178,7 @@ func createAppSecurity(ctx context.Context, config shared.Configuration) (appSec
 	}
 
 	// Initialize KYC client
-	kycVerifierAPIURL := shared.KYCURLs[config.SystemAccount.Network]
+	kycVerifierAPIURL := grid.KYCURLs[config.SystemAccount.Network]
 	parsedUrl, err := url.Parse(kycVerifierAPIURL)
 	if err != nil {
 		return appSecurity{}, fmt.Errorf("failed to parse KYC verifier API URL: %w", err)
@@ -210,7 +212,7 @@ func createAppSecurity(ctx context.Context, config shared.Configuration) (appSec
 	}, nil
 }
 
-func createAppCommunication(ctx context.Context, config shared.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+func createAppCommunication(ctx context.Context, config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
 	var mailService mailservice.MailService
 
 	if config.DevMode {
@@ -253,7 +255,7 @@ func createAppCommunication(ctx context.Context, config shared.Configuration, db
 	}, nil
 }
 
-func createAppInfrastructure(config shared.Configuration) (appInfrastructure, error) {
+func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),
@@ -270,7 +272,7 @@ func createAppInfrastructure(config shared.Configuration) (appInfrastructure, er
 		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
 	}
 
-	fireSquidClient, err := graphql.NewGraphQl(shared.FireSquidURLs[config.SystemAccount.Network]...)
+	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
 		return appInfrastructure{}, fmt.Errorf("failed to connect to firesquid client: %w", err)

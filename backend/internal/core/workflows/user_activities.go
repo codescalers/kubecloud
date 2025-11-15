@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/kyc"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"slices"
 	"strings"
 
@@ -20,7 +22,7 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func CreateUserStep(config shared.Configuration, userRepo models.UserRepository) ewf.StepFn {
+func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -82,7 +84,7 @@ func CreateUserStep(config shared.Configuration, userRepo models.UserRepository)
 	}
 }
 
-func SendVerificationEmailStep(mailService mailservice.MailService, config shared.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, config cfg.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -102,7 +104,7 @@ func SendVerificationEmailStep(mailService mailservice.MailService, config share
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		code := shared.GenerateVerificationCode(config.VerificationCodeLength)
+		code := generators.GenerateVerificationCode(config.VerificationCodeLength)
 		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name)
 
 		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
@@ -295,7 +297,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 	}
 }
 
-func SendWelcomeEmailStep(mailService mailservice.MailService, config shared.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, config cfg.Configuration, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 

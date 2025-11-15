@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/billing"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"sync"
 	"time"
 
@@ -39,7 +41,7 @@ type WorkerService struct {
 
 	// configs
 	systemMnemonic                          string
-	invoiceCompanyData                      shared.InvoiceCompanyData
+	invoiceCompanyData                      cfg.InvoiceCompanyData
 	currency                                string
 	clusterHealthCheckIntervalInHours       int
 	reservedNodeHealthCheckIntervalInHours  int
@@ -55,7 +57,7 @@ func NewWorkersService(
 	mailService mailservice.MailService,
 	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationSender notification.NotificationSender,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
-	invoiceCompanyData shared.InvoiceCompanyData, systemMnemonic, currency string,
+	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
@@ -433,7 +435,7 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingR
 }
 
 func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowTrackClusterHealth)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowTrackClusterHealth)
 	if err != nil {
 		return fmt.Errorf("failed to create health tracking workflow: %w", err)
 	}

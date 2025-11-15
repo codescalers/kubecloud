@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"kubecloud/internal/core/models"
+
 	"gorm.io/driver/sqlite"
 )
 

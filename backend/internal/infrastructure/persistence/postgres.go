@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"kubecloud/internal/core/models"
+
 	"gorm.io/driver/postgres"
 )
 

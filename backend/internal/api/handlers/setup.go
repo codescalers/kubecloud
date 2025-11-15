@@ -3,11 +3,12 @@ package handlers
 import (
 	"fmt"
 	"kubecloud/internal/auth"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -133,7 +134,7 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	configuration, err := shared.LoadConfig()
+	configuration, err := cfg.LoadConfig()
 	if err != nil {
 		return setup{}, err
 	}

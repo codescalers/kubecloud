@@ -4,8 +4,9 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/shared"
+
 	"strconv"
 	"time"
 
@@ -40,7 +41,7 @@ type InvoicePDF struct {
 }
 
 func CreateInvoicePDF(
-	invoice models.Invoice, user models.User, companyData shared.InvoiceCompanyData,
+	invoice models.Invoice, user models.User, companyData cfg.InvoiceCompanyData,
 ) ([]byte, error) {
 	pdf := gopdf.GoPdf{}
 	config := gopdf.Config{PageSize: *gopdf.PageSizeA4}
@@ -90,7 +91,7 @@ func (in *InvoicePDF) setFonts() error {
 	return in.pdf.AddTTFFontData("Arial-Italic", arialItalicFont)
 }
 
-func (in *InvoicePDF) draw(companyData shared.InvoiceCompanyData) error {
+func (in *InvoicePDF) draw(companyData cfg.InvoiceCompanyData) error {
 	in.pdf.AddPage()
 
 	if err := in.setLogo(); err != nil {
@@ -198,7 +199,7 @@ func (in *InvoicePDF) title() error {
 	)
 }
 
-func (in *InvoicePDF) companySection(companyData shared.InvoiceCompanyData) error {
+func (in *InvoicePDF) companySection(companyData cfg.InvoiceCompanyData) error {
 	if err := in.pdf.SetFont("Arial-Bold", "", 10); err != nil {
 		return err
 	}

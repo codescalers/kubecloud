@@ -2,11 +2,12 @@ package services
 
 import (
 	"context"
+	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
 	"slices"
 	"time"
 
@@ -180,7 +181,7 @@ func (svc *UserService) GetVoucherByCode(voucherCode string) (models.Voucher, er
 }
 
 func (svc *UserService) GenerateRandomCode() int {
-	return shared.GenerateVerificationCode(4) // Default to 4-digit verification codes
+	return generators.GenerateVerificationCode(4) // Default to 4-digit verification codes
 }
 
 func (svc *UserService) IsVerificationCodeExpired(userLastUpdatedAt time.Time) bool {
@@ -196,7 +197,7 @@ func (svc *UserService) IsSystemAdmin(userEmail string) bool {
 }
 
 func (svc *UserService) AsyncRegisterUser(name, email, password string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowUserRegistration)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration)
 	if err != nil {
 		return "", err
 	}
@@ -212,7 +213,7 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 }
 
 func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, userID int, userEmail, username string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowUserVerification)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification)
 	if err != nil {
 		return "", err
 	}
@@ -233,7 +234,7 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 }
 
 func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowChargeBalance)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance)
 	if err != nil {
 		return "", err
 	}
@@ -258,7 +259,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		return "", err
 	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(shared.WorkflowRedeemVoucher)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher)
 	if err != nil {
 		return "", err
 	}

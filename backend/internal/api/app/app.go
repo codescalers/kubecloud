@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"kubecloud/internal/api/middlewares"
 	"kubecloud/internal/billing"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/shared"
+
 	"net"
 	"net/http"
 	"os"
@@ -30,7 +31,7 @@ import (
 type App struct {
 	router     *gin.Engine
 	httpServer *http.Server
-	config     shared.Configuration
+	config     cfg.Configuration
 
 	workers  workers.Workers
 	handlers appHandlers
@@ -39,7 +40,7 @@ type App struct {
 }
 
 // NewApp create new instance of the app with all configs
-func NewApp(ctx context.Context, config shared.Configuration) (*App, error) {
+func NewApp(ctx context.Context, config cfg.Configuration) (*App, error) {
 	// Disable gin's default logging since we're using zerolog
 	gin.DisableConsoleColor()
 	gin.SetMode(gin.ReleaseMode)

@@ -8,7 +8,7 @@ import (
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
-	"kubecloud/internal/shared"
+
 	"slices"
 
 	"kubecloud/internal/infrastructure/logger"
@@ -100,7 +100,7 @@ func notifyStepProgress(ctx context.Context, notificationDispatcher *notificatio
 		Str("workflow_name", workflowName).
 		Str("step_name", stepName).Logger()
 
-	if stepName != shared.StepDeployNetwork && !isDeployStep(stepName) {
+	if stepName != StepDeployNetwork && !isDeployStep(stepName) {
 		return
 	}
 
@@ -190,12 +190,12 @@ func getWorkflowDescription(workflowName string) string {
 }
 
 func isDeployWorkflow(name string) bool {
-	return name == shared.WorkflowDeployCluster
+	return name == WorkflowDeployCluster
 }
 
 func isDeployStep(stepName string) bool {
-	return stepName == shared.StepDeployLeaderNode ||
-		stepName == shared.StepBatchDeployAllNodes
+	return stepName == StepDeployLeaderNode ||
+		stepName == StepBatchDeployAllNodes
 }
 
 func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
@@ -218,7 +218,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		}
 	}
 
-	if wf.Name == shared.WorkflowAdminCreditBalance {
+	if wf.Name == WorkflowAdminCreditBalance {
 		adminID, ok := wf.State["admin_id"].(int)
 		if !ok {
 			log.Error().Msg("Missing or invalid 'admin_id' in workflow state")
@@ -292,7 +292,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		subject = "Adding Funds Succeeded"
 		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
 
-		if wf.Name == shared.WorkflowRedeemVoucher {
+		if wf.Name == WorkflowRedeemVoucher {
 			status = "voucher_redeemed"
 			subject = "Voucher Redeemed"
 			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
@@ -355,18 +355,18 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 	message = fmt.Sprintf("Node %d has been reserved successfully (contract_id=%d)", nodeID, contractID)
 
 	if err == nil {
-		if wf.Name == shared.WorkflowUnreserveNode {
+		if wf.Name == WorkflowUnreserveNode {
 			subject = "Node Unreserved Successfully"
 			message = fmt.Sprintf("Node %d has been unreserved successfully (contract_id=%d)", nodeID, contractID)
 		}
 	} else {
 		subject = "Node Reservation Failed"
 		message = fmt.Sprintf("Failed to reserve node %d: %s", nodeID, err.Error())
-		if wf.Name == shared.WorkflowUnreserveNode {
+		if wf.Name == WorkflowUnreserveNode {
 			subject = "Node Unreservation Failed"
 			message = fmt.Sprintf("Failed to unreserve node %d: %s", nodeID, err.Error())
 
-			if shared.NodeHasActiveContracts != "" && err.Error() == shared.NodeHasActiveContracts {
+			if NodeHasActiveContracts != "" && err.Error() == NodeHasActiveContracts {
 				message = fmt.Sprintf("Failed to unreserve node %d (contract_id=%d). This node has active workloads on it, please remove all deployments from it first", nodeID, contractID)
 			}
 		}
@@ -409,14 +409,14 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 	message = "Your account has been verified successfully"
 
 	if err == nil {
-		if wf.Name == shared.WorkflowUserRegistration {
+		if wf.Name == WorkflowUserRegistration {
 			subject = "Registration Completed"
 			message = "Your registration has been completed successfully"
 		}
 	} else {
 		subject = "Account Verification Failed"
 		message = fmt.Sprintf("Account verification process failed: %s", err.Error())
-		if wf.Name == shared.WorkflowUserRegistration {
+		if wf.Name == WorkflowUserRegistration {
 			subject = "User Registration Failed"
 			message = fmt.Sprintf("User registration process failed: %s", err.Error())
 		}
@@ -442,10 +442,10 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 }
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{shared.WorkflowChargeBalance, shared.WorkflowAdminCreditBalance, shared.WorkflowRedeemVoucher}
-	deployWf := []string{shared.WorkflowDeleteAllClusters, shared.WorkflowDeleteCluster, shared.WorkflowRemoveNode, shared.WorkflowAddNode, shared.WorkflowRollbackFailedDeployment}
-	nodesWf := []string{shared.WorkflowReserveNode, shared.WorkflowUnreserveNode}
-	userWf := []string{shared.WorkflowUserVerification, shared.WorkflowUserRegistration}
+	billingWf := []string{WorkflowChargeBalance, WorkflowAdminCreditBalance, WorkflowRedeemVoucher}
+	deployWf := []string{WorkflowDeleteAllClusters, WorkflowDeleteCluster, WorkflowRemoveNode, WorkflowAddNode, WorkflowRollbackFailedDeployment}
+	nodesWf := []string{WorkflowReserveNode, WorkflowUnreserveNode}
+	userWf := []string{WorkflowUserVerification, WorkflowUserRegistration}
 
 	switch {
 	case slices.Contains(billingWf, workflowName):
@@ -463,11 +463,11 @@ func workflowToNotificationType(workflowName string) models.NotificationType {
 
 func calculateCurrentStep(stepName string) int {
 	switch stepName {
-	case shared.StepDeployNetwork:
+	case StepDeployNetwork:
 		return 1
-	case shared.StepDeployLeaderNode:
+	case StepDeployLeaderNode:
 		return 2
-	case shared.StepBatchDeployAllNodes:
+	case StepBatchDeployAllNodes:
 		return 3
 	default:
 		return 0

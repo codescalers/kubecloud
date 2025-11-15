@@ -90,7 +90,6 @@ func NewNotificationDispatcher(
 	return s, nil
 }
 
-
 func (s *NotificationDispatcher) RegisterNotifier(notifier Notifier) {
 	s.notifiers[notifier.GetType()] = notifier
 }
@@ -135,7 +134,6 @@ func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.
 
 	return nil
 }
-
 
 func (s *NotificationDispatcher) applyTemplateFallbacks(notification *models.Notification) {
 	s.mu.RLock()

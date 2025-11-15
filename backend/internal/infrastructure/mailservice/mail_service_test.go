@@ -1,13 +1,14 @@
 package mailservice
 
 import (
+	cfg "kubecloud/internal/config"
 	"bytes"
 	"mime/multipart"
 	"strings"
 	"testing"
 
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/shared"
+	
 )
 
 // TestIsValidEmail tests email validation logic.
@@ -224,7 +225,7 @@ func TestFakeMailService_SystemAnnouncementMailBody(t *testing.T) {
 // - Creates service with proper configuration
 // - Stores email, host, and limits from config
 func TestSendGridMailService_NewSendGridMailService(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		TimeoutMin:          5,
@@ -253,7 +254,7 @@ func TestSendGridMailService_NewSendGridMailService(t *testing.T) {
 // - Body contains username in title case
 // - Body contains host placeholder substitution
 func TestSendGridMailService_ResetPasswordMailContent(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -288,7 +289,7 @@ func TestSendGridMailService_ResetPasswordMailContent(t *testing.T) {
 // - Body contains username
 // - Body contains host
 func TestSendGridMailService_SignUpMailContent(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -319,7 +320,7 @@ func TestSendGridMailService_SignUpMailContent(t *testing.T) {
 // - Body contains username
 // - Body contains host
 func TestSendGridMailService_WelcomeMailContent(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -347,7 +348,7 @@ func TestSendGridMailService_WelcomeMailContent(t *testing.T) {
 // - Body contains amount and currency
 // - Body contains invoice ID
 func TestSendGridMailService_InvoiceMailContent(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -381,7 +382,7 @@ func TestSendGridMailService_InvoiceMailContent(t *testing.T) {
 // - Replaces body with provided content
 // - Converts newlines to <br> tags
 func TestSendGridMailService_SystemAnnouncementMailBody(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -406,7 +407,7 @@ func TestSendGridMailService_SystemAnnouncementMailBody(t *testing.T) {
 // - Body contains number of records
 // - Body contains host
 func TestSendGridMailService_NotifyAdminsMailContent(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,
@@ -477,7 +478,7 @@ func TestIsAttachmentAllowed(t *testing.T) {
 // - File size validation against max attachment size
 // - File reading and data extraction
 func TestSendGridMailService_ParseAttachment(t *testing.T) {
-	config := shared.MailSender{
+	config := cfg.MailSender{
 		Email:               "system@example.com",
 		SendGridKey:         "test-key",
 		MaxConcurrentSends:  10,

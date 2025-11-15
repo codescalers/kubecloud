@@ -1,4 +1,4 @@
-package shared
+package grid
 
 import "github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 

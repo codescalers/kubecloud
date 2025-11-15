@@ -3,7 +3,7 @@ package persistence
 import (
 	"fmt"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/shared/path"
+	"kubecloud/internal/core/paths"
 	"net/url"
 	"strings"
 )
@@ -24,11 +24,11 @@ func NewGormDB(dsn string, cfg models.DBPoolConfig) (models.DB, error) {
 	case "postgres":
 		return NewPostgresGormDB(dsn, cfg)
 	case "sqlite", "sqlite3":
-		path, err := path.ExpandPath(u.Path)
+		expandedPath, err := paths.ExpandPath(u.Path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to expand path: %w", err)
 		}
-		return NewSqliteGormDB(path)
+		return NewSqliteGormDB(expandedPath)
 	default:
 		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
 	}

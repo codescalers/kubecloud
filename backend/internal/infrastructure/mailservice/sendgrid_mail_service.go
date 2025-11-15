@@ -1,12 +1,13 @@
 package mailservice
 
 import (
+	cfg "kubecloud/internal/config"
 	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/shared"
+	
 	"mime"
 	"mime/multipart"
 	"path/filepath"
@@ -45,7 +46,7 @@ type SendGridMailService struct {
 }
 
 // NewSendGridMailService creates new instance of sendgrid mail service
-func NewSendGridMailService(mailConfigs shared.MailSender, systemHost string, metrics *metrics.Metrics) SendGridMailService {
+func NewSendGridMailService(mailConfigs cfg.MailSender, systemHost string, metrics *metrics.Metrics) SendGridMailService {
 	return SendGridMailService{
 		client:              sendgrid.NewSendClient(mailConfigs.SendGridKey),
 		metrics:             metrics,

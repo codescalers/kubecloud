@@ -1,8 +1,8 @@
-package shared
+package config
 
 import (
 	"fmt"
-	"kubecloud/internal/shared/path"
+	"kubecloud/internal/core/paths"
 	"net/url"
 	"strings"
 	"time"
@@ -178,17 +178,17 @@ func LoadConfig() (Configuration, error) {
 		config.Loki.Labels = parsed
 	}
 
-	config.SSH.PrivateKeyPath, err = path.ExpandPath(config.SSH.PrivateKeyPath)
+	config.SSH.PrivateKeyPath, err = paths.ExpandPath(config.SSH.PrivateKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH private key path: %w", err)
 	}
 
-	config.SSH.PublicKeyPath, err = path.ExpandPath(config.SSH.PublicKeyPath)
+	config.SSH.PublicKeyPath, err = paths.ExpandPath(config.SSH.PublicKeyPath)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand SSH public key path: %w", err)
 	}
 
-	config.Logger.LogDir, err = path.ExpandPath(config.Logger.LogDir)
+	config.Logger.LogDir, err = paths.ExpandPath(config.Logger.LogDir)
 	if err != nil {
 		return Configuration{}, fmt.Errorf("failed to expand log directory path: %w", err)
 	}

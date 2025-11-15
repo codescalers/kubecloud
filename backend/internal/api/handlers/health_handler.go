@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	grid "kubecloud/internal/infrastructure/grid"
 	"context"
 	"encoding/json"
 	"fmt"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/shared"
+	
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -171,7 +172,7 @@ func (h *HealthHandler) checkTFChainHealth(ctx context.Context) HealthStatus {
 }
 
 func (h *HealthHandler) checkActivationService(ctx context.Context) HealthStatus {
-	url, err := healthURL(shared.ActivationServiceURLs[h.systemNetwork])
+	url, err := healthURL(grid.ActivationServiceURLs[h.systemNetwork])
 	if err != nil {
 		return healthStatusFromError(fmt.Errorf("activation service %s", err.Error()))
 	}

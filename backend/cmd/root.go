@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/api/app"
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/infrastructure/logger"
-	shared "kubecloud/internal/shared"
 	"net"
 	"net/http"
 	"os"
@@ -279,7 +279,7 @@ It supports:
 - Secure access control through Mycelium whitelisting
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := shared.LoadConfig()
+		config, err := cfg.LoadConfig()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to read configurations")
 			return fmt.Errorf("failed to read configuration: %w", err)
