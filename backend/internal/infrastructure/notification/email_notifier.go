@@ -3,26 +3,19 @@ package notification
 import (
 	"bytes"
 	"fmt"
-	"html/template"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/core/models"
-	"os"
-	"path/filepath"
+	mailservice "kubecloud/internal/infrastructure/mailservice"
 
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-var emailTpls *template.Template
-
 type EmailNotifier struct {
-	mailService  mailservice.MailService
-	templatesDir string
+	mailService mailservice.MailService
 }
 
-func NewEmailNotifier(mailService mailservice.MailService, templatesDir string) *EmailNotifier {
+func NewEmailNotifier(mailService mailservice.MailService, _ string) *EmailNotifier {
 	return &EmailNotifier{
-		mailService:  mailService,
-		templatesDir: templatesDir,
+		mailService: mailService,
 	}
 }
 
@@ -34,20 +27,8 @@ func (n *EmailNotifier) GetStepName() string {
 	return "send-email-notification"
 }
 
+// ParseTemplates is now a no-op since templates are embedded
 func (n *EmailNotifier) ParseTemplates() error {
-	if n.templatesDir == "" {
-
-		n.templatesDir = os.Getenv("TEMPLATE_DIR")
-		if n.templatesDir == "" {
-			n.templatesDir = "./internal/mailservice/templates/notifications"
-		}
-	}
-
-	tpl, err := template.ParseGlob(filepath.Join(n.templatesDir, "*.html"))
-	if err != nil {
-		return fmt.Errorf("failed to parse notification templates from directory %s: %w", n.templatesDir, err)
-	}
-	emailTpls = tpl
 	return nil
 }
 
@@ -65,6 +46,7 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	tplName := string(notification.Type)
 
 	var buf bytes.Buffer
+	emailTpls := mailservice.GetEmailTemplates()
 	if err := emailTpls.ExecuteTemplate(&buf, tplName, notification); err != nil {
 		return fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
 	}
@@ -82,3 +64,4 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	err := n.mailService.SendMailFromSystem(receiver[0], subject, buf.String())
 	return err
 }
+

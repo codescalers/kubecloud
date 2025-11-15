@@ -319,7 +319,10 @@ func (app *App) createHandlers() appHandlers {
 
 	notificationService := services.NewNotificationService(notificationRepo)
 
-	nodeService := services.NewNodeService(userNodesRepo, userRepo)
+	nodeService := services.NewNodeService(
+		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
+		app.infra.gridClient, app.infra.substrateClient,
+	)
 
 	invoiceService := services.NewInvoiceService(
 		invoiceRepo, userRepo, userNodesRepo,

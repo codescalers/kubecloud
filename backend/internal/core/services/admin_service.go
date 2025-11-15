@@ -64,7 +64,7 @@ func (svc *AdminService) ListAllUsers() ([]models.User, error) {
 	return svc.userRepo.ListAllUsers()
 }
 
-func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]models.User, error) {
+func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance, error) {
 	users, err := svc.ListAllUsers()
 	if err != nil {
 		return nil, err
@@ -106,7 +106,11 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]models.User, error
 
 	wg.Wait()
 
-	return nil, multiErr.ErrorOrNil()
+	if multiErr.ErrorOrNil() != nil {
+		return nil, multiErr.ErrorOrNil()
+	}
+
+	return usersWithBalance, nil
 }
 
 func (svc *AdminService) DeleteUserByID(userID int) error {

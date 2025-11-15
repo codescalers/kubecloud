@@ -30,10 +30,16 @@ type NodeService struct {
 
 func NewNodeService(
 	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
+	appCtx context.Context, ewfEngine *ewf.Engine, gridClient deployer.TFPluginClient,
+	substrateClient substrate.Substrate,
 ) NodeService {
 	return NodeService{
-		nodesRepo: userNodesRepo,
-		userRepo:  userRepo,
+		nodesRepo:       userNodesRepo,
+		userRepo:        userRepo,
+		appCtx:          appCtx,
+		ewfEngine:       ewfEngine,
+		gridClient:      gridClient,
+		substrateClient: substrateClient,
 	}
 }
 
