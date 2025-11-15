@@ -11,9 +11,6 @@ import (
 
 func TestNewSSEManager(t *testing.T) {
 	manager := NewSSEManager()
-	if manager == nil {
-		t.Error("NewSSEManager returned nil")
-	}
 	if manager.clients == nil {
 		t.Error("clients map not initialized")
 	}
@@ -73,7 +70,7 @@ func TestSSEManager_RemoveClient(t *testing.T) {
 
 	// Verify client was removed
 	manager.mu.RLock()
-	channels, exists = manager.clients[userID]
+	_, exists = manager.clients[userID]
 	manager.mu.RUnlock()
 
 	if exists {

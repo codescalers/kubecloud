@@ -1,14 +1,13 @@
 package mailservice
 
 import (
-	cfg "kubecloud/internal/config"
 	"bytes"
 	"mime/multipart"
 	"strings"
 	"testing"
 
+	cfg "kubecloud/internal/config"
 	"kubecloud/internal/infrastructure/metrics"
-	
 )
 
 // TestIsValidEmail tests email validation logic.
@@ -529,10 +528,9 @@ func TestSendGridMailService_ParseAttachment(t *testing.T) {
 			part, _ := writer.CreateFormFile("file", tt.filename)
 
 			if tt.fileData != nil {
-				part.Write(tt.fileData)
+				_, _ = part.Write(tt.fileData)
 			}
 			writer.Close()
-
 			// Parse the multipart data to get FileHeader
 			reader := multipart.NewReader(body, writer.Boundary())
 			form, _ := reader.ReadForm(10 * 1024 * 1024)

@@ -128,10 +128,6 @@ func (b *NotificationBuilder) Build() *models.Notification {
 		models.WithSeverity(b.severity),
 	}
 
-	if b.taskID != "" {
-		// TaskID will be set on the notification after creation
-	}
-
 	if !b.persist {
 		opts = append(opts, models.WithNoPersist())
 	}

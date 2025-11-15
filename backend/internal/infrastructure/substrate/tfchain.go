@@ -1,7 +1,6 @@
 package substrate
 
 import (
-	grid "kubecloud/internal/infrastructure/grid"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -10,11 +9,11 @@ import (
 	"net/http"
 	"time"
 
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	"github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 
+	grid "kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/logger"
-	
 )
 
 type TFChainClient struct {

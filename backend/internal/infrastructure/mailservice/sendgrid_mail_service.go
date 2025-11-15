@@ -1,18 +1,18 @@
 package mailservice
 
 import (
-	cfg "kubecloud/internal/config"
 	_ "embed"
 	"encoding/base64"
 	"fmt"
 	"io"
-	"kubecloud/internal/infrastructure/metrics"
-	
 	"mime"
 	"mime/multipart"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/infrastructure/metrics"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"

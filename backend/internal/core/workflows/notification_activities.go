@@ -3,12 +3,13 @@ package workflows
 import (
 	"context"
 	"fmt"
-	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/core/models"
 	"slices"
 
 	"github.com/xmonader/ewf"
+
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/notification"
 )
 
 func SendNotification(userRepo models.UserRepository, notifier notification.Notifier) ewf.StepFn {

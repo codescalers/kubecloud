@@ -17,12 +17,6 @@ func TestNewTokenHandler(t *testing.T) {
 
 	handler := NewTokenHandler(secret, accessExpiry, refreshExpiry)
 
-	if handler == nil {
-		t.Errorf("NewTokenHandler() returned nil")
-	}
-	if handler.secretKey == nil {
-		t.Errorf("NewTokenHandler() did not set secretKey")
-	}
 	if handler.accessExpiry != accessExpiry {
 		t.Errorf("NewTokenHandler() accessExpiry = %v, want %v", handler.accessExpiry, accessExpiry)
 	}

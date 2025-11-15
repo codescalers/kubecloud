@@ -3,12 +3,13 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"kubecloud/internal/core/services"
-	"kubecloud/internal/core/models"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/services"
 )
 
 const (

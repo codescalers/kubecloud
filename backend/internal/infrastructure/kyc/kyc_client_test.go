@@ -11,15 +11,6 @@ import (
 	"github.com/vedhavyas/go-subkey/sr25519"
 )
 
-// mockHTTPClient is a mock implementation for testing
-type mockHTTPClient struct {
-	doFunc func(req *http.Request) (*http.Response, error)
-}
-
-func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	return m.doFunc(req)
-}
-
 // TestIsUserVerified tests the user verification status checking.
 // This scenario covers:
 // - Successful verification status retrieval for verified users
@@ -106,7 +97,7 @@ func TestIsUserVerified(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.responseBody))
+				_, _ = w.Write([]byte(tt.responseBody))
 			}))
 			defer ts.Close()
 
@@ -232,7 +223,7 @@ func TestIsValidSponsor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.responseBody))
+				_, _ = w.Write([]byte(tt.responseBody))
 			}))
 			defer ts.Close()
 
@@ -347,7 +338,7 @@ func TestCreateSponsorship(t *testing.T) {
 				}
 
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(tt.responseBody))
+				_, _ = w.Write([]byte(tt.responseBody))
 			}))
 			defer ts.Close()
 

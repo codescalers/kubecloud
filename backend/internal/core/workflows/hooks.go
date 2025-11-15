@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	metricsLib "kubecloud/internal/infrastructure/metrics"
 
 	"time"
 
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/metrics"
+	metricsLib "kubecloud/internal/infrastructure/metrics"
 
 	"kubecloud/internal/infrastructure/notification"
 
@@ -168,7 +167,7 @@ func newKubecloudWorkflowTemplate(n *notification.NotificationDispatcher) ewf.Wo
 	}
 }
 
-func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+func addNodeFailureHook(engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.ForOperation("workflow", "hook_add_node_failure").With().Str("workflow_name", wf.Name).Logger()
 		if err == nil || wf.Name != WorkflowAddNode {
@@ -212,7 +211,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 	}
 }
 
-func metricsSuccessHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+func metricsSuccessHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err != nil {
 			return
@@ -230,7 +229,7 @@ func metricsSuccessHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
 	}
 }
 
-func metricsFailureHook(metrics *metrics.Metrics) ewf.AfterWorkflowHook {
+func metricsFailureHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		if err == nil {
 			return

@@ -4,11 +4,6 @@ import (
 	"time"
 )
 
-const (
-	maintenanceModeEnabled  = "true"
-	maintenanceModeDisabled = "false"
-)
-
 // Settings represents a key-value store for system-wide configuration
 type Settings struct {
 	Name      string    `gorm:"primaryKey;type:text" json:"name"`

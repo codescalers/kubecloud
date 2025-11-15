@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	grid "kubecloud/internal/infrastructure/grid"
 	"context"
 	"encoding/json"
 	"fmt"
-	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/logger"
-	
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -19,6 +15,10 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"golang.org/x/sync/errgroup"
+
+	"kubecloud/internal/core/models"
+	grid "kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/logger"
 )
 
 const healthTimeout = 2 * time.Second

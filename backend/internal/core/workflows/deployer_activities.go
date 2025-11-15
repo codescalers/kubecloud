@@ -9,7 +9,6 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
-	"kubecloud/internal/infrastructure/metrics"
 	metricsLib "kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
 
@@ -62,7 +61,7 @@ func ensureClient(state ewf.State) {
 	log.Debug().Msg("kubeclient ensured and ready for use")
 }
 
-func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
+func DeployNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -111,7 +110,7 @@ func DeployNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
+func UpdateNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -150,7 +149,7 @@ func UpdateNetworkStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
+func AddNodeStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -193,7 +192,7 @@ func AddNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func DeployLeaderNodeStep(metrics *metrics.Metrics) ewf.StepFn {
+func DeployLeaderNodeStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "deploy_leader_node")
 		ensureClient(state)
@@ -244,7 +243,7 @@ func DeployLeaderNodeStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func BatchDeployAllNodesStep(metrics *metrics.Metrics) ewf.StepFn {
+func BatchDeployAllNodesStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "batch_deploy_all_nodes")
 		ensureClient(state)
@@ -303,7 +302,7 @@ func BatchDeployAllNodesStep(metrics *metrics.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
+func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "store_deployment")
 		cluster, err := statemanager.GetCluster(state)
@@ -349,7 +348,7 @@ func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics.
 	}
 }
 
-func CancelDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
+func CancelDeploymentStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -391,7 +390,7 @@ func CancelDeploymentStep(clusterRepo models.ClusterRepository, metrics *metrics
 	}
 }
 
-func RemoveClusterFromDBStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
+func RemoveClusterFromDBStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -497,7 +496,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 	}
 }
 
-func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *metrics.Metrics) ewf.StepFn {
+func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -609,7 +608,7 @@ func deploymentFailureHook(engine *ewf.Engine) ewf.AfterWorkflowHook {
 	}
 }
 
-func createDeployerWorkflowTemplate(notificationDispatcher *notification.NotificationDispatcher, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+func createDeployerWorkflowTemplate(notificationDispatcher *notification.NotificationDispatcher, engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.WorkflowTemplate {
 	template := newKubecloudWorkflowTemplate(notificationDispatcher)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		metricsSuccessHook(metrics),
@@ -630,7 +629,7 @@ func createBaseDeployerWorkflowTemplate(notificationDispatcher *notification.Not
 	return template
 }
 
-func createAddNodeWorkflowTemplate(notificationDispatcher *notification.NotificationDispatcher, engine *ewf.Engine, metrics *metrics.Metrics) ewf.WorkflowTemplate {
+func createAddNodeWorkflowTemplate(notificationDispatcher *notification.NotificationDispatcher, engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.WorkflowTemplate {
 	template := newKubecloudWorkflowTemplate(notificationDispatcher)
 	template.AfterWorkflowHooks = append(template.AfterWorkflowHooks,
 		metricsSuccessHook(metrics),
@@ -640,7 +639,7 @@ func createAddNodeWorkflowTemplate(notificationDispatcher *notification.Notifica
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metrics.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
 	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
 	engine.Register(StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
 	engine.Register(StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))

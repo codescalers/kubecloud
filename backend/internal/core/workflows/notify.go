@@ -310,7 +310,6 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	}
 
 	// Error case
-	status = "funds_failed"
 	subject = "Adding Funds Failed"
 	message = fmt.Sprintf("Failed to add funds to your account: %s", err.Error())
 
