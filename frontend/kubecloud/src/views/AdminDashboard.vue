@@ -55,7 +55,7 @@ function deleteUser(userId: number) {
 async function loadUsers() {
 
     const rawUsers = await adminService.listUsers()
-    users.value = rawUsers.map(u => ({ ...u, id: u.id ?? (u as any).ID }))
+    users.value = (rawUsers || []).map(u => ({ ...u, id: u.id ?? (u as any).ID }))
 
     adminStats.value[0].value = users.value.length
 }
@@ -104,10 +104,29 @@ const invoices: Ref<Invoice[]> = ref([])
 
 onMounted(async () => {
   // Load initial data
-  await loadUsers()
-  await loadVouchers()
-  await loadInvoices()
-  await loadStats()
+  try {
+    await loadUsers()
+  } catch (error) {
+    console.error('Failed to load users:', error)
+  }
+  
+  try {
+    await loadVouchers()
+  } catch (error) {
+    console.error('Failed to load vouchers:', error)
+  }
+  
+  try {
+    await loadInvoices()
+  } catch (error) {
+    console.error('Failed to load invoices:', error)
+  }
+  
+  try {
+    await loadStats()
+  } catch (error) {
+    console.error('Failed to load stats:', error)
+  }
 })
 
 async function loadInvoices() {

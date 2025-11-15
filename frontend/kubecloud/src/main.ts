@@ -14,6 +14,9 @@ import App from './App.vue'
 import router from './router'
 import { useUserStore } from './stores/user'
 
+// Inject environment variables into window object
+(window as any).__ENV__ = __ENV__
+
 const vuetify = createVuetify({
   theme: {
     defaultTheme: 'myceliumCloudTheme',

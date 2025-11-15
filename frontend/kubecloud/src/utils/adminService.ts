@@ -95,7 +95,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load users'
     })
-    return response.data.data.users
+    return response.data.data?.users || []
   }
 
   // Delete a user (requires admin auth)
@@ -138,7 +138,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load vouchers'
     })
-    return response.data.data.vouchers
+    return response.data.data?.vouchers || []
   }
 
   // List all invoices (requires admin auth)
@@ -148,7 +148,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load invoices'
     })
-    return response.data.data.invoices
+    return response.data.data?.invoices || []
   }
 
       // List all pending records (requires admin auth)
@@ -158,7 +158,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load payments'
     })
-    return response.data.data.pending_records
+    return response.data.data?.pending_records || []
   }
 
   // Send a system email to all users (requires admin auth)

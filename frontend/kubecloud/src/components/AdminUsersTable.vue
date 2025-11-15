@@ -31,7 +31,7 @@
         density="comfortable"
       >
         <template #item.balance="{ item }">
-          ${{ item.balance.toFixed(2) }}
+          ${{ item.balance != null ? item.balance.toFixed(2) : 'N/A' }}
         </template>
         <template #item.actions="{ item }">
           <div style="display: flex; gap: var(--space-4); align-items: center;">
