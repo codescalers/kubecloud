@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 )
 
 // TokenManager defines the interface for token operations.
@@ -91,6 +92,7 @@ func (h *TokenHandler) createToken(userID int, username string, isAdmin bool, ex
 		UserID:   userID,
 		Admin:    isAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.New().String(), // Unique token ID for tracking/revocation
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -106,7 +108,7 @@ func (h *TokenHandler) AccessTokenFromRefresh(refreshToken string) (string, erro
 		return "", err
 	}
 
-	accessToken, err := h.createToken(claims.UserID, claims.Username, claims.Admin, h.refreshExpiry)
+	accessToken, err := h.createToken(claims.UserID, claims.Username, claims.Admin, h.accessExpiry)
 	if err != nil {
 		return "", err
 	}

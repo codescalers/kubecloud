@@ -266,24 +266,30 @@ func TestAccessTokenFromRefresh(t *testing.T) {
 					t.Errorf("AccessTokenFromRefresh() returned empty token (%s)", tt.description)
 					return
 				}
-				if newAccessToken == pair.AccessToken {
-					t.Errorf("AccessTokenFromRefresh() should generate different token (%s)", tt.description)
-				}
 
 				// Verify new token contains same user info
-				claims, err := handler.VerifyToken(newAccessToken)
+				newClaims, err := handler.VerifyToken(newAccessToken)
 				if err != nil {
 					t.Errorf("VerifyToken() on new token error = %v (%s)", err, tt.description)
 					return
 				}
-				if claims.UserID != 456 {
-					t.Errorf("AccessTokenFromRefresh() new token UserID = %d, want 456 (%s)", claims.UserID, tt.description)
+				if newClaims.UserID != 456 {
+					t.Errorf("AccessTokenFromRefresh() new token UserID = %d, want 456 (%s)", newClaims.UserID, tt.description)
 				}
-				if claims.Username != "alice" {
-					t.Errorf("AccessTokenFromRefresh() new token Username = %q, want alice (%s)", claims.Username, tt.description)
+				if newClaims.Username != "alice" {
+					t.Errorf("AccessTokenFromRefresh() new token Username = %q, want alice (%s)", newClaims.Username, tt.description)
 				}
-				if claims.Admin != false {
-					t.Errorf("AccessTokenFromRefresh() new token Admin = %v, want false (%s)", claims.Admin, tt.description)
+				if newClaims.Admin != false {
+					t.Errorf("AccessTokenFromRefresh() new token Admin = %v, want false (%s)", newClaims.Admin, tt.description)
+				}
+
+				// Verify new token has valid expiration time set
+				if newClaims.ExpiresAt == nil {
+					t.Errorf("AccessTokenFromRefresh() new token should have expiration set (%s)", tt.description)
+				}
+				// New token should expire in the future (not in the past)
+				if newClaims.ExpiresAt.Before(time.Now()) {
+					t.Errorf("AccessTokenFromRefresh() new token already expired (%s)", tt.description)
 				}
 			}
 		})
@@ -363,5 +369,76 @@ func TestTokenClaims(t *testing.T) {
 	}
 	if claims.ExpiresAt == nil {
 		t.Errorf("TokenClaims.ExpiresAt should be set")
+	}
+}
+
+// TestTokenJTI tests JWT ID (jti) claim uniqueness.
+// This scenario covers:
+// - Each token has a unique jti claim
+// - jti is set and not empty
+// - Different tokens have different jti values
+// - jti persists through token verification
+func TestTokenJTI(t *testing.T) {
+	handler := NewTokenHandler("secret-key", 15*time.Minute, 7*24*time.Hour)
+
+	// Create multiple tokens
+	pair1, err := handler.CreateTokenPair(100, "user1", false)
+	if err != nil {
+		t.Fatalf("CreateTokenPair() error = %v", err)
+	}
+
+	pair2, err := handler.CreateTokenPair(100, "user1", false)
+	if err != nil {
+		t.Fatalf("CreateTokenPair() error = %v", err)
+	}
+
+	// Verify both tokens
+	claims1, err := handler.VerifyToken(pair1.AccessToken)
+	if err != nil {
+		t.Fatalf("VerifyToken() for pair1 error = %v", err)
+	}
+
+	claims2, err := handler.VerifyToken(pair2.AccessToken)
+	if err != nil {
+		t.Fatalf("VerifyToken() for pair2 error = %v", err)
+	}
+
+	// Check jti exists and is not empty
+	if claims1.ID == "" {
+		t.Errorf("TokenClaims.ID (jti) should not be empty for pair1")
+	}
+	if claims2.ID == "" {
+		t.Errorf("TokenClaims.ID (jti) should not be empty for pair2")
+	}
+
+	// Check jti values are unique
+	if claims1.ID == claims2.ID {
+		t.Errorf("TokenClaims.ID (jti) should be unique, but both are %q", claims1.ID)
+	}
+
+	// Check refresh tokens also have unique jti
+	refreshClaims1, err := handler.VerifyToken(pair1.RefreshToken)
+	if err != nil {
+		t.Fatalf("VerifyToken() for refresh pair1 error = %v", err)
+	}
+
+	refreshClaims2, err := handler.VerifyToken(pair2.RefreshToken)
+	if err != nil {
+		t.Fatalf("VerifyToken() for refresh pair2 error = %v", err)
+	}
+
+	if refreshClaims1.ID == "" {
+		t.Errorf("TokenClaims.ID (jti) should not be empty for refresh pair1")
+	}
+	if refreshClaims2.ID == "" {
+		t.Errorf("TokenClaims.ID (jti) should not be empty for refresh pair2")
+	}
+	if refreshClaims1.ID == refreshClaims2.ID {
+		t.Errorf("Refresh TokenClaims.ID (jti) should be unique, but both are %q", refreshClaims1.ID)
+	}
+
+	// Access and refresh tokens from same pair should have different jti
+	if claims1.ID == refreshClaims1.ID {
+		t.Errorf("Access and refresh tokens should have different jti values")
 	}
 }
