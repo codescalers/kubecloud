@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"kubecloud/internal/core/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"kubecloud/internal/core/models"
 )
 
 type mockUserNodesRepo struct {

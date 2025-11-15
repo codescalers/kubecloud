@@ -133,7 +133,6 @@ func TestLoadConfig_ValidConfig(t *testing.T) {
 	sshPrivateKey := filepath.Join(tempDir, "id_rsa")
 	sshPublicKey := filepath.Join(tempDir, "id_rsa.pub")
 	logDir := filepath.Join(tempDir, "logs")
-	notificationConfig := filepath.Join(tempDir, "notification.json")
 
 	// Create dummy files
 	err := os.WriteFile(sshPrivateKey, []byte("dummy private key"), 0600)
@@ -141,20 +140,6 @@ func TestLoadConfig_ValidConfig(t *testing.T) {
 	err = os.WriteFile(sshPublicKey, []byte("dummy public key"), 0644)
 	require.NoError(t, err)
 	err = os.MkdirAll(logDir, 0755)
-	require.NoError(t, err)
-
-	notificationConfigContent := `{
-		"template_types": {
-			"test": {
-				"default": {
-					"channels": ["email"],
-					"severity": "info"
-				}
-			}
-		},
-		"email_templates_dir_path": "/tmp/templates"
-	}`
-	err = os.WriteFile(notificationConfig, []byte(notificationConfigContent), 0644)
 	require.NoError(t, err)
 
 	// Set up viper with test config
@@ -231,7 +216,6 @@ func TestLoadConfig_ValidConfig(t *testing.T) {
 				"env": "test",
 			},
 		},
-		"notification_config_path": notificationConfig,
 		"mailsender": map[string]interface{}{
 			"email":                  "test@example.com",
 			"sendgrid_key":           "",
@@ -272,9 +256,6 @@ func TestLoadConfig_ValidConfig(t *testing.T) {
 		"env": "test",
 	}
 	assert.Equal(t, expectedLabels, config.Loki.Labels)
-
-	// Verify notification config is loaded
-	assert.NotEmpty(t, config.Notification.TemplateTypes)
 }
 
 // TestLoadConfig_MissingRequiredFields tests error handling when required configuration fields are missing.

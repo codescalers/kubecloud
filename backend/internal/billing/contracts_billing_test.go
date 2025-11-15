@@ -6,7 +6,7 @@ import (
 
 // MockGraphQLClient is a mock implementation for GraphQL operations.
 type MockGraphQLClient struct {
-	QueryFunc            func(query string, variables map[string]interface{}) (interface{}, error)
+	QueryFunc             func(query string, variables map[string]interface{}) (interface{}, error)
 	GetItemTotalCountFunc func(itemType string, options string) (int, error)
 }
 

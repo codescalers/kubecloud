@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"kubecloud/internal/core/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"kubecloud/internal/core/models"
 )
 
 // Test 1: NodeService - GetUserNodeByNodeID SUCCESS

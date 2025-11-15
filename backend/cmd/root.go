@@ -190,11 +190,6 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind loki.labels flag: %w", err)
 	}
 
-	// === Notification Config ===
-	if err := bindStringFlag(rootCmd, "notification_config_path", "./notification-config.json", "Path to notification configuration file"); err != nil {
-		return fmt.Errorf("failed to bind notification_config_path flag: %w", err)
-	}
-
 	return nil
 }
 

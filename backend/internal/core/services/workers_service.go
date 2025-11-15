@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/shared"
 	"sync"
@@ -311,7 +311,24 @@ func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserNod
 			continue
 		}
 
-		if err := svc.notificationSender.SendUnhealthyNodesNotification(userID, nodeIDs); err != nil {
+		var nodesList string
+		for i, id := range nodeIDs {
+			if i > 0 {
+				nodesList += "\n"
+			}
+			nodesList += fmt.Sprintf("Node ID: %d", id)
+		}
+
+		notif := notification.NewNotification(userID, models.NotificationTypeNode).
+			Warning(fmt.Sprintf("You have %d reserved node(s) that are currently unhealthy", len(nodeIDs))).
+			WithSubject("Reserved Node Health Check Failed").
+			WithStatus("unhealthy").
+			WithChannels(notification.ChannelEmail).
+			WithExtra("unhealthy_count", fmt.Sprintf("%d", len(nodeIDs))).
+			WithExtra("nodes_list", nodesList).
+			Build()
+
+		if err := svc.notificationSender.Send(ctx, notif); err != nil {
 			logger.ForOperation("health_tracker", "send_unhealthy_nodes_notification").Error().Err(err).Msg("Failed to send unhealthy nodes notification")
 		}
 	}

@@ -8,13 +8,13 @@ import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
-	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/substrate"
 	shared "kubecloud/internal/shared"
@@ -70,9 +70,10 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailService        mailservice.MailService
-	sseManager         *realtime.SSEManager
-	notificationSender notification.NotificationSender
+	mailService             mailservice.MailService
+	sseManager              *realtime.SSEManager
+	notificationDispatcher  *notification.NotificationDispatcher
+	notificationSender      notification.NotificationSender
 }
 
 // appInfrastructure contains grid and blockchain related services
@@ -222,30 +223,32 @@ func createAppCommunication(ctx context.Context, config shared.Configuration, db
 	sseManager := realtime.NewSSEManager()
 
 	notificationRepo := persistence.NewGormNotificationRepository(db)
-	notificationService, err := notification.NewNotificationService(notificationRepo, ewfEngine, config.Notification)
+	userRepo := persistence.NewGormUserRepository(db)
+	notificationDispatcher, err := notification.NewNotificationDispatcher(notificationRepo, userRepo, ewfEngine)
 	if err != nil {
-		return appCommunication{}, fmt.Errorf("failed to create notification service: %w", err)
+		return appCommunication{}, fmt.Errorf("failed to create notification dispatcher: %w", err)
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailService, config.Notification.EmailTemplatesDirPath)
+	emailNotifier := notification.NewEmailNotifier(mailService, "")
 	err = emailNotifier.ParseTemplates()
 	if err != nil {
 		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
 	}
 
-	notificationService.RegisterNotifier(sseNotifier)
-	notificationService.RegisterNotifier(emailNotifier)
-	if err := notificationService.ValidateConfigsChannelsAgainstRegistered(); err != nil {
+	notificationDispatcher.RegisterNotifier(sseNotifier)
+	notificationDispatcher.RegisterNotifier(emailNotifier)
+	if err := notificationDispatcher.ValidateConfigsChannelsAgainstRegistered(); err != nil {
 		return appCommunication{}, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
-	notificationSender := notification.NewEmailAndUINotificationSender(ctx, notificationService)
+	notificationSender := notification.NewNotificationSender(ctx, notificationDispatcher)
 
 	return appCommunication{
-		mailService:        mailService,
-		sseManager:         sseManager,
-		notificationSender: notificationSender,
+		mailService:            mailService,
+		sseManager:             sseManager,
+		notificationDispatcher: notificationDispatcher,
+		notificationSender:     notificationSender,
 	}, nil
 }
 
@@ -317,7 +320,7 @@ func (app *App) createHandlers() appHandlers {
 		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
 	)
 
-	notificationService := services.NewNotificationService(notificationRepo)
+	notificationAPIService := services.NewNotificationService(notificationRepo)
 
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
@@ -349,7 +352,7 @@ func (app *App) createHandlers() appHandlers {
 		app.communication.mailService, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
-	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
 	nodeHandler := handlers.NewNodeHandler(nodeService)
 	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, app.communication.mailService)

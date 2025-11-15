@@ -3,8 +3,8 @@ package notification
 import (
 	"context"
 	"fmt"
-	"kubecloud/internal/shared"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/logger"
 	"sync"
 
 	"github.com/xmonader/ewf"
@@ -18,7 +18,6 @@ const (
 type Notifier interface {
 	Notify(notification models.Notification, receiver ...string) error
 	GetType() string
-	GetStepName() string
 }
 
 type ChannelRule struct {
@@ -60,123 +59,85 @@ func MergePayload(cp CommonPayload, extras map[string]string) map[string]string 
 	return out
 }
 
-type NotificationServiceInterface interface {
+type NotificationDispatcherInterface interface {
 	Send(ctx context.Context, notification *models.Notification) error
 	GetNotifiers() map[string]Notifier
 	RegisterNotifier(notifier Notifier)
-	ReloadNotificationConfig(cfg shared.NotificationConfig) error
 }
 
-type NotificationService struct {
+type NotificationDispatcher struct {
 	models.NotificationRepository
+	userRepo  models.UserRepository
 	notifiers map[string]Notifier
 	engine    *ewf.Engine
 	templates map[models.NotificationType]NotificationTemplate
 	mu        sync.RWMutex
 }
 
-func NewNotificationService(
-	db models.NotificationRepository, engine *ewf.Engine,
-	notificationConfig shared.NotificationConfig,
-) (*NotificationService, error) {
-	s := &NotificationService{
+func NewNotificationDispatcher(
+	db models.NotificationRepository,
+	userRepo models.UserRepository,
+	engine *ewf.Engine,
+) (*NotificationDispatcher, error) {
+	s := &NotificationDispatcher{
 		NotificationRepository: db,
+		userRepo:               userRepo,
 		notifiers:              make(map[string]Notifier),
 		engine:                 engine,
 		templates:              make(map[models.NotificationType]NotificationTemplate),
 	}
 
-	if err := s.LoadTemplatesFromConfigFile(notificationConfig); err != nil {
-		return nil, fmt.Errorf("failed to load notification templates: %w", err)
-	}
-
 	return s, nil
 }
 
-// buildTemplatesFromConfig creates a templates map from notification config
-func (s *NotificationService) buildTemplatesFromConfig(notificationConfig shared.NotificationConfig) map[models.NotificationType]NotificationTemplate {
-	templates := make(map[models.NotificationType]NotificationTemplate)
 
-	for templateName, templateConfig := range notificationConfig.TemplateTypes {
-		notificationType := models.NotificationType(templateName)
-
-		defaultRule := ChannelRule{
-			Channels: templateConfig.Default.Channels,
-			Severity: models.NotificationSeverity(templateConfig.Default.Severity),
-		}
-
-		byStatusRules := make(map[string]ChannelRule)
-		for status, ruleConfig := range templateConfig.ByStatus {
-			byStatusRules[status] = ChannelRule{
-				Channels: ruleConfig.Channels,
-				Severity: models.NotificationSeverity(ruleConfig.Severity),
-			}
-		}
-
-		templates[notificationType] = NotificationTemplate{
-			Default:  defaultRule,
-			ByStatus: byStatusRules,
-		}
-	}
-
-	return templates
-}
-
-func (s *NotificationService) LoadTemplatesFromConfigFile(notificationConfig shared.NotificationConfig) error {
-	templates := s.buildTemplatesFromConfig(notificationConfig)
-
-	s.mu.Lock()
-	s.templates = templates
-	s.mu.Unlock()
-	return nil
-}
-
-func (s *NotificationService) RegisterNotifier(notifier Notifier) {
+func (s *NotificationDispatcher) RegisterNotifier(notifier Notifier) {
 	s.notifiers[notifier.GetType()] = notifier
 }
 
-func (s *NotificationService) GetNotifiers() map[string]Notifier {
+func (s *NotificationDispatcher) GetNotifiers() map[string]Notifier {
 	return s.notifiers
 }
 
-func (s *NotificationService) Send(ctx context.Context, notification *models.Notification) error {
+func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.Notification) error {
 	s.applyTemplateFallbacks(notification)
 
-	// Persist to database if enabled
-	if notification.Persist {
-		if err := s.CreateNotification(notification); err != nil {
-			return fmt.Errorf("failed to persist notification: %w", err)
+	// Get user email for notifiers
+	userEmail := ""
+	if s.userRepo != nil {
+		user, err := s.userRepo.GetUserByID(notification.UserID)
+		if err != nil {
+			logger.GetLogger().Warn().Err(err).Int("user_id", notification.UserID).Msg("failed to get user, continuing without email")
+		} else {
+			userEmail = user.Email
 		}
 	}
 
-	workflow, err := s.engine.NewWorkflow(shared.WorkflowSendNotification)
-	if err != nil {
-		return fmt.Errorf("failed to create workflow: %w", err)
+	// Filter to active channels early
+	for _, ch := range notification.Channels {
+		notifier := s.notifiers[ch]
+
+		// Sync UI notifications for immediate feedback
+		if ch == ChannelUI {
+			if err := notifier.Notify(*notification, userEmail); err != nil {
+				// Log but don't fail - UI notification is informational
+				logger.GetLogger().Error().Err(err).Str("channel", ch).Msg("Failed to send UI notification")
+			}
+		} else {
+			// Async for other channels (email, etc.)
+			go func(n Notifier, email string) {
+				if err := n.Notify(*notification, email); err != nil {
+					logger.GetLogger().Error().Err(err).Str("channel", n.GetType()).Msg("Failed to send notification")
+				}
+			}(notifier, userEmail)
+		}
 	}
 
-	workflow.State["notification"] = notification
-	err = s.engine.RunAsync(ctx, workflow)
-	if err != nil {
-		return fmt.Errorf("failed to run notification workflow: %w", err)
-	}
 	return nil
 }
 
-func (s *NotificationService) ReloadNotificationConfig(cfg shared.NotificationConfig) error {
-	candidate := s.buildTemplatesFromConfig(cfg)
 
-	err := s.ValidateConfigsChannelsAgainstRegistered(candidate)
-	if err != nil {
-		return fmt.Errorf("failed to validate notification config: %w", err)
-	}
-
-	s.mu.Lock()
-	s.templates = candidate
-	s.mu.Unlock()
-	return nil
-}
-
-func (s *NotificationService) applyTemplateFallbacks(notification *models.Notification) {
+func (s *NotificationDispatcher) applyTemplateFallbacks(notification *models.Notification) {
 	s.mu.RLock()
 	template, hasTemplate := s.templates[notification.Type]
 	s.mu.RUnlock()
@@ -212,7 +173,7 @@ func (s *NotificationService) applyTemplateFallbacks(notification *models.Notifi
 	}
 }
 
-func (s *NotificationService) ValidateConfigsChannelsAgainstRegistered(templates ...map[models.NotificationType]NotificationTemplate) error {
+func (s *NotificationDispatcher) ValidateConfigsChannelsAgainstRegistered(templates ...map[models.NotificationType]NotificationTemplate) error {
 	if len(s.notifiers) == 0 {
 		return fmt.Errorf("no notifiers registered")
 	}

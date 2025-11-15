@@ -1,15 +1,16 @@
 package workflows
 
 import (
-	"kubecloud/internal/shared"
 	"context"
 	"errors"
+	"fmt"
+	"kubecloud/internal/shared"
 	"time"
 
+	"kubecloud/internal/deployment/kubedeployer"
+	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/deployment/statemanager"
-	"kubecloud/internal/deployment/kubedeployer"
 
 	"kubecloud/internal/infrastructure/notification"
 
@@ -20,7 +21,7 @@ const (
 	TimestampFormat = "Mon, 02 Jan 2006 15:04"
 )
 
-func hookWorkflowStarted(n notification.NotificationSender) ewf.BeforeWorkflowHook {
+func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkflowHook {
 	return func(ctx context.Context, w *ewf.Workflow) {
 		log := logger.GetLogger().With().Str("workflow_name", w.Name).Logger()
 		var userID int
@@ -44,7 +45,14 @@ func hookWorkflowStarted(n notification.NotificationSender) ewf.BeforeWorkflowHo
 
 		workflowDesc := getWorkflowDescription(w.Name)
 		notificationType := workflowToNotificationType(w.Name)
-		if err = n.SendWorkflowStartedNotification(userID, workflowDesc, w.Name, notificationType); err != nil {
+		notif := notification.NewNotification(userID, notificationType).
+			Info(workflowDesc+" has been started").
+			WithSubject(workflowDesc+" Started").
+			WithStatus("started").
+			WithExtra("workflow_name", workflowDesc).
+			NoPersist().
+			Build()
+		if err = n.Send(ctx, notif); err != nil {
 			log.Error().Err(err).Msg("failed to send workflow started notification")
 		}
 		log.Info().Msg("Starting workflow")
@@ -101,7 +109,7 @@ func hookStepDone(_ context.Context, w *ewf.Workflow, step *ewf.Step, err error)
 	}
 }
 
-func hookClusterHealthCheck(notificationSender notification.NotificationSender) ewf.AfterWorkflowHook {
+func hookClusterHealthCheck(notificationService *notification.NotificationDispatcher) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.GetLogger().With().Str("workflow_name", wf.Name).Logger()
 		if err == nil {
@@ -119,16 +127,21 @@ func hookClusterHealthCheck(notificationSender notification.NotificationSender) 
 			return
 		}
 
-		wfDesc := getWorkflowDescription(wf.Name)
-
 		cluster, errCluster := statemanager.GetCluster(wf.State)
 		if errCluster != nil {
 			log.Error().Err(errCluster).Msg("failed to get cluster from state")
+			return
 		}
 
-		if err := notificationSender.SendClusterFailedHealthCheckNotification(
-			config.UserID, len(cluster.Nodes), err, errCluster, wfDesc, cluster.Name,
-		); err != nil {
+		message := "Cluster health check failed for cluster " + cluster.Name + " with " + fmt.Sprintf("%d", len(cluster.Nodes)) + " nodes"
+
+		notif := notification.ClusterNotification(config.UserID, cluster.Name).
+			Failure(message, err).
+			WithSubject("Cluster health check failed").
+			WithChannels(notification.ChannelEmail).
+			Build()
+
+		if err := notificationService.Send(ctx, notif); err != nil {
 			log.Error().Err(err).Msg("failed to send cluster health check notification")
 		}
 
@@ -136,7 +149,7 @@ func hookClusterHealthCheck(notificationSender notification.NotificationSender) 
 	}
 }
 
-func newKubecloudWorkflowTemplate(n notification.NotificationSender) ewf.WorkflowTemplate {
+func newKubecloudWorkflowTemplate(n *notification.NotificationDispatcher) ewf.WorkflowTemplate {
 	return ewf.WorkflowTemplate{
 		BeforeWorkflowHooks: []ewf.BeforeWorkflowHook{
 			hookWorkflowStarted(n),

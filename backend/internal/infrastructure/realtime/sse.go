@@ -101,12 +101,9 @@ func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
 // Notify sends a message to all clients of a specific user
 func (s *SSEManager) Notify(userID int, msgType string, severity models.NotificationSeverity, data map[string]string, id string, taskID ...string) {
 	message := SSEMessage{
-		Type:     msgType,
-		Severity: string(severity),
-		Data: map[string]string{
-			"message": data["message"],
-			"status":  data["status"],
-		},
+		Type:      msgType,
+		Severity:  string(severity),
+		Data:      data, // Pass complete data, not filtered
 		Timestamp: time.Now(),
 		ID:        id,
 	}

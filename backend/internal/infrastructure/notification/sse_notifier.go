@@ -19,10 +19,6 @@ func (n *SSENotifier) GetType() string {
 	return ChannelUI
 }
 
-func (n *SSENotifier) GetStepName() string {
-	return "send-ui-notification"
-}
-
 func (n *SSENotifier) Notify(notification models.Notification, receiver ...string) error {
 	if n.sse == nil {
 		return fmt.Errorf("sse manager is nil")

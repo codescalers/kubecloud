@@ -23,10 +23,6 @@ func (n *EmailNotifier) GetType() string {
 	return ChannelEmail
 }
 
-func (n *EmailNotifier) GetStepName() string {
-	return "send-email-notification"
-}
-
 // ParseTemplates is now a no-op since templates are embedded
 func (n *EmailNotifier) ParseTemplates() error {
 	return nil
@@ -64,4 +60,3 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 	err := n.mailService.SendMailFromSystem(receiver[0], subject, buf.String())
 	return err
 }
-

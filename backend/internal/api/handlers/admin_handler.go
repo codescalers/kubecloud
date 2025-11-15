@@ -181,7 +181,15 @@ func (h *AdminHandler) GenerateVouchersHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.notificationSender.SendVoucherGenerationNotification(adminID, request.Count); err != nil {
+	notif := notification.BillingNotification(adminID).
+		Success(fmt.Sprintf("%d vouchers generated successfully.", request.Count)).
+		WithSubject("Vouchers Generated").
+		WithStatus("succeeded").
+		WithChannels(notification.ChannelUI).
+		NoPersist().
+		Build()
+
+	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send UI notification for voucher generation")
 	}
 

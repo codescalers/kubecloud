@@ -37,7 +37,6 @@ func SetUp(t testing.TB) (setup, error) {
 
 	dbPath := filepath.Join(dir, "testing.db")
 	dsn := "sqlite3://" + dbPath
-	notificationConfigPath := filepath.Join(dir, "notification-config.json")
 
 	privateKeyPath := filepath.Join(dir, "test_id_rsa")
 	publicKeyPath := privateKeyPath + ".pub"
@@ -112,7 +111,6 @@ func SetUp(t testing.TB) (setup, error) {
 	"notify_admins_for_pending_records_in_hours": 1,
   "kyc_verifier_api_url": "https://kyc.dev.grid.tf",
   "kyc_challenge_domain": "kyc.dev.grid.tf",
-  "notification_config_path": "%s",
   "cluster_health_check_interval_in_hours": 1,
 	"node_health_check": {
 		"reserved_node_health_check_interval_in_hours": 1,
@@ -120,19 +118,9 @@ func SetUp(t testing.TB) (setup, error) {
 		"reserved_node_health_check_workers_num": 10
 	}
 }
-`, dsn, mnemonic, privateKeyPath, publicKeyPath, notificationConfigPath)
+`, dsn, mnemonic, privateKeyPath, publicKeyPath)
 
 	err = os.WriteFile(configPath, []byte(config), 0644)
-	if err != nil {
-		return setup{}, err
-	}
-
-	notificationConfigBytes, err := os.ReadFile("../notification-config-example.json")
-	if err != nil {
-		return setup{}, fmt.Errorf("failed to read notification-config-example.json: %w", err)
-	}
-
-	err = os.WriteFile(notificationConfigPath, notificationConfigBytes, 0644)
 	if err != nil {
 		return setup{}, err
 	}
@@ -182,7 +170,6 @@ func SetUp(t testing.TB) (setup, error) {
 		_ = os.Remove(publicKeyPath)
 		_ = os.Remove(configPath)
 		_ = os.Remove(dbPath)
-		_ = os.Remove(notificationConfigPath)
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()

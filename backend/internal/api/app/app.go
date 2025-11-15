@@ -87,7 +87,7 @@ func (app *App) registerEWFWorkflows() {
 		app.security.sponsorAddress,
 		app.security.sponsorKeyPair,
 		app.core.metrics,
-		app.communication.notificationSender,
+		app.communication.notificationDispatcher,
 		app.infra.gridClient.GridProxyClient,
 		stripeClient,
 	)
@@ -335,48 +335,9 @@ func (app *App) handleSocketCommand(conn net.Conn) {
 	command := strings.TrimSpace(string(buffer[:n]))
 	logger.GetLogger().Debug().Str("command", command).Msg("Received socket command")
 
-	if command == "reload-notifications" {
-		app.handleReloadNotifications(conn)
-		return
-	}
-
 	response := fmt.Sprintf("ERROR: Unknown command '%s'\n", command)
 	if _, err := conn.Write([]byte(response)); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to write error response")
 	}
 	logger.GetLogger().Warn().Str("command", command).Msg("Unknown socket command received")
-}
-
-//nolint:unused
-func (app *App) handleReloadNotifications(conn net.Conn) {
-	err := app.reloadNotificationConfig()
-
-	if err != nil {
-		response := fmt.Sprintf("ERROR: %v\n", err)
-		if _, writeErr := conn.Write([]byte(response)); writeErr != nil {
-			logger.GetLogger().Error().Err(writeErr).Msg("failed to write error response")
-		}
-		logger.GetLogger().Error().Err(err).Msg("Failed to reload notification config via socket")
-		return
-	}
-
-	if _, err := conn.Write([]byte("OK: Notification config reloaded successfully\n")); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to write success response")
-		return
-	}
-	logger.GetLogger().Info().Msg("Notification config reloaded via socket")
-}
-
-//nolint:unused
-func (app *App) reloadNotificationConfig() error {
-	cfg, err := shared.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
-	if err = app.communication.notificationSender.ReloadNotificationConfig(cfg.Notification); err != nil {
-		return fmt.Errorf("failed to reload notification config: %w", err)
-	}
-
-	return nil
 }

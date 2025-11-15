@@ -6,9 +6,9 @@ import (
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 	"strconv"
 	"strings"
@@ -257,7 +257,14 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 			return
 		}
 
-		if err := h.notificationSender.SendUserVerificationNotification(user.ID); err != nil {
+		notif := notification.UserNotification(user.ID).
+			Success("User email is verified successfully").
+			WithSubject("User email verified").
+			WithChannels(notification.ChannelUI).
+			NoPersist().
+			Build()
+
+		if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
 			reqLog.Error().Err(err).Msg("failed to send user verification notification")
 			InternalServerError(c)
 			return
@@ -547,7 +554,13 @@ func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.notificationSender.SendPasswordChangeNotification(userID); err != nil {
+	notif := notification.UserNotification(userID).
+		Success("Your account password has been successfully updated.").
+		WithSubject("Your password was changed").
+		WithStatus("password_changed").
+		Build()
+
+	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send password changed notification")
 		InternalServerError(c)
 		return
@@ -858,7 +871,13 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.notificationSender.SendNewSSHKeyAddedNotification(userID, sshKey.Name); err != nil {
+	notif := notification.UserNotification(userID).
+		Success(fmt.Sprintf("SSH key '%s' was added to your account.", sshKey.Name)).
+		WithSubject("New SSH key added").
+		WithStatus("ssh_key_added").
+		Build()
+
+	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send notification")
 		InternalServerError(c)
 		return
@@ -915,7 +934,13 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.notificationSender.SendDeletedSSHKeyNotification(userID, sshKeyName); err != nil {
+	notif := notification.UserNotification(userID).
+		Success(fmt.Sprintf("SSH key '%s' was deleted from your account.", sshKeyName)).
+		WithSubject("SSH key deleted").
+		WithStatus("ssh_key_deleted").
+		Build()
+
+	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 
