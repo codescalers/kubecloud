@@ -450,10 +450,11 @@ func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
 	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
 }
 
-func (s *GormDB) ListWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
+func (s *GormDB) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
 	var records []gormWorkflowRecord
 
 	if err := s.db.Where("user_id = ?", userID).
+		Where("status IN ?", []string{"pending", "running"}).
 		Order("uuid DESC").
 		Find(&records).Error; err != nil {
 		return nil, err

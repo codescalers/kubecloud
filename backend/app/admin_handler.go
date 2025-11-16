@@ -364,12 +364,13 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       user.ID,
-		"amount":        internal.FromUSDToUSDMillicent(request.AmountUSD),
-		"mnemonic":      user.Mnemonic,
-		"username":      user.Username,
-		"transfer_mode": models.AdminCreditMode,
-		"admin_id":      adminID,
+		"user_id":                            user.ID,
+		"amount":                             internal.FromUSDToUSDMillicent(request.AmountUSD),
+		"mnemonic":                           user.Mnemonic,
+		"username":                           user.Username,
+		"transfer_mode":                      models.AdminCreditMode,
+		"admin_id":                           adminID,
+		constants.WorkflowStateKeyGormUserID: adminID,
 	}
 
 	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {

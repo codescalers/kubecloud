@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"kubecloud/internal/constants"
 
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
@@ -58,7 +59,7 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 		QueueName: workflow.QueueName,
 	}
 
-	if userID, ok := workflow.State["user_id"]; ok {
+	if userID, ok := workflow.State[constants.WorkflowStateKeyGormUserID]; ok {
 		switch v := userID.(type) {
 		case int:
 			gormWorkflow.UserID = v

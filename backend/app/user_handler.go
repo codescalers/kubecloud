@@ -728,13 +728,14 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 	}
 
 	wf.State = ewf.State{
-		"user_id":            userID,
-		"stripe_customer_id": user.StripeCustomerID,
-		"payment_method_id":  paymentMethod.ID,
-		"amount":             internal.FromUSDToUSDMillicent(request.Amount),
-		"mnemonic":           user.Mnemonic,
-		"username":           user.Username,
-		"transfer_mode":      models.ChargeBalanceMode,
+		"user_id":                            userID,
+		"stripe_customer_id":                 user.StripeCustomerID,
+		"payment_method_id":                  paymentMethod.ID,
+		"amount":                             internal.FromUSDToUSDMillicent(request.Amount),
+		"mnemonic":                           user.Mnemonic,
+		"username":                           user.Username,
+		"transfer_mode":                      models.ChargeBalanceMode,
+		constants.WorkflowStateKeyGormUserID: user.ID,
 	}
 
 	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
@@ -930,11 +931,12 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 	wf.State = map[string]interface{}{
-		"user_id":       user.ID,
-		"amount":        internal.FromUSDToUSDMillicent(voucher.Value),
-		"mnemonic":      user.Mnemonic,
-		"username":      user.Username,
-		"transfer_mode": models.RedeemVoucherMode,
+		"user_id":                            user.ID,
+		"amount":                             internal.FromUSDToUSDMillicent(voucher.Value),
+		"mnemonic":                           user.Mnemonic,
+		"username":                           user.Username,
+		"transfer_mode":                      models.RedeemVoucherMode,
+		constants.WorkflowStateKeyGormUserID: user.ID,
 	}
 
 	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
@@ -1197,8 +1199,8 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 	})
 }
 
-// @Summary List user workflows
-// @Description Returns all workflows belonging to the authenticated user.
+// @Summary List remaning user workflows
+// @Description Returns all pending/running workflows belonging to the authenticated user.
 // @Tags workflow
 // @ID list-user-workflows
 // @Accept json
@@ -1208,11 +1210,11 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 // @Failure 401 {object} APIResponse "Unauthorized user"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /user/workflows [get]
-func (h *Handler) ListUserWorkflowsHandler(c *gin.Context) {
+func (h *Handler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListUserPendingRecordsHandler")
 
-	workflows, err := h.db.ListWorkflowsByUserID(userID)
+	workflows, err := h.db.ListRemainingWorkflowsByUserID(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list user workflows")
 		InternalServerError(c)

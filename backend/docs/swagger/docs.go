@@ -2726,7 +2726,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all workflows belonging to the authenticated user.",
+                "description": "Returns all pending/running workflows belonging to the authenticated user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2736,7 +2736,7 @@ const docTemplate = `{
                 "tags": [
                     "workflow"
                 ],
-                "summary": "List user workflows",
+                "summary": "List remaning user workflows",
                 "operationId": "list-user-workflows",
                 "responses": {
                     "200": {

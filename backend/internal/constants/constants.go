@@ -63,4 +63,7 @@ const (
 	ClusterOperationRemoveNode        = "remove_node"
 	ClusterOperationDeleteCluster     = "delete_cluster"
 	ClusterOperationDeleteAllClusters = "delete_all_user_clusters"
+
+	// Workflow State Keys
+	WorkflowStateKeyGormUserID = "gorm_user_id"
 )
