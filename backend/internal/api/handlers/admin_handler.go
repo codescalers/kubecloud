@@ -429,3 +429,59 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 	wg.Wait()
 	return results, multiErr.ErrorOrNil()
 }
+
+// @Summary Drain user balance
+// @Description Drains a specific user's balance to the system account
+// @Tags admin
+// @ID drain-user
+// @Accept json
+// @Produce json
+// @Param user_id path string true "User ID"
+// @Success 202 {object} APIResponse "User balance drain initiated"
+// @Failure 400 {object} APIResponse "Invalid user ID"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /users/{user_id}/drain [post]
+// DrainUserHandler drains a specific user's balance to the system account
+func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
+	userID := c.Param("user_id")
+	reqLog := requestLogger(c, "DrainUserHandler")
+
+	id, err := strconv.Atoi(userID)
+	if err != nil || id == 0 {
+		reqLog.Error().Err(err).Msg("invalid user ID format")
+		BadRequest(c, "Invalid user ID format")
+		return
+	}
+
+	if err := h.svc.AsyncDrainUserUSD(id); err != nil {
+		reqLog.Error().Err(err).Msg("failed to drain user balance")
+		InternalServerError(c)
+		return
+	}
+
+	Accepted(c, "User balance drain initiated, transfer in progress", nil)
+}
+
+// @Summary Drain all users' balances
+// @Description Drains all users' balances to the system account
+// @Tags admin
+// @ID drain-all-users
+// @Accept json
+// @Produce json
+// @Success 202 {object} APIResponse "All users' balance drain initiated"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /users/drain-all [post]
+// DrainAllUsersHandler drains all users' balances to the system account
+func (h *AdminHandler) DrainAllUsersHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "DrainAllUsersHandler")
+
+	if err := h.svc.AsyncDrainAllUsersUSD(); err != nil {
+		reqLog.Error().Err(err).Msg("failed to drain all users' balances")
+		InternalServerError(c)
+		return
+	}
+
+	Accepted(c, "All users' balance drain initiated, transfers in progress", nil)
+}

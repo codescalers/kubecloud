@@ -467,6 +467,60 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
+// DrainUserBalanceStep transfers a user's balance to the system account
+func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		userIDVal, ok := state["user_id"]
+		if !ok {
+			return fmt.Errorf("missing 'user_id' in state")
+		}
+		userID, ok := userIDVal.(int)
+		if !ok {
+			return fmt.Errorf("'user_id' in state is not an int")
+		}
+
+		user, err := userRepo.GetUserByID(userID)
+		if err != nil {
+			return fmt.Errorf("failed to get user: %w", err)
+		}
+
+		// Get user's current balance in TFT from on-chain
+		balanceInTFT, err := substrateClient.GetUserTFTBalance(user.Mnemonic)
+		if err != nil {
+			return fmt.Errorf("failed to get user balance: %w", err)
+		}
+
+		// Minimum balance threshold to keep (0.00001 TFT)
+		const minBalanceThreshold uint64 = 1e5
+
+		if balanceInTFT <= minBalanceThreshold {
+			logger.GetLogger().Info().
+				Int("user_id", userID).
+				Uint64("balance", balanceInTFT).
+				Msg("user balance below minimum threshold, nothing to drain")
+			return nil
+		}
+
+		// Transfer the balance minus threshold
+		transferAmount := balanceInTFT - minBalanceThreshold
+
+		// Perform the transfer from user to system account
+		err = substrateClient.TransferTFTsToSystem(transferAmount, user.Mnemonic)
+		if err != nil {
+			return fmt.Errorf("failed to transfer balance: %w", err)
+		}
+
+		logger.GetLogger().Info().
+			Int("user_id", userID).
+			Uint64("amount_tft", transferAmount).
+			Uint64("remaining_balance_tft", minBalanceThreshold).
+			Msg("successfully drained user balance to system account")
+
+		state["drained_amount_tft"] = transferAmount
+
+		return nil
+	}
+}
 func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]

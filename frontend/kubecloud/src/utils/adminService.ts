@@ -120,6 +120,26 @@ export class AdminService {
     return response.data
   }
 
+  // Drain a user's balance to system account (requires admin auth)
+  async drainUser(userId: number): Promise<void> {
+    await api.post<void>(`/v1/users/${userId}/drain`, {}, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Draining user balance...',
+      errorMessage: 'Failed to drain user balance'
+    })
+  }
+
+  // Drain all users' balances to system account (requires admin auth)
+  async drainAllUsers(): Promise<void> {
+    await api.post<void>(`/v1/users/drain-all`, {}, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Draining all users\' balances...',
+      errorMessage: 'Failed to drain all users\' balances'
+    })
+  }
+
   // Generate vouchers (requires admin auth)
   async generateVouchers(data: GenerateVouchersRequest): Promise<GenerateVouchersResponse> {
     const response = await api.post<GenerateVouchersResponse>('/v1/vouchers/generate', data, {

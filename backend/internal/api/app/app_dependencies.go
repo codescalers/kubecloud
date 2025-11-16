@@ -317,6 +317,7 @@ func (app *App) createHandlers() appHandlers {
 
 	statsService := services.NewStatsService(
 		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
+		app.infra.substrateClient, app.config.SystemAccount.Mnemonic,
 	)
 
 	notificationAPIService := services.NewNotificationService(notificationRepo)

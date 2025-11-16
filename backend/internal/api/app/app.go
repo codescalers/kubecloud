@@ -122,6 +122,8 @@ func (app *App) registerHandlers() {
 				usersGroup.GET("", app.handlers.adminHandler.ListUsersHandler)
 				usersGroup.DELETE("/:user_id", app.handlers.adminHandler.DeleteUsersHandler)
 				usersGroup.POST("/:user_id/credit", app.handlers.adminHandler.CreditUserHandler)
+				usersGroup.POST("/:user_id/drain", app.handlers.adminHandler.DrainUserHandler)
+				usersGroup.POST("/drain-all", app.handlers.adminHandler.DrainAllUsersHandler)
 			}
 			usersGroup.POST("/mail", app.handlers.adminHandler.SendMailToAllUsersHandler)
 			adminGroup.GET("/pending-records", app.handlers.adminHandler.ListPendingRecordsHandler)

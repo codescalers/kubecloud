@@ -203,3 +203,45 @@ func (svc *AdminService) generateVoucherWithTimestamp() string {
 	timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 	return fmt.Sprintf("%s-%s", voucherCode, timestampPart)
 }
+
+// AsyncDrainUserUSD drains a specific user's balance to the system account
+func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser)
+	if err != nil {
+		return err
+	}
+
+	wf.State = map[string]interface{}{
+		"user_id": userID,
+	}
+
+	return svc.ewfEngine.RunAsync(svc.appCtx, wf)
+}
+
+// AsyncDrainAllUsersUSD drains all users' balances to the system account
+func (svc *AdminService) AsyncDrainAllUsersUSD() error {
+	users, err := svc.ListAllUsers()
+	if err != nil {
+		return err
+	}
+
+	var multiErr *multierror.Error
+
+	for _, user := range users {
+		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+			continue
+		}
+
+		wf.State = map[string]interface{}{
+			"user_id": user.ID,
+		}
+
+		if err := svc.ewfEngine.RunAsync(svc.appCtx, wf); err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+
+	return multiErr.ErrorOrNil()
+}

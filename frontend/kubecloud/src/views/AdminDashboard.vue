@@ -20,15 +20,36 @@ const systemStats = ref<SystemStats>({
   up_nodes: 0,
   countries: 0,
   cores: 0,
-  ssd: 0
+  ssd: 0,
+  system_account_balance: 0
 })
 const statsLoaded = ref(false)
-const adminStats = computed(() => [
-  { label: 'Total Users', value: systemStats.value.total_users, icon: 'mdi-account-group', color: '#3B82F6' },
-  { label: 'Active Clusters', value: systemStats.value.total_clusters, icon: 'mdi-server', color: '#3B82F6' },
-  { label: 'Up Nodes', value: systemStats.value.up_nodes, icon: 'mdi-server-network', color: '#10B981' },
-  { label: 'Countries', value: systemStats.value.countries, icon: 'mdi-earth', color: '#F59E0B' },
-])
+const adminStats = computed(() => {
+  interface AdminStat {
+    icon: string;
+    color: string;
+    value: number | string;
+    label: string;
+  }
+  
+  const stats: AdminStat[] = [
+    { label: 'Total Users', value: systemStats.value.total_users, icon: 'mdi-account-group', color: '#3B82F6' },
+    { label: 'Active Clusters', value: systemStats.value.total_clusters, icon: 'mdi-server', color: '#3B82F6' },
+    { label: 'Up Nodes', value: systemStats.value.up_nodes, icon: 'mdi-server-network', color: '#10B981' },
+    { label: 'Countries', value: systemStats.value.countries, icon: 'mdi-earth', color: '#F59E0B' },
+  ]
+  
+  if (systemStats.value.system_account_balance !== undefined) {
+    stats.push({
+      label: 'System Account Balance',
+      value: `$${systemStats.value.system_account_balance.toFixed(2)}`,
+      icon: 'mdi-wallet',
+      color: '#8B5CF6'
+    })
+  }
+  
+  return stats
+})
 
 // User management state
 const users = ref<User[]>([])
@@ -96,6 +117,20 @@ function closeCreditDialog() {
 
 function handleCreditApplied() {
   loadUsers()
+}
+
+async function handleDrainUser(user: User) {
+  if (confirm(`Are you sure you want to drain all balance from user ${user.username}? This will transfer their funds to the system account.`)) {
+    await adminService.drainUser(user.id)
+    await loadUsers()
+  }
+}
+
+async function handleDrainAllUsers() {
+  if (confirm('Are you sure you want to drain all users\' balances to the system account? This cannot be undone.')) {
+    await adminService.drainAllUsers()
+    await loadUsers()
+  }
 }
 
 
@@ -173,6 +208,8 @@ async function loadStats() {
             @update:currentPage="goToPage($event)"
             @deleteUser="deleteUser"
             @creditUser="openCreditDialog"
+            @drainUser="handleDrainUser"
+            @drainAllUsers="handleDrainAllUsers"
           />
           <AdminClustersSection v-else-if="selected === 'clusters'" />
           <AdminSystemSection v-else-if="selected === 'system'" />

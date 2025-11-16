@@ -18,6 +18,8 @@ const (
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
 	WorkflowTrackClusterHealth       = "track-cluster-health"
 	WorkflowRollbackFailedAddNode    = "rollback-add-node"
+	WorkflowDrainUser                = "drain-user"
+	WorkflowDrainAllUsers            = "drain-all-users"
 )
 
 // Step names
@@ -54,4 +56,5 @@ const (
 	StepSendEmailNotification   = "send-email-notification"
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
+	StepDrainUserBalance        = "drain-user-balance"
 )
