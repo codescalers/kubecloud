@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	contextkeys "kubecloud/internal/context-keys"
 
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
@@ -57,13 +56,7 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 		Status:    string(workflow.Status),
 		Data:      data,
 		QueueName: workflow.QueueName,
-	}
-
-	value := ctx.Value(contextkeys.UserIDKey)
-	if value != nil {
-		if userID, ok := value.(int); ok {
-			gormWorkflow.UserID = userID
-		}
+		// add user id
 	}
 
 	return s.db.WithContext(ctx).Save(&gormWorkflow).Error

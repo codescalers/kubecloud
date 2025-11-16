@@ -1,12 +1,10 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal"
 	"kubecloud/internal/constants"
-	contextkeys "kubecloud/internal/context-keys"
 	"kubecloud/internal/statemanager"
 	"kubecloud/kubedeployer"
 	"os"
@@ -274,9 +272,7 @@ func (h *Handler) runAsyncWithQueue(c *gin.Context, reqLog *zerolog.Logger, user
 		return err
 	}
 
-	userContext := context.WithValue(h.appContext, contextkeys.UserIDKey, userID)
-
-	if err = h.ewfEngine.RunAsync(userContext, wf, ewf.WithQueue(queueName)); err != nil {
+	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule workflow")
 		InternalServerError(c)
 		return err

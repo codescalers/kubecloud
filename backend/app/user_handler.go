@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal"
-	contextkeys "kubecloud/internal/context-keys"
 	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/metrics"
 	"kubecloud/internal/notification"
@@ -729,9 +728,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	userContext := context.WithValue(h.appContext, contextkeys.UserIDKey, userID)
-
-	if err = h.ewfEngine.RunAsync(userContext, wf); err != nil {
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
 		reqLog.Error().Err(err).Msg("error scheduling workflow")
 		InternalServerError(c)
 		return
@@ -931,9 +928,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		"transfer_mode": models.RedeemVoucherMode,
 	}
 
-	userContext := context.WithValue(h.appContext, contextkeys.UserIDKey, userID)
-
-	if err = h.ewfEngine.RunAsync(userContext, wf); err != nil {
+	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
 		reqLog.Error().Err(err).Msg("error scheduling workflow")
 		InternalServerError(c)
 		return
