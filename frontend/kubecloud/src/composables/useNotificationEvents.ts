@@ -158,7 +158,6 @@ export function useNotificationEvents() {
     // Add persistent notification if it has an ID
     if (id) {
       notificationStore.addNotification({
-        id,
         type,
         severity,
         payload: { ...data, subject, message },
