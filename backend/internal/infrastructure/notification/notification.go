@@ -112,27 +112,45 @@ func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.
 		}
 	}
 
-	// Filter to active channels early
-	for _, ch := range notification.Channels {
-		notifier := s.notifiers[ch]
-
-		// Sync UI notifications for immediate feedback
-		if ch == ChannelUI {
+	// Sync UI notifications for immediate feedback
+	if s.hasChannel(notification.Channels, ChannelUI) {
+		if notifier, ok := s.notifiers[ChannelUI]; ok {
 			if err := notifier.Notify(*notification, userEmail); err != nil {
-				// Log but don't fail - UI notification is informational
-				logger.GetLogger().Error().Err(err).Str("channel", ch).Msg("Failed to send UI notification")
+				logger.GetLogger().Error().Err(err).Str("channel", ChannelUI).Msg("Failed to send UI notification")
 			}
-		} else {
-			// Async for other channels (email, etc.)
-			go func(n Notifier, email string) {
-				if err := n.Notify(*notification, email); err != nil {
-					logger.GetLogger().Error().Err(err).Str("channel", n.GetType()).Msg("Failed to send notification")
-				}
-			}(notifier, userEmail)
+		}
+	}
+
+	// Use EWF for guaranteed email delivery with retry logic
+	if s.hasChannel(notification.Channels, ChannelEmail) && s.engine != nil {
+		// Create workflow for reliable email delivery with retries
+		wf, err := s.engine.NewWorkflow("send-notification")
+		if err != nil {
+			logger.GetLogger().Error().Err(err).Msg("Failed to create notification workflow")
+			return nil // Don't fail - just log
+		}
+
+		wf.State = ewf.State{
+			"notification": notification,
+		}
+
+		if err := s.engine.RunAsync(ctx, wf); err != nil {
+			logger.GetLogger().Error().Err(err).Str("workflow_id", wf.UUID).Msg("Failed to queue notification workflow")
+			// Don't return error - workflow will be retried
 		}
 	}
 
 	return nil
+}
+
+// hasChannel checks if a channel exists in the notification's channels list
+func (s *NotificationDispatcher) hasChannel(channels []string, channelType string) bool {
+	for _, ch := range channels {
+		if ch == channelType {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *NotificationDispatcher) applyTemplateFallbacks(notification *models.Notification) {
