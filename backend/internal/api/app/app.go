@@ -177,11 +177,17 @@ func (app *App) registerHandlers() {
 			}
 		}
 
+		// SSE endpoint with special middleware that accepts query parameter tokens
+		// This is necessary because EventSource in browsers cannot set custom headers
+		sseGroup := v1.Group("")
+		sseGroup.Use(middlewares.SSEMiddleware(app.security.tokenManager))
+		{
+			sseGroup.GET("/events", app.communication.sseManager.HandleSSE)
+		}
+
 		deployerGroup := v1.Group("")
 		deployerGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
 		{
-			deployerGroup.GET("/events", app.communication.sseManager.HandleSSE)
-
 			deploymentGroup := deployerGroup.Group("/deployments")
 			{
 				deploymentGroup.POST("", app.handlers.deploymentHandler.HandleDeployCluster)
