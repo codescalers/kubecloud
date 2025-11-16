@@ -17,6 +17,15 @@ services:
       - mycelium-data:/var/lib/mycelium
     restart: unless-stopped
 
+  redis-db:
+    image: redis:alpine
+    command: redis-server --requirepass pass
+    ports:
+      - 6379:6379
+    container_name: redis-db
+    networks:
+      - app-network
+
   backend:
     build:
       context: ./backend
@@ -30,14 +39,12 @@ services:
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
-      - ./backend/notification-config.json:/app/notification-config.json
       - ./backend/app/logs:/app/logs
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
       - APP_ENV=dev
       - HOSTNAME=backend-1
-      - TEMPLATE_DIR=/app/internal/templates/notifications
     command: ["/myceliumcloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
 

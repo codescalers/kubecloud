@@ -19,6 +19,12 @@
     "max_concurrent_sends": 20,
     "max_attachment_size_mb": 10
   },
+  "redis": {
+    "hostname": "localhost",
+    "port": 6379,
+    "password": "pass",
+    "db": 0
+  },
   "currency": "USD",
   "stripe_secret": "sk_test_your_stripe_secret_key_here",
   "voucher_name_length": 8,
@@ -41,6 +47,7 @@
     "public_key_path": "/home/user/.ssh/id_rsa.pub"
   },
   "debug": false,
+  "dev_mode": false,
   "monitor_balance_interval_in_minutes": 120,
   "notify_admins_for_pending_records_in_hours": 24,
   "cluster_health_check_interval_in_hours": 1,
@@ -62,6 +69,5 @@
       "env": "dev",
       "host": ""
     }
-  },
-  "notification_config_path": "./notification-config-example.json"
+  }
 }

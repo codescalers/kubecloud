@@ -64,6 +64,14 @@ export const useNotificationStore = defineStore('notifications', () => {
     const notification = notifications.value.find(n => n.id === id)
     if (!notification || !notification.persistent) return
     if (notification.status === target) return
+
+    // For temp IDs, just update locally - the real ID will be set when notifications are loaded from backend
+    if (id.startsWith('temp-')) {
+      notification.status = target
+      notification.read_at = target === 'read' ? new Date().toISOString() : undefined
+      return
+    }
+
     try {
       const action = target === 'read' ? 'read' : 'unread'
       await api.patch(`/v1/notifications/${id}/${action}`, undefined, { requiresAuth: true })
@@ -122,7 +130,41 @@ export const useNotificationStore = defineStore('notifications', () => {
 
   // Internal: replace persistent notifications
   const replacePersistent = (serverNotifications: BaseNotification[]) => {
-    notifications.value = serverNotifications.map(n => ({ ...n, persistent: true }))
+    // Update IDs of existing temp ID notifications by matching with server notifications
+    notifications.value.forEach(localNotif => {
+      if (localNotif.persistent && localNotif.id.startsWith('temp-')) {
+        // Find matching server notification by type and payload
+        const serverNotif = serverNotifications.find(sn =>
+          sn.type === localNotif.type &&
+          JSON.stringify(sn.payload) === JSON.stringify(localNotif.payload)
+        )
+        if (serverNotif) {
+          localNotif.id = serverNotif.id
+          // Update other server fields while preserving local status
+          Object.assign(localNotif, serverNotif, {
+            persistent: true,
+            status: localNotif.status,
+            read_at: localNotif.read_at
+          })
+        }
+      }
+    })
+
+    // Replace all persistent notifications with server data, preserving status for existing real ID notifications
+    const updatedPersistent = serverNotifications.map(serverNotif => {
+      const existingNotif = notifications.value.find(n => n.id === serverNotif.id)
+      if (existingNotif) {
+        // Preserve local status changes
+        return { ...serverNotif, persistent: true, status: existingNotif.status, read_at: existingNotif.read_at }
+      }
+      return { ...serverNotif, persistent: true }
+    })
+
+    // Set notifications: keep non-persistent + updated persistent
+    notifications.value = [
+      ...notifications.value.filter(n => !n.persistent),
+      ...updatedPersistent
+    ]
   }
 
   // Internal: fetch endpoint and replace

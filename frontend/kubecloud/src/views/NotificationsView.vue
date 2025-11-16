@@ -1,15 +1,15 @@
 <template>
-  <div class="container mx-auto pa-6 mt-15">
+  <div class="container mx-auto pa-4 pa-sm-6 mt-15">
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6 mt-15">
+    <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between mb-4 mb-sm-6 mt-15 gap-3">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-2">Notifications</h1>
-        <p class="text-body-1 text-medium-emphasis">
+        <h1 class="text-h5 text-sm-h4 font-weight-bold mb-2">Notifications</h1>
+        <p class="text-body-2 text-sm-body-1 text-medium-emphasis">
           Manage and view all your notifications
         </p>
       </div>
 
-      <div class="d-flex gap-3">
+      <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
         <v-btn
           v-if="unreadCount > 0"
           variant="outlined"
@@ -17,8 +17,11 @@
           @click="markAllAsRead"
           :loading="loading"
           prepend-icon="mdi-check-all"
+          size="small"
+          class="flex-grow-1 flex-sm-grow-0"
         >
-          Mark All Read
+          <span class="d-none d-sm-inline">Mark All Read</span>
+          <span class="d-sm-none">Mark Read</span>
         </v-btn>
 
         <v-btn
@@ -28,6 +31,8 @@
           :loading="loading"
           :disabled="persistentNotifications.length === 0 || loading"
           prepend-icon="mdi-delete-sweep"
+          size="small"
+          class="flex-grow-1 flex-sm-grow-0"
         >
           Clear All
         </v-btn>
@@ -35,17 +40,20 @@
     </div>
 
     <!-- Filters -->
-    <div class="d-flex align-center gap-4 mb-5">
+    <div class="d-flex flex-column flex-sm-row align-stretch align-sm-center gap-3 gap-sm-4 mb-4 mb-sm-5">
       <v-btn-toggle
         v-model="statusFilter"
         mandatory
         color="primary"
         variant="outlined"
         density="comfortable"
-        class="segmented-toggle"
+        class="segmented-toggle flex-grow-1 flex-sm-grow-0"
       >
         <v-btn value="all" class="left-btn">All</v-btn>
-        <v-btn value="unread" class="middle-btn">Unread ({{ unreadCount }})</v-btn>
+        <v-btn value="unread" class="middle-btn">
+          <span class="d-none d-sm-inline">Unread ({{ unreadCount }})</span>
+          <span class="d-sm-none">Unread</span>
+        </v-btn>
         <v-btn value="read" class="right-btn">Read</v-btn>
       </v-btn-toggle>
 
@@ -56,8 +64,8 @@
         variant="outlined"
         density="compact"
         hide-details
-        class="ml-4"
-        style="min-width: 200px"
+        class="flex-grow-1 flex-sm-grow-0"
+        style="min-width: 200px; max-width: 100%"
       ></v-select>
     </div>
 
@@ -85,11 +93,12 @@
               :key="notification.id"
               :class="[
                 'cursor-pointer',
-                'pa-4',
-                'mb-3',
-                'mx-2',
+                'pa-3 pa-sm-4',
+                'mb-2 mb-sm-3',
+                'mx-1 mx-sm-2',
                 'rounded-lg',
                 'elevation-2',
+                'notification-item',
               ]"
               :style="notification.status === 'unread' ? unreadItemStyle : readItemStyle"
               @click="onNotificationClick(notification)"
@@ -97,36 +106,36 @@
             >
               <template v-slot:prepend>
                 <v-avatar
-                  size="48"
+                  :size="display.smAndDown ? 40 : 48"
                   :color="getNotificationColor(notification.severity)"
-                  class="notification-icon mr-4"
+                  class="notification-icon mr-2 mr-sm-4"
                 >
                   <v-icon
                     :icon="getNotificationIcon(notification.type)"
                     color="white"
-                    size="24"
+                    :size="display.smAndDown ? 20 : 24"
                   ></v-icon>
                 </v-avatar>
               </template>
 
-              <v-list-item-title class="text-h6 font-weight-medium mb-2">
+              <v-list-item-title class="text-body-1 text-sm-h6 font-weight-medium mb-1 mb-sm-2">
                 {{ notification.payload.subject|| capitalize(notification.type) || 'Notification' }}
               </v-list-item-title>
 
-              <v-list-item-subtitle class="text-body-1 mb-2">
+              <v-list-item-subtitle class="text-body-2 text-sm-body-1 mb-2">
                 {{ notification.payload.message || notification.payload.description || notification.payload.details || '' }}
               </v-list-item-subtitle>
 
-              <div class="d-flex align-center justify-space-between">
+              <div class="d-flex flex-column flex-sm-row align-start align-sm-center justify-space-between gap-2">
                 <v-list-item-subtitle class="text-caption text-medium-emphasis">
                   {{ formatNotificationTime(notification.created_at) }}
                 </v-list-item-subtitle>
 
-                <div class="d-flex gap-2 align-center">
+                <div class="d-flex flex-wrap gap-1 gap-sm-2 align-center">
                   <v-chip
                     :color="getNotificationColor(notification.severity)"
                     variant="tonal"
-                    size="small"
+                    size="x-small"
                     class="text-caption"
                   >
                     {{ notification.severity.toUpperCase() }}
@@ -136,50 +145,50 @@
                     v-if="notification.status === 'unread'"
                     color="primary"
                     variant="tonal"
-                    size="small"
+                    size="x-small"
                     class="text-caption"
                   >
                     UNREAD
                   </v-chip>
 
-                  <v-btn v-if="notification.payload.error" icon size="small" variant="text"
-                    @click.stop="showDetailsDialog(notification)" color="info" class="ml-2">
-                    <v-icon icon="mdi-information-outline" size="16"></v-icon>
+                  <v-btn v-if="notification.payload.error" icon size="x-small" variant="text"
+                    @click.stop="showDetailsDialog(notification)" color="info" class="ml-1">
+                    <v-icon icon="mdi-information-outline" size="14"></v-icon>
                   </v-btn>
 
                   <v-btn
                     v-if="notification.status === 'unread'"
                     icon
-                    size="small"
+                    size="x-small"
                     variant="text"
                     @click.stop="markAsRead(notification.id)"
                     color="success"
-                    class="ml-2"
+                    class="ml-1"
                   >
-                    <v-icon icon="mdi-check" size="16"></v-icon>
+                    <v-icon icon="mdi-check" size="14"></v-icon>
                   </v-btn>
 
                   <v-btn
                     v-else
                     icon
-                    size="small"
+                    size="x-small"
                     variant="text"
                     @click.stop="markAsUnread(notification.id)"
                     color="primary"
-                    class="ml-2"
+                    class="ml-1"
                   >
-                    <v-icon icon="mdi-email-outline" size="16"></v-icon>
+                    <v-icon icon="mdi-email-outline" size="14"></v-icon>
                   </v-btn>
 
                   <v-btn
                     icon
-                    size="small"
+                    size="x-small"
                     variant="text"
                     @click.stop="openDeleteDialog(notification)"
                     color="error"
                     class="ml-1"
                   >
-                    <v-icon icon="mdi-delete" size="16"></v-icon>
+                    <v-icon icon="mdi-delete" size="14"></v-icon>
                   </v-btn>
                 </div>
               </div>
@@ -188,16 +197,17 @@
 
           <!-- Pagination -->
           <v-divider></v-divider>
-          <div class="d-flex align-center justify-space-between pa-4">
-            <div class="text-body-2 text-medium-emphasis">
+          <div class="d-flex flex-column flex-sm-row align-center align-sm-space-between pa-3 pa-sm-4 gap-2">
+            <div class="text-caption text-sm-body-2 text-medium-emphasis text-center text-sm-left">
               Showing {{ startIndex + 1 }}-{{ endIndex }} of {{ filteredNotifications.length }} notifications
             </div>
 
             <v-pagination
               v-model="currentPage"
               :length="totalPages"
-              :total-visible="7"
+              :total-visible="display.smAndDown ? 5 : 7"
               color="primary"
+              density="compact"
             ></v-pagination>
           </div>
         </div>
@@ -205,7 +215,7 @@
     </v-card>
     
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="showDeleteDialog" max-width="420">
+    <v-dialog v-model="showDeleteDialog" :max-width="display.smAndDown ? '90%' : '420'">
       <v-card class="pa-3">
         <v-card-title class="text-h6">Delete Notification</v-card-title>
         <v-card-text>
@@ -220,7 +230,7 @@
     </v-dialog>
 
     <!-- Clear All Confirmation Dialog -->
-    <v-dialog v-model="showClearAllDialog" max-width="420">
+    <v-dialog v-model="showClearAllDialog" :max-width="display.smAndDown ? '90%' : '420'">
       <v-card class="pa-3">
         <v-card-title class="text-h6">Clear All Notifications</v-card-title>
         <v-card-text>
@@ -234,13 +244,13 @@
       </v-card>
     </v-dialog>
   </div>
-  <v-dialog v-model="detailsDialog" max-width="600">
-    <v-card class="pa-3 ">
-      <v-card-title class="text-h4 text-error">{{ notification?.payload.subject }}</v-card-title>
-      <v-card-subtitle class="text-body-1">{{ notification?.payload.message }}</v-card-subtitle>
+  <v-dialog v-model="detailsDialog" :max-width="display.smAndDown ? '95%' : '600'">
+    <v-card class="pa-3">
+      <v-card-title class="text-h5 text-sm-h4 text-error">{{ notification?.payload.subject }}</v-card-title>
+      <v-card-subtitle class="text-body-2 text-sm-body-1">{{ notification?.payload.message }}</v-card-subtitle>
       <v-card-text class="overflow-wrap-break-word">
-        <code class="pa-3 d-block rounded font-weight-medium text-error"
-          style="background-color: rgba(0, 0, 0, 0.4); white-space: pre-wrap;">{{ notification?.payload.error }}</code>
+        <code class="pa-2 pa-sm-3 d-block rounded font-weight-medium text-error text-caption text-sm-body-2"
+          style="background-color: rgba(0, 0, 0, 0.4); white-space: pre-wrap; word-break: break-word;">{{ notification?.payload.error }}</code>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
@@ -253,9 +263,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, capitalize } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useDisplay } from 'vuetify'
 import { useNotificationStore } from '../stores/notifications'
 import type { Notification, NotificationType } from '../types/notifications'
 import { getNotificationIcon, getNotificationColor, formatNotificationTime } from '../utils/notificationUtils'
+
+const display = useDisplay()
 
 const notificationStore = useNotificationStore()
 const detailsDialog = ref(false)
@@ -406,6 +419,41 @@ const readItemStyle = {
 
 .segmented-toggle .right-btn {
   border-radius: 0 8px 8px 0 !important;
+}
+
+.notification-item {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notification-item:hover {
+  transform: translateY(-1px);
+}
+
+.notification-item :deep(.v-list-item-title),
+.notification-item :deep(.v-list-item-subtitle) {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+  .notification-item {
+    min-height: auto !important;
+  }
+
+  .notification-item :deep(.v-list-item__prepend) {
+    padding-right: 0.5rem !important;
+  }
+
+  .notification-item :deep(.v-list-item-title) {
+    font-size: 0.875rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .notification-item :deep(.v-list-item-subtitle) {
+    font-size: 0.75rem !important;
+    line-height: 1.4 !important;
+  }
 }
 </style>
 

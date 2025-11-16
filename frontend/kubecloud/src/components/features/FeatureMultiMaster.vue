@@ -1,28 +1,50 @@
 <template>
-  <section class="feature-panel multi-master">
-    <div class="feature-content-row">
-      <div class="feature-animation-with-glow">
-        <div class="feature-animation-glow"></div>
-        <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
-          <div v-if="hoveredNode" class="node-label" :style="{ left: hoveredNode.pos.x + 'px', top: hoveredNode.pos.y + 'px' }">
-            {{ hoveredNode.type }}
+  <v-container class="py-8" fluid>
+    <v-row align="center" justify="center" class="mx-auto" style="min-height: 60vh; max-width: 1440px;">
+      <v-col cols="12" md="7">
+        <v-responsive class="w-100" :aspect-ratio="16/9">
+          <div class="w-100 h-100 position-relative">
+            <div style="position:absolute;left:50%;top:50%;width:85%;height:85%;transform:translate(-50%,-50%);background:radial-gradient(circle, rgba(96,165,250,0.18) 0%, transparent 80%);filter:blur(32px);"></div>
+            <canvas ref="threeCanvas" class="w-100 h-100" style="display:block;background:transparent;border-radius:16px" @mousemove="onCanvasMouseMove" @mouseleave="onCanvasMouseLeave"></canvas>
+            <v-chip
+              v-if="hoveredNode"
+              size="small"
+              class="elevation-2"
+              :style="{
+                position: 'absolute',
+                left: (hoveredNode && hoveredNode.pos.x + 'px') || '0px',
+                top: (hoveredNode && hoveredNode.pos.y + 'px') || '0px',
+                transform: 'translate(-50%, -120%)',
+                'pointer-events': 'none',
+                'user-select': 'none',
+                color: '#8ecfff',
+                'border-color': '#60a5fa33',
+                'border-width': '1px',
+                'border-style': 'solid',
+                'background': 'rgba(30,41,59,0.92)'
+              }"
+            >
+              {{ hoveredNode?.type }}
+            </v-chip>
+          </div>
+        </v-responsive>
+      </v-col>
+       <v-col cols="12" md="5" class="d-flex flex-column align-center align-lg-start pa-6 text-white text-center text-lg-start"
+       >
+        <div>
+          <div class="text-h4 text-md-h3 font-weight-medium mb-3">Multi-Master Clusters</div>
+          <div class="subtitle" style="color:#60a5fa">
+            High-availability Kubernetes clusters with multiple control plane nodes. Automatic failover, leader election, and zero-downtime upgrades built-in.
+          </div>
+          <div class="d-flex flex-wrap justify-center justify-md-start mt-2" style="gap: 8px; color: #b6d6ff;">
+            <v-chip class="ma-1" size="small">HA Control Plane</v-chip>
+            <v-chip class="ma-1" size="small">Automatic Failover</v-chip>
+            <v-chip class="ma-1" size="small">Zero-downtime Upgrades</v-chip>
           </div>
         </div>
-      </div>
-      <div class="feature-content feature-content-overlay">
-        <h2 class="feature-title">Multi-Master Clusters</h2>
-        <p class="feature-description">
-          High-availability Kubernetes clusters with multiple control plane nodes. Automatic failover, leader election, and zero-downtime upgrades built-in.
-        </p>
-        <div class="feature-benefits">
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">HA Control Plane</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Automatic Failover</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Zero-downtime Upgrades</v-chip>
-        </div>
-      </div>
-    </div>
-  </section>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 
@@ -105,17 +127,17 @@ function onCanvasMouseLeave() {
 
 onMounted(() => {
   if (!threeCanvas.value) return
-  
+
   // Set initial canvas size
   const canvas = threeCanvas.value
   const rect = canvas.getBoundingClientRect()
-  
+
   // Set explicit canvas size if dimensions are 0
   if (rect.width === 0 || rect.height === 0) {
     canvas.width = 800
     canvas.height = 600
   }
-  
+
   renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     alpha: true,
@@ -126,7 +148,7 @@ onMounted(() => {
   const renderHeight = rect.height > 0 ? rect.height : 600
   renderer.setSize(renderWidth, renderHeight, false)
   renderer.setClearColor(0x000000, 0) // Restore transparent background
-  
+
   scene = new THREE.Scene()
   camera = new THREE.PerspectiveCamera(
     60,
@@ -146,7 +168,7 @@ onMounted(() => {
     camera.aspect = renderWidth / renderHeight
     camera.updateProjectionMatrix()
   }
-  
+
   window.addEventListener('resize', handleResize)
 
   // Place master nodes in a ring
@@ -407,9 +429,9 @@ onMounted(() => {
   function createCrownMesh() {
     // Sophisticated leader indicator: subtle ring with glow, but as a single mesh
     const ringGeometry = new THREE.TorusGeometry(0.25, 0.03, 16, 32)
-    const ringMaterial = new THREE.MeshBasicMaterial({ 
-      color: LEADER_COLOR, 
-      transparent: true, 
+    const ringMaterial = new THREE.MeshBasicMaterial({
+      color: LEADER_COLOR,
+      transparent: true,
       opacity: 0.6
     })
     const ring = new THREE.Mesh(ringGeometry, ringMaterial)
@@ -443,144 +465,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.feature-panel {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
+.subtitle{
+  font-size: 1.1rem
 }
-.feature-content-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1600px;
-  gap: 1.5rem;
-  padding: 3rem 1rem;
-  position: relative;
-}
-.feature-animation-with-glow {
-  position: relative;
-  width: 60vw;
-  min-width: 400px;
-  max-width: 900px;
-  height: 600px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.feature-animation-glow {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 90%;
-  height: 90%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(96, 165, 250, 0.18) 0%, transparent 80%);
-  z-index: 0;
-  pointer-events: none;
-  filter: blur(32px);
-}
-.feature-animation {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.three-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: transparent;
-  border-radius: 16px;
-}
-.feature-content {
-  flex: 1 1 350px;
-  min-width: 260px;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2rem 1.5rem;
-  background: none;
-  backdrop-filter: none;
-  border-radius: 0;
-  color: #fff;
-  box-shadow: none;
-  margin-left: 0;
-  z-index: 2;
-}
-.feature-title {
-  font-size: 1.7rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
-.feature-description {
-  font-size: 1.1rem;
-  font-weight: 400;
-  color: #60a5fa;
-}
-.feature-benefits {
-  margin: 1.2rem 0 0 0;
-  color: #b6d6ff;
-  font-size: 1rem;
-  line-height: 1.7;
-  display: flex;
-  gap: 0.2rem;
-}
-@media (max-width: 1200px) {
-  .feature-animation-with-glow {
-    width: 90vw;
-    max-width: 100vw;
-    height: 400px;
-    min-width: 0;
-  }
-  .feature-content {
-    margin-left: -40px;
-    max-width: 340px;
-  }
-}
-@media (max-width: 900px) {
-  .feature-content-row {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 2rem 0.5rem;
-  }
-  .feature-animation-with-glow {
-    width: 100vw;
-    max-width: 100vw;
-    height: 320px;
-    min-width: 0;
-    justify-content: center;
-  }
-  .feature-content {
-    align-items: center;
-    text-align: center;
-    margin-left: 0;
-    max-width: 100vw;
-    padding: 1.5rem 0.5rem;
-  }
-}
-.node-label {
-  position: absolute;
-  background: rgba(30, 41, 59, 0.92);
-  color: #8ecfff;
-  font-size: 0.9rem;
-  font-weight: 500;
-  padding: 0.25rem 0.7rem;
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 20;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
-  border: 1px solid #60a5fa33;
-  transform: translate(-50%, -120%);
-  user-select: none;
-}
-</style> 
+</style>

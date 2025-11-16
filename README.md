@@ -83,8 +83,7 @@ cd backend
 cp config-example.json config.json
 # Edit config.json with your settings (see backend/README.md for details)
 # Build and run
-make build
-make run .
+make run
 ```
 
 The backend will start on the configured port (default: 8080).
@@ -124,15 +123,14 @@ sudo mv mycelium-private /usr/local/bin/mycelium
 sudo mycelium --peers tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651
 ```
 
-1. **Start Backend** (in another terminal):
+2. **Start Backend** (in another terminal):
 
 ```bash
 cd backend
-make build
-make run .
+make run
 ```
 
-1. **Start Frontend** (in another terminal):
+3. **Start Frontend** (in another terminal):
 
 ```bash
 cd frontend/kubecloud
@@ -140,7 +138,40 @@ npm install
 npm run dev
 ```
 
-### 5. Docker Compose (Full Stack)
+
+### 5. Makefile (Backend & Frontend Setup)
+
+For a local development environment:
+
+Edit config.json and frontendconfig.env at the root directory with your settings.
+A copy of the required format can be found at:
+
+`backend/config.example.json` for backend configuration
+
+`frontend/kubecloud/.env.example` for frontend environment variables
+
+```bash
+# From the root directory
+make run
+```
+
+This will start both the backend (in the background) and the frontend (in the same terminal).
+
+To run them separately:
+```bash
+# From the root directory
+make backend-run
+```
+
+Then, in another terminal:
+
+```bash
+# From the root directory
+make frontend-run
+```
+This will start the backend and frontend independently.
+
+### 6. Docker Compose (Full Stack)
 
 For a complete local development environment:
 
@@ -151,7 +182,9 @@ docker-compose up
 
 This will start all services including the backend, frontend, monitoring stack, and databases.
 
-### 6. Access the Application
+
+
+### 7. Access the Application
 
 - **Frontend UI**: <http://localhost:5173>
 - **Backend API**: <http://localhost:8080>

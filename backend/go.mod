@@ -1,17 +1,19 @@
 module kubecloud
 
-go 1.24.3
+go 1.25
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.8
 	github.com/jackc/pgx/v5 v5.4.3
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.23.2
+	github.com/redis/go-redis/v9 v9.16.0
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/signintech/gopdf v0.33.0
 	github.com/spf13/cobra v1.10.1
@@ -21,13 +23,12 @@ require (
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.1
 	github.com/swaggo/swag v1.16.6
-	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250901133903-8d32a808fb79
-	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.0
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.0
-	github.com/tyler-smith/go-bip39 v1.1.0
+	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
+	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.3
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.3
 	github.com/vedhavyas/go-subkey v1.0.3
-	github.com/xmonader/ewf v0.0.0-20250729141004-1f7a4a1c7838
-	golang.org/x/sync v0.17.0
+	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
+	golang.org/x/sync v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/driver/sqlite v1.6.0
@@ -38,8 +39,11 @@ require (
 )
 
 require (
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/sendgrid/rest v2.6.9+incompatible // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 )
 
 require (
@@ -56,7 +60,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/cosmos/go-bip39 v1.0.0 // indirect
+	github.com/cosmos/go-bip39 v1.0.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.6 // indirect
@@ -132,13 +136,12 @@ require (
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/zerolog v1.34.0
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
-	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.0 // indirect
-	github.com/threefoldtech/zosbase v0.1.10 // indirect
+	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.3 // indirect
+	github.com/threefoldtech/zosbase v1.0.3 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect

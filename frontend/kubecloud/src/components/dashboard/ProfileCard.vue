@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-card profile-card compact">
     <div class="dashboard-card-header">
-      <h3 class="dashboard-card-title">Profile</h3>
+      <h3 class="text-h5 font-weight-bold mb-1">Profile</h3>
       <p class="dashboard-card-subtitle">Your account information</p>
     </div>
     <div class="dashboard-card-content">
