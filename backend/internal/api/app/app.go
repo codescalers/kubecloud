@@ -238,12 +238,18 @@ func (app *App) Run() error {
 	return nil
 }
 
+// TODO: revise graceful shutdown procedure
 // Shutdown gracefully shuts down the server and worker manager
 func (app *App) Shutdown() error {
 	defer app.core.appCtx.Done()
 
 	if app.httpServer != nil {
-		if err := app.httpServer.Shutdown(app.core.appCtx); err != nil {
+		// Create a new timeout context for shutdown (5 seconds)
+		// Don't use app.core.appCtx as it's already cancelled
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := app.httpServer.Shutdown(shutdownCtx); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to shutdown HTTP server")
 		}
 	}
