@@ -139,22 +139,3 @@ func (q *redisQueue) Close(ctx context.Context) error {
 
 	return q.deleteQueue(ctx)
 }
-
-// List returns all workflows currently in the queue
-func (q *redisQueue) List(ctx context.Context) ([]*ewf.Workflow, error) {
-	result, err := q.client.LRange(ctx, q.name, 0, -1).Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list workflows in queue %s: %v", q.name, err)
-	}
-
-	workflows := make([]*ewf.Workflow, 0, len(result))
-	for _, item := range result {
-		var wf ewf.Workflow
-		if err := json.Unmarshal([]byte(item), &wf); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal workflow in queue %s: %v", q.name, err)
-		}
-		workflows = append(workflows, &wf)
-	}
-
-	return workflows, nil
-}
