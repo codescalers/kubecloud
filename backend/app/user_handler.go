@@ -192,6 +192,15 @@ type GetUserResponse struct {
 	PendingBalanceUSD float64 `json:"pending_balance_usd"`
 }
 
+type UserWorkflowsResponse struct {
+	WorkflowID  string    `json:"workflow_id"`
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	CurrentStep int       `json:"current_step"`
+	TotalSteps  int       `json:"total_steps"`
+}
+
 // RegisterHandler registers user to the system
 // @Summary Register user (with KYC sponsorship)
 // @Description Registers a new user, sets up blockchain account, and creates KYC sponsorship. Sends verification code to email.
@@ -1185,6 +1194,46 @@ func (h *Handler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsResponse,
+	})
+}
+
+// @Summary List user workflows
+// @Description Returns all workflows belonging to the authenticated user.
+// @Tags workflow
+// @ID list-user-workflows
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} APIResponse{data=UserWorkflowsResponse} "User workflows retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized user"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /user/workflows [get]
+func (h *Handler) ListUserWorkflowsHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "ListUserPendingRecordsHandler")
+
+	workflows, err := h.db.ListWorkflowsByUserID(userID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to list user workflows")
+		InternalServerError(c)
+		return
+	}
+
+	var userWorkflowsResponse []UserWorkflowsResponse
+	for _, workflow := range workflows {
+
+		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflowsResponse{
+			WorkflowID:  workflow.UUID,
+			Name:        workflow.Name,
+			Status:      string(workflow.Status),
+			CreatedAt:   workflow.CreatedAt,
+			CurrentStep: workflow.CurrentStep,
+			TotalSteps:  len(workflow.Steps),
+		})
+	}
+
+	OK(c, "User workflows retrieved successfully", gin.H{
+		"workflows": userWorkflowsResponse,
 	})
 }
 

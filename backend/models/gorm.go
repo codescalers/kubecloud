@@ -2,11 +2,13 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
 
@@ -446,6 +448,29 @@ func (s *GormDB) ListAllClusters() ([]Cluster, error) {
 func (s *GormDB) GetUserNodeByContractID(contractID uint64) (UserNodes, error) {
 	var userNode UserNodes
 	return userNode, s.db.Where("contract_id = ?", contractID).First(&userNode).Error
+}
+
+func (s *GormDB) ListWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
+	var records []gormWorkflowRecord
+
+	if err := s.db.Where("user_id = ?", userID).
+		Order("uuid DESC").
+		Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	workflows := make([]*ewf.Workflow, 0, len(records))
+
+	for _, rec := range records {
+		var wf ewf.Workflow
+		if err := json.Unmarshal(rec.Data, &wf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
+		}
+
+		workflows = append(workflows, &wf)
+	}
+
+	return workflows, nil
 }
 
 func migrateNotifications(db *gorm.DB) error {

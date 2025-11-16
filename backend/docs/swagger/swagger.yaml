@@ -578,6 +578,21 @@ definitions:
     - password
     - username
     type: object
+  app.UserWorkflowsResponse:
+    properties:
+      created_at:
+        type: string
+      current_step:
+        type: integer
+      name:
+        type: string
+      status:
+        type: string
+      total_steps:
+        type: integer
+      workflow_id:
+        type: string
+    type: object
   app.VerifyCodeInput:
     properties:
       code:
@@ -2622,6 +2637,37 @@ paths:
       summary: Delete SSH key
       tags:
       - users
+  /user/workflows:
+    get:
+      consumes:
+      - application/json
+      description: Returns all workflows belonging to the authenticated user.
+      operationId: list-user-workflows
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User workflows retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/app.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/app.UserWorkflowsResponse'
+              type: object
+        "401":
+          description: Unauthorized user
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/app.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: List user workflows
+      tags:
+      - workflow
   /users:
     get:
       consumes:

@@ -329,6 +329,8 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/invoice/:invoice_id", app.handlers.DownloadInvoiceHandler)
 				authGroup.GET("/invoice", app.handlers.ListUserInvoicesHandler)
 				authGroup.GET("/pending-records", app.handlers.ListUserPendingRecordsHandler)
+				authGroup.GET("/workflows", app.handlers.ListUserWorkflowsHandler)
+
 				// SSH Key management
 				authGroup.GET("/ssh-keys", app.handlers.ListSSHKeysHandler)
 				authGroup.POST("/ssh-keys", app.handlers.AddSSHKeyHandler)

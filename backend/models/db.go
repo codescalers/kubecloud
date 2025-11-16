@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
 
@@ -40,6 +41,8 @@ type DB interface {
 	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
 	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
 	ListAllReservedNodes() ([]UserNodes, error)
+	ListWorkflowsByUserID(userID int) ([]*ewf.Workflow, error)
+
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
 	ListUserSSHKeys(userID int) ([]SSHKey, error)
