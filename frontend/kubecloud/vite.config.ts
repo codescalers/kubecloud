@@ -14,11 +14,4 @@ export default defineConfig({
     },
   },
   base: '/',
-  define: {
-    __ENV__: JSON.stringify({
-      VITE_API_BASE_URL: process.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
-      VITE_NETWORK: process.env.VITE_NETWORK || 'main',
-      VITE_STRIPE_PUBLISHABLE_KEY: process.env.VITE_STRIPE_PUBLISHABLE_KEY || '',
-    }),
-  },
 })
