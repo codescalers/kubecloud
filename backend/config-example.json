@@ -69,6 +69,5 @@
       "env": "dev",
       "host": ""
     }
-  },
-  "notification_config_path": "./notification-config-example.json"
+  }
 }

@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"kubecloud/app"
-	"kubecloud/internal"
-	"kubecloud/internal/logger"
+	"kubecloud/internal/api/app"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/infrastructure/logger"
 	"net"
 	"net/http"
 	"os"
@@ -190,11 +190,6 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind loki.labels flag: %w", err)
 	}
 
-	// === Notification Config ===
-	if err := bindStringFlag(rootCmd, "notification_config_path", "./notification-config.json", "Path to notification configuration file"); err != nil {
-		return fmt.Errorf("failed to bind notification_config_path flag: %w", err)
-	}
-
 	return nil
 }
 
@@ -284,7 +279,7 @@ It supports:
 - Secure access control through Mycelium whitelisting
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := internal.LoadConfig()
+		config, err := cfg.LoadConfig()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to read configurations")
 			return fmt.Errorf("failed to read configuration: %w", err)

@@ -15,7 +15,7 @@ import StatsGrid from './StatsGrid.vue'
 interface AdminStat {
   icon: string;
   color: string;
-  value: number;
+  value: number | string;
   label: string;
 }
 

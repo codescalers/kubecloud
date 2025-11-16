@@ -1,9 +1,9 @@
 package moneycollector
 
 import (
-	"kubecloud/internal"
-	"kubecloud/internal/substrate"
-	"kubecloud/models"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/substrate"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -11,7 +11,7 @@ import (
 
 type MoneyCollector struct {
 	userRepo        models.UserRepository
-	config          internal.Configuration
+	config          cfg.Configuration
 	substrateClient substrate.Substrate
 }
 
@@ -19,7 +19,7 @@ const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(userRepo models.UserRepository, config internal.Configuration, substrateClient substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient substrate.Substrate) *MoneyCollector {
 	return &MoneyCollector{
 		userRepo:        userRepo,
 		config:          config,
