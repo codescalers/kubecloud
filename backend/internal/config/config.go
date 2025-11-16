@@ -19,10 +19,10 @@ type Configuration struct {
 	JwtToken                             JwtToken                      `json:"jwt_token" validate:"required"`
 	Admins                               []string                      `json:"admins" validate:"required"`
 	MailSender                           MailSender                    `json:"mailSender"`
-	Currency                             string                        `json:"currency" validate:"required"`
+	Currency                             string                        `json:"currency" default:"usd"`
 	StripeSecret                         string                        `json:"stripe_secret" validate:"required"`
-	VoucherNameLength                    int                           `json:"voucher_name_length"  validate:"required,gt=0"`
-	VerificationCodeLength               int                           `json:"verification_code_length"  validate:"gt=0" default:"4"`
+	VoucherNameLength                    int                           `json:"voucher_name_length" validate:"required,gt=0" default:"8"`
+	VerificationCodeLength               int                           `json:"verification_code_length" validate:"gt=0" default:"4"`
 	TermsANDConditions                   TermsANDConditions            `json:"terms_and_conditions"`
 	SystemAccount                        GridAccount                   `json:"system_account"`
 	DeployerWorkersNum                   int                           `json:"deployer_workers_num" default:"1"`
@@ -33,7 +33,7 @@ type Configuration struct {
 	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
-	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
+	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
 	Logger LoggerConfig `json:"logger"`
@@ -54,8 +54,8 @@ type RedisConfig struct {
 
 // Server struct holds server's information
 type Server struct {
-	Host string `json:"host" validate:"required,hostname|ip|url"`
-	Port string `json:"port" validate:"required,numeric"`
+	Host string `json:"host" validate:"required,hostname|ip|url" default:"0.0.0.0"`
+	Port string `json:"port" validate:"required,numeric" default:"8080"`
 }
 
 // DB struct holds database file
@@ -71,15 +71,15 @@ type DB struct {
 // JWT Token struct holds info required for JWT Tokens
 type JwtToken struct {
 	Secret              string `json:"secret" validate:"required"`
-	AccessExpiryMinutes int    `json:"access_expiry_minutes" validate:"required,gt=0"` // in minutes
-	RefreshExpiryHours  int    `json:"refresh_expiry_hours" validate:"required,gt=0"`  // in hours
+	AccessExpiryMinutes int    `json:"access_expiry_minutes" validate:"gt=0" default:"60"` // in minutes
+	RefreshExpiryHours  int    `json:"refresh_expiry_hours" validate:"gt=0" default:"24"`  // in hours
 }
 
 // MailSender struct to hold sender's email, password
 type MailSender struct {
 	Email               string `json:"email" validate:"required,email"`
 	SendGridKey         string `json:"sendgrid_key"` // Required in production. Can be empty in dev_mode to use FakeMailService
-	TimeoutMin          int    `json:"timeout" validate:"min=2"`
+	TimeoutMin          int    `json:"timeout" validate:"min=2" default:"120"`
 	MaxConcurrentSends  int    `json:"max_concurrent_sends" validate:"min=1"`
 	MaxAttachmentSizeMB int64  `json:"max_attachment_size_mb" validate:"min=1"`
 }
@@ -93,7 +93,7 @@ type TermsANDConditions struct {
 // GridAccount holds data for system's account
 type GridAccount struct {
 	Mnemonic string `json:"mnemonic" validate:"required"`
-	Network  string `json:"network" validate:"required"`
+	Network  string `json:"network" validate:"required" default:"main"`
 }
 
 // Invoice struct holds needed data for invoice file
@@ -106,16 +106,22 @@ type InvoiceCompanyData struct {
 // Configuration struct holds all configs for the app
 type LoggerConfig struct {
 	LogDir     string `json:"log_dir"`
-	MaxSize    int    `json:"max_size"` // in MB
-	MaxBackups int    `json:"max_backups"`
-	MaxAgeDays int    `json:"max_age_days"` // in days
-	Compress   bool   `json:"compress"`
+	MaxSize    int    `json:"max_size" default:"512"` // in MB
+	MaxBackups int    `json:"max_backups" default:"12"`
+	MaxAgeDays int    `json:"max_age_days" default:"30"` // in days
+	Compress   bool   `json:"compress" default:"true"`
 }
 
 type LokiConfig struct {
-	URL                 string            `json:"url"`
-	FlushIntervalSecond int               `json:"flush_interval_second"`
-	Labels              map[string]string `json:"labels"`
+	URL                 string      `json:"url"`
+	FlushIntervalSecond int         `json:"flush_interval_second" default:"5"`
+	Labels              *LokiLabels `json:"labels,omitempty"`
+}
+
+type LokiLabels struct {
+	App  string `json:"app,omitempty" default:"myceliumCloud"`
+	Env  string `json:"env,omitempty" default:"main"`
+	Host string `json:"host,omitempty"`
 }
 
 type ReservedNodeHealthCheckConfig struct {
@@ -144,8 +150,9 @@ func LoadConfig() (Configuration, error) {
 
 	// Use mapstructure to ensure JSON tags are respected
 	decoderConfig := &mapstructure.DecoderConfig{
-		TagName: "json",
-		Result:  &config,
+		TagName:          "json",
+		Result:           &config,
+		WeaklyTypedInput: true,
 	}
 
 	// convert comma-separated string of admins into a slice
@@ -163,20 +170,12 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("unable to decode into struct, %w", err)
 	}
 
+	// Apply default values from struct tags
+	applyDefaultValues(&config)
+
 	// custom validators
 	v := validator.New()
 	registerConfigValidators(v)
-
-	if labelsRaw := viper.GetString("loki.labels"); labelsRaw != "" {
-		parsed := make(map[string]string)
-		pairs := strings.Split(labelsRaw, ",")
-		for _, p := range pairs {
-			if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
-				parsed[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
-			}
-		}
-		config.Loki.Labels = parsed
-	}
 
 	config.SSH.PrivateKeyPath, err = paths.ExpandPath(config.SSH.PrivateKeyPath)
 	if err != nil {
@@ -249,4 +248,124 @@ func registerConfigValidators(v *validator.Validate) {
 			sl.ReportError(val.MaxIdleConns, "MaxIdleConns", "max_idle_conns", "lteMaxOpenConns", "")
 		}
 	}, DB{})
+}
+
+// applyDefaultValues sets default values from struct tags
+func applyDefaultValues(config *Configuration) {
+	// Server defaults
+	if config.Server.Host == "" {
+		config.Server.Host = "0.0.0.0"
+	}
+	if config.Server.Port == "" {
+		config.Server.Port = "8080"
+	}
+
+	// Database defaults
+	if config.Database.MaxOpenConns == 0 {
+		config.Database.MaxOpenConns = 25
+	}
+	if config.Database.MaxIdleConns == 0 {
+		config.Database.MaxIdleConns = 25
+	}
+	if config.Database.ConnMaxLifetimeMinutes == 0 {
+		config.Database.ConnMaxLifetimeMinutes = 60
+	}
+	if config.Database.ConnMaxIdleTimeMinutes == 0 {
+		config.Database.ConnMaxIdleTimeMinutes = 30
+	}
+
+	// Currency default
+	if config.Currency == "" {
+		config.Currency = "usd"
+	}
+
+	// VoucherNameLength default
+	if config.VoucherNameLength == 0 {
+		config.VoucherNameLength = 8
+	}
+
+	// VerificationCodeLength default
+	if config.VerificationCodeLength == 0 {
+		config.VerificationCodeLength = 4
+	}
+
+	// DeployerWorkersNum default
+	if config.DeployerWorkersNum == 0 {
+		config.DeployerWorkersNum = 1
+	}
+
+	// ClusterHealthCheckIntervalInHours default
+	if config.ClusterHealthCheckIntervalInHours == 0 {
+		config.ClusterHealthCheckIntervalInHours = 1
+	}
+
+	// JwtToken defaults
+	if config.JwtToken.AccessExpiryMinutes == 0 {
+		config.JwtToken.AccessExpiryMinutes = 60
+	}
+	if config.JwtToken.RefreshExpiryHours == 0 {
+		config.JwtToken.RefreshExpiryHours = 24
+	}
+
+	// MailSender defaults
+	if config.MailSender.TimeoutMin == 0 {
+		config.MailSender.TimeoutMin = 120
+	}
+
+	if config.MailSender.MaxAttachmentSizeMB == 0 {
+		config.MailSender.MaxAttachmentSizeMB = 25
+	}
+
+	if config.MailSender.MaxConcurrentSends == 0 {
+		config.MailSender.MaxConcurrentSends = 10
+	}
+
+	// SystemAccount defaults
+	if config.SystemAccount.Network == "" {
+		config.SystemAccount.Network = "main"
+	}
+
+	// Logger defaults
+	if config.Logger.MaxSize == 0 {
+		config.Logger.MaxSize = 512
+	}
+	if config.Logger.MaxBackups == 0 {
+		config.Logger.MaxBackups = 12
+	}
+	if config.Logger.MaxAgeDays == 0 {
+		config.Logger.MaxAgeDays = 30
+	}
+
+	// Loki defaults
+	if config.Loki.FlushIntervalSecond == 0 {
+		config.Loki.FlushIntervalSecond = 5
+	}
+
+	// LokiLabels defaults
+	if config.Loki.Labels != nil {
+		if config.Loki.Labels.App == "" {
+			config.Loki.Labels.App = "myceliumCloud"
+		}
+		if config.Loki.Labels.Env == "" {
+			config.Loki.Labels.Env = "main"
+		}
+	}
+
+	// NodeHealthCheck defaults
+	if config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours == 0 {
+		config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours = 1
+	}
+	if config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes == 0 {
+		config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes = 1
+	}
+	if config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum == 0 {
+		config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum = 10
+	}
+
+	if config.MonitorBalanceIntervalInMinutes == 0 {
+		config.MonitorBalanceIntervalInMinutes = 120
+	}
+	if config.NotifyAdminsForPendingRecordsInHours == 0 {
+		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
 }
