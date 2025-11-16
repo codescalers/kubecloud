@@ -76,7 +76,6 @@ type appCommunication struct {
 	mailService            mailservice.MailService
 	sseManager             *realtime.SSEManager
 	notificationDispatcher *notification.NotificationDispatcher
-	notificationSender     notification.NotificationSender
 }
 
 // appInfrastructure contains grid and blockchain related services
@@ -233,7 +232,7 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailService, "")
+	emailNotifier := notification.NewEmailNotifier(mailService, userRepo)
 	err = emailNotifier.ParseTemplates()
 	if err != nil {
 		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
@@ -245,13 +244,10 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 		return appCommunication{}, fmt.Errorf("failed to validate notification configs channels against registered notifiers: %w", err)
 	}
 
-	notificationSender := notification.NewNotificationSender(ctx, notificationDispatcher)
-
 	return appCommunication{
 		mailService:            mailService,
 		sseManager:             sseManager,
 		notificationDispatcher: notificationDispatcher,
-		notificationSender:     notificationSender,
 	}, nil
 }
 
@@ -351,7 +347,7 @@ func (app *App) createHandlers() appHandlers {
 	// Handlers
 	stripeClient := &billing.DefaultStripeClient{}
 	userHandler := handlers.NewUserHandler(
-		userService, app.communication.notificationSender,
+		userService, app.communication.notificationDispatcher,
 		app.communication.mailService, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
@@ -359,7 +355,7 @@ func (app *App) createHandlers() appHandlers {
 	nodeHandler := handlers.NewNodeHandler(nodeService)
 	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, app.communication.mailService)
-	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationSender, app.communication.mailService)
+	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailService)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 
@@ -386,7 +382,7 @@ func (app *App) createWorkers() workers.Workers {
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
 		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
-		app.communication.notificationSender, app.infra.graphql, app.infra.firesquidClient,
+		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,

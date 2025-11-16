@@ -20,18 +20,18 @@ import (
 )
 
 type AdminHandler struct {
-	svc                services.AdminService
-	notificationSender notification.NotificationSender
-	mailService        mailservice.MailService
+	svc                    services.AdminService
+	notificationDispatcher *notification.NotificationDispatcher
+	mailService            mailservice.MailService
 }
 
 func NewAdminHandler(svc services.AdminService,
-	notificationSender notification.NotificationSender, mailService mailservice.MailService,
+	notificationDispatcher *notification.NotificationDispatcher, mailService mailservice.MailService,
 ) AdminHandler {
 	return AdminHandler{
-		svc:                svc,
-		notificationSender: notificationSender,
-		mailService:        mailService,
+		svc:                    svc,
+		notificationDispatcher: notificationDispatcher,
+		mailService:            mailService,
 	}
 }
 
@@ -189,7 +189,7 @@ func (h *AdminHandler) GenerateVouchersHandler(c *gin.Context) {
 		NoPersist().
 		Build()
 
-	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
+	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send UI notification for voucher generation")
 	}
 

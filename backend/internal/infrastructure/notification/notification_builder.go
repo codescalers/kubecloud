@@ -7,6 +7,10 @@ import (
 	"kubecloud/internal/core/models"
 )
 
+const (
+	TimestampFormat = "Mon, 02 Jan 2006 15:04"
+)
+
 // NotificationBuilder provides a fluent API for building notifications
 type NotificationBuilder struct {
 	userID    int

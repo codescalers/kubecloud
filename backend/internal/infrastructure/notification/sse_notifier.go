@@ -19,7 +19,7 @@ func (n *SSENotifier) GetType() string {
 	return ChannelUI
 }
 
-func (n *SSENotifier) Notify(notification models.Notification, receiver ...string) error {
+func (n *SSENotifier) Notify(notification *models.Notification) error {
 	if n.sse == nil {
 		return fmt.Errorf("sse manager is nil")
 	}

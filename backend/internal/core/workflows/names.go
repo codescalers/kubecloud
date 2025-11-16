@@ -14,7 +14,7 @@ const (
 	WorkflowAddNode                  = "add-node"
 	WorkflowRemoveNode               = "remove-node"
 	WorkflowDeleteAllClusters        = "delete-all-clusters"
-	WorkflowSendNotification         = "send-notification"
+	WorkflowSendEmailNotification    = "send-email-notification"
 	WorkflowRollbackFailedDeployment = "rollback-failed-deployment"
 	WorkflowTrackClusterHealth       = "track-cluster-health"
 	WorkflowRollbackFailedAddNode    = "rollback-add-node"
@@ -52,7 +52,6 @@ const (
 	StepVerifyClusterReady      = "verify-cluster-ready"
 	StepVerifyNewNodes          = "prepare-verify-new-nodes"
 	StepSendEmailNotification   = "send-email-notification"
-	StepSendUINotification      = "send-ui-notification"
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
 )

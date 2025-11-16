@@ -31,13 +31,13 @@ type WorkerService struct {
 	clusterRepo        models.ClusterRepository
 	pendingRecordsRepo models.PendingRecordRepository
 
-	mailService        mailservice.MailService
-	graphql            graphql.GraphQl
-	firesquidClient    graphql.GraphQl
-	substrateClient    substrate.Substrate
-	gridClient         deployer.TFPluginClient
-	ewfEngine          *ewf.Engine
-	notificationSender notification.NotificationSender
+	mailService            mailservice.MailService
+	graphql                graphql.GraphQl
+	firesquidClient        graphql.GraphQl
+	substrateClient        substrate.Substrate
+	gridClient             deployer.TFPluginClient
+	ewfEngine              *ewf.Engine
+	notificationDispatcher *notification.NotificationDispatcher
 
 	// configs
 	systemMnemonic                          string
@@ -55,7 +55,7 @@ func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
-	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationSender notification.NotificationSender,
+	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
 	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
@@ -70,13 +70,13 @@ func NewWorkersService(
 		clusterRepo:        clusterRepo,
 		pendingRecordsRepo: pendingRecordsRepo,
 
-		mailService:        mailService,
-		notificationSender: notificationSender,
-		ewfEngine:          ewfEngine,
-		graphql:            graphql,
-		firesquidClient:    firesquidClient,
-		substrateClient:    substrateClient,
-		gridClient:         gridClient,
+		mailService:            mailService,
+		notificationDispatcher: notificationDispatcher,
+		ewfEngine:              ewfEngine,
+		graphql:                graphql,
+		firesquidClient:        firesquidClient,
+		substrateClient:        substrateClient,
+		gridClient:             gridClient,
 
 		systemMnemonic:     systemMnemonic,
 		invoiceCompanyData: invoiceCompanyData,
@@ -330,7 +330,7 @@ func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserNod
 			WithExtra("nodes_list", nodesList).
 			Build()
 
-		if err := svc.notificationSender.Send(ctx, notif); err != nil {
+		if err := svc.notificationDispatcher.Send(ctx, notif); err != nil {
 			logger.ForOperation("health_tracker", "send_unhealthy_nodes_notification").Error().Err(err).Msg("Failed to send unhealthy nodes notification")
 		}
 	}

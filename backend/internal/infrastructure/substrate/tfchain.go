@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 
 	grid "kubecloud/internal/infrastructure/grid"

@@ -24,26 +24,26 @@ import (
 )
 
 type UserHandler struct {
-	svc                services.UserService
-	notificationSender notification.NotificationSender
-	mailService        mailservice.MailService
-	tokenManager       auth.TokenManager
-	stripeClient       billing.StripeClient
+	svc                    services.UserService
+	notificationDispatcher *notification.NotificationDispatcher
+	mailService            mailservice.MailService
+	tokenManager           auth.TokenManager
+	stripeClient           billing.StripeClient
 }
 
 func NewUserHandler(
 	svc services.UserService,
-	notificationSender notification.NotificationSender,
+	notificationDispatcher *notification.NotificationDispatcher,
 	mailService mailservice.MailService,
 	tokenManager auth.TokenManager,
 	stripeClient billing.StripeClient,
 ) UserHandler {
 	return UserHandler{
-		svc:                svc,
-		notificationSender: notificationSender,
-		mailService:        mailService,
-		tokenManager:       tokenManager,
-		stripeClient:       stripeClient,
+		svc:                    svc,
+		notificationDispatcher: notificationDispatcher,
+		mailService:            mailService,
+		tokenManager:           tokenManager,
+		stripeClient:           stripeClient,
 	}
 }
 
@@ -264,7 +264,7 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 			NoPersist().
 			Build()
 
-		if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
+		if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 			reqLog.Error().Err(err).Msg("failed to send user verification notification")
 			InternalServerError(c)
 			return
@@ -560,7 +560,7 @@ func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 		WithStatus("password_changed").
 		Build()
 
-	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
+	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send password changed notification")
 		InternalServerError(c)
 		return
@@ -877,7 +877,7 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 		WithStatus("ssh_key_added").
 		Build()
 
-	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
+	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send notification")
 		InternalServerError(c)
 		return
@@ -940,7 +940,7 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 		WithStatus("ssh_key_deleted").
 		Build()
 
-	if err := h.notificationSender.Send(c.Request.Context(), notif); err != nil {
+	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
 

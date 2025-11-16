@@ -16,7 +16,7 @@ const (
 )
 
 type Notifier interface {
-	Notify(notification models.Notification, receiver ...string) error
+	Notify(notification *models.Notification) error
 	GetType() string
 }
 
@@ -69,7 +69,6 @@ type NotificationDispatcher struct {
 	models.NotificationRepository
 	userRepo  models.UserRepository
 	notifiers map[string]Notifier
-	engine    *ewf.Engine
 	templates map[models.NotificationType]NotificationTemplate
 	mu        sync.RWMutex
 }
@@ -77,13 +76,12 @@ type NotificationDispatcher struct {
 func NewNotificationDispatcher(
 	db models.NotificationRepository,
 	userRepo models.UserRepository,
-	engine *ewf.Engine,
+	_ *ewf.Engine,
 ) (*NotificationDispatcher, error) {
 	s := &NotificationDispatcher{
 		NotificationRepository: db,
 		userRepo:               userRepo,
 		notifiers:              make(map[string]Notifier),
-		engine:                 engine,
 		templates:              make(map[models.NotificationType]NotificationTemplate),
 	}
 
@@ -101,52 +99,38 @@ func (s *NotificationDispatcher) GetNotifiers() map[string]Notifier {
 func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.Notification) error {
 	s.applyTemplateFallbacks(notification)
 
-	// Get user email for notifiers
-	userEmail := ""
-	if s.userRepo != nil {
-		user, err := s.userRepo.GetUserByID(notification.UserID)
-		if err != nil {
-			logger.GetLogger().Warn().Err(err).Int("user_id", notification.UserID).Msg("failed to get user, continuing without email")
-		} else {
-			userEmail = user.Email
+	// Persist only Email notifications (not UI-only ephemeral messages)
+	if notification.Persist && s.hasChannel(notification, ChannelEmail) {
+		if err := s.CreateNotification(notification); err != nil {
+			logger.GetLogger().Error().Err(err).
+				Int("user_id", notification.UserID).
+				Str("notification_id", notification.ID).
+				Msg("failed to persist notification")
+			// Continue anyway - notification will still be sent
 		}
 	}
 
-	// Sync UI notifications for immediate feedback
-	if s.hasChannel(notification.Channels, ChannelUI) {
-		if notifier, ok := s.notifiers[ChannelUI]; ok {
-			if err := notifier.Notify(*notification, userEmail); err != nil {
-				logger.GetLogger().Error().Err(err).Str("channel", ChannelUI).Msg("Failed to send UI notification")
-			}
-		}
-	}
-
-	// Use EWF for guaranteed email delivery with retry logic
-	if s.hasChannel(notification.Channels, ChannelEmail) && s.engine != nil {
-		// Create workflow for reliable email delivery with retries
-		wf, err := s.engine.NewWorkflow("send-notification")
-		if err != nil {
-			logger.GetLogger().Error().Err(err).Msg("Failed to create notification workflow")
-			return nil // Don't fail - just log
+	// Dispatch to all registered notifiers that are in the notification's channels
+	for _, channel := range notification.Channels {
+		notifier, ok := s.notifiers[channel]
+		if !ok {
+			logger.GetLogger().Warn().Str("channel", channel).Msg("notifier not registered for channel")
+			continue
 		}
 
-		wf.State = ewf.State{
-			"notification": notification,
-		}
-
-		if err := s.engine.RunAsync(ctx, wf); err != nil {
-			logger.GetLogger().Error().Err(err).Str("workflow_id", wf.UUID).Msg("Failed to queue notification workflow")
-			// Don't return error - workflow will be retried
+		// Each notifier is responsible for its own delivery strategy
+		if err := notifier.Notify(notification); err != nil {
+			logger.GetLogger().Error().Err(err).Str("channel", channel).Msg("failed to send notification")
 		}
 	}
 
 	return nil
 }
 
-// hasChannel checks if a channel exists in the notification's channels list
-func (s *NotificationDispatcher) hasChannel(channels []string, channelType string) bool {
-	for _, ch := range channels {
-		if ch == channelType {
+// hasChannel checks if a notification includes a specific channel
+func (s *NotificationDispatcher) hasChannel(notification *models.Notification, channel string) bool {
+	for _, ch := range notification.Channels {
+		if ch == channel {
 			return true
 		}
 	}

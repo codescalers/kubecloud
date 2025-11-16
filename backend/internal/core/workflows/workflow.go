@@ -66,8 +66,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, substrate))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
-	engine.Register(StepSendEmailNotification, SendNotification(userRepo, notificationDispatcher.GetNotifiers()[notification.ChannelEmail]))
-	engine.Register(StepSendUINotification, SendNotification(userRepo, notificationDispatcher.GetNotifiers()[notification.ChannelUI]))
+	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mail))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 
@@ -161,11 +160,11 @@ func RegisterEWFWorkflows(
 
 	registerDeploymentActivities(engine, metrics, clusterRepo, notificationDispatcher, config)
 
-	notificationTemplate := ewf.WorkflowTemplate{
+	// Email-only workflow for guaranteed email delivery with retries
+	emailNotificationTemplate := ewf.WorkflowTemplate{
 		Steps: []ewf.Step{
-			{Name: StepSendUINotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 			{Name: StepSendEmailNotification, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		},
 	}
-	engine.RegisterTemplate(WorkflowSendNotification, &notificationTemplate)
+	engine.RegisterTemplate(WorkflowSendEmailNotification, &emailNotificationTemplate)
 }
