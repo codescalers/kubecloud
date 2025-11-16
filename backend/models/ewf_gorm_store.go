@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	contextkeys "kubecloud/internal/context-keys"
 
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
@@ -19,6 +20,7 @@ type gormWorkflowRecord struct {
 	Status    string `gorm:"column:status;not null;index"`
 	Data      []byte `gorm:"column:data;not null"`
 	QueueName string `gorm:"column:queue_name;index"`
+	UserID    int    `gorm:"column:user_id;index"`
 }
 
 type gormTemplateRecord struct {
@@ -50,11 +52,18 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 	}
 
 	gormWorkflow := gormWorkflowRecord{
-		UUID:   workflow.UUID,
-		Name:   workflow.Name,
-		Status: string(workflow.Status),
-		Data:   data,
-		// add queue name
+		UUID:      workflow.UUID,
+		Name:      workflow.Name,
+		Status:    string(workflow.Status),
+		Data:      data,
+		QueueName: workflow.QueueName,
+	}
+
+	value := ctx.Value(contextkeys.UserIDKey)
+	if value != nil {
+		if userID, ok := value.(int); ok {
+			gormWorkflow.UserID = userID
+		}
 	}
 
 	return s.db.WithContext(ctx).Save(&gormWorkflow).Error
@@ -140,6 +149,10 @@ func (s *EWFGormStore) SaveWorkflowTemplate(ctx context.Context, name string, te
 	}
 
 	return s.db.WithContext(ctx).Save(&gormTemplate).Error
+}
+
+func (s *EWFGormStore) DeleteWorkflow(ctx context.Context, uuid string) error {
+	return s.db.WithContext(ctx).Delete(&gormWorkflowRecord{}, "uuid = ?", uuid).Error
 }
 
 func (s *EWFGormStore) SaveQueueMetadata(ctx context.Context, metadata *ewf.QueueMetadata) error {

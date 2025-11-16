@@ -380,7 +380,7 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	app.handlers.ewfEngine.ResumeRunningWorkflows()
+	app.handlers.ewfEngine.ResumeWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
 		Handler: app.router,

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"kubecloud/internal/constants"
+	contextkeys "kubecloud/internal/context-keys"
 	"kubecloud/internal/logger"
 	mailservice "kubecloud/internal/mailservice"
 	"kubecloud/internal/notification"
@@ -371,7 +373,10 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      adminID,
 	}
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+
+	userContext := context.WithValue(h.appContext, contextkeys.UserIDKey, adminID)
+
+	if err = h.ewfEngine.RunAsync(userContext, wf); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule workflow for crediting user balance")
 		InternalServerError(c)
 		return
