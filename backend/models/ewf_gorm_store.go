@@ -56,7 +56,15 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 		Status:    string(workflow.Status),
 		Data:      data,
 		QueueName: workflow.QueueName,
-		// add user id
+	}
+
+	if userID, ok := workflow.State["user_id"]; ok {
+		switch v := userID.(type) {
+		case int:
+			gormWorkflow.UserID = v
+		case float64:
+			gormWorkflow.UserID = int(v)
+		}
 	}
 
 	return s.db.WithContext(ctx).Save(&gormWorkflow).Error

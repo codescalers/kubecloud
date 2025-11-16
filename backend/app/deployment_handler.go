@@ -335,6 +335,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 	wf.State = ewf.State{
 		"config":  config,
 		"cluster": cluster,
+		"user_id": config.UserID,
 	}
 
 	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
@@ -394,6 +395,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 	wf.State = ewf.State{
 		"config":       config,
 		"project_name": projectName,
+		"user_id":      config.UserID,
 	}
 
 	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
@@ -441,7 +443,8 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 	}
 
 	wf.State = ewf.State{
-		"config": config,
+		"config":  config,
+		"user_id": config.UserID,
 	}
 
 	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
@@ -526,6 +529,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		"config":  config,
 		"cluster": cl,
 		"node":    cluster.Nodes[0],
+		"user_id": config.UserID,
 	}
 
 	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
@@ -617,6 +621,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		"config":    config,
 		"cluster":   cl,
 		"node_name": nodeName,
+		"user_id":   config.UserID,
 	}
 
 	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
