@@ -111,6 +111,7 @@ func SetUp(t testing.TB) (setup, error) {
   },
   "monitor_balance_interval_in_minutes": 2,
 	"notify_admins_for_pending_records_in_hours": 1,
+  "verification_code_length": 4,
   "kyc_verifier_api_url": "https://kyc.dev.grid.tf",
   "kyc_challenge_domain": "kyc.dev.grid.tf",
   "cluster_health_check_interval_in_hours": 1,
@@ -152,9 +153,6 @@ func SetUp(t testing.TB) (setup, error) {
 		time.Duration(configuration.JwtToken.AccessExpiryMinutes)*time.Minute,
 		time.Duration(configuration.JwtToken.RefreshExpiryHours)*time.Hour,
 	)
-	if err != nil {
-		return setup{}, err
-	}
 
 	router := gin.New()
 

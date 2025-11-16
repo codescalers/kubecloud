@@ -13,17 +13,16 @@ import (
 func UserMiddleware(tokenManager auth.TokenManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		var tokenStr string
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+			return
+		}
 
-		if authHeader != "" {
-			tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
-		} else {
-			// Check token in query parameter for SSE or other cases
-			tokenStr = c.Query("token")
-			if tokenStr == "" {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header or token query parameter missing"})
-				return
-			}
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenStr == authHeader {
+			// TrimPrefix didn't work, meaning it doesn't start with "Bearer "
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+			return
 		}
 
 		claims, err := tokenManager.VerifyToken(tokenStr)
