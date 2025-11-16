@@ -3,301 +3,45 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Go Version](https://img.shields.io/badge/Go-1.19+-00ADD8.svg)](https://golang.org/)
 [![Node.js Version](https://img.shields.io/badge/Node.js-20+-339933.svg)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Latest-2496ED.svg)](https://docker.com/)
 
-Mycelium Cloud is a comprehensive cloud-native platform designed for deploying, managing, and monitoring Kubernetes clusters on the decentralized TFGrid infrastructure. It provides a complete solution with backend APIs, frontend UI, custom resource definitions (CRDs), monitoring dashboards, and networking components to streamline cloud operations in a decentralized environment.
+Cloud-native platform for deploying and managing Kubernetes clusters on decentralized infrastructure (TFGrid).
 
-## Table of Contents
+**Decentralized Kubernetes** | **Modern UI** | **Observability** | **P2P Networking** | **Docker Ready**
 
-- [Features](#features)
-- [Architecture Overview](#architecture-overview)
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Repository Structure](#repository-structure)
-- [Documentation](#documentation)
-- [API Documentation](#api-documentation)
-- [Contributing](#contributing)
-- [Troubleshooting](#troubleshooting)
-- [Support](#support)
-- [License](#license)
-
-## Features
-
-- **Decentralized Kubernetes Management**: Deploy and manage Kubernetes clusters on TFGrid
-- **Multi-Component Architecture**: Backend (Go), Frontend (Vue.js), CRDs, and networking plugins
-- **Monitoring & Observability**: Integrated Prometheus and Grafana for metrics and dashboards
-- **Custom Networking**: Mycelium CNI plugin for peer-to-peer networking
-- **Mycelium Integration**: Built-in Mycelium peer for decentralized networking (Docker) or separate binary (local development)
-- **Ingress Management**: Custom ingress controller for traffic routing
-- **RESTful APIs**: Comprehensive backend APIs for cluster operations
-- **Web UI**: Modern Vue.js frontend for cluster management
-- **Docker Integration**: Containerized deployment with Docker Compose
-- **Configuration Management**: Flexible configuration via files, environment variables, and CLI flags
-
-## Architecture Overview
-
-```text
-+-------------------+    +-------------------+    +-------------------+
-|   Frontend UI     |    |   Backend APIs    |    |      TFGrid       |
-|    (Vue.js)       |--->|      (Go)         |<-->|  (Decentralized)  |
-+-------------------+    +-------------------+    +-------------------+
-         |                      |                        |
-         |                      |                        |
-         |                 +----v----+                   |
-         |                 | Metrics |                   |
-         |                 | /metrics|                   |
-         |                 +----+----+                   |
-         |                      |                        |
-         v                      v                        v
-+-------------------+    +-------------------+    +-------------------+
-|   Monitoring      |    |   CRDs &          |    |   Networking      |
-| (Prometheus/Grafana)|    | Controllers      |    |   (Mycelium)      |
-+-------------------+    +-------------------+    +-------------------+
-```
-
-## Prerequisites
-
-Before getting started, ensure you have the following installed:
-
-- **Go**: Version 1.19 or later ([Download](https://golang.org/dl/))
-- **Node.js**: Version 20 or later ([Download](https://nodejs.org/))
-- **Docker**: Latest stable version ([Download](https://docker.com/))
-- **Docker Compose**: Latest version ([Install](https://docs.docker.com/compose/install/))
-- **Git**: For cloning the repository
-
-## Getting Started
-
-### 1. Clone the Repository
+## Quick Start
 
 ```bash
 git clone https://github.com/codescalers/kubecloud.git
 cd kubecloud
-```
-
-### 2. Backend Setup
-
-Navigate to the backend directory and follow the setup instructions:
-
-```bash
-cd backend
-# Copy example configuration
-cp config-example.json config.json
-# Edit config.json with your settings (see backend/README.md for details)
-# Build and run
-make run
-```
-
-The backend will start on the configured port (default: 8080).
-
-**Note**: If running locally, you need to run the Mycelium binary separately. See [Local Development with Mycelium](#4-local-development-with-mycelium) section below.
-
-### 3. Frontend Setup
-
-Navigate to the frontend directory and install dependencies:
-
-```bash
-cd ../frontend/kubecloud
-npm install
-npm run dev
-```
-
-The frontend development server will start on `http://localhost:5173` (default Vite port).
-
-### 4. Local Development with Mycelium
-
-⚠️ **Important**: When running the backend locally (not in Docker), you need to run the Mycelium binary separately.
-
-#### Download and Run Mycelium
-
-1. **Download Mycelium binary** from [https://github.com/threefoldtech/mycelium](https://github.com/threefoldtech/mycelium):
-
-```bash
-wget https://github.com/threefoldtech/mycelium/releases/latest/download/mycelium-private-x86_64-unknown-linux-musl.tar.gz
-tar -xzf mycelium-private-x86_64-unknown-linux-musl.tar.gz
-sudo chmod +x mycelium-private
-sudo mv mycelium-private /usr/local/bin/mycelium
-```
-
-1. **Start Mycelium** (in a separate terminal):
-
-```bash
-sudo mycelium --peers tcp://188.40.132.242:9651 tcp://136.243.47.186:9651 tcp://185.69.166.7:9651 tcp://185.69.166.8:9651 tcp://65.21.231.58:9651 tcp://65.109.18.113:9651 tcp://209.159.146.190:9651 tcp://5.78.122.16:9651 tcp://5.223.43.251:9651 tcp://142.93.217.194:9651
-```
-
-2. **Start Backend** (in another terminal):
-
-```bash
-cd backend
-make run
-```
-
-3. **Start Frontend** (in another terminal):
-
-```bash
-cd frontend/kubecloud
-npm install
-npm run dev
-```
-
-
-### 5. Makefile (Backend & Frontend Setup)
-
-For a local development environment:
-
-Edit config.json and frontendconfig.env at the root directory with your settings.
-A copy of the required format can be found at:
-
-`backend/config.example.json` for backend configuration
-
-`frontend/kubecloud/.env.example` for frontend environment variables
-
-```bash
-# From the root directory
-make run
-```
-
-This will start both the backend (in the background) and the frontend (in the same terminal).
-
-To run them separately:
-```bash
-# From the root directory
-make backend-run
-```
-
-Then, in another terminal:
-
-```bash
-# From the root directory
-make frontend-run
-```
-This will start the backend and frontend independently.
-
-### 6. Docker Compose (Full Stack)
-
-For a complete local development environment:
-
-```bash
-# From the root directory
+cp backend/config-example.json backend/config.json
 docker-compose up
 ```
 
-This will start all services including the backend, frontend, monitoring stack, and databases.
+**Access:** Frontend http://localhost:8000 · API http://localhost:8080 · Grafana http://localhost:3000
 
-
-
-### 7. Access the Application
-
-- **Frontend UI**: <http://localhost:5173>
-- **Backend API**: <http://localhost:8080>
-- **Grafana**: <http://localhost:3000> (admin/admin)
-- **Prometheus**: <http://localhost:9090>
-
-## Repository Structure
-
-```bash
-kubecloud/
-├── backend/                 # Go backend services and APIs
-│   ├── app/                # Application handlers and logic
-│   ├── internal/           # Internal packages and utilities
-│   ├── models/             # Database models
-│   ├── docs/               # API documentation
-│   └── cmd/                # CLI commands
-├── frontend/               # Vue.js frontend application
-│   └── kubecloud/          # Main frontend app
-├── crd/                    # Custom Resource Definitions
-├── grafana/                # Grafana monitoring dashboards
-├── grafana-gen/            # Grafana dashboard generator
-├── ingress-controller/     # Custom ingress controller
-├── k3s/                    # K3s-related manifests and scripts
-├── mycelium-cni/           # Mycelium CNI plugin
-├── mycelium-peer/          # Mycelium peer networking
-├── clean-routes-cni/       # CNI cleanup utilities
-├── docker-compose.yml      # Multi-service orchestration
-├── prometheus.yml          # Prometheus configuration
-└── README.md               # This file
-```
+👉 [Full setup guide →](docs/GETTING_STARTED.md)
 
 ## Documentation
 
-- **Backend Configuration**: See `backend/README.md` for detailed configuration options
-- **Frontend Development**: See `frontend/kubecloud/README.md` for frontend setup
-- **CRD Documentation**: See `crd/README.md` for custom resource definitions
-- **K3s Integration**: See `k3s/README.md` for K3s deployment guides
-- **Networking**: See `mycelium-cni/README.md` for networking setup
+| | |
+|---|---|
+| **Getting Started** | [Setup and run locally](docs/GETTING_STARTED.md) |
+| **Architecture** | [System design](docs/architecture/OVERVIEW.md) |
+| **API Docs** | [REST API reference](docs/api/README.md) |
+| **Deployment** | [Production options](docs/deployment/README.md) |
+| **Contributing** | [How to contribute](docs/contributing/CONTRIBUTING.md) |
 
-## API Documentation
+## Project Structure
 
-The backend provides comprehensive REST APIs for:
+- **backend/** - Go API server
+- **frontend/kubecloud/** - Vue.js web UI
+- **crd/** - Kubernetes operators
+- **mycelium-cni/** - P2P networking
+- **docs/** - Full documentation
 
-- Cluster management
-- Deployment operations
-- User authentication
-- Billing and invoicing
-- Monitoring and metrics
-- Network configuration
-
-API documentation is available at `backend/docs/` and includes Swagger/OpenAPI specifications.
-
-## Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow Go coding standards for backend contributions
-- Use ESLint and Prettier for frontend code
-- Write tests for new features
-- Update documentation for API changes
-- Ensure Docker compatibility
-
-## Troubleshooting
-
-### Common Issues
-
-**Backend won't start:**
-
-- Check Go version (`go version`)
-- Verify configuration file exists and is valid JSON
-- Ensure required ports are available
-
-**Frontend build fails:**
-
-- Clear node_modules: `rm -rf node_modules && npm install`
-- Check Node.js version (`node --version`)
-
-**Docker Compose issues:**
-
-- Ensure Docker daemon is running
-- Check port conflicts
-- Try `docker-compose down` then `docker-compose up --build`
-
-**Database connection errors:**
-
-- Verify database credentials in configuration
-- Check database service is running
-- Review connection logs
-
-### Getting Help
-
-- Check existing issues on GitHub
-- Review component-specific README files
-- Enable debug logging for detailed error information
-
-## Support
-
-- **Issues**: [GitHub Issues](https://github.com/codescalers/kubecloud/issues)
-- **Documentation**: Component-specific README files
-- **Community**: Join our community channels for support
+[See component READMEs →](docs/README.md#-documentation-structure)
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
----
-
-**Mycelium Cloud** - Empowering decentralized cloud operations with Kubernetes.
+Apache License 2.0 - [LICENSE](LICENSE)
