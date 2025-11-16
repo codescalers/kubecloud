@@ -36,8 +36,8 @@ func (n *EmailNotifier) Notify(notification models.Notification, receiver ...str
 		return fmt.Errorf("receiver email address must be valid")
 	}
 
-	from := mail.NewEmail("KubeCloud", n.mailService.SystemMail())
-	receiverEmail := mail.NewEmail("KubeCloud User", receiver[0])
+	from := mail.NewEmail("MyceliumCloud", n.mailService.SystemMail())
+	receiverEmail := mail.NewEmail("MyceliumCloud User", receiver[0])
 
 	tplName := string(notification.Type)
 
