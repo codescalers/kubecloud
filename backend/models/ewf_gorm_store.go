@@ -14,10 +14,11 @@ type EWFGormStore struct {
 }
 
 type gormWorkflowRecord struct {
-	UUID   string `gorm:"primaryKey;column:uuid"`
-	Name   string `gorm:"column:name;not null;index"`
-	Status string `gorm:"column:status;not null;index"`
-	Data   []byte `gorm:"column:data;not null"`
+	UUID      string `gorm:"primaryKey;column:uuid"`
+	Name      string `gorm:"column:name;not null;index"`
+	Status    string `gorm:"column:status;not null;index"`
+	Data      []byte `gorm:"column:data;not null"`
+	QueueName string `gorm:"column:queue_name;index"`
 }
 
 type gormTemplateRecord struct {
@@ -53,6 +54,7 @@ func (s *EWFGormStore) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow)
 		Name:   workflow.Name,
 		Status: string(workflow.Status),
 		Data:   data,
+		// add queue name
 	}
 
 	return s.db.WithContext(ctx).Save(&gormWorkflow).Error
