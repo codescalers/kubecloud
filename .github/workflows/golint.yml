@@ -28,3 +28,4 @@ jobs:
         with:
           working-directory: backend
           args: --config=.golangci.yml
+          version: latest

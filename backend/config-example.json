@@ -28,15 +28,10 @@
   "currency": "USD",
   "stripe_secret": "sk_test_your_stripe_secret_key_here",
   "voucher_name_length": 8,
-  "gridproxy_url": "https://gridproxy.grid.tf",
-  "tfchain_url": "wss://tfchain.grid.tf/ws",
   "terms_and_conditions": {
     "document_link": "https://example.com/terms",
     "document_hash": "sha256:example_hash_here"
   },
-  "activation_service_url": "https://activation.grid.tf",
-  "graphql_url": "https://graphql.grid.tf/graphql",
-  "firesquid_url": "https://squid.grid.tf/graphql",
   "system_account": {
     "mnemonic": "your system account 12-word mnemonic phrase goes here for blockchain operations",
     "network": "dev"
@@ -56,11 +51,11 @@
   "monitor_balance_interval_in_minutes": 120,
   "notify_admins_for_pending_records_in_hours": 24,
   "cluster_health_check_interval_in_hours": 1,
-  "reserved_node_health_check_interval_in_hours": 1,
-  "reserved_node_health_check_timeout_in_minutes": 1,
-  "reserved_node_health_check_workers_num": 10,
-  "kyc_verifier_api_url": "kyc-url",
-  "kyc_challenge_domain": "kyc-domain",
+	"node_health_check"	: {
+		"reserved_node_health_check_interval_in_hours": 1,
+		"reserved_node_health_check_timeout_in_minutes": 1,
+		"reserved_node_health_check_workers_num": 10
+	},
   "logger": {
     "log_dir": "./app/logs",
     "max_size": 512,
@@ -74,6 +69,5 @@
       "env": "dev",
       "host": ""
     }
-  },
-  "notification_config_path": "./notification-config-example.json"
+  }
 }

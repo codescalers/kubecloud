@@ -1,39 +1,34 @@
 package moneycollector
 
 import (
-	"kubecloud/internal"
-	"kubecloud/models"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/substrate"
 	"sync"
 
 	"github.com/rs/zerolog/log"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
 type MoneyCollector struct {
-	db              models.DB
-	config          internal.Configuration
-	substrateClient *substrate.Substrate
+	userRepo        models.UserRepository
+	config          cfg.Configuration
+	substrateClient substrate.Substrate
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(db models.DB, config internal.Configuration, substrateClient *substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient substrate.Substrate) *MoneyCollector {
 	return &MoneyCollector{
-		db:              db,
+		userRepo:        userRepo,
 		config:          config,
 		substrateClient: substrateClient,
 	}
 }
 
 func (m *MoneyCollector) CollectMoney() {
-	system, err := substrate.NewIdentityFromSr25519Phrase(m.config.SystemAccount.Mnemonic)
-	if err != nil {
-		log.Error().Err(err).Msg("MoneyCollector: failed to load system identity")
-		return
-	}
-	users, err := m.db.ListAllUsers()
+	users, err := m.userRepo.ListAllUsers()
 	if err != nil {
 		log.Error().Err(err).Msg("MoneyCollector: failed to list all users")
 		return
@@ -52,19 +47,15 @@ func (m *MoneyCollector) CollectMoney() {
 			if user.Mnemonic == "" {
 				return
 			}
-			balance, err := internal.GetUserTFTBalance(m.substrateClient, user.Mnemonic)
+
+			balance, err := m.substrateClient.GetUserTFTBalance(user.Mnemonic)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return
 			}
 			if balance > MinBalanceThreshold {
-				userIdentity, err := substrate.NewIdentityFromSr25519Phrase(user.Mnemonic)
-				if err != nil {
-					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to load user identity")
-					return
-				}
 				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
-				if err := m.substrateClient.Transfer(userIdentity, balance-MinBalanceThreshold, substrate.AccountID(system.PublicKey())); err != nil {
+				if err := m.substrateClient.TransferTFTsToSystem(balance-MinBalanceThreshold, user.Mnemonic); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
 				}
 				return
