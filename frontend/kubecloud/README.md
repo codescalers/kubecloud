@@ -59,3 +59,17 @@ npm run test:e2e
 ```sh
 npm run lint
 ```
+
+
+
+## Frontend env variables
+
+in `public` directory `copy env.js.template` to `env.js` and add the suitable values for your frontend e.g
+
+```
+window.__ENV__ = {
+  VITE_API_BASE_URL: 'http://localhost:8080/api',
+  VITE_NETWORK: 'main',
+  VITE_STRIPE_PUBLISHABLE_KEY: 'pk_testpk......o'
+}; 
+```
