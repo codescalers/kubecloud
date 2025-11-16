@@ -20,13 +20,24 @@ const (
 
 func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userID, ok := state["user_id"].(int)
+		userIDVal, ok := state["user_id"]
 		if !ok {
-			return fmt.Errorf("missing or invalid 'user_id' in state")
+			return fmt.Errorf("missing 'user_id' in state")
 		}
-		nodeID, ok := state["node_id"].(uint32)
+
+		userID, err := toInt(userIDVal)
+		if err != nil {
+			return fmt.Errorf("invalid 'user_id' in state: %w", err)
+		}
+
+		nodeIDVal, ok := state["node_id"]
 		if !ok {
-			return fmt.Errorf("missing or invalid 'node_id' in state")
+			return fmt.Errorf("missing 'node_id' in state")
+		}
+
+		nodeID, err := toUint32(nodeIDVal)
+		if err != nil {
+			return fmt.Errorf("invalid 'node_id' in state: %w", err)
 		}
 
 		mnemonicVal, ok := state["mnemonic"]
@@ -61,16 +72,22 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient s
 
 func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		contractID, ok := state["contract_id"].(uint64)
+		contractIDVal, ok := state["contract_id"]
 		if !ok {
-			return fmt.Errorf("missing or invalid 'contract_id' in state")
-		}
-		mnemonic, ok := state["mnemonic"].(string)
-		if !ok {
-			return fmt.Errorf("missing or invalid 'mnemonic' in state")
+			return fmt.Errorf("missing 'contract_id' in state")
 		}
 
-		err := substrateClient.CancelContract(mnemonic, contractID)
+		contractID, err := toUint64(contractIDVal)
+		if err != nil {
+			return fmt.Errorf("invalid 'contract_id' in state: %w", err)
+		}
+
+		mnemonic, ok := state["mnemonic"].(string)
+		if !ok {
+			return fmt.Errorf("missing 'mnemonic' in state")
+		}
+
+		err = substrateClient.CancelContract(mnemonic, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
@@ -89,20 +106,20 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		targetStatus, ok := state["target_status"].(string)
 		if !ok {
-			return fmt.Errorf("missing or invalid 'target_status' in state")
+			return fmt.Errorf("missing 'target_status' in state")
 		}
 
-		nodeID, exists := state["node_id"]
+		nodeIDVal, exists := state["node_id"]
 		if !exists {
-			return fmt.Errorf("missing or invalid 'node_id' in state")
+			return fmt.Errorf("missing 'node_id' in state")
 		}
 
-		nodeIDUint32, ok := nodeID.(uint32)
-		if !ok {
-			return fmt.Errorf("node_id in state is not a uint32")
+		nodeID, err := toUint32(nodeIDVal)
+		if err != nil {
+			return fmt.Errorf("invalid 'node_id' in state: %w", err)
 		}
 
-		node, err := proxyClient.Node(ctx, nodeIDUint32)
+		node, err := proxyClient.Node(ctx, nodeID)
 		if err != nil {
 			return fmt.Errorf("failed to get node: %w", err)
 		}
@@ -110,7 +127,7 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 		reached := targetStatus == NodeRentable && node.Rentable || targetStatus == NodeRented && !node.Rentable
 
 		if !reached {
-			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeIDUint32, targetStatus, node.Rentable)
+			return fmt.Errorf("node %d has not reached target status '%s' (current: rentable=%v)", nodeID, targetStatus, node.Rentable)
 		}
 
 		return nil

@@ -200,9 +200,22 @@ func isDeployStep(stepName string) bool {
 
 func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_billing_notification").With().Str("workflow_name", wf.Name).Logger()
-	userID, ok := wf.State["user_id"].(int)
+	userIDVal, ok := wf.State["user_id"]
 	if !ok {
-		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing 'user_id' in workflow state")
+		return nil
+	}
+
+	var userID int
+	switch v := userIDVal.(type) {
+	case int:
+		userID = v
+	case float64:
+		userID = int(v)
+	case int64:
+		userID = int(v)
+	default:
+		log.Error().Interface("user_id_value", v).Msg("Invalid 'user_id' type in workflow state")
 		return nil
 	}
 
@@ -219,9 +232,22 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	}
 
 	if wf.Name == WorkflowAdminCreditBalance {
-		adminID, ok := wf.State["admin_id"].(int)
+		adminIDVal, ok := wf.State["admin_id"]
 		if !ok {
-			log.Error().Msg("Missing or invalid 'admin_id' in workflow state")
+			log.Error().Msg("Missing 'admin_id' in workflow state")
+			return nil
+		}
+
+		var adminID int
+		switch v := adminIDVal.(type) {
+		case int:
+			adminID = v
+		case float64:
+			adminID = int(v)
+		case int64:
+			adminID = int(v)
+		default:
+			log.Error().Interface("admin_id_value", v).Msg("Invalid 'admin_id' type in workflow state")
 			return nil
 		}
 		username, ok := wf.State["username"].(string)
@@ -325,9 +351,22 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 
 func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_node_notification").With().Str("workflow_name", wf.Name).Logger()
-	userID, ok := wf.State["user_id"].(int)
+	userIDVal, ok := wf.State["user_id"]
 	if !ok {
-		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing 'user_id' in workflow state")
+		return nil
+	}
+
+	var userID int
+	switch v := userIDVal.(type) {
+	case int:
+		userID = v
+	case float64:
+		userID = int(v)
+	case int64:
+		userID = int(v)
+	default:
+		log.Error().Interface("user_id_value", v).Msg("Invalid 'user_id' type in workflow state")
 		return nil
 	}
 
@@ -336,13 +375,27 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 	var contractID uint64
 
 	if nodeIDVal, ok := wf.State["node_id"]; ok {
-		if id, okID := nodeIDVal.(uint32); okID {
-			nodeID = id
+		switch v := nodeIDVal.(type) {
+		case uint32:
+			nodeID = v
+		case float64:
+			nodeID = uint32(v)
+		case int64:
+			nodeID = uint32(v)
+		case int:
+			nodeID = uint32(v)
 		}
 	}
 	if contractIDVal, ok := wf.State["contract_id"]; ok {
-		if id, okID := contractIDVal.(uint64); okID {
-			contractID = id
+		switch v := contractIDVal.(type) {
+		case uint64:
+			contractID = v
+		case float64:
+			contractID = uint64(v)
+		case int64:
+			contractID = uint64(v)
+		case int:
+			contractID = uint64(v)
 		}
 	}
 
@@ -394,9 +447,22 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 
 func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_user_notification").With().Str("workflow_name", wf.Name).Logger()
-	userID, ok := wf.State["user_id"].(int)
+	userIDVal, ok := wf.State["user_id"]
 	if !ok {
-		log.Error().Msg("Missing or invalid 'user_id' in workflow state")
+		log.Error().Msg("Missing 'user_id' in workflow state")
+		return nil
+	}
+
+	var userID int
+	switch v := userIDVal.(type) {
+	case int:
+		userID = v
+	case float64:
+		userID = int(v)
+	case int64:
+		userID = int(v)
+	default:
+		log.Error().Interface("user_id_value", v).Msg("Invalid 'user_id' type in workflow state")
 		return nil
 	}
 

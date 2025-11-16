@@ -16,10 +16,9 @@ import (
 
 // MockTokenManager implements auth.TokenManager for testing
 type MockTokenManager struct {
-	validToken   string
-	validClaims  *auth.TokenClaims
-	shouldFail   bool
-	errorMessage string
+	validToken  string
+	validClaims *auth.TokenClaims
+	shouldFail  bool
 }
 
 func (m *MockTokenManager) CreateTokenPair(userID int, username string, isAdmin bool) (*auth.TokenPair, error) {

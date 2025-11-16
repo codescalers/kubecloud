@@ -8,10 +8,7 @@ import router from '@/router'
 
 /** Core notification data structure */
 interface NotificationData {
-  /** Notification title/subject */
-  subject: string
-  /** Detailed notification message */
-  message: string
+  [key: string]: string
 }
 
 /** Server-Sent Event message structure from backend */
@@ -157,30 +154,41 @@ export function useNotificationEvents() {
     }
 
     const { subject, message } = getNotificationData(data, type)
+    
+    // Add persistent notification if it has an ID
     if (id) {
-      notificationStore.notifications.unshift({
+      notificationStore.addNotification({
         id,
         type,
         severity,
         payload: { ...data, subject, message },
         status: 'unread',
         created_at: event.timestamp,
-        persistent: !!id,
+        persistent: true,
       })
     }
+    
+    // Display toast notification based on severity
+    displayToastNotification(severity, subject, message)
+    
+    // Handle type-specific business logic
+    handleSpecificNotificationType(type, severity)
+  }
+
+  /**
+   * Displays a toast notification based on severity level
+   *
+   * @param severity The severity level of the notification
+   * @param subject The notification title
+   * @param message The notification message
+   */
+  function displayToastNotification(severity: NotificationSeverity, subject: string, message: string) {
     switch (severity) {
       case 'success':
         notificationStore.success(subject, message)
-        handleSpecificNotificationType(type)
         break
       case 'error':
         notificationStore.error(subject, message)
-        if (type === 'user') {
-          setTimeout(() => {
-            userStore.logout()
-            router.push('/')
-          }, 2000)
-        }
         break
       case 'warning':
         notificationStore.warning(subject, message)
@@ -205,16 +213,10 @@ export function useNotificationEvents() {
     data: NotificationData,
     type: NotificationType,
   ): { subject: string; message: string } {
-    let message = ''
-    let subject = ''
-    if (data?.message) {
-      message = data.message
-    }
-    if (data?.subject) {
-      subject = data.subject
-    }
+    let message = data?.message || ''
+    let subject = data?.subject || ''
 
-    if (!message) message = parseDefaultNotificationMessage(data, type)
+    if (!message) message = parseDefaultNotificationMessage(type)
     if (!subject) {
       subject = type.charAt(0).toUpperCase() + type.slice(1)
     }
@@ -227,17 +229,11 @@ export function useNotificationEvents() {
    * Provides fallback messages when the notification data doesn't include
    * a specific message, ensuring users always receive meaningful feedback.
    *
-   * @param data The notification data (may be string or object)
    * @param type The notification type for message generation
    * @returns Default message string for the notification type
    */
-  function parseDefaultNotificationMessage(data: NotificationData, type: NotificationType): string {
-    if (typeof data === 'string') {
-      return data
-    }
-
-    // Fallback based on type
-    switch (type as NotificationType) {
+  function parseDefaultNotificationMessage(type: NotificationType): string {
+    switch (type) {
       case 'deployment':
         return 'Deployment status update'
       case 'billing':
@@ -257,11 +253,23 @@ export function useNotificationEvents() {
    * Routes notification types to their specific handler functions
    *
    * Triggers appropriate actions based on notification type, such as
-   * refreshing data stores or updating UI state.
+   * refreshing data stores or updating UI state. Handles error cases
+   * like user authentication failures.
    *
    * @param type The notification type to handle
+   * @param severity The severity level to determine error handling
    */
-  function handleSpecificNotificationType(type: NotificationType) {
+  function handleSpecificNotificationType(type: NotificationType, severity: NotificationSeverity) {
+    // Handle error severity for user notifications (e.g., auth failures)
+    if (severity === 'error' && type === 'user') {
+      setTimeout(() => {
+        userStore.logout()
+        router.push('/')
+      }, 2000)
+      return
+    }
+
+    // Handle type-specific actions for success notifications
     switch (type) {
       case 'deployment':
         handleDeploymentNotification()
