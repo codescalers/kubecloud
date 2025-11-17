@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewSSEManager(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	if manager.clients == nil {
 		t.Error("clients map not initialized")
 	}
@@ -23,11 +23,11 @@ func TestNewSSEManager(t *testing.T) {
 }
 
 func TestSSEManager_AddClient(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan := manager.AddClient(userID)
+	clientChan := manager.addClient(userID)
 
 	if clientChan == nil {
 		t.Error("AddClient returned nil channel")
@@ -50,11 +50,11 @@ func TestSSEManager_AddClient(t *testing.T) {
 }
 
 func TestSSEManager_RemoveClient(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan := manager.AddClient(userID)
+	clientChan := manager.addClient(userID)
 
 	// Verify client exists
 	manager.mu.RLock()
@@ -66,7 +66,7 @@ func TestSSEManager_RemoveClient(t *testing.T) {
 	}
 
 	// Remove client
-	manager.RemoveClient(userID, clientChan)
+	manager.removeClient(userID, clientChan)
 
 	// Verify client was removed
 	manager.mu.RLock()
@@ -79,12 +79,12 @@ func TestSSEManager_RemoveClient(t *testing.T) {
 }
 
 func TestSSEManager_RemoveClient_MultipleClients(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan1 := manager.AddClient(userID)
-	clientChan2 := manager.AddClient(userID)
+	clientChan1 := manager.addClient(userID)
+	clientChan2 := manager.addClient(userID)
 
 	// Verify both clients exist
 	manager.mu.RLock()
@@ -96,7 +96,7 @@ func TestSSEManager_RemoveClient_MultipleClients(t *testing.T) {
 	}
 
 	// Remove first client
-	manager.RemoveClient(userID, clientChan1)
+	manager.removeClient(userID, clientChan1)
 
 	// Verify only second client remains
 	manager.mu.RLock()
@@ -112,11 +112,11 @@ func TestSSEManager_RemoveClient_MultipleClients(t *testing.T) {
 }
 
 func TestSSEManager_Notify(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan := manager.AddClient(userID)
+	clientChan := manager.addClient(userID)
 
 	data := map[string]string{"message": "test message", "status": "success"}
 
@@ -147,12 +147,12 @@ func TestSSEManager_Notify(t *testing.T) {
 }
 
 func TestSSEManager_Notify_MultipleClients(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan1 := manager.AddClient(userID)
-	clientChan2 := manager.AddClient(userID)
+	clientChan1 := manager.addClient(userID)
+	clientChan2 := manager.addClient(userID)
 
 	message := SSEMessage{
 		Type:     "test",
@@ -192,10 +192,10 @@ func TestSSEManager_Notify_MultipleClients(t *testing.T) {
 }
 
 func TestSSEManager_Stop(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 
 	userID := 1
-	manager.AddClient(userID)
+	manager.addClient(userID)
 
 	// Stop the manager
 	manager.Stop()
@@ -250,11 +250,11 @@ func TestSSEMessage_JSONMarshal(t *testing.T) {
 }
 
 func TestSSEManager_Notify_WithTaskID(t *testing.T) {
-	manager := NewSSEManager()
+	manager := NewSSEManager(nil)
 	defer manager.Stop()
 
 	userID := 1
-	clientChan := manager.AddClient(userID)
+	clientChan := manager.addClient(userID)
 
 	taskID := "task-123"
 

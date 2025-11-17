@@ -1,24 +1,16 @@
-<<<<<<<< HEAD:backend/internal/infrastructure/realtime/sse.go
 package realtime
-========
-package sse
->>>>>>>> 88f5c22 (test: add sse test):backend/internal/sse/sse.go
 
 import (
 	"context"
 	"encoding/json"
 	"io"
-<<<<<<<< HEAD:backend/internal/infrastructure/realtime/sse.go
+	"kubecloud/internal/auth"
 	"kubecloud/internal/core/models"
-========
-	"kubecloud/internal"
-	"kubecloud/models"
->>>>>>>> 88f5c22 (test: add sse test):backend/internal/sse/sse.go
+	"kubecloud/internal/infrastructure/logger"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
-
-	"kubecloud/internal/infrastructure/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +28,7 @@ type SSEManager struct {
 	mu           sync.RWMutex
 	ctx          context.Context
 	cancel       context.CancelFunc
-	tokenManager internal.TokenManager
+	tokenManager auth.TokenManager
 }
 
 // SSEMessage represents a server-sent event message
@@ -50,7 +42,7 @@ type SSEMessage struct {
 }
 
 // NewSSEManager creates a new SSE manager
-func NewSSEManager(tokenManager internal.TokenManager) *SSEManager {
+func NewSSEManager(tokenManager auth.TokenManager) *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
 		clients:      make(map[int][]chan SSEMessage),
@@ -144,7 +136,7 @@ func (s *SSEManager) Notify(userID int, msgType string, severity models.Notifica
 }
 
 // setupExpiryTimer creates a timer that fires when the token expires
-func (s *SSEManager) setupExpiryTimer(claims *internal.TokenClaims) *time.Timer {
+func (s *SSEManager) setupExpiryTimer(claims *auth.TokenClaims) *time.Timer {
 	if claims == nil || claims.ExpiresAt == nil {
 		return nil
 	}
@@ -163,8 +155,12 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 	// Extract token from query or Authorization header
 	tokenStr := c.Query("token")
 	if tokenStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
 	}
 
 	claims, err := s.tokenManager.VerifyToken(tokenStr)
