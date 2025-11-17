@@ -14,7 +14,6 @@
           icon
           variant="text"
           color="white"
-          class="mx-1"
           v-bind="props"
         >
           <v-badge
