@@ -953,3 +953,45 @@ func TestListUserPendingRecordsHandler(t *testing.T) {
 	})
 
 }
+
+func TestListUserWorkflowsHandler(t *testing.T) {
+	app, err := SetUp(t)
+	require.NoError(t, err)
+	router := app.router
+	user := CreateTestUser(t, app, "listwfuser@example.com", "Wfs User", []byte("securepassword"), true, false, false, 0, time.Now())
+	token := GetAuthToken(t, app, user.ID, user.Email, user.Username, false)
+
+	t.Run("Test list user workflows successfully", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/user/workflows", nil)
+		assert.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		var result map[string]interface{}
+		err = json.Unmarshal(resp.Body.Bytes(), &result)
+		assert.NoError(t, err)
+		assert.Equal(t, "User workflows retrieved successfully", result["message"])
+		assert.NotNil(t, result["data"])
+	})
+
+	t.Run("Test list user workflows with no token", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/user/workflows", nil)
+		assert.NoError(t, err)
+
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusUnauthorized, resp.Code)
+	})
+
+	t.Run("Test list user workflows with invalid token", func(t *testing.T) {
+		req, err := http.NewRequest("GET", "/api/v1/user/workflows", nil)
+		assert.NoError(t, err)
+
+		req.Header.Set("Authorization", "Bearer invalidtoken")
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusUnauthorized, resp.Code)
+	})
+
+}

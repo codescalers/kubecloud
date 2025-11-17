@@ -10,6 +10,7 @@ type UserRepository interface {
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error
 	CreditUserBalance(userID int, amount uint64) error
+	ListRemainingWorkflowsByUserID(userID int) ([]GormWorkflowRecord, error)
 
 	// stats methods
 	CountAllUsers() (int64, error)

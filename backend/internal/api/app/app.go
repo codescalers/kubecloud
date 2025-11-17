@@ -161,6 +161,7 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/balance", app.handlers.userHandler.GetUserBalance)
 				authGroup.PUT("/redeem/:voucher_code", app.handlers.userHandler.RedeemVoucherHandler)
 				authGroup.GET("/pending-records", app.handlers.userHandler.ListUserPendingRecordsHandler)
+				authGroup.GET("/workflows", app.handlers.userHandler.ListUserRemainingWorkflowsHandler)
 
 				authGroup.GET("/nodes", app.handlers.nodeHandler.ListNodesHandler)
 				authGroup.GET("/nodes/rentable", app.handlers.nodeHandler.ListRentableNodesHandler)
@@ -227,7 +228,7 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	app.core.ewfEngine.ResumeRunningWorkflows()
+	app.core.ewfEngine.ResumeWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
 		Handler: app.router,

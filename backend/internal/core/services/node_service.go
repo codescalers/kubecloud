@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -160,7 +161,9 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 }
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode)
+	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode, ewf.WithQueue(queueName))
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +175,11 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 		"target_status": workflows.NodeRented,
 	}
 
-	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		return "", err
+	}
+
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", err
 	}
 
@@ -180,7 +187,9 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 }
 
 func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, contractID uint64, nodeID uint32) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode)
+	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode, ewf.WithQueue(queueName))
 	if err != nil {
 		return "", err
 	}
@@ -193,20 +202,30 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 		"target_status": workflows.NodeRentable,
 	}
 
-	if err = svc.runAsyncWithQueue(userID, wf); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		return "", err
+	}
+
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", err
 	}
 
 	return wf.UUID, nil
 }
 
-func (svc *NodeService) runAsyncWithQueue(userID int, wf *ewf.Workflow) error {
-	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+// runWithQueue ensures the workflow is run within the specified queue
+// if a queue with the given name does not exist, it creates one
+// if a non queued workflow is passed, it sets its queue name to run in the specified queue
+func (svc *NodeService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 
 	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, cfg.DefaultQueueConfig.WorkersDef, cfg.DefaultQueueConfig.QueueOptions)
 	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
 		return err
 	}
 
-	return svc.ewfEngine.RunAsync(svc.appCtx, wf, ewf.WithQueue(queueName))
+	if wf.QueueName == "" {
+		wf.QueueName = queueName
+	}
+
+	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }

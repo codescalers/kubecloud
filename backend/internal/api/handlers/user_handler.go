@@ -133,12 +133,32 @@ type VerifyRegisterUserResponse struct {
 	*auth.TokenPair
 }
 
+// PendingRecordsResponse swagger model
+type PendingRecordsResponse struct {
+	PendingRecords []services.PendingRecordsWithUSDAmounts `json:"pending_records"`
+}
+
 // RedeemVoucherResponse holds the response for redeeming a voucher
 type RedeemVoucherResponse struct {
 	WorkflowID  string  `json:"workflow_id"`
 	VoucherCode string  `json:"voucher_code"`
 	Amount      float64 `json:"amount"`
 	Email       string  `json:"email"`
+}
+
+// UserWorkflow holds the response for listing user workflows
+type UserWorkflow struct {
+	WorkflowID  string    `json:"workflow_id"`
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	CurrentStep int       `json:"current_step"`
+	TotalSteps  int       `json:"total_steps"`
+}
+
+// UserWorkflowsResponse swagger model
+type UserWorkflowsResponse struct {
+	WorkflowResponse []UserWorkflow `json:"workflows"`
 }
 
 // RegisterHandler registers user to the system
@@ -299,7 +319,7 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body LoginInput true "Login Input"
-// @Success 201 {object} APIResponse{data=shared.TokenPair} "token pair generated"
+// @Success 201 {object} APIResponse{data=auth.TokenPair} "token pair generated"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Login failed"
 // @Failure 500 {object} APIResponse
@@ -458,7 +478,7 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body VerifyCodeInput true "Verify Code Input"
-// @Success 201 {object} APIResponse{data=shared.TokenPair} "Verification successful"
+// @Success 201 {object} APIResponse{data=auth.TokenPair} "Verification successful"
 // @Failure 400 {object} APIResponse "Invalid request format or verification failed"
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password/verify [post]
@@ -1002,6 +1022,46 @@ func (h *UserHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsWithUSDAmounts,
+	})
+}
+
+// @Summary List remaining user workflows
+// @Description Returns all pending/running workflows belonging to the authenticated user.
+// @Tags workflow
+// @ID list-user-workflows
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} APIResponse{data=UserWorkflowsResponse} "User workflows retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized user"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /user/workflows [get]
+func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "ListUserRemainingWorkflowsHandler")
+
+	workflows, err := h.svc.ListRemainingWorkflowsByUserID(userID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to list user workflows")
+		InternalServerError(c)
+		return
+	}
+
+	var userWorkflowsResponse []UserWorkflow
+	for _, workflow := range workflows {
+
+		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflow{
+			WorkflowID:  workflow.UUID,
+			Name:        workflow.Name,
+			Status:      string(workflow.Status),
+			CreatedAt:   workflow.CreatedAt,
+			CurrentStep: workflow.CurrentStep,
+			TotalSteps:  len(workflow.Steps),
+		})
+	}
+
+	OK(c, "User workflows retrieved successfully", gin.H{
+		"workflows": userWorkflowsResponse,
 	})
 }
 
