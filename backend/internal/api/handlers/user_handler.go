@@ -146,14 +146,19 @@ type RedeemVoucherResponse struct {
 	Email       string  `json:"email"`
 }
 
-// UserWorkflowsResponse holds the response for listing user workflows
-type UserWorkflowsResponse struct {
+// UserWorkflowsItem holds the response for listing user workflows
+type UserWorkflow struct {
 	WorkflowID  string    `json:"workflow_id"`
 	Name        string    `json:"name"`
 	Status      string    `json:"status"`
 	CreatedAt   time.Time `json:"created_at"`
 	CurrentStep int       `json:"current_step"`
 	TotalSteps  int       `json:"total_steps"`
+}
+
+// UserWorkflowsResponse swagger model
+type UserWorkflowsResponse struct {
+	WorkflowResponse []UserWorkflow `json:"workflows"`
 }
 
 // RegisterHandler registers user to the system
@@ -1042,10 +1047,10 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 		return
 	}
 
-	var userWorkflowsResponse []UserWorkflowsResponse
+	var userWorkflowsResponse []UserWorkflow
 	for _, workflow := range workflows {
 
-		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflowsResponse{
+		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflow{
 			WorkflowID:  workflow.UUID,
 			Name:        workflow.Name,
 			Status:      string(workflow.Status),

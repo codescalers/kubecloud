@@ -3955,7 +3955,7 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.UserWorkflowsResponse": {
+        "handlers.UserWorkflow": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3975,6 +3975,17 @@ const docTemplate = `{
                 },
                 "workflow_id": {
                     "type": "string"
+                }
+            }
+        },
+        "handlers.UserWorkflowsResponse": {
+            "type": "object",
+            "properties": {
+                "workflows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/handlers.UserWorkflow"
+                    }
                 }
             }
         },

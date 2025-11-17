@@ -454,7 +454,7 @@ definitions:
       pending_balance_usd:
         type: number
     type: object
-  handlers.UserWorkflowsResponse:
+  handlers.UserWorkflow:
     properties:
       created_at:
         type: string
@@ -468,6 +468,13 @@ definitions:
         type: integer
       workflow_id:
         type: string
+    type: object
+  handlers.UserWorkflowsResponse:
+    properties:
+      workflows:
+        items:
+          $ref: '#/definitions/handlers.UserWorkflow'
+        type: array
     type: object
   handlers.VerifyCodeInput:
     properties:
