@@ -201,18 +201,18 @@
         class="mt-4"
       />
     </div>
-    <v-dialog v-model="showDeleteModal" :max-width="display.xs ? '90%' : '400'">
+    <v-dialog v-model="showDeleteModal" :max-width="deleteDialogMaxWidth">
       <v-card>
         <v-card-title>Confirm Delete</v-card-title>
         <v-card-text>Are you sure you want to delete this cluster? This action cannot be undone.</v-card-text>
-        <v-card-actions class="flex-column flex-sm-row gap-2">
+        <v-card-actions class="flex-row gap-2">
           <v-spacer class="d-none d-sm-flex" />
-          <v-btn variant="outlined" color="primary" @click="showDeleteModal = false" block class="d-sm-inline-block">Cancel</v-btn>
-          <v-btn variant="outlined" color="error" @click="confirmDelete" :loading="deleting" block class="d-sm-inline-block">Delete</v-btn>
+          <v-btn variant="outlined" color="primary" @click="showDeleteModal = false" class="d-sm-inline-block">Cancel</v-btn>
+          <v-btn variant="outlined" color="error" @click="confirmDelete" :loading="deleting" class="d-sm-inline-block">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-    <v-dialog v-model="showDeleteAllModal" :max-width="display.xs ? '90%' : '500'">
+    <v-dialog v-model="showDeleteAllModal" :max-width="deleteDialogMaxWidth">
       <v-card class="pa-3">
         <v-card-title>
           Delete All Deployments
@@ -220,15 +220,14 @@
         <v-card-text>
           Are you sure you want to delete all your deployments? This action will permanently remove all your clusters and their resources.
         </v-card-text>
-        <v-card-actions class="flex-column flex-sm-row gap-2">
+        <v-card-actions class="flex-row gap-2">
           <v-spacer class="d-none d-sm-flex" />
-          <v-btn variant="outlined" color="primary" @click="showDeleteAllModal = false" block class="d-sm-inline-block">Cancel</v-btn>
+          <v-btn variant="outlined" color="primary" @click="showDeleteAllModal = false" class="d-sm-inline-block">Cancel</v-btn>
           <v-btn
             variant="outlined"
             color="error"
             @click="confirmDeleteAll"
             :loading="deletingAll"
-            block
             class="d-sm-inline-block"
           >
             Delete All
@@ -248,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useClusterStore } from '../../stores/clusters'
@@ -298,12 +297,33 @@ const sortOptions = [
 
 const error = computed(() => clusterStore.error)
 const isLoading = computed(() => clusterStore.isLoading || userStore.isLoading)
+
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 0)
+
+const deleteDialogMaxWidth = computed(() => {
+  if (display.xs.value) {
+    return undefined // auto width for small screens
+  }
+  // For medium and large screens, calculate 50% of viewport width in pixels
+  return Math.floor(windowWidth.value * 0.5)
+})
+
 function setSort(field: string) {
   sortBy.value = field
 }
 
+const updateWindowWidth = () => {
+  windowWidth.value = window.innerWidth
+}
+
 onMounted(() => {
   clusterStore.fetchClusters()
+  updateWindowWidth()
+  window.addEventListener('resize', updateWindowWidth)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateWindowWidth)
 })
 
 const filteredClusters = computed(() => {
