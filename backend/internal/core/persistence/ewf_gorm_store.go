@@ -47,10 +47,20 @@ func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Work
 	}
 
 	gormWorkflow := models.GormWorkflowRecord{
-		UUID:   workflow.UUID,
-		Name:   workflow.Name,
-		Status: string(workflow.Status),
-		Data:   data,
+		UUID:      workflow.UUID,
+		Name:      workflow.Name,
+		Status:    string(workflow.Status),
+		Data:      data,
+		QueueName: workflow.QueueName,
+	}
+
+	if userID, ok := workflow.State[gormUserID]; ok {
+		switch v := userID.(type) {
+		case int:
+			gormWorkflow.UserID = v
+		case float64:
+			gormWorkflow.UserID = int(v)
+		}
 	}
 
 	return r.db.WithContext(ctx).Save(&gormWorkflow).Error
