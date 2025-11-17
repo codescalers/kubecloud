@@ -237,10 +237,12 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       userID,
-		"mnemonic":      userMnemonic,
 		"node_id":       nodeID,
 		"target_status": workflows.NodeRented,
+		"config": map[string]interface{}{
+			"user_id":  userID,
+			"mnemonic": userMnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
@@ -268,11 +270,13 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       userID,
-		"mnemonic":      userMnemonic,
 		"contract_id":   contractID,
 		"node_id":       nodeID,
 		"target_status": workflows.NodeRentable,
+		"config": map[string]interface{}{
+			"user_id":  userID,
+			"mnemonic": userMnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {

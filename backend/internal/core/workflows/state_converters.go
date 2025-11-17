@@ -68,10 +68,6 @@ func getIntFromState(state ewf.State, key string) (int, error) {
 	return getFromStateWithConverter(state, key, toInt)
 }
 
-func getUint32FromState(state ewf.State, key string) (uint32, error) {
-	return getFromStateWithConverter(state, key, toUint32)
-}
-
 func getUint64FromState(state ewf.State, key string) (uint64, error) {
 	return getFromStateWithConverter(state, key, toUint64)
 }

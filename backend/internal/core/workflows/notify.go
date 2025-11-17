@@ -174,10 +174,11 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		return sendDrainWorkflowNotification(ctx, notificationDispatcher, wf, err)
 	}
 
-	userID, userIDErr := getIntFromState(wf.State, "user_id")
-	if userIDErr != nil {
-		log.Error().Err(userIDErr).Msg("failed to get user ID from state")
-		return userIDErr
+
+	config, confErr := getConfig(wf.State)
+	if confErr != nil {
+		log.Error().Msg("Missing or invalid 'config' in workflow state")
+		return confErr
 	}
 
 	displayName := getWorkflowDisplayName(wf)
@@ -189,16 +190,17 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	amount, amountErr := getUint64FromState(wf.State, "amount")
 	if amountErr != nil {
 		log.Error().Err(amountErr).Msg("failed to get amount from state")
-		notif := buildGenericWorkflowNotification(wf, userID, err)
+		notif := buildGenericWorkflowNotification(wf, config.UserID, err)
 		return notificationDispatcher.Send(ctx, notif)
 	}
 
 	newBalance, newBalanceUSDErr := getUint64FromState(wf.State, "new_balance")
 	if newBalanceUSDErr != nil {
 		log.Error().Err(newBalanceUSDErr).Msg("failed to get new balance from state")
-		notif := buildGenericWorkflowNotification(wf, userID, err)
+		notif := buildGenericWorkflowNotification(wf, config.UserID, err)
 		return notificationDispatcher.Send(ctx, notif)
 	}
+	
 	amountUSD := substrate.FromUSDMilliCentToUSD(amount)
 	newBalanceUSD := substrate.FromUSDMilliCentToUSD(newBalance)
 	var status, subject, message string
@@ -213,7 +215,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
 		}
 
-		notif := notification.BillingNotification(userID).
+		notif := notification.BillingNotification(config.UserID).
 			Success(message).
 			WithSubject(subject).
 			WithStatus(status).
@@ -228,7 +230,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	subject = "Adding Funds Failed"
 	message = fmt.Sprintf("Failed to add funds to your account: %s", err.Error())
 
-	notif := notification.BillingNotification(userID).
+	notif := notification.BillingNotification(config.UserID).
 		Failure(message, err).
 		WithSubject(subject).
 		WithExtra("workflow_name", displayName).
@@ -312,24 +314,39 @@ func sendAdminCreditBalanceWorkflowNotification(ctx context.Context, notificatio
 
 func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_node_notification").With().Str("workflow_name", wf.Name).Logger()
-	userID, userIDErr := getIntFromState(wf.State, "user_id")
-	if userIDErr != nil {
-		log.Warn().Err(userIDErr).Msg("failed to get user ID from state")
-		return userIDErr
+	config, confErr := getConfig(wf.State)
+	if confErr != nil {
+		log.Error().Msg("Missing or invalid 'config' in workflow state")
+		return confErr
 	}
 
-	nodeID, nodeIDErr := getUint32FromState(wf.State, "node_id")
-	if nodeIDErr != nil {
-		log.Warn().Err(nodeIDErr).Msg("failed to get node ID from state")
-		notif := buildGenericWorkflowNotification(wf, userID, err)
-		return notificationDispatcher.Send(ctx, notif)
-	}
+	// Extract node information from workflow state
+	var nodeID uint32
+	var contractID uint64
 
-	contractID, contractIDErr := getUint64FromState(wf.State, "contract_id")
-	if contractIDErr != nil {
-		log.Warn().Err(contractIDErr).Msg("failed to get contract ID from state")
-		notif := buildGenericWorkflowNotification(wf, userID, err)
-		return notificationDispatcher.Send(ctx, notif)
+	if nodeIDVal, ok := wf.State["node_id"]; ok {
+		switch v := nodeIDVal.(type) {
+		case uint32:
+			nodeID = v
+		case float64:
+			nodeID = uint32(v)
+		case int64:
+			nodeID = uint32(v)
+		case int:
+			nodeID = uint32(v)
+		}
+	}
+	if contractIDVal, ok := wf.State["contract_id"]; ok {
+		switch v := contractIDVal.(type) {
+		case uint64:
+			contractID = v
+		case float64:
+			contractID = uint64(v)
+		case int64:
+			contractID = uint64(v)
+		case int:
+			contractID = uint64(v)
+		}
 	}
 
 	displayName := getWorkflowDisplayName(wf)
@@ -359,11 +376,11 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 
 	var builder *notification.NotificationBuilder
 	if err != nil {
-		builder = notification.NodeNotification(userID, nodeID).
+		builder = notification.NodeNotification(config.UserID, nodeID).
 			Failure(message, err).
 			WithSubject(subject)
 	} else {
-		builder = notification.NodeNotification(userID, nodeID).
+		builder = notification.NodeNotification(config.UserID, nodeID).
 			Success(message).
 			WithSubject(subject)
 	}
@@ -380,10 +397,10 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 
 func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_user_notification").With().Str("workflow_name", wf.Name).Logger()
-	userID, userIDErr := getIntFromState(wf.State, "user_id")
-	if userIDErr != nil {
-		log.Error().Err(userIDErr).Msg("failed to get user ID from state")
-		return userIDErr
+	config, confErr := getConfig(wf.State)
+	if confErr != nil {
+		log.Error().Msg("Missing or invalid 'config' in workflow state")
+		return confErr
 	}
 
 	var subject, message string
@@ -409,11 +426,11 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 
 	var builder *notification.NotificationBuilder
 	if err != nil {
-		builder = notification.UserNotification(userID).
+		builder = notification.UserNotification(config.UserID).
 			Failure(message, err).
 			WithSubject(subject)
 	} else {
-		builder = notification.UserNotification(userID).
+		builder = notification.UserNotification(config.UserID).
 			Success(message).
 			WithSubject(subject)
 	}
