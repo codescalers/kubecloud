@@ -40,7 +40,7 @@ func (r *GormEWFRepository) Setup() error {
 	return r.db.AutoMigrate(&models.GormWorkflowRecord{}, &gormTemplateRecord{}, &QueueMetadataRecord{})
 }
 
-func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
+func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow ewf.Workflow) error {
 	data, err := json.Marshal(workflow)
 	if err != nil {
 		return fmt.Errorf("failed to marshal workflow: %w", err)
@@ -66,30 +66,30 @@ func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Work
 	return r.db.WithContext(ctx).Save(&gormWorkflow).Error
 }
 
-func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string) (*ewf.Workflow, error) {
+func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string) (ewf.Workflow, error) {
+	var workflow ewf.Workflow
 	var gormWorkflow models.GormWorkflowRecord
 	if err := r.db.WithContext(ctx).Where("name = ?", name).First(&gormWorkflow).Error; err != nil {
-		return nil, err
+		return workflow, err
 	}
 
-	var workflow ewf.Workflow
 	err := json.Unmarshal(gormWorkflow.Data, &workflow)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workflow: %w", err)
+		return workflow, fmt.Errorf("failed to unmarshal workflow: %w", err)
 	}
-	return &workflow, nil
+	return workflow, nil
 }
 
-func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string) (*ewf.Workflow, error) {
+func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string) (ewf.Workflow, error) {
+	var workflow ewf.Workflow
 	var gormWorkflow models.GormWorkflowRecord
 	if err := r.db.WithContext(ctx).Where("uuid = ?", uuid).First(&gormWorkflow).Error; err != nil {
-		return nil, err
+		return workflow, err
 	}
-	var workflow ewf.Workflow
 	if err := json.Unmarshal(gormWorkflow.Data, &workflow); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal workflow: %w", err)
+		return workflow, fmt.Errorf("failed to unmarshal workflow: %w", err)
 	}
-	return &workflow, nil
+	return workflow, nil
 }
 
 func (r *GormEWFRepository) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf.WorkflowStatus) ([]string, error) {

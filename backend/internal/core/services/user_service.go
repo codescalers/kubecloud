@@ -271,7 +271,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	if err = persistence.SetStateUserID(wf, userID); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 
@@ -298,7 +298,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		"transfer_mode": models.RedeemVoucherMode,
 	}
 
-	if err = persistence.SetStateUserID(wf, userID); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 

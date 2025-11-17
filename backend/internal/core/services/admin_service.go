@@ -144,7 +144,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		"admin_id":      transaction.AdminID,
 	}
 
-	if err = persistence.SetStateUserID(wf, transaction.AdminID); err != nil {
+	if err = persistence.SetStateUserID(&wf, transaction.AdminID); err != nil {
 		return err
 	}
 

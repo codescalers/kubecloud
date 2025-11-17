@@ -63,7 +63,7 @@ func TestEnqueueDequeue(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to dequeue workflow: %v", err)
 		}
-		if wf == nil {
+		if wf.UUID == "" {
 			t.Fatalf("expected workflow, got nil")
 		}
 		expectedName := fmt.Sprintf("test-workflow%d", i)

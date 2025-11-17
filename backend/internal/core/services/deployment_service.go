@@ -164,7 +164,7 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 		wf.QueueName = queueName
 	}
 
-	return svc.ewfEngine.Run(svc.appCtx, wf)
+	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
 
 func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
@@ -180,11 +180,11 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster": cluster,
 	}
 
-	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+	if err = persistence.SetStateUserID(&wf, config.UserID); err != nil {
 		return "", "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", "", err
 	}
 
@@ -204,11 +204,11 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 		"project_name": projectName,
 	}
 
-	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+	if err = persistence.SetStateUserID(&wf, config.UserID); err != nil {
 		return "", "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", "", err
 	}
 
@@ -227,11 +227,11 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 		"config": config,
 	}
 
-	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+	if err = persistence.SetStateUserID(&wf, config.UserID); err != nil {
 		return "", "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", "", err
 	}
 
@@ -252,11 +252,11 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"node":    node,
 	}
 
-	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+	if err = persistence.SetStateUserID(&wf, config.UserID); err != nil {
 		return "", "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", "", err
 	}
 
@@ -277,11 +277,11 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 		"node_name": nodeName,
 	}
 
-	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+	if err = persistence.SetStateUserID(&wf, config.UserID); err != nil {
 		return "", "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", "", err
 	}
 

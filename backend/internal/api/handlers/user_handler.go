@@ -309,7 +309,7 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body LoginInput true "Login Input"
-// @Success 201 {object} APIResponse{data=shared.TokenPair} "token pair generated"
+// @Success 201 {object} APIResponse{data=auth.TokenPair} "token pair generated"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 401 {object} APIResponse "Login failed"
 // @Failure 500 {object} APIResponse
@@ -468,7 +468,7 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param body body VerifyCodeInput true "Verify Code Input"
-// @Success 201 {object} APIResponse{data=shared.TokenPair} "Verification successful"
+// @Success 201 {object} APIResponse{data=auth.TokenPair} "Verification successful"
 // @Failure 400 {object} APIResponse "Invalid request format or verification failed"
 // @Failure 500 {object} APIResponse
 // @Router /user/forgot_password/verify [post]

@@ -175,11 +175,11 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 		"target_status": workflows.NodeRented,
 	}
 
-	if err = persistence.SetStateUserID(wf, userID); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", err
 	}
 
@@ -202,11 +202,11 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 		"target_status": workflows.NodeRentable,
 	}
 
-	if err = persistence.SetStateUserID(wf, userID); err != nil {
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 
-	if err = svc.runWithQueue(queueName, wf); err != nil {
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		return "", err
 	}
 
@@ -227,5 +227,5 @@ func (svc *NodeService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 		wf.QueueName = queueName
 	}
 
-	return svc.ewfEngine.Run(svc.appCtx, wf)
+	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
