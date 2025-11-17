@@ -146,7 +146,7 @@ type RedeemVoucherResponse struct {
 	Email       string  `json:"email"`
 }
 
-// UserWorkflowsItem holds the response for listing user workflows
+// UserWorkflow holds the response for listing user workflows
 type UserWorkflow struct {
 	WorkflowID  string    `json:"workflow_id"`
 	Name        string    `json:"name"`
