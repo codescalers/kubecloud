@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
@@ -68,6 +69,7 @@ func (svc *AdminService) ListAllUsers() ([]models.User, error) {
 
 func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance, error) {
 	users, err := svc.ListAllUsers()
+	// Here is the only critical errors, not the balance related ones
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 		usersWithBalance []UserWithUSDBalance
 		wg               sync.WaitGroup
 		mu               sync.Mutex
-		multiErr         *multierror.Error
+		balanceErrors    *multierror.Error
 	)
 
 	balanceConcurrencyLimiter := make(chan struct{}, maxConcurrentBalanceFetches)
@@ -92,9 +94,9 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 			balance, err := svc.substrateClient.GetUserBalanceUSD(user.Mnemonic)
 			if err != nil {
 				mu.Lock()
-				multiErr = multierror.Append(multiErr, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
+				balanceErrors = multierror.Append(balanceErrors, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
 				mu.Unlock()
-				return
+				balance = 0.0
 			}
 
 			mu.Lock()
@@ -108,8 +110,10 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 
 	wg.Wait()
 
-	if multiErr.ErrorOrNil() != nil {
-		return nil, multiErr.ErrorOrNil()
+	// Log balance errors but continue - return users with 0 balance for unregistered or failed users
+	if balanceErrors.ErrorOrNil() != nil {
+		// Log but don't fail the request - users with missing accounts will have 0 balance
+		logger.GetLogger().Warn().Err(balanceErrors.ErrorOrNil()).Msg("some users had balance fetch errors, returning them with 0 balance")
 	}
 
 	return usersWithBalance, nil
