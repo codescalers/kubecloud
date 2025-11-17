@@ -208,7 +208,7 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 		"password": password,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
@@ -229,7 +229,7 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 		"user_id": userID,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
@@ -249,7 +249,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
@@ -272,7 +272,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		"transfer_mode": models.RedeemVoucherMode,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 

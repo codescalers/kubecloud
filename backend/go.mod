@@ -27,7 +27,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.3
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.3
 	github.com/vedhavyas/go-subkey v1.0.3
-	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
+	github.com/xmonader/ewf v0.0.0-20251116120136-f5b7145f3ebd
 	golang.org/x/sync v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	gorm.io/driver/postgres v1.5.7

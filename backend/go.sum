@@ -343,8 +343,8 @@ github.com/vedhavyas/go-subkey/v2 v2.0.0 h1:LemDIsrVtRSOkp0FA8HxP6ynfKjeOj3BY2U9
 github.com/vedhavyas/go-subkey/v2 v2.0.0/go.mod h1:95aZ+XDCWAUUynjlmi7BtPExjXgXxByE0WfBwbmIRH4=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
-github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36 h1:3t4QMPGm7wKLTZtNr00JCenNqA4qnbKuvIYVuhrAKQo=
-github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36/go.mod h1:8n8mKYy5jjCXhfdjIOZ4FKE0uxfsI+uM4TD49LK/3lg=
+github.com/xmonader/ewf v0.0.0-20251116120136-f5b7145f3ebd h1:NJs2KBeV0GCyUMLTuLbU3al2QCroTiN+6NInB/LKHJ4=
+github.com/xmonader/ewf v0.0.0-20251116120136-f5b7145f3ebd/go.mod h1:8n8mKYy5jjCXhfdjIOZ4FKE0uxfsI+uM4TD49LK/3lg=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=

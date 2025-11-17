@@ -146,6 +146,10 @@ func (r *GormEWFRepository) SaveWorkflowTemplate(ctx context.Context, name strin
 	return r.db.WithContext(ctx).Save(&gormTemplate).Error
 }
 
+func (s *GormEWFRepository) DeleteWorkflow(ctx context.Context, uuid string) error {
+	return s.db.WithContext(ctx).Delete(&gormWorkflowRecord{}, "uuid = ?", uuid).Error
+}
+
 func (r *GormEWFRepository) SaveQueueMetadata(ctx context.Context, metadata *ewf.QueueMetadata) error {
 	if metadata == nil {
 		return fmt.Errorf("metadata cannot be nil")

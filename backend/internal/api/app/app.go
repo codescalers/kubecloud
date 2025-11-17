@@ -227,7 +227,7 @@ func (app *App) StartBackgroundWorkers() {
 func (app *App) Run() error {
 	app.StartBackgroundWorkers()
 
-	app.core.ewfEngine.ResumeRunningWorkflows()
+	app.core.ewfEngine.ResumeWorkflows()
 	app.httpServer = &http.Server{
 		Addr:    fmt.Sprintf(":%s", app.config.Server.Port),
 		Handler: app.router,
