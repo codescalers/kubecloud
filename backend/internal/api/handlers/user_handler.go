@@ -133,6 +133,11 @@ type VerifyRegisterUserResponse struct {
 	*auth.TokenPair
 }
 
+// PendingRecordsResponse swagger model
+type PendingRecordsResponse struct {
+	PendingRecords []services.PendingRecordsWithUSDAmounts `json:"pending_records"`
+}
+
 // RedeemVoucherResponse holds the response for redeeming a voucher
 type RedeemVoucherResponse struct {
 	WorkflowID  string  `json:"workflow_id"`

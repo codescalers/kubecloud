@@ -36,13 +36,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentListResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentListResponse"
                                         }
                                     }
                                 }
@@ -52,13 +52,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -87,7 +87,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.ClusterInput"
+                            "$ref": "#/definitions/handlers.ClusterInput"
                         }
                     }
                 ],
@@ -97,13 +97,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -113,19 +113,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -150,13 +150,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -166,13 +166,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -208,13 +208,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentResponse"
+                                            "$ref": "#/definitions/services.ClusterData"
                                         }
                                     }
                                 }
@@ -224,25 +224,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Deployment not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -276,13 +276,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -292,25 +292,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Deployment not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -346,13 +346,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.KubeconfigResponse"
+                                            "$ref": "#/definitions/handlers.KubeconfigResponse"
                                         }
                                     }
                                 }
@@ -362,25 +362,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Deployment not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -411,7 +411,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.ClusterInput"
+                            "$ref": "#/definitions/handlers.ClusterInput"
                         }
                     }
                 ],
@@ -421,13 +421,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -437,25 +437,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Deployment not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -498,13 +498,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.DeploymentWorkflowResponse"
+                                            "$ref": "#/definitions/handlers.DeploymentWorkflowResponse"
                                         }
                                     }
                                 }
@@ -514,25 +514,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Deployment not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -563,7 +563,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -582,7 +582,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -628,13 +628,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.ListNodesResponse"
+                                            "$ref": "#/definitions/handlers.ListNodesResponse"
                                         }
                                     }
                                 }
@@ -644,13 +644,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid filter parameters",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -685,13 +685,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.NodeStoragePoolResponse"
+                                            "$ref": "#/definitions/handlers.NodeStoragePoolResponse"
                                         }
                                     }
                                 }
@@ -701,19 +701,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request or Invalid params",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Node not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -752,7 +752,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -769,7 +769,7 @@ const docTemplate = `{
                                                 "notifications": {
                                                     "type": "array",
                                                     "items": {
-                                                        "$ref": "#/definitions/app.NotificationResponse"
+                                                        "$ref": "#/definitions/handlers.NotificationResponse"
                                                     }
                                                 },
                                                 "offset": {
@@ -785,13 +785,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid pagination parameters",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to retrieve notifications",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -814,7 +814,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -830,13 +830,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete notifications",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -861,7 +861,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -877,19 +877,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid notification ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to mark notifications as read",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -928,7 +928,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -945,7 +945,7 @@ const docTemplate = `{
                                                 "notifications": {
                                                     "type": "array",
                                                     "items": {
-                                                        "$ref": "#/definitions/app.NotificationResponse"
+                                                        "$ref": "#/definitions/handlers.NotificationResponse"
                                                     }
                                                 },
                                                 "offset": {
@@ -961,13 +961,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid pagination parameters",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to retrieve unread notifications",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1001,7 +1001,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1017,25 +1017,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid notification ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Notification not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete notification",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1069,7 +1069,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1085,25 +1085,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid notification ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Notification not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to mark notification as read",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1137,7 +1137,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1153,25 +1153,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid notification ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Authentication required",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Notification not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to mark notification as unread",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1202,13 +1202,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.PendingRecordsResponse"
+                                            "$ref": "#/definitions/services.PendingRecordsWithUSDAmounts"
                                         }
                                     }
                                 }
@@ -1218,7 +1218,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1249,13 +1249,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.Stats"
+                                            "$ref": "#/definitions/services.Stats"
                                         }
                                     }
                                 }
@@ -1265,7 +1265,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error - Failed to retrieve statistics",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1296,13 +1296,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.MaintenanceModeStatus"
+                                            "$ref": "#/definitions/handlers.MaintenanceModeStatus"
                                         }
                                     }
                                 }
@@ -1312,7 +1312,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1342,7 +1342,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.MaintenanceModeStatus"
+                            "$ref": "#/definitions/handlers.MaintenanceModeStatus"
                         }
                     }
                 ],
@@ -1350,13 +1350,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1408,13 +1408,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.TwinResponse"
+                                            "$ref": "#/definitions/handlers.TwinResponse"
                                         }
                                     }
                                 }
@@ -1424,19 +1424,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request or Invalid params",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Twin ID not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1459,13 +1459,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.GetUserResponse"
+                                            "$ref": "#/definitions/services.UserWithPendingBalance"
                                         }
                                     }
                                 }
@@ -1475,13 +1475,13 @@ const docTemplate = `{
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1504,13 +1504,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.UserBalanceResponse"
+                                            "$ref": "#/definitions/handlers.UserBalanceResponse"
                                         }
                                     }
                                 }
@@ -1520,13 +1520,13 @@ const docTemplate = `{
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1553,7 +1553,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.ChargeBalanceInput"
+                            "$ref": "#/definitions/handlers.ChargeBalanceInput"
                         }
                     }
                 ],
@@ -1563,13 +1563,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.ChargeBalanceResponse"
+                                            "$ref": "#/definitions/handlers.ChargeBalanceResponse"
                                         }
                                     }
                                 }
@@ -1579,19 +1579,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or amount",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1618,7 +1618,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.ChangePasswordInput"
+                            "$ref": "#/definitions/handlers.ChangePasswordInput"
                         }
                     }
                 ],
@@ -1626,25 +1626,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Password updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid request format or password mismatch",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1671,7 +1671,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.EmailInput"
+                            "$ref": "#/definitions/handlers.EmailInput"
                         }
                     }
                 ],
@@ -1681,13 +1681,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.RegisterResponse"
+                                            "$ref": "#/definitions/handlers.RegisterResponse"
                                         }
                                     }
                                 }
@@ -1697,19 +1697,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1736,7 +1736,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.VerifyCodeInput"
+                            "$ref": "#/definitions/handlers.VerifyCodeInput"
                         }
                     }
                 ],
@@ -1746,13 +1746,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal.TokenPair"
+                                            "$ref": "#/definitions/auth.TokenPair"
                                         }
                                     }
                                 }
@@ -1762,13 +1762,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or verification failed",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1799,7 +1799,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1818,7 +1818,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1862,13 +1862,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Invoice is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1895,7 +1895,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.LoginInput"
+                            "$ref": "#/definitions/handlers.LoginInput"
                         }
                     }
                 ],
@@ -1905,13 +1905,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal.TokenPair"
+                                            "$ref": "#/definitions/auth.TokenPair"
                                         }
                                     }
                                 }
@@ -1921,19 +1921,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Login failed",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -1988,19 +1988,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Nodes are retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid filter parameters",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2026,13 +2026,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                            "$ref": "#/definitions/handlers.ListNodesWithDiscountResponse"
                                         }
                                     }
                                 }
@@ -2042,7 +2042,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2073,13 +2073,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.ListNodesWithDiscountResponse"
+                                            "$ref": "#/definitions/handlers.ListNodesWithDiscountResponse"
                                         }
                                     }
                                 }
@@ -2089,7 +2089,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2129,13 +2129,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.UnreserveNodeResponse"
+                                            "$ref": "#/definitions/handlers.UnreserveNodeResponse"
                                         }
                                     }
                                 }
@@ -2145,19 +2145,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User is not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2197,13 +2197,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.ReserveNodeResponse"
+                                            "$ref": "#/definitions/handlers.ReserveNodeResponse"
                                         }
                                     }
                                 }
@@ -2213,19 +2213,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "No nodes are available for rent.",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2256,13 +2256,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.PendingRecordsResponse"
+                                            "$ref": "#/definitions/handlers.PendingRecordsResponse"
                                         }
                                     }
                                 }
@@ -2272,7 +2272,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2304,13 +2304,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.RedeemVoucherResponse"
+                                            "$ref": "#/definitions/handlers.RedeemVoucherResponse"
                                         }
                                     }
                                 }
@@ -2320,19 +2320,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid voucher code, already redeemed, or expired",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User or voucher are not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2359,7 +2359,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.RefreshTokenInput"
+                            "$ref": "#/definitions/handlers.RefreshTokenInput"
                         }
                     }
                 ],
@@ -2369,13 +2369,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.RefreshTokenResponse"
+                                            "$ref": "#/definitions/handlers.RefreshTokenResponse"
                                         }
                                     }
                                 }
@@ -2385,19 +2385,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Invalid or expired refresh token",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2424,7 +2424,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.RegisterInput"
+                            "$ref": "#/definitions/handlers.RegisterInput"
                         }
                     }
                 ],
@@ -2434,13 +2434,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.RegisterUserResponse"
+                                            "$ref": "#/definitions/handlers.RegisterUserResponse"
                                         }
                                     }
                                 }
@@ -2450,19 +2450,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "409": {
                         "description": "User is already registered",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2489,7 +2489,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.VerifyCodeInput"
+                            "$ref": "#/definitions/handlers.VerifyCodeInput"
                         }
                     }
                 ],
@@ -2499,13 +2499,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.VerifyRegisterUserResponse"
+                                            "$ref": "#/definitions/handlers.VerifyRegisterUserResponse"
                                         }
                                     }
                                 }
@@ -2515,19 +2515,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "409": {
                         "description": "User is already registered",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2558,7 +2558,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2577,13 +2577,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2613,7 +2613,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.SSHKeyInput"
+                            "$ref": "#/definitions/handlers.SSHKeyInput"
                         }
                     }
                 ],
@@ -2623,7 +2623,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2639,19 +2639,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2689,31 +2689,84 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid SSH key ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "SSH key not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/workflows": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all pending/running workflows belonging to the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "workflow"
+                ],
+                "summary": "List remaining user workflows",
+                "operationId": "list-user-workflows",
+                "responses": {
+                    "200": {
+                        "description": "User workflows retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/handlers.UserWorkflowsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized user",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2744,14 +2797,49 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/app.UserResponse"
+                                "$ref": "#/definitions/services.UserWithUSDBalance"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/drain-all": {
+            "post": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Drains all users' balances to the system account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Drain all users' balances",
+                "operationId": "drain-all-users",
+                "responses": {
+                    "202": {
+                        "description": "All users' balance drain initiated",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2804,13 +2892,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.SendMailResponse"
+                                            "$ref": "#/definitions/handlers.SendMailResponse"
                                         }
                                     }
                                 }
@@ -2820,13 +2908,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2864,25 +2952,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid user ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "403": {
                         "description": "Admins cannot delete their own account",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2921,7 +3009,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.CreditRequestInput"
+                            "$ref": "#/definitions/handlers.CreditRequestInput"
                         }
                     }
                 ],
@@ -2931,13 +3019,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/app.CreditUserResponse"
+                                            "$ref": "#/definitions/handlers.CreditUserResponse"
                                         }
                                     }
                                 }
@@ -2947,13 +3035,63 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format or user ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{user_id}/drain": {
+            "post": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Drains a specific user's balance to the system account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Drain user balance",
+                "operationId": "drain-user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "User balance drain initiated",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -2984,7 +3122,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3003,7 +3141,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -3035,7 +3173,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/app.GenerateVouchersInput"
+                            "$ref": "#/definitions/handlers.GenerateVouchersInput"
                         }
                     }
                 ],
@@ -3045,7 +3183,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3064,13 +3202,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -3105,7 +3243,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/app.APIResponse"
+                                    "$ref": "#/definitions/handlers.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3121,19 +3259,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request or missing workflow ID",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Workflow not found",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/app.APIResponse"
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     }
                 }
@@ -3141,7 +3279,34 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "app.APIResponse": {
+        "auth.TokenPair": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "gridtypes.Unit": {
+            "type": "integer",
+            "format": "int64",
+            "enum": [
+                1024,
+                1048576,
+                1073741824,
+                1099511627776
+            ],
+            "x-enum-varnames": [
+                "Kilobyte",
+                "Megabyte",
+                "Gigabyte",
+                "Terabyte"
+            ]
+        },
+        "handlers.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -3153,7 +3318,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ChangePasswordInput": {
+        "handlers.ChangePasswordInput": {
             "type": "object",
             "required": [
                 "confirm_password",
@@ -3174,7 +3339,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ChargeBalanceInput": {
+        "handlers.ChargeBalanceInput": {
             "type": "object",
             "required": [
                 "amount",
@@ -3193,7 +3358,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ChargeBalanceResponse": {
+        "handlers.ChargeBalanceResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3204,7 +3369,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ClusterInput": {
+        "handlers.ClusterInput": {
             "type": "object",
             "required": [
                 "name",
@@ -3217,7 +3382,7 @@ const docTemplate = `{
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/app.NodeInput"
+                        "$ref": "#/definitions/handlers.NodeInput"
                     }
                 },
                 "token": {
@@ -3225,7 +3390,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.CreditRequestInput": {
+        "handlers.CreditRequestInput": {
             "type": "object",
             "required": [
                 "amount",
@@ -3242,7 +3407,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.CreditUserResponse": {
+        "handlers.CreditUserResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -3256,7 +3421,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.DeploymentListResponse": {
+        "handlers.DeploymentListResponse": {
             "type": "object",
             "properties": {
                 "count": {
@@ -3265,30 +3430,12 @@ const docTemplate = `{
                 "deployments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/app.DeploymentResponse"
+                        "$ref": "#/definitions/services.ClusterData"
                     }
                 }
             }
         },
-        "app.DeploymentResponse": {
-            "type": "object",
-            "properties": {
-                "cluster": {},
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "project_name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "app.DeploymentWorkflowResponse": {
+        "handlers.DeploymentWorkflowResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -3299,7 +3446,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.EmailInput": {
+        "handlers.EmailInput": {
             "type": "object",
             "required": [
                 "email"
@@ -3310,7 +3457,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.GenerateVouchersInput": {
+        "handlers.GenerateVouchersInput": {
             "type": "object",
             "required": [
                 "count",
@@ -3329,71 +3476,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.GetUserResponse": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "account_address": {
-                    "type": "string"
-                },
-                "admin": {
-                    "type": "boolean"
-                },
-                "code": {
-                    "type": "integer"
-                },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
-                    "type": "integer"
-                },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "pending_balance_usd": {
-                    "type": "number"
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "app.KubeconfigResponse": {
+        "handlers.KubeconfigResponse": {
             "type": "object",
             "properties": {
                 "kubeconfig": {
@@ -3401,7 +3484,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ListNodesResponse": {
+        "handlers.ListNodesResponse": {
             "type": "object",
             "properties": {
                 "nodes": {
@@ -3415,13 +3498,13 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ListNodesWithDiscountResponse": {
+        "handlers.ListNodesWithDiscountResponse": {
             "type": "object",
             "properties": {
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/app.NodesWithDiscount"
+                        "$ref": "#/definitions/handlers.NodesWithDiscount"
                     }
                 },
                 "total": {
@@ -3429,7 +3512,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.LoginInput": {
+        "handlers.LoginInput": {
             "type": "object",
             "required": [
                 "email",
@@ -3446,7 +3529,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.MaintenanceModeStatus": {
+        "handlers.MaintenanceModeStatus": {
             "type": "object",
             "properties": {
                 "enabled": {
@@ -3454,7 +3537,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.NodeInput": {
+        "handlers.NodeInput": {
             "type": "object",
             "required": [
                 "cpu",
@@ -3516,18 +3599,18 @@ const docTemplate = `{
                 }
             }
         },
-        "app.NodeStoragePoolResponse": {
+        "handlers.NodeStoragePoolResponse": {
             "type": "object",
             "properties": {
                 "pools": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/app.Pool"
+                        "$ref": "#/definitions/services.Pool"
                     }
                 }
             }
         },
-        "app.NodesWithDiscount": {
+        "handlers.NodesWithDiscount": {
             "type": "object",
             "properties": {
                 "certificationType": {
@@ -3649,7 +3732,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.NotificationResponse": {
+        "handlers.NotificationResponse": {
             "description": "A notification response",
             "type": "object",
             "properties": {
@@ -3682,59 +3765,18 @@ const docTemplate = `{
                 }
             }
         },
-        "app.PendingRecordsResponse": {
+        "handlers.PendingRecordsResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "tft_amount": {
-                    "description": "TFTs are multiplied by 1e7",
-                    "type": "integer"
-                },
-                "transfer_mode": {
-                    "type": "string"
-                },
-                "transferred_tft_amount": {
-                    "type": "integer"
-                },
-                "transferred_usd_amount": {
-                    "type": "number"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "usd_amount": {
-                    "type": "number"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
+                "pending_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.PendingRecordsWithUSDAmounts"
+                    }
                 }
             }
         },
-        "app.Pool": {
-            "type": "object",
-            "properties": {
-                "free": {
-                    "description": "free space in bytes",
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "description": "type of the disk wither ssd or hdd",
-                    "type": "string"
-                }
-            }
-        },
-        "app.RedeemVoucherResponse": {
+        "handlers.RedeemVoucherResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -3751,7 +3793,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.RefreshTokenInput": {
+        "handlers.RefreshTokenInput": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -3762,7 +3804,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.RefreshTokenResponse": {
+        "handlers.RefreshTokenResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -3770,7 +3812,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.RegisterInput": {
+        "handlers.RegisterInput": {
             "type": "object",
             "required": [
                 "confirm_password",
@@ -3797,7 +3839,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.RegisterResponse": {
+        "handlers.RegisterResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3808,7 +3850,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.RegisterUserResponse": {
+        "handlers.RegisterUserResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3819,7 +3861,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.ReserveNodeResponse": {
+        "handlers.ReserveNodeResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3833,7 +3875,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.SSHKeyInput": {
+        "handlers.SSHKeyInput": {
             "type": "object",
             "required": [
                 "name",
@@ -3848,7 +3890,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.SendMailResponse": {
+        "handlers.SendMailResponse": {
             "type": "object",
             "properties": {
                 "failed_emails": {
@@ -3868,30 +3910,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.Stats": {
-            "type": "object",
-            "properties": {
-                "cores": {
-                    "type": "integer"
-                },
-                "countries": {
-                    "type": "integer"
-                },
-                "ssd": {
-                    "type": "number"
-                },
-                "total_clusters": {
-                    "type": "integer"
-                },
-                "total_users": {
-                    "type": "integer"
-                },
-                "up_nodes": {
-                    "type": "integer"
-                }
-            }
-        },
-        "app.TwinResponse": {
+        "handlers.TwinResponse": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -3908,7 +3927,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.UnreserveNodeResponse": {
+        "handlers.UnreserveNodeResponse": {
             "type": "object",
             "properties": {
                 "contract_id": {
@@ -3922,7 +3941,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.UserBalanceResponse": {
+        "handlers.UserBalanceResponse": {
             "type": "object",
             "properties": {
                 "balance_usd": {
@@ -3936,72 +3955,30 @@ const docTemplate = `{
                 }
             }
         },
-        "app.UserResponse": {
+        "handlers.UserWorkflowsResponse": {
             "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
             "properties": {
-                "account_address": {
+                "created_at": {
                     "type": "string"
                 },
-                "admin": {
-                    "type": "boolean"
-                },
-                "balance": {
-                    "description": "USD balance",
-                    "type": "number"
-                },
-                "code": {
+                "current_step": {
                     "type": "integer"
                 },
-                "credit_card_balance": {
-                    "description": "millicent, money from credit card",
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_steps": {
                     "type": "integer"
                 },
-                "credited_balance": {
-                    "description": "millicent, manually added by admin or from vouchers",
-                    "type": "integer"
-                },
-                "debt": {
-                    "description": "millicent",
-                    "type": "integer"
-                },
-                "email": {
+                "workflow_id": {
                     "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "sponsored": {
-                    "type": "boolean"
-                },
-                "ssh_key": {
-                    "type": "string"
-                },
-                "stripe_customer_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
                 }
             }
         },
-        "app.VerifyCodeInput": {
+        "handlers.VerifyCodeInput": {
             "type": "object",
             "required": [
                 "code",
@@ -4016,7 +3993,7 @@ const docTemplate = `{
                 }
             }
         },
-        "app.VerifyRegisterUserResponse": {
+        "handlers.VerifyRegisterUserResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -4033,32 +4010,142 @@ const docTemplate = `{
                 }
             }
         },
-        "gridtypes.Unit": {
-            "type": "integer",
-            "format": "int64",
-            "enum": [
-                1024,
-                1048576,
-                1073741824,
-                1099511627776
-            ],
-            "x-enum-varnames": [
-                "Kilobyte",
-                "Megabyte",
-                "Gigabyte",
-                "Terabyte"
-            ]
-        },
-        "internal.TokenPair": {
+        "kubedeployer.Cluster": {
             "type": "object",
+            "required": [
+                "name",
+                "nodes"
+            ],
             "properties": {
-                "access_token": {
+                "name": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3
+                },
+                "network": {
+                    "description": "Computed",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/workloads.ZNet"
+                        }
+                    ]
+                },
+                "nodes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/kubedeployer.Node"
+                    }
+                },
+                "project_name": {
                     "type": "string"
                 },
-                "refresh_token": {
+                "token": {
                     "type": "string"
                 }
             }
+        },
+        "kubedeployer.Node": {
+            "type": "object",
+            "required": [
+                "cpu",
+                "disk_size",
+                "memory",
+                "name",
+                "node_id",
+                "root_size",
+                "type"
+            ],
+            "properties": {
+                "contract_id": {
+                    "type": "integer"
+                },
+                "cpu": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "disk_size": {
+                    "description": "Storage in MB",
+                    "type": "integer",
+                    "minimum": 10240
+                },
+                "entrypoint": {
+                    "type": "string"
+                },
+                "env_vars": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "flist": {
+                    "description": "Optional fields",
+                    "type": "string"
+                },
+                "gpu_ids": {
+                    "description": "List of GPU IDs",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ip": {
+                    "description": "Computed",
+                    "type": "string"
+                },
+                "memory": {
+                    "description": "Memory in MB",
+                    "type": "integer",
+                    "minimum": 2048
+                },
+                "mycelium_ip": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "minLength": 3
+                },
+                "node_id": {
+                    "type": "integer"
+                },
+                "original_name": {
+                    "type": "string"
+                },
+                "planetary_ip": {
+                    "type": "string"
+                },
+                "root_size": {
+                    "description": "Storage in MB",
+                    "type": "integer",
+                    "minimum": 5120
+                },
+                "type": {
+                    "enum": [
+                        "worker",
+                        "master",
+                        "leader"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/kubedeployer.NodeType"
+                        }
+                    ]
+                }
+            }
+        },
+        "kubedeployer.NodeType": {
+            "type": "string",
+            "enum": [
+                "worker",
+                "master",
+                "leader"
+            ],
+            "x-enum-varnames": [
+                "NodeTypeWorker",
+                "NodeTypeMaster",
+                "NodeTypeLeader"
+            ]
         },
         "models.Invoice": {
             "type": "object",
@@ -4217,6 +4304,239 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "number"
+                }
+            }
+        },
+        "services.ClusterData": {
+            "type": "object",
+            "properties": {
+                "cluster": {
+                    "$ref": "#/definitions/kubedeployer.Cluster"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.PendingRecordsWithUSDAmounts": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "tft_amount": {
+                    "description": "TFTs are multiplied by 1e7",
+                    "type": "integer"
+                },
+                "transfer_mode": {
+                    "type": "string"
+                },
+                "transferred_tft_amount": {
+                    "type": "integer"
+                },
+                "transferred_usd_amount": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "usd_amount": {
+                    "type": "number"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.Pool": {
+            "type": "object",
+            "properties": {
+                "free": {
+                    "description": "free space in bytes",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "type of the disk wither ssd or hdd",
+                    "type": "string"
+                }
+            }
+        },
+        "services.Stats": {
+            "type": "object",
+            "properties": {
+                "cores": {
+                    "type": "integer"
+                },
+                "countries": {
+                    "type": "integer"
+                },
+                "ssd": {
+                    "type": "number"
+                },
+                "system_account_balance": {
+                    "type": "number"
+                },
+                "total_clusters": {
+                    "type": "integer"
+                },
+                "total_users": {
+                    "type": "integer"
+                },
+                "up_nodes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.UserWithPendingBalance": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "admin": {
+                    "type": "boolean"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "credit_card_balance": {
+                    "description": "millicent, money from credit card",
+                    "type": "integer"
+                },
+                "credited_balance": {
+                    "description": "millicent, manually added by admin or from vouchers",
+                    "type": "integer"
+                },
+                "debt": {
+                    "description": "millicent",
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "pending_balance_usd": {
+                    "type": "number"
+                },
+                "sponsored": {
+                    "type": "boolean"
+                },
+                "ssh_key": {
+                    "type": "string"
+                },
+                "stripe_customer_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "services.UserWithUSDBalance": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "account_address": {
+                    "type": "string"
+                },
+                "admin": {
+                    "type": "boolean"
+                },
+                "balance": {
+                    "description": "USD balance",
+                    "type": "number"
+                },
+                "code": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "credit_card_balance": {
+                    "description": "millicent, money from credit card",
+                    "type": "integer"
+                },
+                "credited_balance": {
+                    "description": "millicent, manually added by admin or from vouchers",
+                    "type": "integer"
+                },
+                "debt": {
+                    "description": "millicent",
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "sponsored": {
+                    "type": "boolean"
+                },
+                "ssh_key": {
+                    "type": "string"
+                },
+                "stripe_customer_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4569,6 +4889,111 @@ const docTemplate = `{
                 "upload": {
                     "description": "in bit/sec let's suppose default is ipv4/tcp",
                     "type": "number"
+                }
+            }
+        },
+        "workloads.ZNet": {
+            "type": "object",
+            "properties": {
+                "accessWGConfig": {
+                    "description": "computed",
+                    "type": "string"
+                },
+                "addWGAccess": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "externalIP": {
+                    "$ref": "#/definitions/zos.IPNet"
+                },
+                "externalSK": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "iprange": {
+                    "$ref": "#/definitions/zos.IPNet"
+                },
+                "keys": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "myceliumKeys": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodeDeploymentID": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "nodesIPRange": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/zos.IPNet"
+                    }
+                },
+                "publicNodeID": {
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "solutionType": {
+                    "type": "string"
+                },
+                "wgport": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "zos.IPNet": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "description": "network number",
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
+                },
+                "mask": {
+                    "description": "network mask",
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "format": "int32"
+                    }
                 }
             }
         }
