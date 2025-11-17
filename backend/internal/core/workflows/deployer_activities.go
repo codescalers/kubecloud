@@ -1027,7 +1027,7 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 	}
 }
 
-func CheckClusterHealthStep( privateKeyPath string) ewf.StepFn {
+func CheckClusterHealthStep(privateKeyPath string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {

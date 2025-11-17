@@ -58,7 +58,6 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCheckClusterNodesHealth, CheckClusterNodesHealthStep(clusterRepo))
 	engine.Register(StepCheckClusterHealth, CheckClusterHealthStep(config.SSH.PrivateKeyPath))
 
-
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
 		// hookNotificationWorkflowStarted,
