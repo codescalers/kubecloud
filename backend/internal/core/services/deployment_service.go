@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
@@ -179,6 +180,10 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster": cluster,
 	}
 
+	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+		return "", "", err
+	}
+
 	if err = svc.runWithQueue(queueName, wf); err != nil {
 		return "", "", err
 	}
@@ -199,6 +204,10 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 		"project_name": projectName,
 	}
 
+	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+		return "", "", err
+	}
+
 	if err = svc.runWithQueue(queueName, wf); err != nil {
 		return "", "", err
 	}
@@ -216,6 +225,10 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 
 	wf.State = ewf.State{
 		"config": config,
+	}
+
+	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+		return "", "", err
 	}
 
 	if err = svc.runWithQueue(queueName, wf); err != nil {
@@ -239,6 +252,10 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"node":    node,
 	}
 
+	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+		return "", "", err
+	}
+
 	if err = svc.runWithQueue(queueName, wf); err != nil {
 		return "", "", err
 	}
@@ -258,6 +275,10 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 		"config":    config,
 		"cluster":   cl,
 		"node_name": nodeName,
+	}
+
+	if err = persistence.SetStateUserID(wf, config.UserID); err != nil {
+		return "", "", err
 	}
 
 	if err = svc.runWithQueue(queueName, wf); err != nil {

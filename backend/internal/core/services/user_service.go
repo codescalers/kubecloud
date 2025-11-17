@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
@@ -134,6 +137,25 @@ func (svc *UserService) ListUserPendingRecordsWithUSDAmounts(userID int) ([]Pend
 	return pendingRecordsWithUSDAmounts, nil
 }
 
+func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
+	records, err := svc.userRepo.ListRemainingWorkflowsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	workflows := make([]*ewf.Workflow, 0, len(records))
+
+	for _, rec := range records {
+		var wf ewf.Workflow
+		if err := json.Unmarshal(rec.Data, &wf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
+		}
+
+		workflows = append(workflows, &wf)
+	}
+	return workflows, nil
+}
+
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
 	return svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
 }
@@ -249,6 +271,10 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"transfer_mode":      models.ChargeBalanceMode,
 	}
 
+	if err = persistence.SetStateUserID(wf, userID); err != nil {
+		return "", err
+	}
+
 	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
@@ -270,6 +296,10 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		"mnemonic":      userMnemonic,
 		"username":      userUsername,
 		"transfer_mode": models.RedeemVoucherMode,
+	}
+
+	if err = persistence.SetStateUserID(wf, userID); err != nil {
+		return "", err
 	}
 
 	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())

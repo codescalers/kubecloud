@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"kubecloud/internal/core/models"
 
 	"github.com/xmonader/ewf"
@@ -17,13 +16,6 @@ type GormEWFRepository struct {
 
 func NewGormEWFRepository(db models.DB) *GormEWFRepository {
 	return &GormEWFRepository{db: db.GetDB()}
-}
-
-type gormWorkflowRecord struct {
-	UUID   string `gorm:"primaryKey;column:uuid"`
-	Name   string `gorm:"column:name;not null;index"`
-	Status string `gorm:"column:status;not null;index"`
-	Data   []byte `gorm:"column:data;not null"`
 }
 
 type gormTemplateRecord struct {
@@ -45,7 +37,7 @@ func NewGormStore(db *gorm.DB) *GormEWFRepository {
 }
 
 func (r *GormEWFRepository) Setup() error {
-	return r.db.AutoMigrate(&gormWorkflowRecord{}, &gormTemplateRecord{}, &QueueMetadataRecord{})
+	return r.db.AutoMigrate(&models.GormWorkflowRecord{}, &gormTemplateRecord{}, &QueueMetadataRecord{})
 }
 
 func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Workflow) error {
@@ -54,7 +46,7 @@ func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Work
 		return fmt.Errorf("failed to marshal workflow: %w", err)
 	}
 
-	gormWorkflow := gormWorkflowRecord{
+	gormWorkflow := models.GormWorkflowRecord{
 		UUID:   workflow.UUID,
 		Name:   workflow.Name,
 		Status: string(workflow.Status),
@@ -65,7 +57,7 @@ func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow *ewf.Work
 }
 
 func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string) (*ewf.Workflow, error) {
-	var gormWorkflow gormWorkflowRecord
+	var gormWorkflow models.GormWorkflowRecord
 	if err := r.db.WithContext(ctx).Where("name = ?", name).First(&gormWorkflow).Error; err != nil {
 		return nil, err
 	}
@@ -79,7 +71,7 @@ func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string)
 }
 
 func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string) (*ewf.Workflow, error) {
-	var gormWorkflow gormWorkflowRecord
+	var gormWorkflow models.GormWorkflowRecord
 	if err := r.db.WithContext(ctx).Where("uuid = ?", uuid).First(&gormWorkflow).Error; err != nil {
 		return nil, err
 	}
@@ -93,7 +85,7 @@ func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string)
 func (r *GormEWFRepository) ListWorkflowUUIDsByStatus(ctx context.Context, status ewf.WorkflowStatus) ([]string, error) {
 	var uuids []string
 	err := r.db.WithContext(ctx).
-		Model(&gormWorkflowRecord{}).
+		Model(&models.GormWorkflowRecord{}).
 		Where("status = ?", status).
 		Pluck("uuid", &uuids).
 		Error
@@ -147,7 +139,7 @@ func (r *GormEWFRepository) SaveWorkflowTemplate(ctx context.Context, name strin
 }
 
 func (s *GormEWFRepository) DeleteWorkflow(ctx context.Context, uuid string) error {
-	return s.db.WithContext(ctx).Delete(&gormWorkflowRecord{}, "uuid = ?", uuid).Error
+	return s.db.WithContext(ctx).Delete(&models.GormWorkflowRecord{}, "uuid = ?", uuid).Error
 }
 
 func (r *GormEWFRepository) SaveQueueMetadata(ctx context.Context, metadata *ewf.QueueMetadata) error {

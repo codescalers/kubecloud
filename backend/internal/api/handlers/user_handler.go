@@ -141,6 +141,16 @@ type RedeemVoucherResponse struct {
 	Email       string  `json:"email"`
 }
 
+// UserWorkflowsResponse holds the response for listing user workflows
+type UserWorkflowsResponse struct {
+	WorkflowID  string    `json:"workflow_id"`
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	CurrentStep int       `json:"current_step"`
+	TotalSteps  int       `json:"total_steps"`
+}
+
 // RegisterHandler registers user to the system
 // @Summary Register user (with KYC sponsorship)
 // @Description Registers a new user, sets up blockchain account, and creates KYC sponsorship. Sends verification code to email.
@@ -1002,6 +1012,46 @@ func (h *UserHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 
 	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsWithUSDAmounts,
+	})
+}
+
+// @Summary List remaining user workflows
+// @Description Returns all pending/running workflows belonging to the authenticated user.
+// @Tags workflow
+// @ID list-user-workflows
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} APIResponse{data=UserWorkflowsResponse} "User workflows retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized user"
+// @Failure 500 {object} APIResponse "Internal server error"
+// @Router /user/workflows [get]
+func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	reqLog := requestLogger(c, "ListUserRemainingWorkflowsHandler")
+
+	workflows, err := h.svc.ListRemainingWorkflowsByUserID(userID)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to list user workflows")
+		InternalServerError(c)
+		return
+	}
+
+	var userWorkflowsResponse []UserWorkflowsResponse
+	for _, workflow := range workflows {
+
+		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflowsResponse{
+			WorkflowID:  workflow.UUID,
+			Name:        workflow.Name,
+			Status:      string(workflow.Status),
+			CreatedAt:   workflow.CreatedAt,
+			CurrentStep: workflow.CurrentStep,
+			TotalSteps:  len(workflow.Steps),
+		})
+	}
+
+	OK(c, "User workflows retrieved successfully", gin.H{
+		"workflows": userWorkflowsResponse,
 	})
 }
 

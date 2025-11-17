@@ -161,6 +161,7 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/balance", app.handlers.userHandler.GetUserBalance)
 				authGroup.PUT("/redeem/:voucher_code", app.handlers.userHandler.RedeemVoucherHandler)
 				authGroup.GET("/pending-records", app.handlers.userHandler.ListUserPendingRecordsHandler)
+				authGroup.GET("/workflows", app.handlers.userHandler.ListUserRemainingWorkflowsHandler)
 
 				authGroup.GET("/nodes", app.handlers.nodeHandler.ListNodesHandler)
 				authGroup.GET("/nodes/rentable", app.handlers.nodeHandler.ListRentableNodesHandler)

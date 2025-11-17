@@ -190,6 +190,20 @@ func (r *GormUserRepository) GetSSHKeyByID(sshKeyID int, userID int) (models.SSH
 	return sshKey, query.Error
 }
 
+// ListRemainingWorkflowsByUserID returns remaining workflows for a specific user
+func (r *GormUserRepository) ListRemainingWorkflowsByUserID(userID int) ([]models.GormWorkflowRecord, error) {
+	var records []models.GormWorkflowRecord
+
+	if err := r.db.Where("user_id = ?", userID).
+		Where("status IN ?", []string{"pending", "running"}).
+		Order("uuid DESC").
+		Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
 // Cluster Repository
 
 var _ models.ClusterRepository = (*GormClusterRepository)(nil)

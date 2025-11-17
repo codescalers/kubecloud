@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -141,6 +142,10 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      transaction.AdminID,
+	}
+
+	if err = persistence.SetStateUserID(wf, transaction.AdminID); err != nil {
+		return err
 	}
 
 	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())

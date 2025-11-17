@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -174,6 +175,10 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 		"target_status": workflows.NodeRented,
 	}
 
+	if err = persistence.SetStateUserID(wf, userID); err != nil {
+		return "", err
+	}
+
 	if err = svc.runWithQueue(queueName, wf); err != nil {
 		return "", err
 	}
@@ -195,6 +200,10 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 		"contract_id":   contractID,
 		"node_id":       nodeID,
 		"target_status": workflows.NodeRentable,
+	}
+
+	if err = persistence.SetStateUserID(wf, userID); err != nil {
+		return "", err
 	}
 
 	if err = svc.runWithQueue(queueName, wf); err != nil {
