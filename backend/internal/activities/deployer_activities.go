@@ -599,7 +599,7 @@ func deploymentFailureHook(engine *ewf.Engine) ewf.AfterWorkflowHook {
 			defer cancel()
 
 			// wait the rollback workflow to finish before closing the client
-			if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+			if err := engine.Run(rollbackCtx, rollbackWf, ewf.WithAsync()); err != nil {
 				log.Error().Err(err).Str("project_name", cluster.ProjectName).Msg("failed to run rollback workflow")
 				return
 			}

@@ -153,7 +153,7 @@ func (s *NotificationService) Send(ctx context.Context, notification *models.Not
 	}
 
 	workflow.State["notification"] = notification
-	err = s.engine.RunAsync(ctx, workflow)
+	err = s.engine.Run(ctx, workflow, ewf.WithAsync())
 	if err != nil {
 		return fmt.Errorf("failed to run notification workflow: %w", err)
 	}

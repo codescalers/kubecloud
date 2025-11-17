@@ -63,7 +63,7 @@ func (h *Handler) TrackClusterHealth(ctx context.Context) {
 					},
 				}
 
-				if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+				if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 					log.Error().Err(err).Msg("failed to schedule workflow for cluster health tracking")
 					continue
 				}

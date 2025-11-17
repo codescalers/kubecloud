@@ -261,9 +261,7 @@ func (h *Handler) getClientConfig(c *gin.Context) (statemanager.ClientConfig, er
 	}, nil
 }
 
-func (h *Handler) runAsyncWithQueue(c *gin.Context, reqLog *zerolog.Logger, userID int, wf *ewf.Workflow) error {
-
-	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, userID)
+func (h *Handler) runAsyncWithQueue(c *gin.Context, reqLog *zerolog.Logger, wf *ewf.Workflow, queueName string) error {
 
 	err := h.ewfEngine.CreateQueue(h.appContext, queueName, internal.DefaultQueueConfig.WorkersDef, internal.DefaultQueueConfig.QueueOptions)
 	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
@@ -272,7 +270,7 @@ func (h *Handler) runAsyncWithQueue(c *gin.Context, reqLog *zerolog.Logger, user
 		return err
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf, ewf.WithQueue(queueName)); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule workflow")
 		InternalServerError(c)
 		return err
@@ -325,7 +323,8 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster)
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, config.UserID)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeployCluster, ewf.WithQueue(queueName))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deployment")
 		InternalServerError(c)
@@ -338,7 +337,7 @@ func (h *Handler) HandleDeployCluster(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: config.UserID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 
@@ -385,7 +384,8 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster)
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, config.UserID)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteCluster, ewf.WithQueue(queueName))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow for cluster deletion")
 		InternalServerError(c)
@@ -398,7 +398,7 @@ func (h *Handler) HandleDeleteCluster(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: config.UserID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 
@@ -435,7 +435,8 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters)
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, config.UserID)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowDeleteAllClusters, ewf.WithQueue(queueName))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow for deleting all deployments")
 		InternalServerError(c)
@@ -447,7 +448,7 @@ func (h *Handler) HandleDeleteAllDeployments(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: config.UserID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 
@@ -518,7 +519,8 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		}
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode)
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, config.UserID)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowAddNode, ewf.WithQueue(queueName))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow for adding node")
 		InternalServerError(c)
@@ -532,7 +534,7 @@ func (h *Handler) HandleAddNode(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: config.UserID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wf.UUID, Status: string(wf.Status)})
@@ -610,7 +612,8 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		return
 	}
 
-	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode)
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, config.UserID)
+	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowRemoveNode, ewf.WithQueue(queueName))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow for removing node")
 		InternalServerError(c)
@@ -624,7 +627,7 @@ func (h *Handler) HandleRemoveNode(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: config.UserID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, config.UserID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 

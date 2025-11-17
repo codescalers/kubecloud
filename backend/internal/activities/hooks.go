@@ -211,7 +211,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metrics.Metrics) ewf.AfterW
 		defer cancel()
 
 		// wait the rollback workflow to finish before closing the client
-		if err := engine.RunSync(rollbackCtx, rollbackWf); err != nil {
+		if err := engine.Run(rollbackCtx, rollbackWf, ewf.WithAsync()); err != nil {
 			log.Error().
 				Err(err).
 				Str("node", node.Name).

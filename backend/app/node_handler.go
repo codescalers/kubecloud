@@ -283,6 +283,7 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, userID)
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowReserveNode)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow")
@@ -291,13 +292,14 @@ func (h *Handler) ReserveNodeHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       userID,
-		"mnemonic":      user.Mnemonic,
-		"node_id":       nodeID,
-		"target_status": constants.NodeRented,
+		"user_id":                            userID,
+		"mnemonic":                           user.Mnemonic,
+		"node_id":                            nodeID,
+		"target_status":                      constants.NodeRented,
+		constants.WorkflowStateKeyGormUserID: userID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, userID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 
@@ -436,6 +438,7 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 		return
 	}
 
+	queueName := fmt.Sprintf("%s:user_%d", internal.DefaultQueueConfig.Name, userID)
 	wf, err := h.ewfEngine.NewWorkflow(constants.WorkflowUnreserveNode)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create workflow")
@@ -444,14 +447,15 @@ func (h *Handler) UnreserveNodeHandler(c *gin.Context) {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       userID,
-		"mnemonic":      user.Mnemonic,
-		"contract_id":   contractID,
-		"node_id":       userNode.NodeID,
-		"target_status": constants.NodeRentable,
+		"user_id":                            userID,
+		"mnemonic":                           user.Mnemonic,
+		"contract_id":                        contractID,
+		"node_id":                            userNode.NodeID,
+		"target_status":                      constants.NodeRentable,
+		constants.WorkflowStateKeyGormUserID: userID,
 	}
 
-	if err = h.runAsyncWithQueue(c, reqLog, userID, wf); err != nil {
+	if err = h.runAsyncWithQueue(c, reqLog, wf, queueName); err != nil {
 		return
 	}
 

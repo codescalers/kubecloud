@@ -253,7 +253,7 @@ func (h *Handler) RegisterHandler(c *gin.Context) {
 		"password": request.Password,
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule registration workflow")
 		InternalServerError(c)
 		return
@@ -358,7 +358,7 @@ func (h *Handler) VerifyRegisterCode(c *gin.Context) {
 		"user_id": user.ID,
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule user verification workflow")
 		InternalServerError(c)
 		return
@@ -738,7 +738,7 @@ func (h *Handler) ChargeBalance(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: user.ID,
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("error scheduling workflow")
 		InternalServerError(c)
 		return
@@ -939,7 +939,7 @@ func (h *Handler) RedeemVoucherHandler(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: user.ID,
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("error scheduling workflow")
 		InternalServerError(c)
 		return

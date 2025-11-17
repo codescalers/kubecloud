@@ -297,11 +297,12 @@ func TestWorkerLoop(t *testing.T) {
 			wfName := fmt.Sprintf("test-wf-%d", i)
 
 			registerWf(wfengine, t, wfName)
-			workflow, err := wfengine.NewWorkflow(wfName)
+
+			workflow, err := wfengine.NewWorkflow(wfName, ewf.WithQueue(name))
 			if err != nil {
 				t.Fatalf("failed to create workflow: %v", err)
 			}
-			err = wfengine.RunAsync(t.Context(), workflow, ewf.WithQueue(name))
+			err = wfengine.Run(t.Context(), workflow, ewf.WithAsync())
 			if err != nil {
 				t.Fatalf("failed to run workflow async: %v", err)
 			}
@@ -372,12 +373,12 @@ func TestWorkerLoopMultiWorkers(t *testing.T) {
 			wfName := fmt.Sprintf("test-wf-%d", i)
 
 			registerWf(wfengine, t, wfName)
-			workflow, err := wfengine.NewWorkflow(wfName)
+			workflow, err := wfengine.NewWorkflow(wfName, ewf.WithQueue(name))
 			if err != nil {
 				t.Fatalf("failed to create workflow: %v", err)
 			}
 
-			err = wfengine.RunAsync(t.Context(), workflow, ewf.WithQueue(name))
+			err = wfengine.Run(t.Context(), workflow, ewf.WithAsync())
 			if err != nil {
 				t.Fatalf("failed to run workflow async: %v", err)
 			}
@@ -456,10 +457,10 @@ func TestEnqueueIdleTimeReset(t *testing.T) {
 		// sleep for 1s, time since idleSince should be 1s now
 		time.Sleep(1 * time.Second)
 
-		workflow := ewf.NewWorkflow("test-workflow")
+		workflow := ewf.NewWorkflow("test-workflow", ewf.WithQueue(name))
 
 		// now time since idleSince should be reset to 0 on enqueue
-		err = wfengine.RunAsync(t.Context(), workflow, ewf.WithQueue(name))
+		err = wfengine.Run(t.Context(), workflow, ewf.WithAsync())
 		if err != nil {
 			t.Fatalf("failed to enqueue workflow: %v", err)
 		}

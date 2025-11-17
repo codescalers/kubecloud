@@ -21,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
 
@@ -373,7 +374,7 @@ func (h *Handler) CreditUserHandler(c *gin.Context) {
 		constants.WorkflowStateKeyGormUserID: adminID,
 	}
 
-	if err = h.ewfEngine.RunAsync(h.appContext, wf); err != nil {
+	if err = h.ewfEngine.Run(h.appContext, wf, ewf.WithAsync()); err != nil {
 		reqLog.Error().Err(err).Msg("failed to schedule workflow for crediting user balance")
 		InternalServerError(c)
 		return
