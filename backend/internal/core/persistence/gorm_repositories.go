@@ -6,8 +6,11 @@ import (
 	"kubecloud/internal/core/models"
 	"time"
 
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
+
+const gormUserID = "gorm_user_id"
 
 // User Repository
 
@@ -24,6 +27,18 @@ func NewGormUserRepository(db models.DB) models.UserRepository {
 // RegisterUser registers a new user to the system
 func (r *GormUserRepository) RegisterUser(user *models.User) error {
 	return r.db.Create(user).Error
+}
+
+// SetStateUserID sets gorm user ID in workflow state
+func SetStateUserID(wf *ewf.Workflow, userID int) error {
+	if wf == nil {
+		return fmt.Errorf("workflow is nil")
+	}
+	if wf.State == nil {
+		wf.State = make(ewf.State)
+	}
+	wf.State[gormUserID] = userID
+	return nil
 }
 
 // GetUserByEmail returns user by its email if found
