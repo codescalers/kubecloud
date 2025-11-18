@@ -4,7 +4,8 @@ import (
 	"context"
 	"flag"
 
-	"kubecloud/models"
+	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/persistence"
 
 	"github.com/rs/zerolog/log"
 )
@@ -21,14 +22,14 @@ func main() {
 		return
 	}
 
-	srcDB, err := models.NewDB(sourceDSN, models.DBPoolConfig{})
+	srcDB, err := persistence.NewGormDB(sourceDSN, models.DBPoolConfig{})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to open source db")
 		return
 	}
 	defer srcDB.Close()
 
-	dstDB, err := models.NewDB(destinationDSN, models.DBPoolConfig{})
+	dstDB, err := persistence.NewGormDB(destinationDSN, models.DBPoolConfig{})
 	if err != nil {
 		log.Error().Err(err).Msg("failed to open destination db")
 		return
@@ -36,7 +37,7 @@ func main() {
 	defer dstDB.Close()
 
 	log.Info().Msg("migrating database")
-	if err := models.MigrateAll(context.Background(), srcDB, dstDB); err != nil {
+	if err := persistence.MigrateAll(context.Background(), srcDB, dstDB); err != nil {
 		log.Error().Err(err).Msg("migration failed")
 		return
 	}

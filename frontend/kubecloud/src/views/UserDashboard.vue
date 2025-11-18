@@ -18,7 +18,9 @@ import UserPendingRecordsCard from '../components/dashboard/UserPendingRecordsCa
 
 const userStore = useUserStore()
 const userName = computed(() => userStore.user?.username || 'User')
-const { mobile } = useDisplay()
+const { width } = useDisplay()
+// Menu toggle should show at tablet size and below (768px and below, including 768px)
+const isMobileView = computed(() => width.value <= 768)
 
 // Initialize selected section from localStorage or default to 'overview'
 const selected = ref('overview')
@@ -103,7 +105,7 @@ function handleSidebarSelect(val: string) {
   // Save to localStorage for persistence
   localStorage.setItem(STORAGE_KEY_DASHBOARD_SECTION, val)
   // Close drawer on mobile when item is selected
-  if (mobile.value) {
+  if (isMobileView.value) {
     drawer.value = false
   }
 }
@@ -125,12 +127,12 @@ function handleNavigateToFund() {
     <v-container fluid class="pa-0">
       <div 
         class="dashboard-header mb-6 text-center"
-        @click="mobile && drawer ? drawer = false : null"
+        @click="isMobileView && drawer ? drawer = false : null"
       >
         <h1 class="hero-title">Welcome back, {{ userName }}!</h1>
         <p class="section-subtitle">Manage your clusters, billing, and account settings from your dashboard.</p>
       </div>
-      <div v-if="mobile" class="menu-toggle-row mb-4">
+      <div v-if="isMobileView" class="menu-toggle-row mb-4">
         <div class="menu-toggle-wrapper">
           <v-btn
             icon
@@ -149,12 +151,12 @@ function handleNavigateToFund() {
           <!-- Sidebar: Permanent on desktop, drawer on mobile -->
           <v-navigation-drawer
             v-model="drawer"
-            :permanent="!mobile"
-            :temporary="mobile"
+            :permanent="!isMobileView"
+            :temporary="isMobileView"
             location="left"
             class="dashboard-sidebar-drawer mt-16 mt-md-0"
             :width="280"
-            :floating="!mobile"
+            :floating="!isMobileView"
             @click.stop
           >
             <div @click.stop>
@@ -286,7 +288,7 @@ function handleNavigateToFund() {
 }
 
 /* Desktop: make sidebar sticky */
-@media (min-width: 960px) {
+@media (min-width: 769px) {
   :deep(.dashboard-sidebar-drawer) {
     position: sticky !important;
     top: 0 !important;
@@ -367,8 +369,8 @@ function handleNavigateToFund() {
   min-width: 0;
 }
 
-/* Mobile adjustments */
-@media (max-width: 959px) {
+/* Mobile/Tablet adjustments */
+@media (max-width: 768px) {
   .dashboard-header {
     margin-top: 3rem;
     text-align: left;

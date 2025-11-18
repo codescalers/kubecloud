@@ -2,18 +2,22 @@ package main
 
 import (
 	"flag"
-	"kubecloud/internal"
-	"kubecloud/models"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/core/models"
+	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/persistence"
+	"kubecloud/internal/infrastructure/substrate"
+
 	"os"
 
 	moneycollector "kubecloud/cmd/cleanup/moneycollector"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
+	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
-var config internal.Configuration
+var config cfg.Configuration
 
 func loadConfig(configPath string) {
 	viper.SetConfigFile(configPath)
@@ -22,20 +26,19 @@ func loadConfig(configPath string) {
 		os.Exit(1)
 	}
 
-	config = internal.Configuration{
-		Database: internal.DB{
+	config = cfg.Configuration{
+		Database: cfg.DB{
 			DSN:                    viper.GetString("database.dsn"),
 			MaxOpenConns:           viper.GetInt("database.max_open_conns"),
 			MaxIdleConns:           viper.GetInt("database.max_idle_conns"),
 			ConnMaxLifetimeMinutes: viper.GetInt("database.conn_max_lifetime_minutes"),
 			ConnMaxIdleTimeMinutes: viper.GetInt("database.conn_max_idle_time_minutes"),
 		},
-		TFChainURL: viper.GetString("tfchain_url"),
-		SystemAccount: internal.GridAccount{
+		SystemAccount: cfg.GridAccount{
 			Mnemonic: viper.GetString("system_account.mnemonic"),
 			Network:  viper.GetString("system_account.network"),
 		},
-		MailSender: internal.MailSender{
+		MailSender: cfg.MailSender{
 			MaxConcurrentSends: viper.GetInt("mailSender.max_concurrent_sends"),
 		},
 	}
@@ -55,7 +58,7 @@ func main() {
 		ConnMaxIdleTimeMinutes: config.Database.ConnMaxIdleTimeMinutes,
 	}
 
-	db, err := models.NewDB(config.Database.DSN, dbPoolConfig)
+	db, err := persistence.NewGormDB(config.Database.DSN, dbPoolConfig)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
@@ -63,14 +66,17 @@ func main() {
 	}
 	defer db.Close()
 
-	substrateClient, err := substrate.NewManager(config.TFChainURL).Substrate()
+	substrateClient, err := substrate.NewTFChainClient(
+		config.SystemAccount.Network, config.SystemAccount.Mnemonic, "", "",
+	)
+
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create substrate client")
+		log.Error().Err(err).Msg("Failed to create TF chain client")
 		return
 	}
+
 	defer substrateClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(db, config, substrateClient)
+	moneyCollector := moneycollector.NewMoneyCollector(corepersistence.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
-
 }

@@ -95,7 +95,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load users'
     })
-    return response.data.data.users
+    return response.data.data?.users || []
   }
 
   // Delete a user (requires admin auth)
@@ -120,6 +120,26 @@ export class AdminService {
     return response.data
   }
 
+  // Drain a user's balance to system account (requires admin auth)
+  async drainUser(userId: number): Promise<void> {
+    await api.post<void>(`/v1/users/${userId}/drain`, {}, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Draining user balance...',
+      errorMessage: 'Failed to drain user balance'
+    })
+  }
+
+  // Drain all users' balances to system account (requires admin auth)
+  async drainAllUsers(): Promise<void> {
+    await api.post<void>(`/v1/users/drain-all`, {}, {
+      requiresAuth: true,
+      showNotifications: true,
+      loadingMessage: 'Draining all users\' balances...',
+      errorMessage: 'Failed to drain all users\' balances'
+    })
+  }
+
   // Generate vouchers (requires admin auth)
   async generateVouchers(data: GenerateVouchersRequest): Promise<GenerateVouchersResponse> {
     const response = await api.post<GenerateVouchersResponse>('/v1/vouchers/generate', data, {
@@ -138,7 +158,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load vouchers'
     })
-    return response.data.data.vouchers
+    return response.data.data?.vouchers || []
   }
 
   // List all invoices (requires admin auth)
@@ -148,7 +168,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load invoices'
     })
-    return response.data.data.invoices
+    return response.data.data?.invoices || []
   }
 
       // List all pending records (requires admin auth)
@@ -158,7 +178,7 @@ export class AdminService {
       showNotifications: true,
       errorMessage: 'Failed to load payments'
     })
-    return response.data.data.pending_records
+    return response.data.data?.pending_records || []
   }
 
   // Send a system email to all users (requires admin auth)

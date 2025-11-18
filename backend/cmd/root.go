@@ -3,9 +3,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"kubecloud/app"
-	"kubecloud/internal"
-	"kubecloud/internal/logger"
+	"kubecloud/internal/api/app"
+	cfg "kubecloud/internal/config"
+	"kubecloud/internal/infrastructure/logger"
 	"net"
 	"net/http"
 	"os"
@@ -84,21 +84,9 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind voucher_name_length flag: %w", err)
 	}
 
-	// === URLs ===
-	if err := bindStringFlag(rootCmd, "gridproxy_url", "", "GridProxy URL"); err != nil {
-		return fmt.Errorf("failed to bind gridproxy_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "tfchain_url", "", "TFChain URL"); err != nil {
-		return fmt.Errorf("failed to bind tfchain_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "activation_service_url", "", "Activation Service URL"); err != nil {
-		return fmt.Errorf("failed to bind activation_service_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "graphql_url", "", "GraphQL URL"); err != nil {
-		return fmt.Errorf("failed to bind graphql_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "firesquid_url", "", "Firesquid URL"); err != nil {
-		return fmt.Errorf("failed to bind firesquid_url flag: %w", err)
+	// === Verification Code ===
+	if err := bindIntFlag(rootCmd, "verification_code_length", 4, "Verification code length"); err != nil {
+		return fmt.Errorf("failed to bind verification_code_length flag: %w", err)
 	}
 
 	// === Terms and Conditions ===
@@ -134,14 +122,14 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "cluster_health_check_interval_in_hours", 1, "Cluster health check interval (hours)"); err != nil {
 		return fmt.Errorf("failed to bind cluster_health_check_interval_in_hours flag: %w", err)
 	}
-	if err := bindIntFlag(rootCmd, "reserved_node_health_check_interval_in_hours", 1, "Reserved node health check interval (hours)"); err != nil {
-		return fmt.Errorf("failed to bind reserved_node_health_check_interval_in_hours flag: %w", err)
+	if err := bindIntFlag(rootCmd, "node_health_check.reserved_node_health_check_interval_in_hours", 1, "Reserved node health check interval (hours)"); err != nil {
+		return fmt.Errorf("failed to bind node_health_check.reserved_node_health_check_interval_in_hours flag: %w", err)
 	}
-	if err := bindIntFlag(rootCmd, "reserved_node_health_check_timeout_in_minutes", 1, "Reserved node health check timeout (minutes)"); err != nil {
-		return fmt.Errorf("failed to bind reserved_node_health_check_timeout_in_minutes flag: %w", err)
+	if err := bindIntFlag(rootCmd, "node_health_check.reserved_node_health_check_timeout_in_minutes", 1, "Reserved node health check timeout (minutes)"); err != nil {
+		return fmt.Errorf("failed to bind node_health_check.reserved_node_health_check_timeout_in_minutes flag: %w", err)
 	}
-	if err := bindIntFlag(rootCmd, "reserved_node_health_check_workers_num", 10, "Reserved node health check workers number"); err != nil {
-		return fmt.Errorf("failed to bind reserved_node_health_check_workers_num flag: %w", err)
+	if err := bindIntFlag(rootCmd, "node_health_check.reserved_node_health_check_workers_num", 10, "Reserved node health check workers number"); err != nil {
+		return fmt.Errorf("failed to bind node_health_check.reserved_node_health_check_workers_num flag: %w", err)
 	}
 
 	// === Invoice ===
@@ -174,14 +162,6 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind notify_admins_for_pending_records_in_hours flag: %w", err)
 	}
 
-	// === KYC Verifier ===
-	if err := bindStringFlag(rootCmd, "kyc_verifier_api_url", "", "KYC verifier API URL"); err != nil {
-		return fmt.Errorf("failed to bind kyc_verifier_api_url flag: %w", err)
-	}
-	if err := bindStringFlag(rootCmd, "kyc_challenge_domain", "", "KYC challenge domain"); err != nil {
-		return fmt.Errorf("failed to bind kyc_challenge_domain flag: %w", err)
-	}
-
 	// === Logger Config ===
 	if err := bindStringFlag(rootCmd, "logger.log_dir", "./logs", "Logger directory"); err != nil {
 		return fmt.Errorf("failed to bind logger.log_dir flag: %w", err)
@@ -206,13 +186,16 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "loki.flush_interval_second", 2, "Loki flush interval (seconds)"); err != nil {
 		return fmt.Errorf("failed to bind loki.flush_interval_second flag: %w", err)
 	}
-	if err := bindStringFlag(rootCmd, "loki.labels", "app=myceliumCloud,env=,host=", "Loki labels (key=value,key2=value2)"); err != nil {
-		return fmt.Errorf("failed to bind loki.labels flag: %w", err)
-	}
 
-	// === Notification Config ===
-	if err := bindStringFlag(rootCmd, "notification_config_path", "./notification-config.json", "Path to notification configuration file"); err != nil {
-		return fmt.Errorf("failed to bind notification_config_path flag: %w", err)
+	// === Loki Labels ===
+	if err := bindStringFlag(rootCmd, "loki.labels.app", "myceliumcloud", "Loki app label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.app flag: %w", err)
+	}
+	if err := bindStringFlag(rootCmd, "loki.labels.env", "main", "Loki env label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.env flag: %w", err)
+	}
+	if err := bindStringFlag(rootCmd, "loki.labels.host", "localhost", "Loki host label"); err != nil {
+		return fmt.Errorf("failed to bind loki.labels.host flag: %w", err)
 	}
 
 	return nil
@@ -304,7 +287,7 @@ It supports:
 - Secure access control through Mycelium whitelisting
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config, err := internal.LoadConfig()
+		config, err := cfg.LoadConfig()
 		if err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to read configurations")
 			return fmt.Errorf("failed to read configuration: %w", err)
@@ -322,11 +305,20 @@ It supports:
 		if loggerConfig.LogDir == "" {
 			loggerConfig.LogDir = "./logs"
 		}
+
+		if config.Loki.Labels == nil {
+			return fmt.Errorf("failed to initialize logger: loki.labels is nil")
+		}
+
 		fmt.Printf("Setting up logging to: %s/app.log\n", loggerConfig.LogDir)
 		lokiConfig := &logger.LokiConfig{
 			URL:           config.Loki.URL,
 			FlushInterval: time.Duration(config.Loki.FlushIntervalSecond) * time.Second,
-			Labels:        config.Loki.Labels,
+			Labels: map[string]string{
+				"app":  config.Loki.Labels.App,
+				"env":  config.Loki.Labels.Env,
+				"host": config.Loki.Labels.Host,
+			},
 		}
 		if err := logger.InitLogger(loggerConfig, lokiConfig, config.Debug); err != nil {
 			return fmt.Errorf("failed to initialize logger: %w", err)
@@ -356,11 +348,8 @@ func gracefulShutdown(app *app.App) error {
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
 	logger.GetLogger().Info().Msg("Shutting down...")
-	if err := app.Shutdown(shutdownCtx); err != nil {
+	if err := app.Shutdown(); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("Server shutdown failed")
 		return err
 	}
