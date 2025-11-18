@@ -3,7 +3,7 @@
     <div class="d-flex justify-space-between align-center">
       <p v-text="item.name" class="text-body-1 mb-0 font-weight-bold" />
       <p
-        v-text="item.status"
+        v-text="item.status === 'running' ? 'In Progress' : item.status"
         class="ml-8 text-capitalize mb-0 text-gray-500"
         :class="{
           'text-success': item.status === 'success',
