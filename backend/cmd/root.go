@@ -320,7 +320,16 @@ It supports:
 				"host": config.Loki.Labels.Host,
 			},
 		}
-		if err := logger.InitLogger(loggerConfig, lokiConfig, config.Debug); err != nil {
+		auditSink, err := logger.NewFileAuditSink("", 512, 30, 365, true)
+		if err != nil {
+			return fmt.Errorf("failed to initialize audit sink: %w", err)
+		}
+		auditLogConfig := &logger.AuditLogConfig{
+			Enabled: true,
+			Sink:    auditSink,
+		}
+
+		if err := logger.InitLogger(loggerConfig, lokiConfig, auditLogConfig, config.Debug); err != nil {
 			return fmt.Errorf("failed to initialize logger: %w", err)
 		}
 

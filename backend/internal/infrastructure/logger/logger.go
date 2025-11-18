@@ -14,8 +14,9 @@ import (
 
 // LoggerInstance holds the singleton logger instance
 type LoggerInstance struct {
-	logger     zerolog.Logger
-	lokiWriter *LokiWriter
+	logger      zerolog.Logger
+	auditLogger zerolog.Logger
+	lokiWriter  *LokiWriter
 }
 
 var (
@@ -39,8 +40,13 @@ type LokiConfig struct {
 	Labels        map[string]string `json:"labels"`
 }
 
+type AuditLogConfig struct {
+	Enabled bool      `json:"enabled"`
+	Sink    io.Writer `json:"sink"`
+}
+
 // InitLogger initializes the singleton logger with file and console output
-func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
+func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, auditLogConfig *AuditLogConfig, debug bool) error {
 	logDir := config.LogDir
 	if logDir == "" {
 		logDir = "logs"
@@ -86,6 +92,9 @@ func InitLogger(config LoggerConfig, lokiConfig *LokiConfig, debug bool) error {
 		logger:     zerolog.New(multi).With().Timestamp().Logger(),
 		lokiWriter: lokiWriter,
 	}
+
+	// Initialize dedicated audit logger (discard output when disabled/missing)
+	instance.auditLogger = setupAuditLogger(auditLogConfig)
 
 	// Log to stderr that we've set up file logging
 	fmt.Fprintf(os.Stderr, "Logger initialized with file output to: %s\n", logFile)
@@ -166,4 +175,17 @@ func ForOperation(component, operation string) *zerolog.Logger {
 		Str("operation", operation)
 	logger := log.Logger()
 	return &logger
+}
+
+// GetAuditLogger returns the dedicated audit logger instance.
+func GetAuditLogger() *zerolog.Logger {
+	once.Do(func() {
+		if instance == nil {
+			// Create a default logger if not initialized
+			instance = &LoggerInstance{
+				auditLogger: zerolog.New(io.Discard).With().Timestamp().Logger(),
+			}
+		}
+	})
+	return &instance.auditLogger
 }
