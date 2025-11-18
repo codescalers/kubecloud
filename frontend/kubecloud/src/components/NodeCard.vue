@@ -121,11 +121,25 @@ const discountPercentage = computed(() => {
 const monthlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : baseNodePrice.value.toFixed(2));
 const hourlyPrice = computed(() => baseNodePrice.value == null ? 'N/A' : (baseNodePrice.value / 720).toFixed(2));
 const originalMonthlyPrice = computed(() => originalNodePrice.value == null ? 'N/A' : originalNodePrice.value.toFixed(2));
-const resources = [
-  { icon: 'mdi-cpu-64-bit', color: '#0ea5e9', label: 'CPU:', value: () => `${props.node.cpu} vCPU` },
-  { icon: 'mdi-memory', color: '#10B981', label: 'RAM:', value: () => `${props.node.ram} GB` },
-  { icon: 'mdi-harddisk', color: '#38bdf8', label: 'Storage:', value: () => `${props.node.storage} GB` }
-];
+const resources = computed(() => {
+  const totalCPU = props.node.cpu;
+  const usedCPU = props.node.used_cpu ?? 0;
+  const availableCPU = totalCPU - usedCPU;
+
+  const totalRAM = props.node.ram;
+  const usedRAM = props.node.used_ram ?? 0;
+  const availableRAM = totalRAM - usedRAM;
+
+  const totalStorage = props.node.storage;
+  const usedStorage = props.node.used_storage ?? 0;
+  const availableStorage = totalStorage - usedStorage;
+
+  return [
+    { icon: 'mdi-cpu-64-bit', color: '#0ea5e9', label: 'CPU:', value: () => `${availableCPU} vCPU` },
+    { icon: 'mdi-memory', color: '#10B981', label: 'RAM:', value: () => `${availableRAM} GB` },
+    { icon: 'mdi-harddisk', color: '#38bdf8', label: 'Storage:', value: () => `${availableStorage} GB` }
+  ];
+});
 
 const { fetchAccountId } = useNodes();
 const monitoringUrl = ref('');

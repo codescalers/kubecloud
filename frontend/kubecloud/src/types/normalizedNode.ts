@@ -1,36 +1,39 @@
 export interface NormalizedNode {
-  nodeId: number;
-  cpu: number; // vCPU
-  ram: number; // GB
-  storage: number; // GB
-  available_ram?: number; // GB
-  available_storage?: number; // GB
-  price_usd: number | null;
-  discount_price: number | null;
-  gpu: boolean;
-  locationString: string;
-  country: string;
-  city: string;
-  status: string;
-  healthy: boolean;
-  rentable: boolean;
-  rented: boolean;
-  rentedByTwinId?: number;
-  dedicated: boolean;
-  certificationType: string;
-  extraFee: number;
-  farmId: number;
-  twinId: number;
+  nodeId: number
+  cpu: number // vCPU
+  ram: number // GB
+  storage: number // GB
+  used_cpu?: number // vCPU
+  used_ram?: number // GB
+  used_storage?: number // GB
+  available_ram?: number // GB
+  available_storage?: number // GB
+  price_usd: number | null
+  discount_price: number | null
+  gpu: boolean
+  locationString: string
+  country: string
+  city: string
+  status: string
+  healthy: boolean
+  rentable: boolean
+  rented: boolean
+  rentedByTwinId?: number
+  dedicated: boolean
+  certificationType: string
+  extraFee: number
+  farmId: number
+  twinId: number
   // Add any other UI fields needed
 }
 
-type diskType = "ssd" | "hdd";
+type diskType = 'ssd' | 'hdd'
 export interface StoragePool {
-  name: string;
-  free: number;
-  type: diskType;
+  name: string
+  free: number
+  type: diskType
 }
 
 export interface NodeStoragePool {
-  pools: StoragePool[];
+  pools: StoragePool[]
 }
