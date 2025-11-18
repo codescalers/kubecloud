@@ -297,7 +297,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 	}
 }
 
-func SendWelcomeEmailStep(mailService mailservice.MailService, config cfg.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
@@ -366,7 +366,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeCl
 	}
 }
 
-func CreatePendingRecord(substrateClient substrate.Substrate, userRepo models.UserRepository, pendingRecordRepo models.PendingRecordRepository, systemMnemonic string) ewf.StepFn {
+func CreatePendingRecord(substrateClient substrate.Substrate, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_pending_record")
 		amountVal, ok := state["amount"]
@@ -468,7 +468,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 }
 
 // DrainUserBalanceStep transfers a user's balance to the system account
-func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
+func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {

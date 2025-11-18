@@ -61,9 +61,9 @@ func RegisterEWFWorkflows(
 	engine.Register(StepSetupTFChain, SetupTFChainStep(substrate, userRepo))
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
-	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, config, metrics))
+	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, userRepo, pendingRecordRepo, config.SystemAccount.Mnemonic))
+	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, pendingRecordRepo))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
 	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, substrate))
@@ -71,7 +71,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mail))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
-	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate, config.SystemAccount.Mnemonic))
+	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
