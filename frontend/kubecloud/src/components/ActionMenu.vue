@@ -1,5 +1,10 @@
 <template>
-  <v-menu location="bottom end" max-width="400px">
+  <v-menu
+    location="bottom end"
+    max-width="400px"
+    :model-value="openMenu && active"
+    @update:model-value="openMenu = $event && active"
+  >
     <template v-slot:activator="{ props }">
       <v-btn icon variant="text" color="white" v-bind="props" :disabled="!active">
         <div :style="{ position: 'relative' }">
@@ -31,7 +36,7 @@
       </v-btn>
     </template>
     <v-list>
-      <template v-for="(item, index) in items" :key="item.id">
+      <template v-for="(item, index) in workflows" :key="item.workflow_id">
         <v-divider v-if="index > 0" />
         <ActionMenuItem :item="item" />
       </template>
@@ -40,44 +45,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import ActionMenuItem, { type ActionItem } from './ActionMenuItem.vue'
+import { onMounted, ref, computed, onBeforeUnmount } from 'vue'
+import ActionMenuItem from './ActionMenuItem.vue'
+import { userService, type UserWorkflowsResponse } from '@/utils/userService'
 
-const active = ref(true)
-const items = ref<ActionItem[]>([
-  {
-    id: '1',
-    title: 'Add Node to Cluster',
-    status: 'pending',
-    createdAt: 'Created 5m ago',
-    currentStep: 0,
-    totalSteps: 3,
-  },
-  {
-    id: '2',
-    title: 'Create Cluster',
-    status: 'running',
-    createdAt: 'Running 2m ago',
-    currentStep: 2,
-    totalSteps: 4,
-  },
-  {
-    id: '3',
-    title: 'Process Payment',
-    status: 'failed',
-    createdAt: 'Completed 12m ago',
-    currentStep: 3,
-    totalSteps: 5,
-  },
-  {
-    id: '3',
-    title: 'Create Cluster',
-    status: 'success',
-    createdAt: 'Completed 2d ago',
-    currentStep: 4,
-    totalSteps: 4,
-  },
-])
+const workflows = ref<UserWorkflowsResponse[]>([])
+const openMenu = ref(false)
+const active = computed(() => workflows.value.length > 0)
+
+let intervalId: NodeJS.Timeout | null = null
+onBeforeUnmount(() => intervalId && clearInterval(intervalId))
+onMounted(() => {
+  intervalId = setInterval(loadWorkflows, 3000)
+  loadWorkflows()
+})
+
+async function loadWorkflows() {
+  try {
+    workflows.value = await userService.getWorkflows()
+  } catch (error) {
+    console.log({ error })
+  }
+}
 </script>
 
 <style>

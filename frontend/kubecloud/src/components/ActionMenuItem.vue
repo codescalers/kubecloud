@@ -1,7 +1,7 @@
 <template>
   <div class="pa-4 pb-0">
     <div class="d-flex justify-space-between align-center">
-      <p v-text="item.title" class="text-body-1 mb-0 font-weight-bold" />
+      <p v-text="item.name" class="text-body-1 mb-0 font-weight-bold" />
       <p
         v-text="item.status"
         class="ml-8 text-capitalize mb-0 text-gray-500"
@@ -13,9 +13,9 @@
       />
     </div>
     <div class="d-flex justify-space-between align-center text-sm opacity-80">
-      <p v-text="item.createdAt" class="mb-0" />
+      <p v-text="moment(item.created_at).fromNow()" class="mb-0" />
       <p
-        v-text="item.currentStep + '/' + item.totalSteps"
+        v-text="item.current_step + '/' + item.total_steps"
         class="mb-0"
         v-if="item.status !== 'pending'"
       />
@@ -23,7 +23,7 @@
     </div>
     <v-progress-linear
       height="2"
-      :model-value="item.status === 'pending' ? 0 : (item.currentStep / item.totalSteps) * 100"
+      :model-value="item.status === 'pending' ? 0 : (item.current_step / item.total_steps) * 100"
       :color="
         item.status === 'running'
           ? 'primary'
@@ -39,14 +39,8 @@
 </template>
 
 <script setup lang="ts">
-export interface ActionItem {
-  id: string
-  title: string
-  status: 'running' | 'pending' | 'success' | 'failed' // possible values
-  createdAt: string
-  currentStep: number
-  totalSteps: number
-}
+import moment from 'moment'
+import type { UserWorkflowsResponse } from '@/utils/userService'
 
-defineProps<{ item: ActionItem }>()
+defineProps<{ item: UserWorkflowsResponse }>()
 </script>
