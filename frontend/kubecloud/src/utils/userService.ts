@@ -139,6 +139,15 @@ export interface TwinResponse {
   twin_id: number;
 }
 
+export interface UserWorkflowsResponse {
+  created_at: string
+  current_step: number
+  name: string
+  status: string
+  total_steps: number
+  workflow_id: string
+}
+
 export class UserService {
   async listNodes(filters?: NodeFilters) {
     const queryParams = new URLSearchParams()
@@ -309,6 +318,16 @@ export class UserService {
       showNotifications: false
     })
     return response.data.data
+  }
+
+  async getWorkflows() {
+    const res = await api.get<ApiResponse<{ workflows: UserWorkflowsResponse[] | null }>>(
+      `/v1/user/workflows`,
+      {
+        requiresAuth: true,
+      },
+    )
+    return res.data.data.workflows || []
   }
 
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {
