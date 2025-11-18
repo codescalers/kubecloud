@@ -207,6 +207,18 @@ func LoadConfig() (Configuration, error) {
 		return Configuration{}, fmt.Errorf("sendgrid_key is required when dev_mode is false. Set dev_mode=true to use FakeMailService for development")
 	}
 
+	// custom validation: warn if using SQLite in production mode
+	if !config.DevMode {
+		dsn := strings.TrimSpace(config.Database.DSN)
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return Configuration{}, fmt.Errorf("failed to parse database DSN: %w", err)
+		}
+		if u.Scheme == "sqlite" || u.Scheme == "sqlite3" {
+			return Configuration{}, fmt.Errorf("SQLite not allowed in production. Use PostgreSQL or set dev_mode=true")
+		}
+	}
+
 	return config, nil
 }
 
