@@ -198,6 +198,23 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind loki.labels.host flag: %w", err)
 	}
 
+	// === Audit Log ===
+	if err := bindBoolFlag(rootCmd, "audit_log.enabled", true, "Enable audit logging"); err != nil {
+		return fmt.Errorf("failed to bind audit_log.enabled flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "audit_log.max_size", 512, "Audit log max size (MB)"); err != nil {
+		return fmt.Errorf("failed to bind audit_log.max_size flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "audit_log.max_backups", 30, "Audit log max backups"); err != nil {
+		return fmt.Errorf("failed to bind audit_log.max_backups flag: %w", err)
+	}
+	if err := bindIntFlag(rootCmd, "audit_log.max_age_days", 365, "Audit log max age (days)"); err != nil {
+		return fmt.Errorf("failed to bind audit_log.max_age_days flag: %w", err)
+	}
+	if err := bindBoolFlag(rootCmd, "audit_log.compress", true, "Audit log compress backups"); err != nil {
+		return fmt.Errorf("failed to bind audit_log.compress flag: %w", err)
+	}
+
 	return nil
 }
 
@@ -320,13 +337,29 @@ It supports:
 				"host": config.Loki.Labels.Host,
 			},
 		}
-		auditSink, err := logger.NewFileAuditSink("", 512, 30, 365, true)
-		if err != nil {
-			return fmt.Errorf("failed to initialize audit sink: %w", err)
-		}
-		auditLogConfig := &logger.AuditLogConfig{
-			Enabled: true,
-			Sink:    auditSink,
+		// Initialize audit log configuration
+		var auditLogConfig *logger.AuditLogConfig
+		if config.AuditLog.Enabled {
+			auditSink, err := logger.NewFileAuditSink(
+				loggerConfig.LogDir,
+				config.AuditLog.MaxSize,
+				config.AuditLog.MaxBackups,
+				config.AuditLog.MaxAgeDays,
+				config.AuditLog.Compress,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to initialize audit sink: %w", err)
+			}
+
+			auditLogConfig = &logger.AuditLogConfig{
+				Enabled: true,
+				Sink:    auditSink,
+			}
+		} else {
+			auditLogConfig = &logger.AuditLogConfig{
+				Enabled: false,
+				Sink:    nil,
+			}
 		}
 
 		if err := logger.InitLogger(loggerConfig, lokiConfig, auditLogConfig, config.Debug); err != nil {

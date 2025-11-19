@@ -36,8 +36,9 @@ type Configuration struct {
 	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
-	Logger LoggerConfig `json:"logger"`
-	Loki   LokiConfig   `json:"loki"`
+	Logger   LoggerConfig   `json:"logger"`
+	Loki     LokiConfig     `json:"loki"`
+	AuditLog AuditLogConfig `json:"audit_log"`
 }
 
 type SSHConfig struct {
@@ -122,6 +123,14 @@ type LokiLabels struct {
 	App  string `json:"app,omitempty" default:"myceliumCloud"`
 	Env  string `json:"env,omitempty" default:"main"`
 	Host string `json:"host,omitempty"`
+}
+
+type AuditLogConfig struct {
+	Enabled    bool `json:"enabled" default:"true"`     // Pointer to distinguish unset from false
+	MaxSize    int  `json:"max_size" default:"512"`     // in MB
+	MaxBackups int  `json:"max_backups" default:"30"`   // Number of old log files to keep
+	MaxAgeDays int  `json:"max_age_days" default:"365"` // Maximum days to retain audit logs
+	Compress   bool `json:"compress" default:"true"`
 }
 
 type ReservedNodeHealthCheckConfig struct {
@@ -367,5 +376,16 @@ func applyDefaultValues(config *Configuration) {
 	}
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
+
+	// AuditLog defaults
+	if config.AuditLog.MaxSize == 0 {
+		config.AuditLog.MaxSize = 512
+	}
+	if config.AuditLog.MaxBackups == 0 {
+		config.AuditLog.MaxBackups = 30
+	}
+	if config.AuditLog.MaxAgeDays == 0 {
+		config.AuditLog.MaxAgeDays = 365
 	}
 }
