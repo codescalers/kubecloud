@@ -24,24 +24,21 @@ type NodeService struct {
 	nodesRepo models.UserNodesRepository
 	userRepo  models.UserRepository
 
-	appCtx          context.Context
-	ewfEngine       *ewf.Engine
-	gridClient      deployer.TFPluginClient
-	substrateClient substrate.Substrate
+	appCtx     context.Context
+	ewfEngine  *ewf.Engine
+	gridClient deployer.TFPluginClient
 }
 
 func NewNodeService(
 	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
 	appCtx context.Context, ewfEngine *ewf.Engine, gridClient deployer.TFPluginClient,
-	substrateClient substrate.Substrate,
 ) NodeService {
 	return NodeService{
-		nodesRepo:       userNodesRepo,
-		userRepo:        userRepo,
-		appCtx:          appCtx,
-		ewfEngine:       ewfEngine,
-		gridClient:      gridClient,
-		substrateClient: substrateClient,
+		nodesRepo:  userNodesRepo,
+		userRepo:   userRepo,
+		appCtx:     appCtx,
+		ewfEngine:  ewfEngine,
+		gridClient: gridClient,
 	}
 }
 
@@ -72,7 +69,7 @@ func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserNodes, er
 
 func (svc *NodeService) CheckUserBalanceForOneHour(userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
 	// validate user has enough balance for reserving node
-	usdMillicentBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
+	usdMillicentBalance, err := svc.gridClient.SubstrateConn.GetUserBalanceUSDMillicent(userMnemonic)
 	if err != nil {
 		return err
 	}
@@ -95,12 +92,12 @@ func (svc *NodeService) GetTwinIDFromUserID(userID int) (uint64, error) {
 		return 0, err
 	}
 
-	identity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(user.Mnemonic)
+	identity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(user.Mnemonic)
 	if err != nil {
 		return 0, err
 	}
 
-	twinID, err := svc.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	twinID, err := svc.gridClient.SubstrateConn.GetTwinByPubKey(identity.PublicKey())
 	if err != nil {
 		return 0, err
 	}

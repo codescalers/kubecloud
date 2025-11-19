@@ -34,7 +34,6 @@ type WorkerService struct {
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
-	substrateClient        substrate.Substrate
 	gridClient             deployer.TFPluginClient
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
@@ -56,7 +55,7 @@ func NewWorkersService(
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
 	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
-	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
+	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
@@ -75,7 +74,6 @@ func NewWorkersService(
 		ewfEngine:              ewfEngine,
 		graphql:                graphql,
 		firesquidClient:        firesquidClient,
-		substrateClient:        substrateClient,
 		gridClient:             gridClient,
 
 		systemMnemonic:     systemMnemonic,
@@ -153,7 +151,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(totalAmountTFT)
+		totalAmountUSDMillicent, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -241,7 +239,7 @@ func (svc WorkerService) UpdateUserDebt() error {
 }
 
 func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.UserNodes) (uint64, error) {
-	identity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(userMnemonic)
+	identity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(userMnemonic)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create identity: %w", err)
 	}
@@ -257,7 +255,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.U
 		totalDebt += debt
 	}
 
-	totalDebtUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(uint64(totalDebt))
+	totalDebtUSDMillicent, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(uint64(totalDebt))
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert debt to USD millicent: %w", err)
 	}
@@ -373,7 +371,7 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.substrateClient.GetUserTFTBalance(svc.systemMnemonic)
+		systemTFTBalance, err := svc.gridClient.SubstrateConn.GetUserTFTBalance(svc.systemMnemonic)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
@@ -402,7 +400,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
 	}
 
-	err = svc.substrateClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
+	err = svc.gridClient.SubstrateConn.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic, svc.systemMnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
 	}

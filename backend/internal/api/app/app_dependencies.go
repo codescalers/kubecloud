@@ -19,7 +19,6 @@ import (
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"net/url"
 	"os"
@@ -83,7 +82,7 @@ type appInfrastructure struct {
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
-	substrateClient substrate.Substrate
+	// substrateClient substrate.Substrate
 }
 
 func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDependencies, error) {
@@ -279,19 +278,19 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 		return appInfrastructure{}, fmt.Errorf("failed to connect to TF graphql: %w", err)
 	}
 
-	tfChainClient, err := substrate.NewTFChainClient(
-		config.SystemAccount.Network, config.SystemAccount.Mnemonic,
-		config.TermsANDConditions.DocumentLink, config.TermsANDConditions.DocumentHash,
-	)
-	if err != nil {
-		return appInfrastructure{}, fmt.Errorf("failed to create tf chain client: %w", err)
-	}
+	// tfChainClient, err := substrate.NewTFChainClient(
+	// 	config.SystemAccount.Network, config.SystemAccount.Mnemonic,
+	// 	config.TermsANDConditions.DocumentLink, config.TermsANDConditions.DocumentHash,
+	// )
+	// if err != nil {
+	// 	return appInfrastructure{}, fmt.Errorf("failed to create tf chain client: %w", err)
+	// }
 
 	return appInfrastructure{
 		gridClient:      gridClient,
 		graphql:         graphQl,
 		firesquidClient: fireSquidClient,
-		substrateClient: tfChainClient,
+		// substrateClient: tfChainClient,
 	}, nil
 }
 
@@ -310,27 +309,25 @@ func (app *App) createHandlers() appHandlers {
 	// Services
 	userService := services.NewUserService(
 		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
-		app.infra.substrateClient, app.core.ewfEngine,
+		app.infra.gridClient, app.core.ewfEngine,
 		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
 		app.config.Admins,
 	)
 
 	statsService := services.NewStatsService(
 		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
-		app.infra.substrateClient, app.config.SystemAccount.Mnemonic,
+		app.infra.gridClient, app.config.SystemAccount.Mnemonic,
 	)
 
 	notificationAPIService := services.NewNotificationService(notificationRepo)
 
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
-		app.infra.gridClient, app.infra.substrateClient,
+		app.infra.gridClient,
 	)
 
 	invoiceService := services.NewInvoiceService(
-		invoiceRepo, userRepo, userNodesRepo,
-		app.infra.firesquidClient, app.infra.graphql, app.infra.substrateClient,
-		app.config.Invoice,
+		invoiceRepo, userRepo, app.config.Invoice,
 	)
 
 	deploymentService := services.NewDeploymentService(
@@ -340,7 +337,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine,
+		transactionRepo, app.infra.gridClient, app.core.ewfEngine,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
@@ -384,7 +381,7 @@ func (app *App) createWorkers() workers.Workers {
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
 		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
-		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
+		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes,

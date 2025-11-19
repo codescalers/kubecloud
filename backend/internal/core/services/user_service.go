@@ -14,6 +14,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/xmonader/ewf"
 )
 
@@ -22,11 +23,11 @@ type UserService struct {
 	voucherRepo models.VoucherRepository
 	prRepo      models.PendingRecordRepository
 
-	appCtx          context.Context
-	substrateClient substrate.Substrate
-	ewfEngine       *ewf.Engine
-	kycClient       *kyc.KYCClient
-	metrics         *metrics.Metrics
+	appCtx     context.Context
+	gridClient deployer.TFPluginClient
+	ewfEngine  *ewf.Engine
+	kycClient  *kyc.KYCClient
+	metrics    *metrics.Metrics
 
 	// configs
 	codeTimeoutMin int
@@ -37,7 +38,7 @@ func NewUserService(appCtx context.Context,
 	userRepo models.UserRepository,
 	voucherRepo models.VoucherRepository,
 	pendingRecordRepo models.PendingRecordRepository,
-	substrateClient substrate.Substrate,
+	gridClient deployer.TFPluginClient,
 	ewfEngine *ewf.Engine,
 	kycClient *kyc.KYCClient,
 	metrics *metrics.Metrics,
@@ -49,11 +50,11 @@ func NewUserService(appCtx context.Context,
 		voucherRepo: voucherRepo,
 		prRepo:      pendingRecordRepo,
 
-		appCtx:          appCtx,
-		substrateClient: substrateClient,
-		ewfEngine:       ewfEngine,
-		kycClient:       kycClient,
-		metrics:         metrics,
+		appCtx:     appCtx,
+		gridClient: gridClient,
+		ewfEngine:  ewfEngine,
+		kycClient:  kycClient,
+		metrics:    metrics,
 
 		codeTimeoutMin: codeTimeoutMin,
 		systemAdmins:   systemAdmins,
@@ -101,7 +102,7 @@ func (svc *UserService) GetUserPendingBalanceInUSDMillicent(userID int) (uint64,
 		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
 	}
 
-	usdMillicentPendingAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(tftPendingAmount)
+	usdMillicentPendingAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(tftPendingAmount)
 	if err != nil {
 		return 0, err
 	}
@@ -117,12 +118,12 @@ func (svc *UserService) ListUserPendingRecordsWithUSDAmounts(userID int) ([]Pend
 
 	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
 	for _, record := range pendingRecords {
-		usdAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TFTAmount)
+		usdAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
-		usdTransferredAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
+		usdTransferredAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +158,7 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 }
 
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
-	return svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
+	return svc.gridClient.SubstrateConn.GetUserBalanceUSDMillicent(userMnemonic)
 }
 
 func (svc *UserService) UpdateUserByID(user *models.User) error {
