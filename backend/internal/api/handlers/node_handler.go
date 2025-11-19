@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/logger"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -219,6 +220,10 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ReserveNodeHandler")
 	if nodeIDParam == "" {
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "node_id_required",
+			"user_id": userID,
+		})
 		BadRequest(c, "Node ID is required")
 		return
 	}
@@ -226,7 +231,11 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	nodeID64, err := strconv.ParseUint(nodeIDParam, 10, 32)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to parse node ID")
-		InternalServerError(c)
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "invalid_node_id_format",
+			"user_id": userID,
+		})
+		BadRequest(c, "Invalid node ID format")
 		return
 	}
 	nodeID := uint32(nodeID64)
@@ -235,9 +244,17 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve user")
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+				"reason":  "user_not_found",
+				"user_id": userID,
+			})
 			NotFound(c, "User is not found")
 			return
 		}
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  err.Error(),
+			"user_id": userID,
+		})
 		InternalServerError(c)
 		return
 	}
@@ -247,18 +264,33 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	nodes, _, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, proxyTypes.Limit{})
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve nodes")
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		InternalServerError(c)
 		return
 	}
 
 	if len(nodes) == 0 {
 		reqLog.Error().Msg("no nodes are available for rent")
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "no_nodes_available",
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		NotFound(c, "No nodes are available for rent.")
 		return
 	}
 
 	node := nodes[0]
 	if node.Rented {
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "node_already_reserved",
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		BadRequest(c, "Node is already reserved.")
 		return
 	}
@@ -266,16 +298,31 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	userNode, err := h.svc.GetUserNodeByNodeID(nodeID)
 	if err != nil && !errors.Is(err, models.ErrUserNodeNotFound) {
 		reqLog.Error().Err(err).Msg("failed to check node reservation state")
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		InternalServerError(c)
 		return
 	}
 	if err == nil && userNode.NodeID != 0 {
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "node_already_reserved_in_system",
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		BadRequest(c, "Node is already reserved.")
 		return
 	}
 
 	if err := h.svc.CheckUserBalanceForOneHour(user.Mnemonic, user.Debt, node.PriceUsd); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check user balance")
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityWarning, map[string]any{
+			"reason":  "insufficient_balance",
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		BadRequest(c, "You should at least have enough balance for one hour")
 		return
 	}
@@ -283,10 +330,21 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncReserveNode(userID, user.Mnemonic, nodeID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start workflow to reserve node")
+		auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": userID,
+			"node_id": nodeID,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionNodeReserve, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id": wfUUID,
+		"user_id":     userID,
+		"node_id":     nodeID,
+		"email":       user.Email,
+	})
 	Accepted(c, "Node reservation in progress. You can check its status using the workflow id.", ReserveNodeResponse{
 		WorkflowID: wfUUID,
 		NodeID:     nodeID,
@@ -318,6 +376,15 @@ func (h *NodeHandler) ListRentableNodesHandler(c *gin.Context) {
 	nodes, count, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve nodes")
+		auditLogFromContext(
+			c,
+			logger.AuditActionNodeReserve,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": "failed_to_get_rentable_nodes",
+				"error":  err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -329,6 +396,17 @@ func (h *NodeHandler) ListRentableNodesHandler(c *gin.Context) {
 			DiscountPrice: node.PriceUsd * 0.5,
 		})
 	}
+
+	auditLogFromContext(
+		c,
+		logger.AuditActionNodeListRentable,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"result":          "rentable_nodes_listed",
+			"nodes_returned":  len(nodesWithDiscount),
+			"total_available": count,
+		},
+	)
 
 	OK(c, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
 		Total: count,
@@ -387,6 +465,9 @@ func (h *NodeHandler) ListRentedNodesHandler(c *gin.Context) {
 func (h *NodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	contractIDParam := c.Param("contract_id")
 	if contractIDParam == "" {
+		auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityWarning, map[string]any{
+			"reason": "contract_id_required",
+		})
 		BadRequest(c, "Contract ID is required")
 		return
 	}
@@ -398,9 +479,17 @@ func (h *NodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve user")
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityWarning, map[string]any{
+				"reason":  "user_not_found",
+				"user_id": userID,
+			})
 			NotFound(c, "User is not found")
 			return
 		}
+		auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": userID,
+		})
 		InternalServerError(c)
 		return
 	}
@@ -408,6 +497,9 @@ func (h *NodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	contractID, err := strconv.ParseUint(contractIDParam, 10, 32)
 	if err != nil {
 		reqLog.Error().Msg("Invalid contract ID or type")
+		auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_contract_id_format",
+		})
 		InternalServerError(c)
 		return
 	}
@@ -415,10 +507,20 @@ func (h *NodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	userNode, err := h.svc.GetUserNodeByContractID(contractID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNodeNotFound) {
+			auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityWarning, map[string]any{
+				"reason":      "contract_not_found_for_user",
+				"user_id":     userID,
+				"contract_id": contractID,
+			})
 			NotFound(c, "Contract ID not found for user")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get user node by contract id")
+		auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"reason":      err.Error(),
+			"user_id":     userID,
+			"contract_id": contractID,
+		})
 		InternalServerError(c)
 		return
 	}
@@ -426,10 +528,23 @@ func (h *NodeHandler) UnreserveNodeHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncUnreserveNode(userID, user.Mnemonic, contractID, userNode.NodeID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to unreserve node")
+		auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"reason":      err.Error(),
+			"user_id":     userID,
+			"contract_id": contractID,
+			"node_id":     userNode.NodeID,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionNodeUnreserve, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id": wfUUID,
+		"user_id":     userID,
+		"contract_id": contractID,
+		"node_id":     userNode.NodeID,
+		"email":       user.Email,
+	})
 	Accepted(c, "Node unreservation in progress. You can check its status using the workflow id.", UnreserveNodeResponse{
 		WorkflowID: wfUUID,
 		ContractID: contractID,

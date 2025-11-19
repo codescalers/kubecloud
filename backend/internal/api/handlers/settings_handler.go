@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"kubecloud/internal/core/services"
-
 	"github.com/gin-gonic/gin"
+	"kubecloud/internal/core/services"
+	"kubecloud/internal/infrastructure/logger"
 )
 
 type SettingsHandler struct {
@@ -35,15 +35,25 @@ func (h *SettingsHandler) SetMaintenanceModeHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(c, logger.AuditActionMaintenanceModeSet, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		BadRequest(c, "Invalid request format")
 		return
 	}
 
 	if err := h.svc.SetMaintenanceMode(request.Enabled); err != nil {
 		reqLog.Error().Err(err).Msg("Failed to set maintenance mode")
+		auditLogFromContext(c, logger.AuditActionMaintenanceModeSet, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
+
+	auditLogFromContext(c, logger.AuditActionMaintenanceModeSet, logger.AuditSeverityInfo, map[string]any{
+		"enabled": request.Enabled,
+	})
 
 	OK(c, "Maintenance mode is set successfully", nil)
 }
@@ -65,9 +75,13 @@ func (h *SettingsHandler) GetMaintenanceModeHandler(c *gin.Context) {
 	enabled, err := h.svc.GetMaintenanceMode()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to get maintenance mode")
+		auditLogFromContext(c, logger.AuditActionMaintenanceModeGet, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
+	auditLogFromContext(c, logger.AuditActionMaintenanceModeGet, logger.AuditSeverityInfo, nil)
 
 	OK(c, "Maintenance mode is retrieved successfully", MaintenanceModeStatus{
 		Enabled: enabled,

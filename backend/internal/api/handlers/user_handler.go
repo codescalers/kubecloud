@@ -181,6 +181,14 @@ func (h *UserHandler) RegisterHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserRegister,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -189,12 +197,28 @@ func (h *UserHandler) RegisterHandler(c *gin.Context) {
 	existingUser, getErr := h.svc.GetUserByEmail(request.Email)
 	if getErr != nil && getErr != models.ErrUserNotFound {
 		reqLog.Error().Err(getErr).Msg("failed to get user by email")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserRegister,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": getErr.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
 	if getErr != models.ErrUserNotFound {
 		if isUserRegistered(existingUser) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserRegister,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_already_registered",
+				},
+			)
 			Conflict(c, "User is already registered")
 			return
 		}
@@ -203,14 +227,32 @@ func (h *UserHandler) RegisterHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncRegisterUser(request.Name, request.Email, request.Password)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to register user")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserRegister,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
-
-	Accepted(c, "Registration in progress. You can check its status using the workflow id.", RegisterUserResponse{
+	response := RegisterUserResponse{
 		WorkflowID: wfUUID,
 		Email:      request.Email,
-	})
+	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionUserRegister,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"workflow_id": response.WorkflowID,
+			"email":       response.Email,
+		},
+	)
+
+	Accepted(c, "Registration in progress. You can check its status using the workflow id.", response)
 }
 
 // @Summary Verify registration code
@@ -231,6 +273,14 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserVerify,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -239,10 +289,26 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserVerify,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get user by email")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserVerify,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -251,6 +317,14 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 
 	// check if user is already registered (all required fields are set)
 	if isUserRegistered(user) {
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserVerify,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "user_already_registered",
+			},
+		)
 		Conflict(c, "User is already registered")
 		return
 	}
@@ -258,21 +332,53 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 	// check verification if user is not verified
 	if !user.Verified {
 		if user.Code != request.Code {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserVerify,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "invalid_code",
+				},
+			)
 			BadRequest(c, "Invalid verification code")
 			return
 		}
 
 		if h.svc.IsVerificationCodeExpired(user.UpdatedAt) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserVerify,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "code_expired",
+				},
+			)
 			BadRequest(c, "Code has expired")
 			return
 		}
 
 		if err := h.svc.UpdateUserByID(&models.User{ID: user.ID, Verified: true}); err != nil {
 			if errors.Is(err, models.ErrUserNotFound) {
+				auditLogFromContext(
+					c,
+					logger.AuditActionUserVerify,
+					logger.AuditSeverityWarning,
+					map[string]any{
+						"reason": "user_not_found_on_update",
+					},
+				)
 				NotFound(c, "User not found")
 				return
 			}
 			reqLog.Error().Err(err).Msg("failed to update user data")
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserVerify,
+				logger.AuditSeverityError,
+				map[string]any{
+					"reason": err.Error(),
+				},
+			)
 			InternalServerError(c)
 			return
 		}
@@ -286,6 +392,14 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 
 		if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 			reqLog.Error().Err(err).Msg("failed to send user verification notification")
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserVerify,
+				logger.AuditSeverityError,
+				map[string]any{
+					"reason": err.Error(),
+				},
+			)
 			InternalServerError(c)
 			return
 		}
@@ -294,6 +408,14 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncVerifyUserRegistration(c.Request.Context(), user.ID, user.Email, user.Username)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start user verification workflow")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserVerify,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -301,15 +423,39 @@ func (h *UserHandler) VerifyRegisterCode(c *gin.Context) {
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserVerify,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
-	Accepted(c, "Verification is in progress", VerifyRegisterUserResponse{
+	response := VerifyRegisterUserResponse{
 		WorkflowID: wfUUID,
 		Email:      user.Email,
 		TokenPair:  tokenPair,
-	})
+	}
+	auditLogWithActor(
+		c,
+		logger.AuditActionUserVerify,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"workflow_id": response.WorkflowID,
+			"email":       response.Email,
+		},
+		logger.AuditActorUser,
+		map[string]any{
+			"user_id": user.ID,
+			"email":   user.Email,
+		},
+	)
+	Accepted(c, "Verification is in progress", response)
+
 }
 
 // @Summary Login user (KYC verification checked)
@@ -331,6 +477,14 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserLogin,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -339,6 +493,14 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user by email")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserLogin,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "user_not_found",
+			},
+		)
 		BadRequest(c, "email or password is incorrect")
 		return
 	}
@@ -349,12 +511,28 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 	// verify password
 	match := auth.VerifyPassword(user.Password, request.Password)
 	if !match {
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserLogin,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_credentials",
+			},
+		)
 		Unauthorized(c, "email or password is incorrect")
 		return
 	}
 
 	if err := h.svc.CheckKYCVerification(c.Request.Context(), user.ID, user.Sponsored, user.AccountAddress); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check KYC verification status")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserLogin,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -363,11 +541,33 @@ func (h *UserHandler) LoginUserHandler(c *gin.Context) {
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, user.Admin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserLogin,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
+	auditLogWithActor(
+		c,
+		logger.AuditActionUserLogin,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"result": "success",
+		},
+		logger.AuditActorUser,
+		map[string]any{
+			"user_id": user.ID,
+			"email":   user.Email,
+		},
+	)
 	Created(c, "token pair generated", tokenPair)
+
 }
 
 // @Summary Refresh access token
@@ -389,6 +589,14 @@ func (h *UserHandler) RefreshTokenHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserTokenRefresh,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -396,13 +604,31 @@ func (h *UserHandler) RefreshTokenHandler(c *gin.Context) {
 	accessToken, err := h.tokenManager.AccessTokenFromRefresh(request.RefreshToken)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("refresh token failed")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserTokenRefresh,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_or_expired_refresh_token",
+			},
+		)
 		Unauthorized(c, "Invalid or expired refresh token")
 		return
 	}
 
+	auditLogFromContext(
+		c,
+		logger.AuditActionUserTokenRefresh,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"result": "success",
+		},
+	)
+
 	Created(c, "access token refreshed successfully", RefreshTokenResponse{
 		AccessToken: accessToken,
 	})
+
 }
 
 // @Summary Forgot password
@@ -424,6 +650,14 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetRequest,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -431,8 +665,29 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 	// get user by email
 	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
+		if err == models.ErrUserNotFound {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserPasswordResetRequest,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
+			NotFound(c, "user lookup failed")
+			return
+		}
 		reqLog.Error().Err(err).Msg("failed to get user ")
-		NotFound(c, "user lookup failed")
+
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetRequest,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
+		InternalServerError(c)
 		return
 	}
 
@@ -445,6 +700,14 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to send verification code")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetRequest,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -457,18 +720,45 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 		},
 	); err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserPasswordResetRequest,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found_on_update",
+				},
+			)
 			NotFound(c, "User not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("error updating user data")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetRequest,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
-	OK(c, "Verification code sent", RegisterResponse{
+	response := RegisterResponse{
 		Email:   request.Email,
 		Timeout: fmt.Sprintf("%d minutes", h.svc.CodeTimeoutInMinutes()),
-	})
+	}
+
+	auditLogFromContext(
+		c,
+		logger.AuditActionUserPasswordResetRequest,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"email": response.Email,
+		},
+	)
+	OK(c, "Verification code sent", response)
+
 }
 
 // @Summary Verify forgot password code
@@ -488,6 +778,14 @@ func (h *UserHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	var request VerifyCodeInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetVerify,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -496,11 +794,27 @@ func (h *UserHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	user, err := h.svc.GetUserByEmail(request.Email)
 	if err != nil {
 		if err == models.ErrUserNotFound {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserPasswordResetVerify,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User not found")
 			return
 		}
 
 		reqLog.Error().Err(err).Msg("failed to get user by email")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetVerify,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -509,11 +823,27 @@ func (h *UserHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	reqLog = &logWithUser
 
 	if user.Code != request.Code {
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetVerify,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_code",
+			},
+		)
 		BadRequest(c, "Invalid code")
 		return
 	}
 
 	if h.svc.IsVerificationCodeExpired(user.UpdatedAt) {
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetVerify,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "code_expired",
+			},
+		)
 		BadRequest(c, "verification code has expired")
 		return
 	}
@@ -524,10 +854,25 @@ func (h *UserHandler) VerifyForgetPasswordCodeHandler(c *gin.Context) {
 	tokenPair, err := h.tokenManager.CreateTokenPair(user.ID, user.Username, isAdmin)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to generate token pair")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordResetVerify,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
-
+	auditLogFromContext(
+		c,
+		logger.AuditActionUserPasswordResetVerify,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"email": user.Email,
+		},
+	)
 	Created(c, "Verification successful", tokenPair)
 }
 
@@ -551,6 +896,14 @@ func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordChange,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -559,17 +912,41 @@ func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 	hashedPassword, err := auth.HashAndSaltPassword([]byte(request.Password))
 	if err != nil {
 		reqLog.Error().Err(err).Msg("error hashing password")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordChange,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
 	if err = h.svc.UpdateUserByID(&models.User{ID: userID, Password: hashedPassword}); err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionUserPasswordChange,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User is not found")
 			return
 		}
 
 		reqLog.Error().Err(err).Msg("failed to update password")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordChange,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -582,11 +959,28 @@ func (h *UserHandler) ChangePasswordHandler(c *gin.Context) {
 
 	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send password changed notification")
+		auditLogFromContext(
+			c,
+			logger.AuditActionUserPasswordChange,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionUserPasswordChange,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"status": "success",
+		},
+	)
 
 	OK(c, "Password is updated successfully", nil)
+
 }
 
 // @Summary Charge user balance
@@ -608,6 +1002,14 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 	var request ChargeBalanceInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceCharge,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -615,10 +1017,26 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionBalanceCharge,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User is not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to get user by id")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceCharge,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -629,10 +1047,26 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 		h.svc.IncrementStripePaymentFailure()
 
 		if stripeErr, ok := err.(*stripe.Error); ok {
+			auditLogFromContext(
+				c,
+				logger.AuditActionBalanceCharge,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": stripeErr.Code,
+				},
+			)
 			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			return
 		}
 
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceCharge,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -645,10 +1079,26 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 		h.svc.IncrementStripePaymentFailure()
 
 		if stripeErr, ok := err.(*stripe.Error); ok {
+			auditLogFromContext(
+				c,
+				logger.AuditActionBalanceCharge,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": stripeErr.Code,
+				},
+			)
 			Error(c, stripeErr.HTTPStatusCode, string(stripeErr.Code))
 			return
 		}
 
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceCharge,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -656,14 +1106,34 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncStripeChargeBalance(userID, user.StripeCustomerID, paymentMethod.ID, user.Mnemonic, user.Username, request.Amount)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create async stripe charge balance workflow")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceCharge,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
-	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
+	response := ChargeBalanceResponse{
 		WorkflowID: wfUUID,
 		Email:      user.Email,
-	})
+	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionBalanceCharge,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"workflow_id": response.WorkflowID,
+			"amount":      request.Amount,
+			"email":       response.Email,
+		},
+	)
+	Accepted(c, "Charge in progress. You can check its status using the workflow id.", response)
+
 }
 
 // @Summary Get user details
@@ -714,10 +1184,26 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionBalanceGet,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User is not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("User is not found")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceGet,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -725,6 +1211,14 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	usdMillicentBalance, err := h.svc.GetUserBalanceInUSDMillicent(user.Mnemonic)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get user balance in usd millicent")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceGet,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -732,10 +1226,27 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	pendingAmountInUSDMillicent, err := h.svc.GetUserPendingBalanceInUSDMillicent(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list pending records")
+		auditLogFromContext(
+			c,
+			logger.AuditActionBalanceGet,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(
+		c,
+		logger.AuditActionBalanceGet,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id": user.ID,
+			"email":   user.Email,
+		},
+	)
 	OK(c, "Balance is fetched", UserBalanceResponse{
 		BalanceUSD:        substrate.FromUSDMilliCentToUSD(usdMillicentBalance),
 		DebtUSD:           substrate.FromUSDMilliCentToUSD(user.Debt),
@@ -757,6 +1268,14 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 	voucherCodeParam := c.Param("voucher_code")
 	if voucherCodeParam == "" {
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "missing_voucher_code",
+			},
+		)
 		BadRequest(c, "Voucher Code is required")
 		return
 	}
@@ -766,10 +1285,26 @@ func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 	user, err := h.svc.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionVoucherRedeem,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "user_not_found",
+				},
+			)
 			NotFound(c, "User is not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("User is not found")
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -778,22 +1313,54 @@ func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 	voucher, err := h.svc.GetVoucherByCode(voucherCodeParam)
 	if err != nil {
 		if errors.Is(err, models.ErrVoucherNotFound) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionVoucherRedeem,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "voucher_not_found",
+				},
+			)
 			NotFound(c, "Voucher is not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("Voucher is not found")
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
 	// check voucher not redeemed
 	if voucher.Redeemed {
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "voucher_already_redeemed",
+			},
+		)
 		BadRequest(c, "Voucher is already redeemed")
 		return
 	}
 
 	// check on expiration time of voucher
 	if voucher.ExpiresAt.Before(time.Now()) {
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "voucher_expired",
+			},
+		)
 		BadRequest(c, "Voucher is already expired")
 		return
 	}
@@ -801,16 +1368,35 @@ func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncRedeemVoucher(user.ID, voucher.Value, user.Mnemonic, user.Username, voucher.Code)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to redeem voucher")
+		auditLogFromContext(
+			c,
+			logger.AuditActionVoucherRedeem,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
-	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
+	response := RedeemVoucherResponse{
 		WorkflowID:  wfUUID,
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
 		Email:       user.Email,
-	})
+	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionVoucherRedeem,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"workflow_id": response.WorkflowID,
+			"voucher":     response.VoucherCode,
+		},
+	)
+	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", response)
+
 }
 
 // @Summary List user SSH keys
@@ -829,6 +1415,14 @@ func (h *UserHandler) ListSSHKeysHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListSSHKeysHandler")
 	if userID == 0 {
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyList,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "user_not_authenticated",
+			},
+		)
 		Unauthorized(c, "user not authenticated")
 		return
 	}
@@ -836,9 +1430,23 @@ func (h *UserHandler) ListSSHKeysHandler(c *gin.Context) {
 	sshKeys, err := h.svc.ListUserSSHKeys(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list SSH keys")
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyList,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionSSHKeyList,
+		logger.AuditSeverityInfo,
+		nil,
+	)
 
 	OK(c, "SSH keys retrieved successfully", sshKeys)
 }
@@ -868,6 +1476,14 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 	var request SSHKeyInput
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyAdd,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_request_format",
+			},
+		)
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -875,6 +1491,14 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 	// Validate SSH key format
 	if _, _, _, _, err := ssh.ParseAuthorizedKey([]byte(request.PublicKey)); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid SSH key format")
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyAdd,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_ssh_key_format",
+			},
+		)
 		BadRequest(c, "Invalid SSH key format")
 		return
 	}
@@ -882,11 +1506,27 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 	sshKey, err := h.svc.CreateSSHKey(userID, request.Name, request.PublicKey)
 	if err != nil {
 		if errors.Is(err, models.ErrSSHKeyAlreadyExists) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionSSHKeyAdd,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "ssh_key_already_exists",
+				},
+			)
 			BadRequest(c, "SSH key name or public key already exists for this user.")
 			return
 		}
 
 		reqLog.Error().Err(err).Msg("failed to create SSH key")
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyAdd,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -899,10 +1539,17 @@ func (h *UserHandler) AddSSHKeyHandler(c *gin.Context) {
 
 	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send notification")
-		InternalServerError(c)
-		return
 	}
 
+	auditLogFromContext(
+		c,
+		logger.AuditActionSSHKeyAdd,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id":      userID,
+			"ssh_key_name": sshKey.Name,
+		},
+	)
 	Created(c, "SSH key added successfully", sshKey)
 }
 
@@ -925,12 +1572,28 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "DeleteSSHKeyHandler")
 	if userID == 0 {
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyDelete,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "user_not_authenticated",
+			},
+		)
 		Unauthorized(c, "user not authenticated")
 		return
 	}
 
 	sshKeyID := c.Param("ssh_key_id")
 	if sshKeyID == "" {
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyDelete,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "ssh_key_id_required",
+			},
+		)
 		BadRequest(c, "SSH key ID is required")
 		return
 	}
@@ -939,6 +1602,14 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	var keyID int
 	keyID, err := strconv.Atoi(sshKeyID)
 	if err != nil {
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyDelete,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "invalid_ssh_key_id_format",
+			},
+		)
 		BadRequest(c, "invalid SSH key ID format")
 		return
 	}
@@ -946,10 +1617,26 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	sshKeyName, err := h.svc.DeleteSSHKey(userID, keyID)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("no SSH key found with ID %d for user %d", keyID, userID) {
+			auditLogFromContext(
+				c,
+				logger.AuditActionSSHKeyDelete,
+				logger.AuditSeverityWarning,
+				map[string]any{
+					"reason": "ssh_key_not_found",
+				},
+			)
 			NotFound(c, "SSH key not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to delete SSH key")
+		auditLogFromContext(
+			c,
+			logger.AuditActionSSHKeyDelete,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -963,6 +1650,15 @@ func (h *UserHandler) DeleteSSHKeyHandler(c *gin.Context) {
 	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
 		reqLog.Error().Err(err).Msg("failed to send ssh key deleted notification")
 	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionSSHKeyDelete,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id":      userID,
+			"ssh_key_name": sshKeyName,
+		},
+	)
 
 	OK(c, "SSH key deleted successfully", nil)
 }
@@ -984,6 +1680,14 @@ func (h *UserHandler) GetWorkflowStatus(c *gin.Context) {
 
 	workflowID := c.Param("workflow_id")
 	if workflowID == "" {
+		auditLogFromContext(
+			c,
+			logger.AuditActionWorkflowStatusGet,
+			logger.AuditSeverityWarning,
+			map[string]any{
+				"reason": "workflow_id_required",
+			},
+		)
 		BadRequest(c, "Workflow ID is required")
 		return
 	}
@@ -991,10 +1695,26 @@ func (h *UserHandler) GetWorkflowStatus(c *gin.Context) {
 	workflowStatus, err := h.svc.GetWorkflowStatus(c.Request.Context(), workflowID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to load workflow by UUID")
+		auditLogFromContext(
+			c,
+			logger.AuditActionWorkflowStatusGet,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(
+		c,
+		logger.AuditActionWorkflowStatusGet,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"workflow_id": workflowID,
+		},
+	)
 	OK(c, "Status returned successfully", workflowStatus)
 }
 
@@ -1016,9 +1736,25 @@ func (h *UserHandler) ListUserPendingRecordsHandler(c *gin.Context) {
 	pendingRecordsWithUSDAmounts, err := h.svc.ListUserPendingRecordsWithUSDAmounts(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list pending records with usd amounts")
+		auditLogFromContext(
+			c,
+			logger.AuditActionPendingRecordsList,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionPendingRecordsList,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id": userID,
+		},
+	)
 
 	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsWithUSDAmounts,
@@ -1043,6 +1779,14 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 	workflows, err := h.svc.ListRemainingWorkflowsByUserID(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list user workflows")
+		auditLogFromContext(
+			c,
+			logger.AuditActionWorkflowList,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		InternalServerError(c)
 		return
 	}
@@ -1059,6 +1803,15 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 			TotalSteps:  len(workflow.Steps),
 		})
 	}
+	auditLogFromContext(
+		c,
+		logger.AuditActionWorkflowList,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id":          userID,
+			"workflows_length": len(workflows),
+		},
+	)
 
 	OK(c, "User workflows retrieved successfully", gin.H{
 		"workflows": userWorkflowsResponse,
@@ -1088,4 +1841,77 @@ func requestLogger(c *gin.Context, handlerName string) *zerolog.Logger {
 	requestID := getRequestID(c)
 	userID := c.GetInt("user_id")
 	return logger.ForRequest(userID, requestID, handlerName)
+}
+
+func auditLogFromContext(c *gin.Context, action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	actorType, actorMetadata := resolveActorFromContext(c)
+	auditLogWithActor(c, action, severity, metadata, actorType, actorMetadata)
+}
+
+func auditLogWithActor(
+	c *gin.Context,
+	action logger.AuditActionType,
+	severity logger.AuditSeverity,
+	metadata map[string]any,
+	actorType logger.AuditActorType,
+	actorMetadata map[string]any,
+) {
+	if metadata == nil {
+		metadata = map[string]any{}
+	}
+
+	opts := []logger.AuditEntryOption{
+		logger.WithAuditActionMetadata(metadata),
+		logger.WithAuditSeverity(severity),
+	}
+
+	if len(actorMetadata) > 0 {
+		opts = append(opts, logger.WithAuditActorMetadata(actorMetadata))
+	}
+
+	userAgent := ""
+	if c.Request != nil {
+		userAgent = c.Request.UserAgent()
+	}
+
+	logger.LogAudit(actorType, action, c.ClientIP(), userAgent, opts...)
+}
+
+func resolveActorFromContext(c *gin.Context) (logger.AuditActorType, map[string]any) {
+	actorType := logger.AuditActorSystem
+	actorMetadata := map[string]any{}
+
+	if raw, exists := c.Get("is_admin"); exists {
+		if isAdmin, ok := raw.(bool); ok && isAdmin {
+			actorType = logger.AuditActorAdmin
+			actorMetadata["is_admin"] = true
+		}
+	}
+
+	if raw, exists := c.Get("user_id"); exists {
+		switch v := raw.(type) {
+		case int:
+			if v != 0 {
+				actorMetadata["user_id"] = v
+				if actorType != logger.AuditActorAdmin {
+					actorType = logger.AuditActorUser
+				}
+			}
+		case int64:
+			if v != 0 {
+				actorMetadata["user_id"] = v
+				if actorType != logger.AuditActorAdmin {
+					actorType = logger.AuditActorUser
+				}
+			}
+		}
+	}
+
+	if raw, exists := c.Get("user_email"); exists {
+		if email, ok := raw.(string); ok && strings.TrimSpace(email) != "" {
+			actorMetadata["email"] = email
+		}
+	}
+
+	return actorType, actorMetadata
 }

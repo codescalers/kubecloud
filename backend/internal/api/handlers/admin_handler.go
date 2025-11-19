@@ -90,10 +90,16 @@ func (h *AdminHandler) ListUsersHandler(c *gin.Context) {
 	usersWithBalance, err := h.svc.ListAllUsersIncludingUSDBalance()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all users")
+		auditLogFromContext(c, logger.AuditActionAdminUsersList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminUsersList, logger.AuditSeverityInfo, map[string]any{
+		"count": len(usersWithBalance),
+	})
 	Success(c, http.StatusOK, "Users are retrieved successfully", map[string]interface{}{
 		"users": usersWithBalance,
 	})
@@ -119,6 +125,9 @@ func (h *AdminHandler) DeleteUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "DeleteUsersHandler")
 
 	if userID == "" {
+		auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "user_id_required",
+		})
 		BadRequest(c, "User ID is required")
 		return
 	}
@@ -126,11 +135,19 @@ func (h *AdminHandler) DeleteUsersHandler(c *gin.Context) {
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
 		reqLog.Error().Err(err).Msg("invalid user id to delete")
+		auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_user_id_format",
+		})
 		BadRequest(c, "Invalid user ID")
 		return
 	}
 
 	if id == authUserID {
+		auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason":   "admin_self_delete_forbidden",
+			"user_id":  id,
+			"admin_id": authUserID,
+		})
 		Forbidden(c, "Admins cannot delete their own account")
 		return
 	}
@@ -138,14 +155,25 @@ func (h *AdminHandler) DeleteUsersHandler(c *gin.Context) {
 	err = h.svc.DeleteUserByID(id)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
+			auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityWarning, map[string]any{
+				"reason":  "user_not_found",
+				"user_id": id,
+			})
 			NotFound(c, "User not found")
 			return
 		}
 		logger.GetLogger().Error().Err(err).Msg("failed to delete user by id")
+		auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": id,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminUserDelete, logger.AuditSeverityInfo, map[string]any{
+		"user_id": id,
+	})
 	OK(c, "User is deleted successfully", nil)
 }
 
@@ -170,6 +198,9 @@ func (h *AdminHandler) GenerateVouchersHandler(c *gin.Context) {
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
 		reqLog.Error().Err(err).Msg("Invalid request format")
+		auditLogFromContext(c, logger.AuditActionAdminVoucherGen, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_request_format",
+		})
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -177,6 +208,9 @@ func (h *AdminHandler) GenerateVouchersHandler(c *gin.Context) {
 	vouchers, err := h.svc.GenerateVouchers(request.Count, request.ExpireAfter, request.Value)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to generate vouchers")
+		auditLogFromContext(c, logger.AuditActionAdminVoucherGen, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -193,6 +227,10 @@ func (h *AdminHandler) GenerateVouchersHandler(c *gin.Context) {
 		reqLog.Error().Err(err).Msg("failed to send UI notification for voucher generation")
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminVoucherGen, logger.AuditSeverityInfo, map[string]any{
+		"count": request.Count,
+		"value": request.Value,
+	})
 	Created(c, "Vouchers are generated successfully", gin.H{
 		"vouchers": vouchers,
 	})
@@ -214,10 +252,16 @@ func (h *AdminHandler) ListVouchersHandler(c *gin.Context) {
 	vouchers, err := h.svc.ListAllVouchers()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all vouchers")
+		auditLogFromContext(c, logger.AuditActionAdminVoucherList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminVoucherList, logger.AuditSeverityInfo, map[string]any{
+		"count": len(vouchers),
+	})
 	OK(c, "Vouchers are retrieved successfully", gin.H{
 		"vouchers": vouchers,
 	})
@@ -246,6 +290,9 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 	var request CreditRequestInput
 	// check on request format
 	if err := c.ShouldBindJSON(&request); err != nil {
+		auditLogFromContext(c, logger.AuditActionAdminCreditUser, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_request_format",
+		})
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -253,6 +300,9 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
 		reqLog.Error().Err(err).Msg("invalid user ID format")
+		auditLogFromContext(c, logger.AuditActionAdminCreditUser, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_user_id_format",
+		})
 		BadRequest(c, "Invalid user ID format")
 		return
 	}
@@ -267,10 +317,18 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 
 	if err := h.svc.AsyncCreditUserUSD(&transaction); err != nil {
 		reqLog.Error().Err(err).Msg("failed to credit user")
+		auditLogFromContext(c, logger.AuditActionAdminCreditUser, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": id,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminCreditUser, logger.AuditSeverityInfo, map[string]any{
+		"user_id": id,
+		"amount":  request.AmountUSD,
+	})
 	Accepted(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
@@ -294,10 +352,16 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 	pendingRecordsResponse, err := h.svc.ListAllPendingRecordsWithUSDAmounts()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all pending records")
+		auditLogFromContext(c, logger.AuditActionAdminPendingList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminPendingList, logger.AuditSeverityInfo, map[string]any{
+		"count": len(pendingRecordsResponse),
+	})
 	OK(c, "Pending records are retrieved successfully", gin.H{
 		"pending_records": pendingRecordsResponse,
 	})
@@ -322,6 +386,9 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "SendMailToAllUsersHandler")
 	var input AdminMailInput
 	if err := c.ShouldBind(&input); err != nil {
+		auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_request_format",
+		})
 		BadRequest(c, "Invalid request format")
 		return
 	}
@@ -334,6 +401,9 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 			attachments, err = h.parseAttachments(uploaded)
 			if err != nil {
 				reqLog.Error().Err(err).Msg("failed to parse attachments")
+				auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityError, map[string]any{
+					"reason": err.Error(),
+				})
 				InternalServerError(c)
 				return
 			}
@@ -343,6 +413,9 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	users, err := h.svc.ListAllUsers()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all users")
+		auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -384,13 +457,23 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 
 	if responseData.SuccessfulEmails == 0 {
 		logger.GetLogger().Error().Msg("failed to send email to all users")
+		auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityError, map[string]any{
+			"reason": "all_emails_failed",
+		})
 		InternalServerError(c)
 		return
 	}
 	if responseData.FailedEmailsCount > 0 {
+		auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityWarning, map[string]any{
+			"successful": responseData.SuccessfulEmails,
+			"failed":     responseData.FailedEmailsCount,
+		})
 		OK(c, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
 		return
 	}
+	auditLogFromContext(c, logger.AuditActionAdminMailSend, logger.AuditSeverityInfo, map[string]any{
+		"successful": responseData.SuccessfulEmails,
+	})
 	OK(c, "Mail sent successfully to all users", responseData)
 }
 
@@ -450,16 +533,26 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
 		reqLog.Error().Err(err).Msg("invalid user ID format")
+		auditLogFromContext(c, logger.AuditActionAdminDrainUser, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_user_id_format",
+		})
 		BadRequest(c, "Invalid user ID format")
 		return
 	}
 
 	if err := h.svc.AsyncDrainUserUSD(id); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain user balance")
+		auditLogFromContext(c, logger.AuditActionAdminDrainUser, logger.AuditSeverityError, map[string]any{
+			"reason":  err.Error(),
+			"user_id": id,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminDrainUser, logger.AuditSeverityInfo, map[string]any{
+		"user_id": id,
+	})
 	Accepted(c, "User balance drain initiated, transfer in progress", nil)
 }
 
@@ -479,9 +572,15 @@ func (h *AdminHandler) DrainAllUsersHandler(c *gin.Context) {
 
 	if err := h.svc.AsyncDrainAllUsersUSD(); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain all users' balances")
+		auditLogFromContext(c, logger.AuditActionAdminDrainAllUsers, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionAdminDrainAllUsers, logger.AuditSeverityInfo, map[string]any{
+		"result": "drain_started",
+	})
 	Accepted(c, "All users' balance drain initiated, transfers in progress", nil)
 }

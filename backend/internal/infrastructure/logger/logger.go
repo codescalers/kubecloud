@@ -179,13 +179,9 @@ func ForOperation(component, operation string) *zerolog.Logger {
 
 // GetAuditLogger returns the dedicated audit logger instance.
 func GetAuditLogger() *zerolog.Logger {
-	once.Do(func() {
-		if instance == nil {
-			// Create a default logger if not initialized
-			instance = &LoggerInstance{
-				auditLogger: zerolog.New(io.Discard).With().Timestamp().Logger(),
-			}
-		}
-	})
+	if instance == nil {
+		logger := zerolog.New(io.Discard).With().Timestamp().Logger()
+		return &logger
+	}
 	return &instance.auditLogger
 }

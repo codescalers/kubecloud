@@ -31,29 +31,67 @@ type AuditActionType string
 
 const (
 	// Authentication / user lifecycle
-	AuditActionUserRegister AuditActionType = "user.register"
-	AuditActionUserLogin    AuditActionType = "user.login"
-	AuditActionUserLogout   AuditActionType = "user.logout"
-	AuditActionUserDelete   AuditActionType = "user.delete"
+	AuditActionUserRegister             AuditActionType = "user.register"
+	AuditActionUserLogin                AuditActionType = "user.login"
+	AuditActionUserLogout               AuditActionType = "user.logout"
+	AuditActionUserVerify               AuditActionType = "user.verify"
+	AuditActionUserPasswordChange       AuditActionType = "user.password_change"
+	AuditActionUserPasswordResetRequest AuditActionType = "user.password_reset.request"
+	AuditActionUserPasswordResetVerify  AuditActionType = "user.password_reset.verify"
+	AuditActionUserTokenRefresh         AuditActionType = "user.token_refresh"
+
+	// Notifications
+	AuditActionNotificationList       AuditActionType = "notification.list"
+	AuditActionNotificationRead       AuditActionType = "notification.read"
+	AuditActionNotificationDelete     AuditActionType = "notification.delete"
+	AuditActionNotificationMarkUnread AuditActionType = "notification.mark.unread"
+	AuditActionNotificationSend       AuditActionType = "notification.send"
 
 	// Billing / balance
-	AuditActionBalanceCharge AuditActionType = "balance.charge"
-	AuditActionVoucherRedeem AuditActionType = "voucher.redeem"
-	AuditActionVoucherCreate AuditActionType = "voucher.create"
+	AuditActionBalanceCharge      AuditActionType = "balance.charge"
+	AuditActionBalanceGet         AuditActionType = "balance.get"
+	AuditActionVoucherRedeem      AuditActionType = "voucher.redeem"
+	AuditActionVoucherCreate      AuditActionType = "voucher.create"
+	AuditActionInvoiceList        AuditActionType = "invoice.list"
+	AuditActionInvoiceDownload    AuditActionType = "invoice.download"
+	AuditActionPendingRecordsList AuditActionType = "pending_records.list"
 
-	// Clusters
-	AuditActionClusterCreate     AuditActionType = "cluster.create"
-	AuditActionClusterAddNode    AuditActionType = "cluster.add.node"
-	AuditActionClusterRemoveNode AuditActionType = "cluster.remove.node"
-	AuditActionClusterDelete     AuditActionType = "cluster.delete"
-	AuditActionClusterDeleteAll  AuditActionType = "cluster.delete.all"
+	// Deployments
+	AuditActionDeploymentList       AuditActionType = "deployment.list"
+	AuditActionDeploymentGet        AuditActionType = "deployment.get"
+	AuditActionDeploymentKubeconfig AuditActionType = "deployment.kubeconfig"
+	AuditActionDeploymentDeploy     AuditActionType = "deployment.deploy"
+	AuditActionDeploymentDelete     AuditActionType = "deployment.delete"
+	AuditActionDeploymentDeleteAll  AuditActionType = "deployment.delete_all"
+	AuditActionDeploymentAddNode    AuditActionType = "deployment.node.add"
+	AuditActionDeploymentRemoveNode AuditActionType = "deployment.node.remove"
 
 	// Nodes
-	AuditActionNodeReserve   AuditActionType = "node.reserve"
-	AuditActionNodeUnreserve AuditActionType = "node.unreserve"
+	AuditActionNodeReserve      AuditActionType = "node.reserve"
+	AuditActionNodeUnreserve    AuditActionType = "node.unreserve"
+	AuditActionNodeListRentable AuditActionType = "node.list.rentable"
 
 	// Admin operations
+	AuditActionAdminUsersList     AuditActionType = "admin.users.list"
+	AuditActionAdminUserDelete    AuditActionType = "admin.user.delete"
+	AuditActionAdminVoucherGen    AuditActionType = "admin.voucher.generate"
+	AuditActionAdminVoucherList   AuditActionType = "admin.voucher.list"
+	AuditActionAdminCreditUser    AuditActionType = "admin.user.credit"
+	AuditActionAdminPendingList   AuditActionType = "admin.pending.list"
+	AuditActionAdminMailSend      AuditActionType = "admin.mail.send"
+	AuditActionAdminDrainUser     AuditActionType = "admin.user.drain"
+	AuditActionAdminDrainAllUsers AuditActionType = "admin.users.drain_all"
 	AuditActionAdminCreditBalance AuditActionType = "admin.credit.balance"
+	AuditActionMaintenanceModeSet AuditActionType = "maintenance.mode.set"
+	AuditActionMaintenanceModeGet AuditActionType = "maintenance.mode.get"
+	// SSH Keys
+	AuditActionSSHKeyList   AuditActionType = "ssh_key.list"
+	AuditActionSSHKeyAdd    AuditActionType = "ssh_key.add"
+	AuditActionSSHKeyDelete AuditActionType = "ssh_key.delete"
+
+	// Workflows
+	AuditActionWorkflowStatusGet AuditActionType = "workflow.status.get"
+	AuditActionWorkflowList      AuditActionType = "workflow.user.list"
 )
 
 // AuditAction wraps the action type together with optional metadata.

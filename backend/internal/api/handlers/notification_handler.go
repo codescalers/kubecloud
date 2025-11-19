@@ -10,6 +10,7 @@ import (
 
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
+	"kubecloud/internal/infrastructure/logger"
 )
 
 const (
@@ -132,6 +133,9 @@ func validatePaginationParams(limitStr, offsetStr string) (int, int, error) {
 func (h *NotificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
@@ -143,6 +147,9 @@ func (h *NotificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 
 	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_pagination",
+		})
 		BadRequest(c, "Invalid pagination parameters")
 		return
 	}
@@ -150,6 +157,11 @@ func (h *NotificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 	notifications, err := h.svc.GetUserNotifications(userID, limit, offset)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve notifications")
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+			"limit":  limit,
+			"offset": offset,
+		})
 		InternalServerError(c)
 		return
 	}
@@ -159,6 +171,12 @@ func (h *NotificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 	for _, notification := range notifications {
 		response = append(response, convertToNotificationResponse(notification))
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityInfo, map[string]any{
+		"notifications_length": len(response),
+		"limit":                limit,
+		"offset":               offset,
+	})
 
 	OK(c, "Notifications retrieved successfully", gin.H{
 		"notifications": response,
@@ -184,11 +202,17 @@ func (h *NotificationHandler) GetAllNotificationsHandler(c *gin.Context) {
 func (h *NotificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_notification_id",
+		})
 		BadRequest(c, "Invalid notification ID")
 		return
 	}
@@ -200,13 +224,26 @@ func (h *NotificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 	err = h.svc.MarkNotificationAsRead(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
+			auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+				"reason": "notification_not_found",
+				"id":     notificationIDStr,
+			})
 			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to mark notification as read")
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+			"id":     notificationIDStr,
+		})
 		InternalServerError(c)
 		return
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityInfo, map[string]any{
+		"id":     notificationIDStr,
+		"result": "read",
+	})
 
 	OK(c, "Notification marked as read successfully", nil)
 }
@@ -225,6 +262,9 @@ func (h *NotificationHandler) MarkNotificationReadHandler(c *gin.Context) {
 func (h *NotificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
@@ -233,9 +273,16 @@ func (h *NotificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 	err = h.svc.MarkAllNotificationsAsRead(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to mark notifications as read")
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityInfo, map[string]any{
+		"result": "all_marked_read",
+	})
 
 	OK(c, "All notifications marked as read successfully", nil)
 }
@@ -256,12 +303,18 @@ func (h *NotificationHandler) MarkAllNotificationsReadHandler(c *gin.Context) {
 func (h *NotificationHandler) DeleteNotificationHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
 
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_notification_id",
+		})
 		BadRequest(c, "Invalid notification ID")
 		return
 	}
@@ -273,13 +326,26 @@ func (h *NotificationHandler) DeleteNotificationHandler(c *gin.Context) {
 	err = h.svc.DeleteNotification(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
+			auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityWarning, map[string]any{
+				"reason": "notification_not_found",
+				"id":     notificationIDStr,
+			})
 			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to delete notification")
+		auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+			"id":     notificationIDStr,
+		})
 		InternalServerError(c)
 		return
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityInfo, map[string]any{
+		"id":     notificationIDStr,
+		"result": "deleted",
+	})
 
 	OK(c, "Notification deleted successfully", nil)
 }
@@ -299,6 +365,9 @@ func (h *NotificationHandler) DeleteNotificationHandler(c *gin.Context) {
 func (h *NotificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
@@ -310,6 +379,9 @@ func (h *NotificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 
 	limit, offset, err := validatePaginationParams(limitStr, offsetStr)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_pagination",
+		})
 		BadRequest(c, "Invalid pagination parameters")
 		return
 	}
@@ -317,6 +389,9 @@ func (h *NotificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 	notifications, err := h.svc.GetUnreadNotifications(userID, limit, offset)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve unread notifications")
+		auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -326,6 +401,13 @@ func (h *NotificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 	for _, notification := range notifications {
 		response = append(response, convertToNotificationResponse(notification))
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationList, logger.AuditSeverityInfo, map[string]any{
+		"notifications_length": len(response),
+		"scope":                "unread",
+		"limit":                limit,
+		"offset":               offset,
+	})
 
 	OK(c, "Unread notifications retrieved successfully", gin.H{
 		"notifications": response,
@@ -348,6 +430,9 @@ func (h *NotificationHandler) GetUnreadNotificationsHandler(c *gin.Context) {
 func (h *NotificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
@@ -356,9 +441,16 @@ func (h *NotificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 	err = h.svc.DeleteAllNotifications(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to delete notifications")
+		auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
+
+	auditLogFromContext(c, logger.AuditActionNotificationDelete, logger.AuditSeverityInfo, map[string]any{
+		"result": "all_deleted",
+	})
 
 	OK(c, "All notifications deleted successfully", nil)
 }
@@ -379,11 +471,17 @@ func (h *NotificationHandler) DeleteAllNotificationsHandler(c *gin.Context) {
 func (h *NotificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+			"reason": "unauthorized_user",
+		})
 		Unauthorized(c, "Authentication required")
 		return
 	}
 	notificationIDStr := c.Param("notification_id")
 	if _, parseErr := uuid.Parse(notificationIDStr); parseErr != nil {
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_notification_id",
+		})
 		BadRequest(c, "Invalid notification ID")
 		return
 	}
@@ -395,13 +493,30 @@ func (h *NotificationHandler) MarkNotificationUnreadHandler(c *gin.Context) {
 	err = h.svc.MarkNotificationAsUnread(notificationIDStr, userID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotificationNotFound) {
+			auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityWarning, map[string]any{
+				"reason": "notification_not_found",
+				"id":     notificationIDStr,
+			})
 			NotFound(c, "Notification not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("failed to mark notification as unread")
+		auditLogFromContext(c, logger.AuditActionNotificationRead, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+			"id":     notificationIDStr,
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(
+		c,
+		logger.AuditActionNotificationMarkUnread,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"id":     notificationIDStr,
+			"result": "marked_unread",
+		},
+	)
 	OK(c, "Notification marked as unread successfully", nil)
 }

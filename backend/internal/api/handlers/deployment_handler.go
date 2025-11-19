@@ -9,6 +9,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/deployment/kubedeployer"
+	"kubecloud/internal/infrastructure/logger"
 )
 
 type DeploymentHandler struct {
@@ -73,6 +74,9 @@ func (h *DeploymentHandler) HandleListDeployments(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleListDeployments")
 	if userID == 0 {
+		auditLogFromContext(c, logger.AuditActionDeploymentList, logger.AuditSeverityWarning, map[string]any{
+			"reason": "user_not_authenticated",
+		})
 		Unauthorized(c, "user not authenticated")
 		return
 	}
@@ -80,10 +84,16 @@ func (h *DeploymentHandler) HandleListDeployments(c *gin.Context) {
 	deployments, err := h.svc.ListUserClustersData(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list user clusters")
+		auditLogFromContext(c, logger.AuditActionDeploymentList, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentList, logger.AuditSeverityInfo, map[string]any{
+		"count": len(deployments),
+	})
 	OK(c, "Deployments retrieved successfully", gin.H{
 		"deployments": deployments,
 		"count":       len(deployments),
@@ -106,12 +116,18 @@ func (h *DeploymentHandler) HandleGetDeployment(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleGetDeployment")
 	if userID == 0 {
+		auditLogFromContext(c, logger.AuditActionDeploymentGet, logger.AuditSeverityWarning, map[string]any{
+			"reason": "user_not_authenticated",
+		})
 		Unauthorized(c, "unauthorized")
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
+		auditLogFromContext(c, logger.AuditActionDeploymentGet, logger.AuditSeverityWarning, map[string]any{
+			"reason": "project_name_required",
+		})
 		BadRequest(c, "Project name is required")
 		return
 	}
@@ -124,15 +140,24 @@ func (h *DeploymentHandler) HandleGetDeployment(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
+			auditLogFromContext(c, logger.AuditActionDeploymentGet, logger.AuditSeverityWarning, map[string]any{
+				"reason": "deployment_not_found",
+			})
 			NotFound(c, "Deployment not found")
 			return
 		}
 
 		reqLog.Error().Err(err).Msg("Database error when looking up deployment")
+		auditLogFromContext(c, logger.AuditActionDeploymentGet, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentGet, logger.AuditSeverityInfo, map[string]any{
+		"project_name": projectName,
+	})
 	OK(c, "Deployment details retrieved successfully", cluster)
 }
 
@@ -152,12 +177,18 @@ func (h *DeploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "HandleGetKubeconfig")
 	if userID == 0 {
+		auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityWarning, map[string]any{
+			"reason": "user_not_authenticated",
+		})
 		Unauthorized(c, "User not authenticated")
 		return
 	}
 
 	projectName := c.Param("name")
 	if projectName == "" {
+		auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityWarning, map[string]any{
+			"reason": "project_name_required",
+		})
 		BadRequest(c, "Project name is required")
 		return
 	}
@@ -170,10 +201,16 @@ func (h *DeploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
+			auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityWarning, map[string]any{
+				"reason": "deployment_not_found",
+			})
 			NotFound(c, "Deployment not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("Database error when looking up deployment for kubeconfig")
+		auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -181,10 +218,16 @@ func (h *DeploymentHandler) HandleGetKubeconfig(c *gin.Context) {
 	kubeconfig, err := h.svc.GetClusterKubeconfig(c.Request.Context(), &cluster)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to retrieve kubeconfig")
+		auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentKubeconfig, logger.AuditSeverityInfo, map[string]any{
+		"project_name": projectName,
+	})
 	OK(c, "Kubeconfig retrieved successfully", gin.H{"kubeconfig": kubeconfig})
 }
 
@@ -207,17 +250,26 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 	config, err := h.svc.GetClientConfig(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get client config")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_request_format",
+		})
 		BadRequest(c, "Invalid request json format")
 		return
 	}
 
 	if err := cluster.Validate(); err != nil {
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityWarning, map[string]any{
+			"reason": "validation_failed",
+		})
 		BadRequest(c, "Validation failed: "+err.Error())
 		return
 	}
@@ -229,10 +281,16 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 	// check if deployment already exists
 	_, err = h.svc.GetClusterByName(config.UserID, projectName)
 	if err == nil {
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityWarning, map[string]any{
+			"reason": "deployment_exists",
+		})
 		Conflict(c, "Deployment already exists")
 		return
 	} else if !errors.Is(err, models.ErrClusterNotFound) {
 		reqLog.Error().Err(err).Msg("Database error when checking for existing deployment")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -240,10 +298,18 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncDeployCluster(config, cluster)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start deployment workflow")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentDeploy, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id":  wfUUID,
+		"status":       string(wfStatus),
+		"project_name": projectName,
+	})
 	Accepted(c, "Deployment workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wfUUID, Status: string(wfStatus)})
 }
 
@@ -266,12 +332,18 @@ func (h *DeploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	config, err := h.svc.GetClientConfig(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get client config")
+		auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
 	deploymentName := c.Param("name")
 	if deploymentName == "" {
+		auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityWarning, map[string]any{
+			"reason": "deployment_name_required",
+		})
 		BadRequest(c, "Deployment name is required")
 		return
 	}
@@ -283,9 +355,15 @@ func (h *DeploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	_, err = h.svc.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
+			auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityWarning, map[string]any{
+				"reason": "deployment_not_found",
+			})
 			NotFound(c, "Deployment not found")
 		} else {
 			reqLog.Error().Err(err).Msg("Database error when looking up deployment for deletion")
+			auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityError, map[string]any{
+				"reason": err.Error(),
+			})
 			InternalServerError(c)
 		}
 		return
@@ -294,10 +372,18 @@ func (h *DeploymentHandler) HandleDeleteCluster(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncDeleteCluster(config, projectName)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start deployment deletion workflow")
+		auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentDelete, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id":  wfUUID,
+		"status":       string(wfStatus),
+		"project_name": projectName,
+	})
 	Accepted(c, "Deployment deletion workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wfUUID, Status: string(wfStatus)})
 }
 
@@ -317,6 +403,9 @@ func (h *DeploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 	config, err := h.svc.GetClientConfig(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get client config")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeleteAll, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -324,11 +413,17 @@ func (h *DeploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 	clusters, err := h.svc.ListUserClusters(config.UserID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("Failed to list user clusters for deletion")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeleteAll, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
 	if len(clusters) == 0 {
+		auditLogFromContext(c, logger.AuditActionDeploymentDeleteAll, logger.AuditSeverityInfo, map[string]any{
+			"result": "no_deployments",
+		})
 		OK(c, "No deployments found to delete", nil)
 		return
 	}
@@ -336,10 +431,18 @@ func (h *DeploymentHandler) HandleDeleteAllDeployments(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncDeleteAllClusters(config)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start delete all deployments workflow")
+		auditLogFromContext(c, logger.AuditActionDeploymentDeleteAll, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentDeleteAll, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id": wfUUID,
+		"status":      string(wfStatus),
+		"count":       len(clusters),
+	})
 	Accepted(c, "Delete all deployments workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wfUUID, Status: string(wfStatus)})
 }
 
@@ -363,12 +466,18 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	config, err := h.svc.GetClientConfig(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get client config")
+		auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
 	var cluster kubedeployer.Cluster
 	if err := c.ShouldBindJSON(&cluster); err != nil {
+		auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityWarning, map[string]any{
+			"reason": "invalid_request_format",
+		})
 		BadRequest(c, "Invalid request json format")
 		return
 	}
@@ -379,10 +488,16 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	existingCluster, err := h.svc.GetClusterByName(config.UserID, projectName)
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
+			auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityWarning, map[string]any{
+				"reason": "deployment_not_found",
+			})
 			NotFound(c, "Deployment not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("Database error when looking up deployment for adding node")
+		auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -390,6 +505,9 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	cl, err := existingCluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", existingCluster.ID).Msg("Failed to deserialize cluster result")
+		auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -399,11 +517,19 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 
 	for _, node := range cl.Nodes {
 		if node.OriginalName == cluster.Nodes[0].OriginalName {
+			auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityWarning, map[string]any{
+				"reason": "node_name_exists",
+				"name":   cluster.Nodes[0].OriginalName,
+			})
 			Conflict(c, "Node with the same name already exists")
 			return
 		}
 
 		if node.NodeID == cluster.Nodes[0].NodeID {
+			auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityWarning, map[string]any{
+				"reason":  "node_id_exists",
+				"node_id": node.NodeID,
+			})
 			Conflict(c, fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID))
 			return
 		}
@@ -412,10 +538,19 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncAddNode(config, cl, cluster.Nodes[0])
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start add node workflow")
+		auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentAddNode, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id":  wfUUID,
+		"status":       string(wfStatus),
+		"project_name": projectName,
+		"node_name":    cluster.Nodes[0].OriginalName,
+	})
 	Accepted(c, "Node addition workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wfUUID, Status: string(wfStatus)})
 }
 
@@ -439,6 +574,9 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	config, err := h.svc.GetClientConfig(userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to get client config")
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -447,11 +585,17 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	nodeName := c.Param("node_name")
 
 	if deploymentName == "" {
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityWarning, map[string]any{
+			"reason": "deployment_name_required",
+		})
 		BadRequest(c, "Deployment name is required")
 		return
 	}
 
 	if nodeName == "" {
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityWarning, map[string]any{
+			"reason": "node_name_required",
+		})
 		BadRequest(c, "Node name is required")
 		return
 	}
@@ -467,10 +611,16 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, models.ErrClusterNotFound) {
 			reqLog.Error().Err(err).Msg("Deployment not found")
+			auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityWarning, map[string]any{
+				"reason": "deployment_not_found",
+			})
 			NotFound(c, "Deployment not found")
 			return
 		}
 		reqLog.Error().Err(err).Msg("Database error when looking up deployment for node removal")
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -478,6 +628,9 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	cl, err := cluster.GetClusterResult()
 	if err != nil {
 		reqLog.Error().Err(err).Int("cluster_id", cluster.ID).Msg("Failed to deserialize cluster result")
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
@@ -490,6 +643,10 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	}
 
 	if !nodeExists {
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityWarning, map[string]any{
+			"reason": "node_not_found",
+			"node":   nodeName,
+		})
 		NotFound(c, fmt.Sprintf("node %q not found in cluster %q", nodeName, deploymentName))
 		return
 	}
@@ -497,9 +654,18 @@ func (h *DeploymentHandler) HandleRemoveNode(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncRemoveNode(config, cl, nodeName)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start remove node workflow")
+		auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityError, map[string]any{
+			"reason": err.Error(),
+		})
 		InternalServerError(c)
 		return
 	}
 
+	auditLogFromContext(c, logger.AuditActionDeploymentRemoveNode, logger.AuditSeverityInfo, map[string]any{
+		"workflow_id":  wfUUID,
+		"status":       string(wfStatus),
+		"project_name": projectName,
+		"node_name":    nodeName,
+	})
 	Accepted(c, "Node removal workflow started successfully", DeploymentWorkflowResponse{WorkflowID: wfUUID, Status: string(wfStatus)})
 }
