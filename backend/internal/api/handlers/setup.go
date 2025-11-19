@@ -6,8 +6,8 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/persistence"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"os"
 	"os/exec"
@@ -19,16 +19,18 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 type setup struct {
-	tokenManager    auth.TokenManager
-	substrateClient substrate.Substrate
-	router          *gin.Engine
+	tokenManager auth.TokenManager
+	gridClient   deployer.TFPluginClient
+	router       *gin.Engine
 
-	userRepo     models.UserRepository
-	voucherRepo  models.VoucherRepository
-	invoicesRepo models.InvoiceRepository
+	userRepo           models.UserRepository
+	voucherRepo        models.VoucherRepository
+	invoicesRepo       models.InvoiceRepository
+	termsAndConditions cfg.TermsANDConditions
 }
 
 func SetUp(t testing.TB) (setup, error) {
@@ -140,9 +142,8 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	substrateClient, err := substrate.NewTFChainClient(
-		configuration.SystemAccount.Network, configuration.SystemAccount.Mnemonic,
-		configuration.TermsANDConditions.DocumentLink, configuration.TermsANDConditions.DocumentHash,
+	gridClient, err := deployer.NewTFPluginClient(
+		configuration.SystemAccount.Mnemonic, deployer.WithNetwork(configuration.SystemAccount.Network),
 	)
 	if err != nil {
 		return setup{}, err
@@ -173,17 +174,18 @@ func SetUp(t testing.TB) (setup, error) {
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()
-		substrateClient.Close()
+		gridClient.Close()
 	})
 
 	return setup{
-		tokenManager:    tokenManager,
-		substrateClient: substrateClient,
-		router:          router,
+		tokenManager: tokenManager,
+		gridClient:   gridClient,
+		router:       router,
 
-		userRepo:     corepersistence.NewGormUserRepository(db),
-		voucherRepo:  corepersistence.NewGormVoucherRepository(db),
-		invoicesRepo: corepersistence.NewGormInvoiceRepository(db),
+		userRepo:           corepersistence.NewGormUserRepository(db),
+		voucherRepo:        corepersistence.NewGormVoucherRepository(db),
+		invoicesRepo:       corepersistence.NewGormInvoiceRepository(db),
+		termsAndConditions: configuration.TermsANDConditions,
 	}, nil
 }
 
@@ -200,7 +202,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := s.substrateClient.SetupUserOnTFChain()
+		mnemonic, _, err := workflows.SetupUserOnTFChain(s.gridClient, s.termsAndConditions, s.gridClient.Network)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
