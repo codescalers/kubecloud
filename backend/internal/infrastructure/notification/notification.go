@@ -98,6 +98,16 @@ func (s *NotificationDispatcher) GetNotifiers() map[string]Notifier {
 
 func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.Notification) error {
 	s.applyTemplateFallbacks(notification)
+	logger.LogAudit(
+		logger.AuditActorSystem,
+		logger.AuditActionNotificationSend,
+		"",
+		"",
+		logger.WithAuditSeverity(logger.AuditSeverityInfo),
+		logger.WithAuditActionMetadata(map[string]any{
+			"notification_id": notification.ID,
+		}),
+	)
 
 	// Persist only Email notifications (not UI-only ephemeral messages)
 	if notification.Persist && s.hasChannel(notification, ChannelEmail) {
@@ -115,12 +125,36 @@ func (s *NotificationDispatcher) Send(ctx context.Context, notification *models.
 		notifier, ok := s.notifiers[channel]
 		if !ok {
 			logger.GetLogger().Warn().Str("channel", channel).Msg("notifier not registered for channel")
+			logger.LogAudit(
+				logger.AuditActorSystem,
+				logger.AuditActionNotificationSend,
+				"",
+				"",
+				logger.WithAuditSeverity(logger.AuditSeverityWarning),
+				logger.WithAuditActionMetadata(map[string]any{
+					"notification_id": notification.ID,
+					"channel":         channel,
+					"reason":          "notifier not registered for channel",
+				}),
+			)
 			continue
 		}
 
 		// Each notifier is responsible for its own delivery strategy
 		if err := notifier.Notify(notification); err != nil {
 			logger.GetLogger().Error().Err(err).Str("channel", channel).Msg("failed to send notification")
+			logger.LogAudit(
+				logger.AuditActorSystem,
+				logger.AuditActionNotificationSend,
+				"",
+				"",
+				logger.WithAuditSeverity(logger.AuditSeverityError),
+				logger.WithAuditActionMetadata(map[string]any{
+					"notification_id": notification.ID,
+					"channel":         channel,
+					"reason":          err.Error(),
+				}),
+			)
 		}
 	}
 

@@ -126,16 +126,40 @@ func (svc *AdminService) DeleteUserByID(userID int) error {
 
 func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) error {
 	if err := svc.transRepo.CreateTransaction(transaction); err != nil {
+		auditAdminService(
+			logger.AuditActionAdminCreditUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": transaction.UserID,
+				"reason":  err.Error(),
+			},
+		)
 		return err
 	}
 
 	user, err := svc.userRepo.GetUserByID(transaction.UserID)
 	if err != nil {
+		auditAdminService(
+			logger.AuditActionAdminCreditUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": transaction.UserID,
+				"reason":  err.Error(),
+			},
+		)
 		return err
 	}
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance)
 	if err != nil {
+		auditAdminService(
+			logger.AuditActionAdminCreditUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": transaction.UserID,
+				"reason":  err.Error(),
+			},
+		)
 		return err
 	}
 
@@ -149,10 +173,40 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 	}
 
 	if err = persistence.SetStateUserID(&wf, transaction.AdminID); err != nil {
+		auditAdminService(
+			logger.AuditActionAdminCreditUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": transaction.UserID,
+				"reason":  err.Error(),
+			},
+		)
 		return err
 	}
 
-	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
+	if err := svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		auditAdminService(
+			logger.AuditActionAdminCreditUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": transaction.UserID,
+				"reason":  err.Error(),
+			},
+		)
+		return err
+	}
+
+	auditAdminService(
+		logger.AuditActionAdminCreditUser,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id":       transaction.UserID,
+			"admin_id":      transaction.AdminID,
+			"amount":        transaction.Amount,
+			"workflow_name": workflows.WorkflowAdminCreditBalance,
+		},
+	)
+	return nil
 }
 
 func (svc *AdminService) GenerateVouchers(count, expireAfterDays int, voucherValue float64) ([]models.Voucher, error) {
@@ -167,11 +221,27 @@ func (svc *AdminService) GenerateVouchers(count, expireAfterDays int, voucherVal
 		}
 
 		if err := svc.voucherRepo.CreateVoucher(&voucher); err != nil {
+			auditAdminService(
+				logger.AuditActionAdminVoucherGen,
+				logger.AuditSeverityError,
+				map[string]any{
+					"reason": err.Error(),
+				},
+			)
 			return nil, err
 		}
 		vouchers = append(vouchers, voucher)
 	}
 
+	auditAdminService(
+		logger.AuditActionAdminVoucherGen,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"count":       len(vouchers),
+			"value":       voucherValue,
+			"expiry_days": expireAfterDays,
+		},
+	)
 	return vouchers, nil
 }
 
@@ -217,6 +287,14 @@ func (svc *AdminService) generateVoucherWithTimestamp() string {
 func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser)
 	if err != nil {
+		auditAdminService(
+			logger.AuditActionAdminDrainUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": userID,
+				"reason":  err.Error(),
+			},
+		)
 		return err
 	}
 
@@ -224,22 +302,58 @@ func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
 		"user_id": userID,
 	}
 
-	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
+	if err := svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		auditAdminService(
+			logger.AuditActionAdminDrainUser,
+			logger.AuditSeverityError,
+			map[string]any{
+				"user_id": userID,
+				"reason":  err.Error(),
+			},
+		)
+		return err
+	}
+
+	auditAdminService(
+		logger.AuditActionAdminDrainUser,
+		logger.AuditSeverityInfo,
+		map[string]any{
+			"user_id": userID,
+			"result":  "drain_workflow_started",
+		},
+	)
+	return nil
 }
 
 // AsyncDrainAllUsersUSD drains all users' balances to the system account
 func (svc *AdminService) AsyncDrainAllUsersUSD() error {
 	users, err := svc.ListAllUsers()
 	if err != nil {
+		auditAdminService(
+			logger.AuditActionAdminDrainAllUsers,
+			logger.AuditSeverityError,
+			map[string]any{
+				"reason": err.Error(),
+			},
+		)
 		return err
 	}
 
 	var multiErr *multierror.Error
+	successCount := 0
 
 	for _, user := range users {
 		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
+			auditAdminService(
+				logger.AuditActionAdminDrainAllUsers,
+				logger.AuditSeverityError,
+				map[string]any{
+					"user_id": user.ID,
+					"reason":  err.Error(),
+				},
+			)
 			continue
 		}
 
@@ -249,8 +363,39 @@ func (svc *AdminService) AsyncDrainAllUsersUSD() error {
 
 		if err := svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
 			multiErr = multierror.Append(multiErr, err)
+			auditAdminService(
+				logger.AuditActionAdminDrainAllUsers,
+				logger.AuditSeverityError,
+				map[string]any{
+					"user_id": user.ID,
+					"reason":  err.Error(),
+				},
+			)
+			continue
 		}
+		successCount++
+	}
+
+	if successCount > 0 {
+		auditAdminService(
+			logger.AuditActionAdminDrainAllUsers,
+			logger.AuditSeverityInfo,
+			map[string]any{
+				"processed": successCount,
+				"total":     len(users),
+			},
+		)
 	}
 
 	return multiErr.ErrorOrNil()
+}
+
+func auditAdminService(action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	opts := []logger.AuditEntryOption{
+		logger.WithAuditSeverity(severity),
+	}
+	if len(metadata) > 0 {
+		opts = append(opts, logger.WithAuditActionMetadata(metadata))
+	}
+	logger.LogAudit(logger.AuditActorAdmin, action, "", "", opts...)
 }

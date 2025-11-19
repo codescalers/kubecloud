@@ -71,6 +71,9 @@ const (
 	AuditActionNodeUnreserve    AuditActionType = "node.unreserve"
 	AuditActionNodeListRentable AuditActionType = "node.list.rentable"
 
+	// Stats
+	AuditActionStatsGet AuditActionType = "stats.get"
+
 	// Workers
 	AuditActionWorkerInvoiceProcess AuditActionType = "worker.invoice.process"
 	AuditActionWorkerInvoiceCreate  AuditActionType = "worker.invoice.create"

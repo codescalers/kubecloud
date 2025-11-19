@@ -8,6 +8,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/substrate"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -165,6 +166,11 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode, ewf.WithQueue(queueName))
 	if err != nil {
+		logNodeAudit(logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"node_id": nodeID,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
@@ -176,12 +182,28 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		logNodeAudit(logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"node_id": nodeID,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		logNodeAudit(logger.AuditActionNodeReserve, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"node_id": nodeID,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
+
+	logNodeAudit(logger.AuditActionNodeReserve, logger.AuditSeverityInfo, map[string]any{
+		"user_id":     userID,
+		"node_id":     nodeID,
+		"workflow_id": wf.UUID,
+	})
 
 	return wf.UUID, nil
 }
@@ -191,6 +213,12 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode, ewf.WithQueue(queueName))
 	if err != nil {
+		logNodeAudit(logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"user_id":     userID,
+			"node_id":     nodeID,
+			"contract_id": contractID,
+			"reason":      err.Error(),
+		})
 		return "", err
 	}
 
@@ -203,12 +231,31 @@ func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, cont
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		logNodeAudit(logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"user_id":     userID,
+			"node_id":     nodeID,
+			"contract_id": contractID,
+			"reason":      err.Error(),
+		})
 		return "", err
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		logNodeAudit(logger.AuditActionNodeUnreserve, logger.AuditSeverityError, map[string]any{
+			"user_id":     userID,
+			"node_id":     nodeID,
+			"contract_id": contractID,
+			"reason":      err.Error(),
+		})
 		return "", err
 	}
+
+	logNodeAudit(logger.AuditActionNodeUnreserve, logger.AuditSeverityInfo, map[string]any{
+		"user_id":     userID,
+		"node_id":     nodeID,
+		"contract_id": contractID,
+		"workflow_id": wf.UUID,
+	})
 
 	return wf.UUID, nil
 }
@@ -228,4 +275,14 @@ func (svc *NodeService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 	}
 
 	return svc.ewfEngine.Run(svc.appCtx, *wf)
+}
+
+func logNodeAudit(action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	opts := []logger.AuditEntryOption{
+		logger.WithAuditSeverity(severity),
+	}
+	if len(metadata) > 0 {
+		opts = append(opts, logger.WithAuditActionMetadata(metadata))
+	}
+	logger.LogAudit(logger.AuditActorUser, action, "", "", opts...)
 }

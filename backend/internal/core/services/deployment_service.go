@@ -10,6 +10,7 @@ import (
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
+	"kubecloud/internal/infrastructure/logger"
 	"os"
 	"time"
 
@@ -169,20 +170,46 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 
 func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State) (string, ewf.WorkflowStatus, error) {
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+	action := deploymentActionForWorkflow(workflowName)
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflowName, ewf.WithQueue(queueName))
 	if err != nil {
+		auditDeploymentAction(action, logger.AuditSeverityError, map[string]any{
+			"user_id":  userID,
+			"workflow": workflowName,
+			"reason":   err.Error(),
+		})
 		return "", "", err
 	}
 
 	wf.State = state
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		auditDeploymentAction(action, logger.AuditSeverityError, map[string]any{
+			"user_id":  userID,
+			"workflow": workflowName,
+			"reason":   err.Error(),
+		})
 		return "", "", err
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		auditDeploymentAction(action, logger.AuditSeverityError, map[string]any{
+			"user_id":  userID,
+			"workflow": workflowName,
+			"reason":   err.Error(),
+		})
 		return "", "", err
+	}
+
+	if action != "" {
+		meta := map[string]any{
+			"user_id":     userID,
+			"workflow_id": wf.UUID,
+			"status":      wf.Status,
+			"workflow":    workflowName,
+		}
+		auditDeploymentAction(action, logger.AuditSeverityInfo, meta)
 	}
 
 	return wf.UUID, wf.Status, nil
@@ -224,6 +251,7 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"cluster": cl,
 		"node":    node,
 	}
+
 	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state)
 }
 
@@ -236,4 +264,34 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 	}
 
 	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state)
+}
+
+func auditDeploymentAction(action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	if action == "" {
+		return
+	}
+	opts := []logger.AuditEntryOption{
+		logger.WithAuditSeverity(severity),
+	}
+	if len(metadata) > 0 {
+		opts = append(opts, logger.WithAuditActionMetadata(metadata))
+	}
+	logger.LogAudit(logger.AuditActorUser, action, "", "", opts...)
+}
+
+func deploymentActionForWorkflow(workflowName string) logger.AuditActionType {
+	switch workflowName {
+	case workflows.WorkflowDeployCluster:
+		return logger.AuditActionDeploymentDeploy
+	case workflows.WorkflowDeleteCluster:
+		return logger.AuditActionDeploymentDelete
+	case workflows.WorkflowDeleteAllClusters:
+		return logger.AuditActionDeploymentDeleteAll
+	case workflows.WorkflowAddNode:
+		return logger.AuditActionDeploymentAddNode
+	case workflows.WorkflowRemoveNode:
+		return logger.AuditActionDeploymentRemoveNode
+	default:
+		return ""
+	}
 }

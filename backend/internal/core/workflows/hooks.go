@@ -254,3 +254,63 @@ func metricsFailureHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 		}
 	}
 }
+
+// extractAuditMetadata adds user and workflow context to metadata
+func extractAuditMetadata(state ewf.State, metadata map[string]any) {
+	if config, err := getConfig(state); err == nil {
+		metadata["user_id"] = config.UserID
+	}
+
+	if cluster, err := statemanager.GetCluster(state); err == nil {
+		metadata["project_name"] = cluster.ProjectName
+	} else if projectName, err := getFromState[string](state, "project_name"); err == nil {
+		metadata["project_name"] = projectName
+	}
+
+	if nodeID, err := getFromState[uint32](state, "node_id"); err == nil {
+		metadata["node_id"] = nodeID
+	}
+
+	if contractID, err := getFromState[uint64](state, "contract_id"); err == nil {
+		metadata["contract_id"] = contractID
+	}
+}
+
+// logAuditEvent logs an audit event with enriched metadata
+func logAuditEvent(state ewf.State, action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	extractAuditMetadata(state, metadata)
+	logger.LogAudit(logger.AuditActorSystem, action, "", "",
+		logger.WithAuditSeverity(severity),
+		logger.WithAuditActionMetadata(metadata))
+}
+
+func auditWorkflow(action logger.AuditActionType) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, err error) {
+		metadata := map[string]any{"workflow": wf.Name}
+		severity := logger.AuditSeverityInfo
+
+		if err != nil {
+			metadata["error"] = err.Error()
+			severity = logger.AuditSeverityError
+		}
+
+		logAuditEvent(wf.State, action, severity, metadata)
+	}
+}
+
+func auditStep(action logger.AuditActionType) ewf.AfterStepHook {
+	return func(ctx context.Context, wf *ewf.Workflow, step *ewf.Step, err error) {
+		metadata := map[string]any{
+			"workflow": wf.Name,
+			"step":     step.Name,
+		}
+		severity := logger.AuditSeverityInfo
+
+		if err != nil {
+			metadata["error"] = err.Error()
+			severity = logger.AuditSeverityError
+		}
+
+		logAuditEvent(wf.State, action, severity, metadata)
+	}
+}

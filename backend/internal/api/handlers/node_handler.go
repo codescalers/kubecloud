@@ -378,7 +378,7 @@ func (h *NodeHandler) ListRentableNodesHandler(c *gin.Context) {
 		reqLog.Error().Err(err).Msg("failed to retrieve nodes")
 		auditLogFromContext(
 			c,
-			logger.AuditActionNodeReserve,
+			logger.AuditActionNodeListRentable,
 			logger.AuditSeverityError,
 			map[string]any{
 				"reason": "failed_to_get_rentable_nodes",

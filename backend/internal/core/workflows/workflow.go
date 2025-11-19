@@ -6,6 +6,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/kyc"
+	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
@@ -91,6 +92,10 @@ func RegisterEWFWorkflows(
 			BackOff:     ewf.ConstantBackoff(2 * time.Second),
 		}},
 	}
+	registerWorkflowTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionUserRegister),
+	}
+	registerWorkflowTemplate.AfterWorkflowHooks = append(registerWorkflowTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionUserRegister))
 	engine.RegisterTemplate(WorkflowUserRegistration, &registerWorkflowTemplate)
 
 	userVerificationTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -112,7 +117,10 @@ func RegisterEWFWorkflows(
 			BackOff:     ewf.ConstantBackoff(2 * time.Second),
 		}},
 	}
-
+	userVerificationTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionUserVerify),
+	}
+	userVerificationTemplate.AfterWorkflowHooks = append(userVerificationTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionUserVerify))
 	engine.RegisterTemplate(WorkflowUserVerification, &userVerificationTemplate)
 
 	chargeBalanceTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -121,6 +129,10 @@ func RegisterEWFWorkflows(
 		{Name: StepUpdateCreditCardBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
+	chargeBalanceTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionBalanceCharge),
+	}
+	chargeBalanceTemplate.AfterWorkflowHooks = append(chargeBalanceTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionBalanceCharge))
 	engine.RegisterTemplate(WorkflowChargeBalance, &chargeBalanceTemplate)
 
 	adminCreditBalanceTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -128,6 +140,10 @@ func RegisterEWFWorkflows(
 		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
+	adminCreditBalanceTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionAdminCreditBalance),
+	}
+	adminCreditBalanceTemplate.AfterWorkflowHooks = append(adminCreditBalanceTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionAdminCreditBalance))
 	engine.RegisterTemplate(WorkflowAdminCreditBalance, &adminCreditBalanceTemplate)
 
 	redeemVoucherTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -135,6 +151,10 @@ func RegisterEWFWorkflows(
 		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
+	redeemVoucherTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionVoucherRedeem),
+	}
+	redeemVoucherTemplate.AfterWorkflowHooks = append(redeemVoucherTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionVoucherRedeem))
 	engine.RegisterTemplate(WorkflowRedeemVoucher, &redeemVoucherTemplate)
 
 	reserveNodeTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -142,6 +162,10 @@ func RegisterEWFWorkflows(
 		{Name: StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
+	reserveNodeTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionNodeReserve),
+	}
+	reserveNodeTemplate.AfterWorkflowHooks = append(reserveNodeTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionNodeReserve))
 	engine.RegisterTemplate(WorkflowReserveNode, &reserveNodeTemplate)
 
 	unreserveNodeTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -149,6 +173,10 @@ func RegisterEWFWorkflows(
 		{Name: StepUnreserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
+	unreserveNodeTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionNodeUnreserve),
+	}
+	unreserveNodeTemplate.AfterWorkflowHooks = append(unreserveNodeTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionNodeUnreserve))
 	engine.RegisterTemplate(WorkflowUnreserveNode, &unreserveNodeTemplate)
 
 	trackClusterHealthWFTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -176,6 +204,10 @@ func RegisterEWFWorkflows(
 	drainUserTemplate.Steps = []ewf.Step{
 		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
+	drainUserTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionAdminDrainUser),
+	}
+	drainUserTemplate.AfterWorkflowHooks = append(drainUserTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionAdminDrainUser))
 	engine.RegisterTemplate(WorkflowDrainUser, &drainUserTemplate)
 
 	// Drain all users balances workflow
@@ -183,5 +215,9 @@ func RegisterEWFWorkflows(
 	drainAllUsersTemplate.Steps = []ewf.Step{
 		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
+	drainAllUsersTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionAdminDrainAllUsers),
+	}
+	drainAllUsersTemplate.AfterWorkflowHooks = append(drainAllUsersTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionAdminDrainAllUsers))
 	engine.RegisterTemplate(WorkflowDrainAllUsers, &drainAllUsersTemplate)
 }

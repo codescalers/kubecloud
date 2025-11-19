@@ -667,7 +667,9 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 	}
 	deployWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
 		notifyStepHook(notificationDispatcher),
+		auditStep(logger.AuditActionDeploymentDeploy),
 	}
+	deployWFTemplate.AfterWorkflowHooks = append(deployWFTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionDeploymentDeploy))
 	engine.RegisterTemplate(WorkflowDeployCluster, &deployWFTemplate)
 
 	deleteWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
@@ -675,6 +677,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 		{Name: StepRemoveCluster, RetryPolicy: standardRetryPolicy},
 		{Name: StepRemoveClusterFromDB, RetryPolicy: standardRetryPolicy},
 	}
+	deleteWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionDeploymentDelete),
+	}
+	deleteWFTemplate.AfterWorkflowHooks = append(deleteWFTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionDeploymentDelete))
 	engine.RegisterTemplate(WorkflowDeleteCluster, &deleteWFTemplate)
 
 	deleteAllDeploymentsWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
@@ -683,6 +689,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 		{Name: StepBatchCancelContracts, RetryPolicy: standardRetryPolicy},
 		{Name: StepDeleteAllUserClusters, RetryPolicy: standardRetryPolicy},
 	}
+	deleteAllDeploymentsWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionDeploymentDeleteAll),
+	}
+	deleteAllDeploymentsWFTemplate.AfterWorkflowHooks = append(deleteAllDeploymentsWFTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionDeploymentDeleteAll))
 	engine.RegisterTemplate(WorkflowDeleteAllClusters, &deleteAllDeploymentsWFTemplate)
 
 	addNodeWFTemplate := createAddNodeWorkflowTemplate(notificationDispatcher, engine, metrics)
@@ -693,6 +703,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 		{Name: StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
 		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
+	addNodeWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionDeploymentAddNode),
+	}
+	addNodeWFTemplate.AfterWorkflowHooks = append(addNodeWFTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionDeploymentAddNode))
 	engine.RegisterTemplate(WorkflowAddNode, &addNodeWFTemplate)
 
 	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
@@ -701,6 +715,10 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 		{Name: StepFetchKubeconfig, RetryPolicy: longExponentialRetryPolicy},
 		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
+	removeNodeWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
+		auditStep(logger.AuditActionDeploymentRemoveNode),
+	}
+	removeNodeWFTemplate.AfterWorkflowHooks = append(removeNodeWFTemplate.AfterWorkflowHooks, auditWorkflow(logger.AuditActionDeploymentRemoveNode))
 	engine.RegisterTemplate(WorkflowRemoveNode, &removeNodeWFTemplate)
 
 	rollbackWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)

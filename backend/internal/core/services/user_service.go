@@ -9,6 +9,7 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/kyc"
+	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
 	"slices"
@@ -221,6 +222,10 @@ func (svc *UserService) IsSystemAdmin(userEmail string) bool {
 func (svc *UserService) AsyncRegisterUser(name, email, password string) (string, error) {
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration)
 	if err != nil {
+		logUserAudit(logger.AuditActionUserRegister, logger.AuditSeverityError, map[string]any{
+			"email":  email,
+			"reason": err.Error(),
+		})
 		return "", err
 	}
 
@@ -230,17 +235,38 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 		"password": password,
 	}
 
-	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
-	return wf.UUID, err
+	if err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		logUserAudit(logger.AuditActionUserRegister, logger.AuditSeverityError, map[string]any{
+			"email":  email,
+			"reason": err.Error(),
+		})
+		return "", err
+	}
+
+	logUserAudit(logger.AuditActionUserRegister, logger.AuditSeverityInfo, map[string]any{
+		"email":       email,
+		"workflow_id": wf.UUID,
+	})
+	return wf.UUID, nil
 }
 
 func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, userID int, userEmail, username string) (string, error) {
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification)
 	if err != nil {
+		logUserAudit(logger.AuditActionUserVerify, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"email":   userEmail,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
 	if err = svc.ewfEngine.Store().SaveWorkflow(requestCtx, wf); err != nil {
+		logUserAudit(logger.AuditActionUserVerify, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"email":   userEmail,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
@@ -251,13 +277,30 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 		"user_id": userID,
 	}
 
-	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
-	return wf.UUID, err
+	if err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		logUserAudit(logger.AuditActionUserVerify, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"email":   userEmail,
+			"reason":  err.Error(),
+		})
+		return "", err
+	}
+
+	logUserAudit(logger.AuditActionUserVerify, logger.AuditSeverityInfo, map[string]any{
+		"user_id":     userID,
+		"email":       userEmail,
+		"workflow_id": wf.UUID,
+	})
+	return wf.UUID, nil
 }
 
 func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance)
 	if err != nil {
+		logUserAudit(logger.AuditActionBalanceCharge, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
@@ -272,21 +315,47 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		logUserAudit(logger.AuditActionBalanceCharge, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
-	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
-	return wf.UUID, err
+	if err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		logUserAudit(logger.AuditActionBalanceCharge, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"reason":  err.Error(),
+		})
+		return "", err
+	}
+
+	logUserAudit(logger.AuditActionBalanceCharge, logger.AuditSeverityInfo, map[string]any{
+		"user_id":     userID,
+		"amount":      requestAmount,
+		"workflow_id": wf.UUID,
+	})
+	return wf.UUID, nil
 }
 
 func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, userMnemonic, userUsername, voucherCode string) (string, error) {
 	err := svc.voucherRepo.RedeemVoucher(voucherCode)
 	if err != nil {
+		logUserAudit(logger.AuditActionVoucherRedeem, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"code":    voucherCode,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher)
 	if err != nil {
+		logUserAudit(logger.AuditActionVoucherRedeem, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"code":    voucherCode,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
@@ -299,11 +368,30 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		logUserAudit(logger.AuditActionVoucherRedeem, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"code":    voucherCode,
+			"reason":  err.Error(),
+		})
 		return "", err
 	}
 
-	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
-	return wf.UUID, err
+	if err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
+		logUserAudit(logger.AuditActionVoucherRedeem, logger.AuditSeverityError, map[string]any{
+			"user_id": userID,
+			"code":    voucherCode,
+			"reason":  err.Error(),
+		})
+		return "", err
+	}
+
+	logUserAudit(logger.AuditActionVoucherRedeem, logger.AuditSeverityInfo, map[string]any{
+		"user_id":     userID,
+		"code":        voucherCode,
+		"amount":      voucherValue,
+		"workflow_id": wf.UUID,
+	})
+	return wf.UUID, nil
 }
 
 func (svc *UserService) GetWorkflowStatus(ctx context.Context, wfUUID string) (ewf.WorkflowStatus, error) {
@@ -317,4 +405,14 @@ func (svc *UserService) GetWorkflowStatus(ctx context.Context, wfUUID string) (e
 
 func (svc *UserService) IncrementStripePaymentFailure() {
 	svc.metrics.IncrementStripePaymentFailure()
+}
+
+func logUserAudit(action logger.AuditActionType, severity logger.AuditSeverity, metadata map[string]any) {
+	opts := []logger.AuditEntryOption{
+		logger.WithAuditSeverity(severity),
+	}
+	if len(metadata) > 0 {
+		opts = append(opts, logger.WithAuditActionMetadata(metadata))
+	}
+	logger.LogAudit(logger.AuditActorUser, action, "", "", opts...)
 }
