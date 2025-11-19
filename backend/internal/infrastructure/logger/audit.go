@@ -71,6 +71,15 @@ const (
 	AuditActionNodeUnreserve    AuditActionType = "node.unreserve"
 	AuditActionNodeListRentable AuditActionType = "node.list.rentable"
 
+	// Workers
+	AuditActionWorkerInvoiceProcess AuditActionType = "worker.invoice.process"
+	AuditActionWorkerInvoiceCreate  AuditActionType = "worker.invoice.create"
+	AuditActionWorkerDebtUpdate     AuditActionType = "worker.debt.update"
+	AuditActionWorkerClusterHealth  AuditActionType = "worker.health.cluster"
+	AuditActionWorkerNodeHealth     AuditActionType = "worker.health.node"
+	AuditActionWorkerBalanceSettle  AuditActionType = "worker.balance.settle"
+	AuditActionWorkerPendingNotify  AuditActionType = "worker.pending.notify"
+
 	// Admin operations
 	AuditActionAdminUsersList     AuditActionType = "admin.users.list"
 	AuditActionAdminUserDelete    AuditActionType = "admin.user.delete"

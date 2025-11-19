@@ -30,13 +30,51 @@ func (w Workers) MonthlyInvoicesHandler() {
 		users, err := w.svc.ListAllUsers()
 		if err != nil {
 			baseLog.Error().Err(err).Msg("failed to retrieve users for invoice creation")
+			logWorkerAudit(
+				logger.AuditActionWorkerInvoiceProcess,
+				logger.AuditSeverityError,
+				map[string]any{
+					"reason": err.Error(),
+				},
+			)
 			continue
 		}
 
+		processedCount := 0
 		for _, user := range users {
 			if err = w.svc.CreateUserInvoice(user); err != nil {
 				baseLog.Error().Err(err).Int("user_id", user.ID).Msg("failed to create invoice for user")
+				logWorkerAudit(
+					logger.AuditActionWorkerInvoiceCreate,
+					logger.AuditSeverityError,
+					map[string]any{
+						"user_id": user.ID,
+						"reason":  err.Error(),
+					},
+				)
+				continue
 			}
+			processedCount++
+			logWorkerAudit(
+				logger.AuditActionWorkerInvoiceCreate,
+				logger.AuditSeverityInfo,
+				map[string]any{
+					"user_id": user.ID,
+					"result":  "invoice_created",
+				},
+			)
+		}
+
+		if processedCount > 0 {
+			logWorkerAudit(
+				logger.AuditActionWorkerInvoiceProcess,
+				logger.AuditSeverityInfo,
+				map[string]any{
+					"processed_users": processedCount,
+					"month":           now.Month(),
+					"year":            now.Year(),
+				},
+			)
 		}
 
 		//update last processed month and year
