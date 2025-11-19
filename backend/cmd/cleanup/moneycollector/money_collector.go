@@ -3,27 +3,27 @@ package moneycollector
 import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/substrate"
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 type MoneyCollector struct {
-	userRepo        models.UserRepository
-	config          cfg.Configuration
-	substrateClient substrate.Substrate
+	userRepo   models.UserRepository
+	config     cfg.Configuration
+	gridClient deployer.TFPluginClient
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient substrate.Substrate) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, gridClient deployer.TFPluginClient) *MoneyCollector {
 	return &MoneyCollector{
-		userRepo:        userRepo,
-		config:          config,
-		substrateClient: substrateClient,
+		userRepo:   userRepo,
+		config:     config,
+		gridClient: gridClient,
 	}
 }
 
@@ -48,14 +48,21 @@ func (m *MoneyCollector) CollectMoney() {
 				return
 			}
 
-			balance, err := m.substrateClient.GetUserTFTBalance(user.Mnemonic)
+			userIdentity, err := m.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(user.Mnemonic)
+			if err != nil {
+				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user identity")
+				return
+			}
+
+			balance, err := m.gridClient.SubstrateConn.GetBalance(userIdentity)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return
 			}
-			if balance > MinBalanceThreshold {
-				log.Debug().Int("user_id", user.ID).Uint64("balance", balance).Msg("MoneyCollector: transferring balance to system account")
-				if err := m.substrateClient.TransferTFTsToSystem(balance-MinBalanceThreshold, user.Mnemonic); err != nil {
+			freeBalance := balance.Free.Uint64()
+			if freeBalance > MinBalanceThreshold {
+				log.Debug().Int("user_id", user.ID).Uint64("balance", freeBalance).Msg("MoneyCollector: transferring balance to system account")
+				if err := m.gridClient.SubstrateConn.TransferTFTsToSystem(freeBalance-MinBalanceThreshold, user.Mnemonic, m.config.SystemAccount.Mnemonic); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
 				}
 				return

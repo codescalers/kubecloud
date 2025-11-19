@@ -11,7 +11,6 @@ import (
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
@@ -171,7 +170,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := substrate.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := workflows.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
@@ -364,6 +363,10 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 	log := logger.ForOperation("balance_monitor", "settle_pending_payments")
 
+	systemIdentity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(svc.systemMnemonic)
+	if err != nil {
+		return
+	}
 	for _, record := range records {
 		// Already settled
 		if record.TransferredTFTAmount >= record.TFTAmount {
@@ -371,17 +374,19 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.gridClient.SubstrateConn.GetUserTFTBalance(svc.systemMnemonic)
+		systemTFTBalance, err := svc.gridClient.SubstrateConn.GetBalance(systemIdentity)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
 		}
 
+		systemTFTBalanceFree := systemTFTBalance.Free.Uint64()
+
 		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
-		if systemTFTBalance < amountToTransfer {
+		if systemTFTBalanceFree < amountToTransfer {
 			log.Warn().
 				Int("record_id", record.ID).
-				Uint64("system_balance", systemTFTBalance).
+				Uint64("system_balance", systemTFTBalanceFree).
 				Uint64("amount_needed", amountToTransfer).
 				Msg("Insufficient system balance to settle pending record")
 			continue

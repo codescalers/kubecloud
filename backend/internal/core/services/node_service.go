@@ -8,7 +8,6 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -75,7 +74,7 @@ func (svc *NodeService) CheckUserBalanceForOneHour(userMnemonic string, userDebt
 	}
 
 	//TODO: check price in month constant
-	if usdMillicentBalance-userDebt < substrate.FromUSDToUSDMillicent(nodePriceUsd)/24/30 {
+	if usdMillicentBalance-userDebt < workflows.FromUSDToUSDMillicent(nodePriceUsd)/24/30 {
 		return fmt.Errorf("you should at least have enough balance for one hour")
 	}
 

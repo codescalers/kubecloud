@@ -9,10 +9,10 @@ import (
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"time"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
@@ -41,7 +41,7 @@ func RegisterEWFWorkflows(
 	config cfg.Configuration,
 	db models.DB,
 	mail mailservice.MailService,
-	substrate substrate.Substrate,
+	gridClient deployer.TFPluginClient,
 	kycClient *kyc.KYCClient,
 	sponsorAddress string,
 	sponsorKeyPair subkey.KeyPair,
@@ -58,20 +58,20 @@ func RegisterEWFWorkflows(
 	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(StepUpdateCode, UpdateCodeStep(userRepo))
-	engine.Register(StepSetupTFChain, SetupTFChainStep(substrate, userRepo))
+	engine.Register(StepSetupTFChain, SetupTFChainStep(gridClient, userRepo, config))
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, pendingRecordRepo))
+	engine.Register(StepCreatePendingRecord, CreatePendingRecord(gridClient, pendingRecordRepo))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
-	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))
-	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, substrate))
+	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, gridClient))
+	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, gridClient))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
 	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mail))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
-	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate))
+	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, gridClient, config.SystemAccount.Mnemonic))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{

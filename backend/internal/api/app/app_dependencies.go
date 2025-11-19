@@ -82,7 +82,6 @@ type appInfrastructure struct {
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
-	// substrateClient substrate.Substrate
 }
 
 func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDependencies, error) {
@@ -278,19 +277,10 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 		return appInfrastructure{}, fmt.Errorf("failed to connect to TF graphql: %w", err)
 	}
 
-	// tfChainClient, err := substrate.NewTFChainClient(
-	// 	config.SystemAccount.Network, config.SystemAccount.Mnemonic,
-	// 	config.TermsANDConditions.DocumentLink, config.TermsANDConditions.DocumentHash,
-	// )
-	// if err != nil {
-	// 	return appInfrastructure{}, fmt.Errorf("failed to create tf chain client: %w", err)
-	// }
-
 	return appInfrastructure{
 		gridClient:      gridClient,
 		graphql:         graphQl,
 		firesquidClient: fireSquidClient,
-		// substrateClient: tfChainClient,
 	}, nil
 }
 

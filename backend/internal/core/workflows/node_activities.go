@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
@@ -18,7 +18,7 @@ const (
 	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deployer.TFPluginClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -50,7 +50,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient s
 		}
 
 		// Reserve the node
-		contractID, err := substrateClient.CreateRentContract(mnemonic, nodeID, nil)
+		contractID, err := gridClient.SubstrateConn.CreateRentContract(mnemonic, nodeID, nil)
 		if err != nil {
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
@@ -70,7 +70,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient s
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deployer.TFPluginClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractIDVal, ok := state["contract_id"]
 		if !ok {
@@ -87,7 +87,12 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient
 			return fmt.Errorf("missing 'mnemonic' in state")
 		}
 
-		err = substrateClient.CancelContract(mnemonic, contractID)
+		identity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
+		if err != nil {
+			return fmt.Errorf("failed to get identity from mnemonic %v", identity)
+		}
+
+		err = gridClient.SubstrateConn.CancelContract(identity, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}

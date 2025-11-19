@@ -8,7 +8,6 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
@@ -142,7 +141,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 
 	wf.State = map[string]interface{}{
 		"user_id":       transaction.UserID,
-		"amount":        substrate.FromUSDToUSDMillicent(transaction.Amount),
+		"amount":        workflows.FromUSDToUSDMillicent(transaction.Amount),
 		"mnemonic":      user.Mnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
@@ -200,8 +199,8 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            substrate.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: substrate.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            workflows.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: workflows.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 

@@ -7,7 +7,6 @@ import (
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"slices"
 
@@ -222,12 +221,12 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	var amountUSD, newBalanceUSD float64
 	if amountVal, ok := wf.State["amount"]; ok {
 		if amount, okAmount := amountVal.(uint64); okAmount {
-			amountUSD = substrate.FromUSDMilliCentToUSD(amount)
+			amountUSD = FromUSDMilliCentToUSD(amount)
 		}
 	}
 	if balanceVal, ok := wf.State["new_balance"]; ok {
 		if balance, okBalance := balanceVal.(uint64); okBalance {
-			newBalanceUSD = substrate.FromUSDMilliCentToUSD(balance)
+			newBalanceUSD = FromUSDMilliCentToUSD(balance)
 		}
 	}
 
@@ -302,13 +301,13 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	// Extract amount and balance from workflow state
 	if amountVal, ok := wf.State["amount"]; ok {
 		if amount, okAmount := amountVal.(uint64); okAmount {
-			amountUSD = substrate.FromUSDMilliCentToUSD(amount)
+			amountUSD = FromUSDMilliCentToUSD(amount)
 		}
 	}
 
 	if balanceVal, exists := wf.State["net_balance"]; exists {
 		if balance, okBalance := balanceVal.(uint64); okBalance {
-			newBalanceUSD = substrate.FromUSDMilliCentToUSD(balance)
+			newBalanceUSD = FromUSDMilliCentToUSD(balance)
 		}
 	}
 
