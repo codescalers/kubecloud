@@ -148,12 +148,13 @@ type RedeemVoucherResponse struct {
 
 // UserWorkflow holds the response for listing user workflows
 type UserWorkflow struct {
-	WorkflowID  string    `json:"workflow_id"`
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	CurrentStep int       `json:"current_step"`
-	TotalSteps  int       `json:"total_steps"`
+	WorkflowID  string                        `json:"workflow_id"`
+	Name        string                        `json:"name"`
+	Status      string                        `json:"status"`
+	CreatedAt   time.Time                     `json:"created_at"`
+	CurrentStep int                           `json:"current_step"`
+	TotalSteps  int                           `json:"total_steps"`
+	Metadata    services.UserWorkflowMetadata `json:"metadata"`
 }
 
 // UserWorkflowsResponse swagger model
@@ -1049,14 +1050,17 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 
 	var userWorkflowsResponse []UserWorkflow
 	for _, workflow := range workflows {
+		metadata := h.svc.BuildWorkflowMetadata(workflow)
+		displayName := h.svc.DescribeWorkflow(workflow.Name)
 
 		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflow{
 			WorkflowID:  workflow.UUID,
-			Name:        workflow.Name,
+			Name:        displayName,
 			Status:      string(workflow.Status),
 			CreatedAt:   workflow.CreatedAt,
 			CurrentStep: workflow.CurrentStep,
 			TotalSteps:  len(workflow.Steps),
+			Metadata:    metadata,
 		})
 	}
 

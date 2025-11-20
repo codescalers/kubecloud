@@ -8,6 +8,8 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/deployment/kubedeployer"
+	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
@@ -63,6 +65,12 @@ func NewUserService(appCtx context.Context,
 type UserWithPendingBalance struct {
 	models.User
 	PendingBalanceUSD float64 `json:"pending_balance_usd"`
+}
+
+type UserWorkflowMetadata struct {
+	ClusterName string `json:"cluster_name,omitempty"`
+	StepName    string `json:"step_name,omitempty"`
+	NodeID      uint32 `json:"node_id,omitempty"`
 }
 
 func (svc *UserService) GetUserByEmail(email string) (models.User, error) {
@@ -154,6 +162,10 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 		workflows = append(workflows, &wf)
 	}
 	return workflows, nil
+}
+
+func (svc *UserService) DescribeWorkflow(workflowName string) string {
+	return workflows.GetWorkflowDescription(workflowName)
 }
 
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
@@ -317,4 +329,21 @@ func (svc *UserService) GetWorkflowStatus(ctx context.Context, wfUUID string) (e
 
 func (svc *UserService) IncrementStripePaymentFailure() {
 	svc.metrics.IncrementStripePaymentFailure()
+}
+
+func (svc *UserService) BuildWorkflowMetadata(workflow *ewf.Workflow) UserWorkflowMetadata {
+	stepName := workflow.Steps[workflow.CurrentStep].Name
+	cluster, err := statemanager.GetCluster(workflow.State)
+	if err != nil {
+		cluster = kubedeployer.Cluster{}
+	}
+	nodeID, ok := workflow.State["node_id"].(uint32)
+	if !ok {
+		nodeID = 0
+	}
+	return UserWorkflowMetadata{
+		ClusterName: cluster.Name,
+		StepName:    stepName,
+		NodeID:      nodeID,
+	}
 }

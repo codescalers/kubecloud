@@ -49,7 +49,7 @@ func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkf
 			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
 		}
 
-		workflowDesc := getWorkflowDescription(w.Name)
+		workflowDesc := GetWorkflowDescription(w.Name)
 		notificationType := workflowToNotificationType(w.Name)
 		notif := notification.NewNotification(userID, notificationType).
 			Info(workflowDesc+" has been started").

@@ -3964,6 +3964,9 @@ const docTemplate = `{
                 "current_step": {
                     "type": "integer"
                 },
+                "metadata": {
+                    "$ref": "#/definitions/handlers.UserWorkflowMetadata"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -3974,6 +3977,20 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.UserWorkflowMetadata": {
+            "type": "object",
+            "properties": {
+                "cluster_name": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "integer"
+                },
+                "step_name": {
                     "type": "string"
                 }
             }
