@@ -3173,4 +3173,9 @@ paths:
       summary: Get workflow status
       tags:
       - workflow
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
