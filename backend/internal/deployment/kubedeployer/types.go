@@ -34,12 +34,12 @@ type Node struct {
 	Type   NodeType `json:"type" binding:"required,oneof=worker master leader"`
 	NodeID uint32   `json:"node_id" binding:"required"`
 
-	CPU      uint8             `json:"cpu" binding:"required,min=1"`
-	Memory   uint64            `json:"memory" binding:"required,min=2048"`     // Memory in MB
-	RootSize uint64            `json:"root_size" binding:"required,min=5120"`  // Storage in MB
-	DiskSize uint64            `json:"disk_size" binding:"required,min=10240"` // Storage in MB
-	GPUIDs   []string          `json:"gpu_ids,omitempty"`                      // List of GPU IDs
-	EnvVars  map[string]string `json:"env_vars"`
+	CPU       uint8             `json:"cpu" binding:"required,min=1"`
+	Memory    uint64            `json:"memory" binding:"required,min=2048"`    // Memory in MB
+	RootSize  uint64            `json:"root_size" binding:"required,min=5120"` // Storage in MB
+	DataDisks []uint64          `json:"data_disks" binding:"required,min=1"`   // Storage in MB
+	GPUIDs    []string          `json:"gpu_ids,omitempty"`                     // List of GPU IDs
+	EnvVars   map[string]string `json:"env_vars"`
 
 	// Optional fields
 	Flist      string `json:"flist,omitempty"`
@@ -51,6 +51,28 @@ type Node struct {
 	PlanetaryIP  string `json:"planetary_ip,omitempty"`
 	ContractID   uint64 `json:"contract_id,omitempty"`
 	OriginalName string `json:"original_name,omitempty"`
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for Node to support backward compatibility
+func (n *Node) UnmarshalJSON(data []byte) error {
+	type Alias Node
+	aux := &struct {
+		DiskSize uint64 `json:"disk_size"`
+		*Alias
+	}{
+		Alias: (*Alias)(n),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Backward compatibility: if DataDisks is empty but DiskSize is set, use DiskSize
+	if len(n.DataDisks) == 0 && aux.DiskSize > 0 {
+		n.DataDisks = []uint64{aux.DiskSize}
+	}
+
+	return nil
 }
 
 // MarshalJSON implements custom JSON marshaling for Cluster
