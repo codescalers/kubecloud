@@ -7,9 +7,9 @@ import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
+	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 	"strconv"
 	"strings"
 	"time"
@@ -737,9 +737,9 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	}
 
 	OK(c, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        substrate.FromUSDMilliCentToUSD(usdMillicentBalance),
-		DebtUSD:           substrate.FromUSDMilliCentToUSD(user.Debt),
-		PendingBalanceUSD: substrate.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
+		BalanceUSD:        workflows.FromUSDMilliCentToUSD(usdMillicentBalance),
+		DebtUSD:           workflows.FromUSDMilliCentToUSD(user.Debt),
+		PendingBalanceUSD: workflows.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
 	})
 }
 
