@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Patch manifests BEFORE copying to K3S_DATA_DIR
+# This ensures the patched version gets copied and applied by k3s
+/scripts/patch-crd-manifest.sh
+
 if [ ! -z "${K3S_DATA_DIR}" ]; then
     echo "k3s data-dir set to: $K3S_DATA_DIR"
     cp -r /var/lib/rancher/k3s/* $K3S_DATA_DIR && rm -rf /var/lib/rancher/k3s

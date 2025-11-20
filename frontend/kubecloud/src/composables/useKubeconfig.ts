@@ -18,8 +18,8 @@ export function useKubeconfig() {
       })
       
       const data = response.data as any
-      if (data.kubeconfig) {
-        downloadFile(data.kubeconfig, `${projectName}-kubeconfig.yaml`)
+      if (data.data?.kubeconfig) {
+        downloadFile(data.data.kubeconfig, `${projectName}-kubeconfig.yaml`)
         notifications.success('Download Successful', 'Kubeconfig file downloaded.')
       } else {
         notifications.error('Download Failed', 'No kubeconfig content available.')

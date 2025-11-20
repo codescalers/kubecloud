@@ -22,45 +22,94 @@
           </div>
         </div>
         <div v-if="!loading && !notFound && cluster" class="manage-content-wrapper">
-          <div class="status-actions align-end">
-            <v-btn variant="outlined" class="btn btn-outline" @click="openKubeconfigModal">
+          <div class="status-actions d-flex flex-column flex-sm-row gap-2">
+            <v-btn 
+              variant="outlined" 
+              class="btn btn-outline status-action-btn" 
+              @click="openKubeconfigModal"
+            >
               <v-icon icon="mdi-eye" class="mr-2"></v-icon>
-              Show Kubeconfig
+              <span class="d-none d-sm-inline">Show Kubeconfig</span>
+              <span class="d-sm-none">Kubeconfig</span>
             </v-btn>
 
             <v-tooltip location="top" :disabled="haveEnoughBalance">
               <template #activator="{ props }">
-                <div v-bind="props">
-                  <v-btn variant="outlined" :disabled="!haveEnoughBalance" class="btn btn-outline" @click="openEditClusterNodesDialog">
+                <div v-bind="props" class="status-action-wrapper">
+                  <v-btn 
+                    variant="outlined" 
+                    :disabled="!haveEnoughBalance" 
+                    class="btn btn-outline status-action-btn" 
+                    @click="openEditClusterNodesDialog"
+                  >
                     <v-icon icon="mdi-pencil" class="mr-2"></v-icon>
                     Add Node
                   </v-btn>
                 </div>
               </template>
-              <span>Insufficient balance. Minimum 5 TFT required to add nodes.</span>
+              <span>Insufficient balance. Minimum 5 USD required to add nodes.</span>
             </v-tooltip>
 
-            <v-btn variant="outlined" class="btn btn-outline" color="error" @click="openDeleteModal">
+            <v-btn 
+              variant="outlined" 
+              class="btn btn-outline status-action-btn" 
+              color="error" 
+              @click="openDeleteModal"
+            >
               <v-icon icon="mdi-delete" class="mr-2"></v-icon>
               Delete
             </v-btn>
           </div>
-          <div class="main-content- modern-cluster-card">
+          <div class="main-content modern-cluster-card">
             <div class="modern-cluster-info">
               <div class="cluster-info-grid">
-                <div class="info-label">Project Name</div>
-                <div>{{ cluster.cluster.name || '-' }}</div>
-                <div class="info-label">CPU</div>
-                <div>{{ totalCPU }}</div>
-                <div class="info-label">Created</div>
-                <div>{{ formatDate(cluster.created_at) }}</div>
-                <div class="info-label">Storage</div>
-                <div>{{ Math.round(totalStorage / 1024) }} GB</div>
-                <div class="info-label">Last Updated</div>
-                <div>{{ formatDate(cluster.updated_at) }}</div>
-
-                <div class="info-label">RAM</div>
-                <div>{{ Math.round(totalRam / 1024) }} GB</div>
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-folder-network" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">Project Name</span>
+                  </div>
+                  <div class="info-value">{{ cluster.cluster.name || '-' }}</div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-cpu-64-bit" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">CPU</span>
+                  </div>
+                  <div class="info-value">{{ totalCPU }}</div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-memory" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">RAM</span>
+                  </div>
+                  <div class="info-value">{{ Math.round(totalRam / 1024) }} GB</div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-harddisk" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">Storage</span>
+                  </div>
+                  <div class="info-value">{{ Math.round(totalStorage / 1024) }} GB</div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-calendar-plus" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">Created</span>
+                  </div>
+                  <div class="info-value">{{ formatDate(cluster.created_at) }}</div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-item-header">
+                    <v-icon icon="mdi-calendar-clock" size="20" class="info-icon"></v-icon>
+                    <span class="info-label">Last Updated</span>
+                  </div>
+                  <div class="info-value">{{ formatDate(cluster.updated_at) }}</div>
+                </div>
               </div>
             </div>
             <div class="nodes-section mt-8">
@@ -68,61 +117,126 @@
                 <v-icon icon="mdi-lan" class="mr-2"></v-icon>
                 Cluster Nodes
               </h3>
-              <v-table v-if="filteredNodes.length">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>Node ID</th>
-                    <th>CPU</th>
-                    <th>RAM</th>
-                    <th>Storage</th>
-                    <th>IP</th>
-                    <th>Mycelium IP</th>
-                    <th>Contract ID</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="node in filteredNodes" :key="node.node_id">
-
-                    <td>{{ node.original_name }}</td>
-                    <td>{{ node.type }}</td>
-                    <td>{{ node.node_id }}</td>
-                    <td>{{ node.cpu }}</td>
-                    <td>{{ Math.round(node.memory / 1024) }} GB</td>
-                    <td>{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
-                    <td>
-                      <span class="truncate-cell">
-                        {{ node.ip || '-' }}
-                      </span>
-                    </td>
-                    <td>
-                      <span v-if="node.mycelium_ip" class="full-ip-cell">
-                        {{ node.mycelium_ip }}
-                      </span>
-                      <span v-else>-</span>
-                    </td>
-                    <td>{{ node.contract_id || '-' }}</td>
-                    <td>
-                      <v-btn
-                        icon
-                        size="small"
-                        color="error"
-                        variant="text"
-                        @click="showDeleteConfirmation(node.original_name)"
-                        :disabled="node.type === 'leader'"
-                        class="delete-node-btn"
-                      >
-                        <v-icon icon="mdi-delete" size="small" />
-                        <v-tooltip activator="parent" location="top">
-                          Delete Node
-                        </v-tooltip>
-                      </v-btn>
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
+              <template v-if="filteredNodes.length">
+                <!-- Desktop Table View -->
+                <v-table class="d-none d-lg-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Node ID</th>
+                      <th>CPU</th>
+                      <th>RAM</th>
+                      <th>Storage</th>
+                      <th>IP</th>
+                      <th>Mycelium IP</th>
+                      <th>Contract ID</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="node in filteredNodes" :key="node.node_id">
+                      <td>{{ node.original_name }}</td>
+                      <td>{{ node.type }}</td>
+                      <td>{{ node.node_id }}</td>
+                      <td>{{ node.cpu }}</td>
+                      <td>{{ Math.round(node.memory / 1024) }} GB</td>
+                      <td>{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
+                      <td>
+                        <span class="truncate-cell">
+                          {{ node.ip || '-' }}
+                        </span>
+                      </td>
+                      <td>
+                        <span v-if="node.mycelium_ip" class="full-ip-cell">
+                          {{ node.mycelium_ip }}
+                        </span>
+                        <span v-else>-</span>
+                      </td>
+                      <td>{{ node.contract_id || '-' }}</td>
+                      <td>
+                        <v-btn
+                          icon
+                          size="small"
+                          color="error"
+                          variant="text"
+                          @click="showDeleteConfirmation(node.original_name)"
+                          :disabled="node.type === 'leader'"
+                          class="delete-node-btn"
+                        >
+                          <v-icon icon="mdi-delete" size="small" />
+                          <v-tooltip activator="parent" location="top">
+                            Delete Node
+                          </v-tooltip>
+                        </v-btn>
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
+                <!-- Mobile/Tablet Card View -->
+                <div class="d-lg-none">
+                <v-card
+                  v-for="node in filteredNodes"
+                  :key="node.node_id"
+                  variant="outlined"
+                  class="mb-4"
+                >
+                  <v-card-title class="d-flex justify-space-between align-center">
+                    <div class="d-flex align-center flex-wrap gap-2">
+                      <span class="text-body-1 font-weight-bold">{{ node.original_name }}</span>
+                      <v-chip size="small" :color="node.type === 'leader' ? 'primary' : 'default'">
+                        {{ node.type }}
+                      </v-chip>
+                    </div>
+                    <v-btn
+                      icon
+                      size="small"
+                      color="error"
+                      variant="text"
+                      @click="showDeleteConfirmation(node.original_name)"
+                      :disabled="node.type === 'leader'"
+                    >
+                      <v-icon icon="mdi-delete" size="small" />
+                      <v-tooltip activator="parent" location="top">
+                        Delete Node
+                      </v-tooltip>
+                    </v-btn>
+                  </v-card-title>
+                  <v-card-text>
+                    <div class="d-flex flex-column gap-2">
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">Node ID:</span>
+                        <span class="font-weight-medium text-right" style="word-break: break-all;">{{ node.node_id }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">CPU:</span>
+                        <span class="font-weight-medium">{{ node.cpu }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">RAM:</span>
+                        <span class="font-weight-medium">{{ Math.round(node.memory / 1024) }} GB</span>
+                      </div>
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">Storage:</span>
+                        <span class="font-weight-medium">{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</span>
+                      </div>
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">IP:</span>
+                        <span class="font-weight-medium text-right" style="word-break: break-all;">{{ node.ip || '-' }}</span>
+                      </div>
+                      <div v-if="node.mycelium_ip" class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">Mycelium IP:</span>
+                        <span class="font-weight-medium text-right" style="word-break: break-all;">{{ node.mycelium_ip }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between">
+                        <span class="text-medium-emphasis">Contract ID:</span>
+                        <span class="font-weight-medium text-right" style="word-break: break-all;">{{ node.contract_id || '-' }}</span>
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+                </div>
+              </template>
               <div v-else class="empty-message">No node details available.</div>
             </div>
           </div>
@@ -132,7 +246,7 @@
 
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteConfirmDialog" max-width="400">
+    <v-dialog v-model="deleteConfirmDialog" :max-width="display.xs ? '90%' : '400'">
       <v-card>
         <v-card-title class="text-h6">
           Confirm Node Deletion
@@ -140,12 +254,12 @@
         <v-card-text>
           Are you sure you want to delete the node <strong>{{ nodeToDelete }}</strong>? This action cannot be undone.
         </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="grey" variant="text" @click="deleteConfirmDialog = false">
+        <v-card-actions class="flex-column flex-sm-row gap-2">
+          <v-spacer class="d-none d-sm-flex"></v-spacer>
+          <v-btn color="grey" variant="text" @click="deleteConfirmDialog = false" block class="d-sm-inline-block">
             Cancel
           </v-btn>
-          <v-btn color="error" variant="text" @click="confirmDeleteNode">
+          <v-btn color="error" variant="text" @click="confirmDeleteNode" block class="d-sm-inline-block">
             Delete
           </v-btn>
         </v-card-actions>
@@ -181,6 +295,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useDisplay } from 'vuetify'
 import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
@@ -191,6 +306,7 @@ import { userService } from '@/utils/userService'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+const display = useDisplay()
 
 const haveEnoughBalance = computed(() => {
   return userStore.netBalance >= 5
@@ -257,7 +373,7 @@ async function showKubeconfig() {
       timeout: 120000
     })
     const data = response.data as any
-    kubeconfigContent.value = data.kubeconfig || ''
+    kubeconfigContent.value = data.data?.kubeconfig || ''
   } catch (err: any) {
     kubeconfigError.value = err?.message || 'Failed to fetch kubeconfig'
   } finally {
@@ -394,15 +510,41 @@ const notificationStore = useNotificationStore()
   margin: 0;
 }
 .status-actions {
-  padding: 2.5rem 2.5rem 2rem 2.5rem !important;
+  padding: 1rem !important;
   display: flex;
   gap: var(--space-3);
-}
-.status-actions.align-end {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
+  justify-content: flex-start;
   margin-bottom: var(--space-4);
+}
+.status-action-wrapper {
+  width: 100%;
+}
+.status-action-btn {
+  min-height: 44px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  width: 100%;
+}
+@media (min-width: 600px) {
+  .status-actions {
+    justify-content: flex-end;
+  }
+  .status-action-wrapper {
+    width: auto;
+  }
+  .status-action-btn {
+    width: auto;
+  }
+}
+@media (max-width: 600px) {
+  .status-actions {
+    padding: 1rem !important;
+    gap: 0.75rem;
+  }
+  .status-action-btn {
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
 }
 .main-content-card {
   overflow: hidden;
@@ -418,23 +560,53 @@ const notificationStore = useNotificationStore()
   gap: 2rem;
   margin-bottom: 2.5rem;
 }
+.cluster-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-left: 3px solid var(--v-primary-base);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.info-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-left-color: var(--v-primary-lighten1);
+}
+.info-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.info-icon {
+  color: var(--v-primary-base);
+  opacity: 0.8;
+}
+.info-label {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.info-value {
+  color: var(--color-text);
+  font-size: 1.125rem;
+  font-weight: 600;
+  word-break: break-word;
+  margin-top: 0.25rem;
+}
 .cluster-title {
   font-size: 2rem;
   font-weight: 700;
   color: var(--color-text);
   margin-bottom: 1.5rem;
-}
-.cluster-info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr 1.5fr;
-  gap: 0.7rem 2.5rem;
-  align-items: center;
-}
-.info-label {
-  color: var(--color-text-muted);
-  font-size: 1rem;
-  font-weight: 500;
-  text-align: right;
 }
 .nodes-section {
   margin-top: 2rem;
@@ -478,25 +650,40 @@ const notificationStore = useNotificationStore()
   text-transform: none;
   letter-spacing: normal;
 }
-@media (max-width: 900px) {
-  .cluster-info-grid {
-    grid-template-columns: 1fr 1.5fr;
-  }
-}
 @media (max-width: 600px) {
+  .manage-cluster-container {
+    margin-top: 6rem;
+  }
+  .manage-header {
+    padding: 0 1rem;
+  }
+  .manage-title {
+    font-size: 1.5rem;
+  }
+  .manage-subtitle {
+    font-size: 0.9rem;
+  }
   .modern-cluster-card {
-    padding: 1.2rem 0.5rem 1rem 0.5rem;
+    padding: 1.2rem 0.5rem 1rem 0.5rem !important;
   }
   .cluster-title {
     font-size: 1.3rem;
   }
   .cluster-info-grid {
-    grid-template-columns: 1fr;
-    gap: 0.5rem 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
   }
-  .info-label {
+  .info-item {
+    padding: 0.875rem;
+  }
+  .info-value {
     font-size: 1rem;
-    text-align: left;
+  }
+  .nodes-section {
+    margin-top: 1.5rem;
+  }
+  .dashboard-card-title {
+    font-size: 1rem;
   }
 }
 </style>

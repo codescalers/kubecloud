@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"kubecloud/models"
+	"kubecloud/internal/core/models"
+	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/persistence"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -31,7 +33,7 @@ func main() {
 	}
 
 	pool := models.DBPoolConfig{MaxOpenConns: maxOpen, MaxIdleConns: maxIdle, ConnMaxLifetimeMinutes: maxLife, ConnMaxIdleTimeMinutes: maxIdleTime}
-	db, err := models.NewDB(dsn, pool)
+	db, err := persistence.NewGormDB(dsn, pool)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to open database")
 		return
@@ -51,7 +53,8 @@ func main() {
 	defer substrateClient.Close()
 
 	// Get all user_nodes records
-	allRecords, err := db.ListAllReservedNodes()
+	contractsRepo := corepersistence.NewGormUserContractDataRepository(db)
+	allRecords, err := contractsRepo.ListAllReservedNodes()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get user_nodes records")
 		return

@@ -1,13 +1,4 @@
 services:
-  redis-db:
-    image: redis:alpine
-    command: redis-server --requirepass pass
-    ports:
-      - 6379:6379
-    container_name: redis-db
-    networks:
-      - app-network
-
   mycelium:
     build:
       context: ./mycelium-peer
@@ -26,28 +17,34 @@ services:
       - mycelium-data:/var/lib/mycelium
     restart: unless-stopped
 
+  redis-db:
+    image: redis:alpine
+    command: redis-server --requirepass pass
+    ports:
+      - 6379:6379
+    container_name: redis-db
+    networks:
+      - app-network
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
-      - redis-db
-      - mycelium
-      - postgres
+      mycelium:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     working_dir: /app
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
       - ./backend/config.json:/app/config.json
-      - ./backend/notification-config.json:/app/notification-config.json
       - ./backend/app/logs:/app/logs
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
-      - REDIS_HOST=redis-db
-      - REDIS_PORT=6379
       - APP_ENV=dev
       - HOSTNAME=backend-1
-      - TEMPLATE_DIR=/app/internal/templates/notifications
     command: ["/myceliumcloud", "--config", "/app/config.json"]
     network_mode: "service:mycelium" # inherits mycelium's network, including app-network access
 
@@ -123,7 +120,7 @@ services:
     volumes:
       - ./loki/promtail-config.yaml:/etc/promtail/promtail-config.yaml
       - /var/log:/var/log
-      - ./backend/logs:/app/logs
+      - ./backend/app/logs:/app/logs
     command: -config.file=/etc/promtail/promtail-config.yaml
     depends_on:
       - loki
@@ -138,10 +135,16 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=myceliumcloud
+      - PGDATA=/var/lib/postgresql/data/pgdata
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 networks:
   app-network:
     driver: bridge

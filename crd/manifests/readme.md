@@ -5,7 +5,7 @@
 1. update the manifest with your mnemonic
 
 ```bash
-sed "s|\${MNEMONIC}|$MNEMONIC|g; s|\${NETWORK}|$NETWORK|g s|\${K3S_TOKEN}|$K3S_TOKEN|g" ./install.yaml
+sed "s|\${MNEMONIC}|$MNEMONIC|g; s|\${NETWORK}|$NETWORK|g s|\${TOKEN}|$TOKEN|g" ./install.yaml
 
 ```
 

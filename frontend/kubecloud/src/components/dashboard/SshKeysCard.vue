@@ -2,8 +2,8 @@
   <div class="dashboard-card">
     <div class="dashboard-card-header row-between">
       <div>
-        <h3 class="dashboard-card-title">SSH Keys</h3>
-        <p class="dashboard-card-subtitle">Manage your SSH keys for secure server access</p>
+        <h3 class="tex-h5 font-weight-bold mb-1">SSH Keys</h3>
+        <p class="text-body-1 dashboard-card-subtitle">Manage your SSH keys for secure server access</p>
       </div>
       <v-btn variant="outlined" class="add-key-btn" @click="openAddDialog">
         <v-icon icon="mdi-plus" size="20" class="mr-2"></v-icon>
@@ -110,8 +110,7 @@ const nameField = ref()
 const lastCopiedId = ref<number | null>(null)
 const isGeneratingKey = ref(false)
 
-const isValidSshKey = (key: string): boolean =>
-  /^(ssh-(rsa|ed25519|dss|ecdsa)|ecdsa-sha2-nistp\d+|sk-ecdsa-sha2-nistp\d+|sk-ssh-ed25519) [A-Za-z0-9+/=]+( [^@\s]+@[^@\s]+)?$/.test(key.trim())
+const isValidSshKey = (key: string): boolean => /^(ssh-rsa|ssh-dss|ecdsa-[a-zA-Z0-9-]+|ssh-ed25519)\s+(\S+)+\S/.test(key.trim())
 
 const isDuplicateKey = computed(() => {
   const val = newKey.value.public_key.trim()

@@ -4,6 +4,16 @@
       <router-link to="/" class="navbar-logo">
         <img :src="logo" alt="Mycelium Cloud Logo" class="logo">
       </router-link>
+      <button
+        class="navbar-toggle"
+        type="button"
+        aria-label="Toggle navigation menu"
+        :aria-expanded="isMobileMenuOpen ? 'true' : 'false'"
+        aria-controls="mobile-menu"
+        @click="toggleMobileMenu"
+      >
+        <v-icon :icon="isMobileMenuOpen ? 'mdi-close' : 'mdi-menu'" size="28" color="white"></v-icon>
+      </button>
       <div class="navbar-main-links">
         <router-link v-for="link in publicLinks" :key="link.to" :to="link.to" class="navbar-link" active-class="active-link">
           {{ link.label }}
@@ -70,8 +80,8 @@
           </router-link>
           <router-link :to="'/sign-up'" custom v-slot="{ navigate, isActive }">
             <v-btn
-              variant="outlined"
-              color="white"
+              variant="flat"
+              color="blue"
               class="ml-2"
               @click="navigate"
               :class="{ 'active-link': isActive }"
@@ -82,13 +92,39 @@
         </div>
       </div>
     </div>
+    <div
+      id="mobile-menu"
+      class="mobile-menu text-center"
+      :class="{ open: isMobileMenuOpen }"
+      v-show="isMobileMenuOpen"
+    >
+      <div class="mobile-links">
+        <router-link v-for="link in publicLinks" :key="'m-'+link.to" :to="link.to" class="mobile-link" active-class="active-link" @click="closeMobileMenu">
+          {{ link.label }}
+        </router-link>
+        <template v-if="isLoggedIn">
+          <router-link v-for="link in authenticatedLinks" :key="'m-a-'+link.to" :to="link.to" class="mobile-link" active-class="active-link" @click="closeMobileMenu">
+            {{ link.label }}
+          </router-link>
+        </template>
+      </div>
+      <div class="mobile-auth">
+        <div v-if="isLoggedIn" class="mobile-user">
+          <button class="mobile-secondary" @click="() => { handleLogout(); closeMobileMenu() }">Sign Out</button>
+        </div>
+        <div v-else class="mobile-guest">
+          <router-link to="/sign-in" class="mobile-primary mr-3" @click="closeMobileMenu">Sign In</router-link>
+          <router-link to="/sign-up" class="mobile-secondary" @click="closeMobileMenu">Sign Up</router-link>
+        </div>
+      </div>
+    </div>
   </nav>
 </template>
 
 <script setup lang="ts">
 import { useUserStore } from '../stores/user'
 import { useRouter } from 'vue-router'
-import { computed, nextTick } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import logo from '../assets/logo.png'
 import NotificationBell from './NotificationBell.vue'
 
@@ -138,6 +174,14 @@ const handleLogout = async () => {
   await nextTick()
   router.push('/')
 }
+
+const isMobileMenuOpen = ref(false)
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+const closeMobileMenu = () => {
+  isMobileMenuOpen.value = false
+}
 </script>
 
 <style scoped>
@@ -160,6 +204,15 @@ const handleLogout = async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.navbar-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  margin-left: auto;
+  cursor: pointer;
 }
 
 .navbar-logo {
@@ -247,14 +300,74 @@ const handleLogout = async () => {
   font-weight: 500;
 }
 
+.mobile-menu {
+  display: none;
+  width: 100%;
+  background: rgba(10, 25, 47, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(96, 165, 250, 0.15);
+}
+
+.mobile-menu.open {
+  display: block;
+}
+
+.mobile-links,
+.mobile-auth {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem 1rem;
+}
+
+.mobile-link {
+  color: #e0e7ef;
+  font-size: 1.05rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.5rem 0.25rem;
+}
+
+.mobile-primary {
+  display: inline-block;
+  color: #0b1220;
+  background: linear-gradient(90deg, #60a5fa 0%, #38bdf8 100%);
+  padding: 0.6rem 1rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  font-weight: 600;
+  text-align: center;
+}
+
+.mobile-secondary {
+  display: inline-block;
+  color: #e0e7ef;
+  background: transparent;
+  padding: 0.6rem 1rem;
+  border-radius: 0.6rem;
+  text-decoration: none;
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  font-weight: 600;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .navbar-content {
     padding: 1rem 1.2rem;
   }
 
   .navbar-main-links {
-    gap: 0.7rem;
-    margin-left: 1.2rem;
+    display: none;
+  }
+
+  .navbar-auth {
+    display: none;
+  }
+
+  .navbar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>

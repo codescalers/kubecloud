@@ -88,7 +88,7 @@ import type { VM } from '../composables/useDeployCluster';
 import Step1DefineVMs from '../components/deploy/Step1DefineVMs.vue';
 import Step2AssignNodes from '../components/deploy/Step2AssignNodes.vue';
 import Step3Review from '../components/deploy/Step3Review.vue';
-import { api } from '../utils/api';
+import { api, gridProxyClient } from '../utils/api';
 import type { ApiResponse } from '../utils/api';
 import { useNotificationStore } from '../stores/notifications';
 import { UserService } from '../utils/userService';
@@ -182,24 +182,48 @@ function prevStep() {
   if (step.value > 1) step.value--;
 }
 
-const clusterPayload = computed<Cluster>(() => {
+async function getClusterPayload(): Promise<Cluster> {
   const token = clusterToken.value;
 
-  function buildNode(vm: VM, type: 'master' | 'worker'): ClusterNode {
+  async function buildNode(vm: VM, type: 'master' | 'worker'): Promise<ClusterNode> {
     // Get all SSH keys for this VM and concatenate their public keys
     const sshKeyPublicKeys = vm.sshKeyIds
       .map(id => availableSshKeys.value.find(k => k.ID === id)?.public_key)
       .filter(key => key) // Remove undefined values
       .join('\n'); // Join multiple keys with newlines
 
+    let cpu = vm.vcpu
+    let ram = vm.ram
+    let disk = vm.disk
+
+    if (vm.fullCapabilities) {
+      if (!vm.node) {
+        // should never be the case
+        throw new Error("Not not found")
+      }
+
+      const node = await gridProxyClient.nodes.statsById(vm.node!)
+      if (!node) {
+        // should never be the case
+        throw new Error("Not not found")
+      }
+      
+
+      cpu = node.total.cru
+      ram = Math.floor((node.total.mru * 0.99 - node.used.mru) / 1024 ** 3)
+      disk = Math.floor((node.total.sru * 0.985 - node.used.sru) / 1024 ** 3)
+    }
+
+    const fs = vm.rootfs * 1024
+
     return {
       name: vm.name,
       type: type === 'master' ? 'master' : 'worker',
       node_id: vm.node as number, // node is number | null, but must be number here
-      cpu: vm.vcpu,
-      memory: vm.ram * 1024, // GB to MB
-      root_size: vm.rootfs * 1024, // GB to MB
-      disk_size: vm.disk * 1024, // GB to MB
+      cpu,
+      memory: ram * 1024, // GB to MB
+      root_size: fs, // GB to MB
+      disk_size: (disk * 1024) - fs, // GB to MB
       env_vars: {
         SSH_KEY: sshKeyPublicKeys,
         K3S_TOKEN: token,
@@ -207,9 +231,12 @@ const clusterPayload = computed<Cluster>(() => {
     };
   }
 
+  const masterNodes = await Promise.all(masters.value.map(vm => buildNode(vm, 'master')))
+  const workerNodes = await Promise.all(workers.value.map(vm => buildNode(vm, 'worker')))
+
   const nodes: ClusterNode[] = [
-    ...masters.value.map(vm => buildNode(vm, 'master')),
-    ...workers.value.map(vm => buildNode(vm, 'worker')),
+    ...masterNodes,
+    ...workerNodes,
   ];
 
   return {
@@ -217,7 +244,7 @@ const clusterPayload = computed<Cluster>(() => {
     token: token,
     nodes: nodes,
   };
-});
+}
 
 function navigateToDashboard() {
   localStorage.setItem('dashboard-section', 'clusters')
@@ -227,7 +254,7 @@ function navigateToDashboard() {
 async function onDeployCluster() {
   deploying.value = true;
   try {
-    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', clusterPayload.value, {
+    await api.post<ApiResponse<{ task_id: string }>>('/v1/deployments', await getClusterPayload(), {
       showNotifications: false,
       loadingMessage: 'Deploying cluster...',
       errorMessage: 'Failed to deploy cluster',
@@ -320,9 +347,10 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .deploy-header {
   text-align: center;
   margin-bottom: 2.5rem;
+  padding: 0 1rem;
 }
 .hero-title {
-  font-size: 2.2rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--color-text, #fff);
   margin-bottom: 0.5rem;
@@ -334,6 +362,7 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .deploy-content-wrapper {
   display: flex;
   justify-content: center;
+  padding: 0 1rem;
 }
 .deploy-card {
   background: var(--color-surface-1, #18192b);
@@ -419,23 +448,89 @@ function onAssignNode(vmIdx: number, nodeId: number | null) {
 .step.completed:not(:last-child)::after {
   background: var(--color-success, #22d3ee);
 }
-@media (max-width: 900px) {
+@media (max-width: 960px) {
+  .deploy-container {
+    padding-top: 2rem;
+    margin-top: 5rem;
+  }
+  .deploy-header {
+    margin-bottom: 1.5rem;
+  }
+  .hero-title {
+    font-size: 1.8rem;
+  }
+  .section-subtitle {
+    font-size: 1rem;
+  }
   .deploy-card {
-    padding: 1.2rem 0.5rem 1.2rem 0.5rem;
+    padding: 2rem 1.5rem;
+    margin-top: 1.5rem;
+    border-radius: 16px;
+  }
+  .progress-section {
+    margin-bottom: 2rem;
   }
   .stepper {
     flex-direction: column;
     gap: 1.2rem;
+    margin-bottom: 1.5rem;
   }
   .step {
     flex-direction: row;
     align-items: center;
     gap: 0.7rem;
+    width: 100%;
   }
   .step-label {
     margin-top: 0;
     margin-left: 0.7rem;
     text-align: left;
+  }
+  .step:not(:last-child)::after {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .deploy-container {
+    padding-top: 1.5rem;
+    margin-top: 4rem;
+  }
+  .deploy-header {
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+  }
+  .hero-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.3rem;
+  }
+  .section-subtitle {
+    font-size: 0.9rem;
+    padding: 0 0.5rem;
+  }
+  .deploy-content-wrapper {
+    padding: 0 0.5rem;
+  }
+  .deploy-card {
+    padding: 1.5rem 1rem;
+    margin-top: 1rem;
+    border-radius: 12px;
+  }
+  .progress-section {
+    margin-bottom: 1.5rem;
+  }
+  .stepper {
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .step-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  .step-label {
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
   }
 }
 </style>

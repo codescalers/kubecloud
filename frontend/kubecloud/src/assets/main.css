@@ -145,6 +145,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.dashboard-card-subtitle {
+  color: var(--color-primary);
+  opacity: 0.9;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-weight-semibold);

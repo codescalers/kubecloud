@@ -1,34 +1,55 @@
 <template>
-  <section class="feature-panel mycelium">
-    <div class="feature-content-row">
-      <div class="feature-animation-with-glow">
-        <div class="feature-animation-glow"></div>
-        <div class="feature-animation">
-          <canvas ref="threeCanvas" class="three-canvas"></canvas>
-          <div v-if="hoveredNodeLabel" class="node-label" :style="{ left: hoveredNodeLabel.x + 'px', top: hoveredNodeLabel.y + 'px' }">
-            Peer
+  <v-container class="py-8 py-md-12" fluid>
+    <v-row align="center" justify="center" class="mx-auto" style="min-height: 60vh; max-width: 1600px;">
+      <v-col cols="12" md="7" class="d-flex align-center justify-center justify-md-end pa-4 pa-md-6">
+        <div class="canvas-container w-100 position-relative" style="max-width: 900px; min-width: 0;">
+          <div class="feature-animation-glow"></div>
+          <div class="w-100 h-100 position-relative d-flex align-center justify-center" style="z-index: 1;">
+            <canvas 
+              ref="threeCanvas" 
+              class="w-100 h-100" 
+              style="display: block; background: transparent;"
+              @mousemove="handleMouseMove"
+              @mouseleave="handleMouseLeave"
+              @click="handleClick"
+            ></canvas>
+            <v-chip
+              v-if="hoveredNodeLabel"
+              size="small"
+              class="elevation-2"
+              :style="{
+                position: 'absolute',
+                left: hoveredNodeLabel.x + 'px',
+                top: hoveredNodeLabel.y + 'px',
+                transform: 'translate(-50%, -120%)',
+                'pointer-events': 'none',
+                'user-select': 'none',
+                color: '#8ecfff',
+                'border-color': '#60a5fa33',
+                'border-width': '1px',
+                'border-style': 'solid',
+                'background': 'rgba(30,41,59,0.92)'
+              }"
+            >
+              Peer
+            </v-chip>
           </div>
         </div>
-      </div>
-      <div class="feature-content feature-content-overlay">
-        <h2 class="feature-title">Mycelium Networking</h2>
-        <p class="feature-description">
-          Ultra-fast, decentralized networking inspired by nature. Mycelium Networking forms a resilient, adaptive mesh that routes around failures and optimizes for speed and security.
-        </p>
-        <!-- Stacked sentences style -->
-        <div class="feature-benefits">
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">End-to-end encrypted</v-chip>
-          <v-chip class="ma-1" color="white" variant="outlined" size="small">Nature-inspired</v-chip>
+      </v-col>
+      <v-col cols="12" md="5" class="d-flex flex-column align-center align-md-start pa-6 text-white text-center text-md-start">
+        <div>
+          <h2 class="text-h4 text-md-h3 font-weight-medium mb-3">Mycelium Networking</h2>
+          <div class="subtitle" style="color:#60a5fa">
+            Ultra-fast, decentralized networking inspired by nature. Mycelium Networking forms a resilient, adaptive mesh that routes around failures and optimizes for speed and security.
+          </div>
+          <div class="d-flex flex-wrap justify-center justify-md-start mt-2" style="gap: 8px; color: #b6d6ff;">
+            <v-chip class="ma-1" size="small">End-to-end encrypted</v-chip>
+            <v-chip class="ma-1" size="small">Nature-inspired</v-chip>
+          </div>
         </div>
-        <!-- Inline list style (uncomment to preview)
-        <div class="feature-benefits">
-          Self-healing mesh, encrypted connections, global reach, nature-inspired.
-        </div>
-        -->
-        <!-- <a class="feature-link" href="/docs/mycelium" target="_blank">Learn more &rarr;</a> -->
-      </div>
-    </div>
-  </section>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -180,13 +201,6 @@ onMounted(() => {
   }
   growNextLine()
 
-  // Mouse events
-  if (threeCanvas.value) {
-    threeCanvas.value.addEventListener('mousemove', handleMouseMove)
-    threeCanvas.value.addEventListener('mouseleave', handleMouseLeave)
-    threeCanvas.value.addEventListener('click', handleClick)
-  }
-
   // Animate nodes with organic motion and interactivity
   function animate(time = 0) {
     animationId = requestAnimationFrame(animate)
@@ -294,43 +308,14 @@ onBeforeUnmount(() => {
     renderer.dispose()
     renderer = null
   }
-  if (threeCanvas.value) {
-    threeCanvas.value.removeEventListener('mousemove', handleMouseMove)
-    threeCanvas.value.removeEventListener('mouseleave', handleMouseLeave)
-    threeCanvas.value.removeEventListener('click', handleClick)
-  }
 })
 </script>
 
 <style scoped>
-.feature-panel {
-  min-height: 60vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.feature-content-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 1600px;
-  gap: 1.5rem;
-  padding: 3rem 1rem;
-  position: relative;
-}
-.feature-animation-with-glow {
-  position: relative;
-  width: 60vw;
-  min-width: 400px;
-  max-width: 900px;
+.canvas-container {
   height: 600px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
 }
+
 .feature-animation-glow {
   position: absolute;
   left: 50%;
@@ -343,115 +328,25 @@ onBeforeUnmount(() => {
   pointer-events: none;
   filter: blur(32px);
 }
-.feature-animation {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.three-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  background: transparent;
-}
-.feature-content {
-  flex: 1 1 350px;
-  min-width: 260px;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 2rem 1.5rem;
-  background: none;
-  backdrop-filter: none;
-  border-radius: 0;
-  color: #fff;
-  box-shadow: none;
-  margin-left: 0;
-  z-index: 2;
-}
-.feature-title {
-  font-size: 1.7rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
-.feature-description {
+
+.subtitle {
   font-size: 1.1rem;
-  font-weight: 400;
-  color: #60a5fa;
 }
-.feature-benefits {
-  margin: 1.2rem 0 0 0;
-  color: #b6d6ff;
-  font-size: 1rem;
-  line-height: 1.7;
-  display: flex;
-  gap: 0.2rem;
-}
-.feature-link {
-  margin-top: 1.5rem;
-  color: #60a5fa;
-  font-weight: 500;
-  text-decoration: underline;
-  font-size: 1rem;
-  display: inline-block;
-  transition: color 0.2s;
-}
-.feature-link:hover {
-  color: #38bdf8;
-}
-@media (max-width: 1200px) {
-  .feature-animation-with-glow {
-    width: 90vw;
-    max-width: 100vw;
+
+@media (max-width: 960px) {
+  .canvas-container {
     height: 400px;
-    min-width: 0;
   }
-  .feature-content {
-    margin-left: -40px;
-    max-width: 340px;
+  
+  .feature-animation-glow {
+    width: 100%;
+    height: 100%;
   }
 }
-@media (max-width: 900px) {
-  .feature-content-row {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 2rem 0.5rem;
-  }
-  .feature-animation-with-glow {
-    width: 100vw;
-    max-width: 100vw;
+
+@media (max-width: 600px) {
+  .canvas-container {
     height: 320px;
-    min-width: 0;
-    justify-content: center;
   }
-  .feature-content {
-    align-items: center;
-    text-align: center;
-    margin-left: 0;
-    max-width: 100vw;
-    padding: 1.5rem 0.5rem;
-  }
-}
-.node-label {
-  position: absolute;
-  background: rgba(30, 41, 59, 0.92);
-  color: #8ecfff;
-  font-size: 1rem;
-  font-weight: 500;
-  padding: 0.25rem 0.7rem;
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 20;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.12);
-  border: 1px solid #60a5fa33;
-  transform: translate(-50%, -120%);
-  user-select: none;
 }
 </style> 
