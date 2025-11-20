@@ -81,7 +81,7 @@ func (n *EmailNotifier) queueEmailViaEWF(ctx context.Context, notification model
 		"notification": notification,
 	}
 
-	if err := n.engine.RunAsync(ctx, wf); err != nil {
+	if err := n.engine.Run(ctx, wf, ewf.WithAsync()); err != nil {
 		logger.GetLogger().Error().
 			Err(err).
 			Str("workflow_id", wf.UUID).

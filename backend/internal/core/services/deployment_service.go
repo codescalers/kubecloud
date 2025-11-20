@@ -6,6 +6,7 @@ import (
 	"fmt"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
@@ -156,104 +157,90 @@ func (svc *DeploymentService) GetClientConfig(userID int) (statemanager.ClientCo
 	}, nil
 }
 
-func (svc *DeploymentService) runAsyncWithQueue(userID int, wf *ewf.Workflow) error {
-	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+// runWithQueue ensures the workflow is run within the specified queue
+// if a queue with the given name does not exist, it creates one
+// if a non queued workflow is passed, it sets its queue name to run in the specified queue
+func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 
 	err := svc.ewfEngine.CreateQueue(svc.appCtx, queueName, cfg.DefaultQueueConfig.WorkersDef, cfg.DefaultQueueConfig.QueueOptions)
 	if err != nil && !errors.Is(err, ewf.ErrQueueAlreadyExists) {
 		return err
 	}
 
-	return svc.ewfEngine.RunAsync(svc.appCtx, wf, ewf.WithQueue(queueName))
+	if wf.QueueName == "" {
+		wf.QueueName = queueName
+	}
+
+	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
 
-func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDeployCluster)
+func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State) (string, ewf.WorkflowStatus, error) {
+	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+
+	wf, err := svc.ewfEngine.NewWorkflow(workflowName, ewf.WithQueue(queueName))
 	if err != nil {
 		return "", "", err
 	}
 
-	wf.State = ewf.State{
+	wf.State = state
+
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		return "", "", err
+	}
+
+	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		return "", "", err
+	}
+
+	return wf.UUID, wf.Status, nil
+}
+
+func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
+
+	state := ewf.State{
 		"config":  config,
 		"cluster": cluster,
 	}
 
-	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
-		return "", "", err
-	}
-
-	return wf.UUID, wf.Status, nil
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeployCluster, state)
 }
 
 func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfig, projectName string) (string, ewf.WorkflowStatus, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDeleteCluster)
-	if err != nil {
-		return "", "", err
-	}
 
-	wf.State = ewf.State{
+	state := ewf.State{
 		"config":       config,
 		"project_name": projectName,
 	}
 
-	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
-		return "", "", err
-	}
-
-	return wf.UUID, wf.Status, nil
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteCluster, state)
 }
 
 func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientConfig) (string, ewf.WorkflowStatus, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDeleteAllClusters)
-	if err != nil {
-		return "", "", err
-	}
 
-	wf.State = ewf.State{
+	state := ewf.State{
 		"config": config,
 	}
 
-	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
-		return "", "", err
-	}
-
-	return wf.UUID, wf.Status, nil
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state)
 }
 
 func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, node kubedeployer.Node) (string, ewf.WorkflowStatus, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAddNode)
-	if err != nil {
-		return "", "", err
-	}
 
-	wf.State = ewf.State{
+	state := ewf.State{
 		"config":  config,
 		"cluster": cl,
 		"node":    node,
 	}
-
-	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
-		return "", "", err
-	}
-
-	return wf.UUID, wf.Status, nil
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state)
 }
 
 func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, nodeName string) (string, ewf.WorkflowStatus, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRemoveNode)
-	if err != nil {
-		return "", "", err
-	}
 
-	wf.State = ewf.State{
+	state := ewf.State{
 		"config":    config,
 		"cluster":   cl,
 		"node_name": nodeName,
 	}
 
-	if err = svc.runAsyncWithQueue(config.UserID, wf); err != nil {
-		return "", "", err
-	}
-
-	return wf.UUID, wf.Status, nil
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state)
 }

@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
@@ -84,6 +87,25 @@ func (svc *UserService) GetUserWithBalancesInUSD(userID int) (UserWithBalancesIn
 	}, nil
 }
 
+func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
+	records, err := svc.userRepo.ListRemainingWorkflowsByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	workflows := make([]*ewf.Workflow, 0, len(records))
+
+	for _, rec := range records {
+		var wf ewf.Workflow
+		if err := json.Unmarshal(rec.Data, &wf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
+		}
+
+		workflows = append(workflows, &wf)
+	}
+	return workflows, nil
+}
+
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
 	return svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
 }
@@ -158,7 +180,7 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 		"password": password,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
@@ -179,7 +201,7 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 		"user_id": userID,
 	}
 
-	err = svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
@@ -198,7 +220,11 @@ func (svc *UserService) SyncStripeChargeBalance(userID int, userStripeCustomerID
 		"username":           username,
 	}
 
-	err = svc.ewfEngine.RunSync(svc.appCtx, wf)
+	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		return "", err
+	}
+
+	err = svc.ewfEngine.Run(svc.appCtx, wf)
 	return wf.UUID, err
 }
 

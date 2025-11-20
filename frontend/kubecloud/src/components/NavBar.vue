@@ -28,6 +28,7 @@
       <div class="navbar-auth">
         <!-- Show notification bell and user menu when logged in -->
         <div v-if="isLoggedIn" class="user-section">
+          <ActionMenu />
           <NotificationBell />
           <div class="user-menu">
             <v-menu>
@@ -127,6 +128,7 @@ import { useRouter } from 'vue-router'
 import { computed, nextTick, ref } from 'vue'
 import logo from '../assets/logo.png'
 import NotificationBell from './NotificationBell.vue'
+import ActionMenu from './ActionMenu.vue'
 
 const userStore = useUserStore()
 const router = useRouter()

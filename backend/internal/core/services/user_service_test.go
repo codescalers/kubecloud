@@ -55,6 +55,16 @@ func (m *mockUserRepo) ListAllUsers() ([]models.User, error) {
 	return args.Get(0).([]models.User), args.Error(1)
 }
 
+func (m *mockUserRepo) ListRemainingWorkflowsByUserID(userID int) ([]models.GormWorkflowRecord, error) {
+	args := m.Called(userID)
+
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]models.GormWorkflowRecord), args.Error(1)
+}
+
 func (m *mockUserRepo) ListAdmins() ([]models.User, error) {
 	args := m.Called()
 	if args.Get(0) == nil {

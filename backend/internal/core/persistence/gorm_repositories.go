@@ -6,8 +6,11 @@ import (
 	"kubecloud/internal/core/models"
 	"time"
 
+	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
 )
+
+const gormUserID = "gorm_user_id"
 
 // User Repository
 
@@ -28,6 +31,18 @@ func (r *GormUserRepository) RegisterUser(user *models.User) error {
 	}
 
 	return r.UpdateUserLastCalcTime(user.ID, time.Now())
+}
+
+// SetStateUserID sets gorm user ID in workflow state
+func SetStateUserID(wf *ewf.Workflow, userID int) error {
+	if wf == nil {
+		return fmt.Errorf("workflow is nil")
+	}
+	if wf.State == nil {
+		wf.State = make(ewf.State)
+	}
+	wf.State[gormUserID] = userID
+	return nil
 }
 
 // GetUserByEmail returns user by its email if found
@@ -245,6 +260,20 @@ func (r *GormUserRepository) GetSSHKeyByID(sshKeyID int, userID int) (models.SSH
 	}
 
 	return sshKey, query.Error
+}
+
+// ListRemainingWorkflowsByUserID returns remaining workflows for a specific user
+func (r *GormUserRepository) ListRemainingWorkflowsByUserID(userID int) ([]models.GormWorkflowRecord, error) {
+	var records []models.GormWorkflowRecord
+
+	if err := r.db.Where("user_id = ?", userID).
+		Where("status IN ?", []string{string(ewf.StatusPending), string(ewf.StatusRunning)}).
+		Order("uuid DESC").
+		Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	return records, nil
 }
 
 // Cluster Repository

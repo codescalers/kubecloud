@@ -199,7 +199,7 @@ func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
 		"user_id": userID,
 	}
 
-	return svc.ewfEngine.RunAsync(svc.appCtx, wf)
+	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }
 
 // AsyncDrainAllUsersUSD drains all users' balances to the system account
@@ -222,7 +222,7 @@ func (svc *AdminService) AsyncDrainAllUsersUSD() error {
 			"user_id": user.ID,
 		}
 
-		if err := svc.ewfEngine.RunAsync(svc.appCtx, wf); err != nil {
+		if err := svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
 			multiErr = multierror.Append(multiErr, err)
 		}
 	}

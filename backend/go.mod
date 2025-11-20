@@ -27,7 +27,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.3
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.3
 	github.com/vedhavyas/go-subkey v1.0.3
-	github.com/xmonader/ewf v0.0.0-20251111131226-60482c094f36
+	github.com/xmonader/ewf v0.0.0-20251117120120-29ca9b3d4926
 	golang.org/x/sync v0.18.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
 	gorm.io/driver/postgres v1.5.7
@@ -54,7 +54,7 @@ require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
-	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
+	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.2.1 // indirect

@@ -48,7 +48,6 @@
   },
   "debug": false,
   "dev_mode": false,
-  "monitor_balance_interval_in_minutes": 120,
   "notify_admins_for_pending_records_in_hours": 24,
   "cluster_health_check_interval_in_hours": 1,
 	"node_health_check"	: {
@@ -68,7 +67,9 @@
       "app": "myceliumCloud",
       "env": "dev",
       "host": ""
-    },
-  "applied_discount": "gold"
-  }
+    }
+  },
+	"settle_transfer_records_interval_in_minutes": 5,
+  "applied_discount": "gold",
+	"minimum_tft_amount_in_wallet": 10
 }

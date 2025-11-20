@@ -81,7 +81,7 @@ type MaintenanceModeStatus struct {
 // @ID get-all-users
 // @Accept json
 // @Produce json
-// @Success 200 {array} services.UserWithUSDBalance
+// @Success 200 {array} services.UserWithTFTBalance
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /users [get]
@@ -314,7 +314,7 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 // @ID list-transfer-records
 // @Accept json
 // @Produce json
-// @Success 200 {array} []TransferRecordsResponse
+// @Success 200 {array} []services.TransferRecordsWithTFTAmount
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /transfer-records [get]

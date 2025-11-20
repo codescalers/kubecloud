@@ -88,14 +88,13 @@ func sendDeploymentWorkflowNotification(ctx context.Context, notificationDispatc
 		WithSubject(fmt.Sprintf("%s completed successfully", workflowDesc)).
 		WithExtra("workflow_name", workflowDesc).
 		WithExtra("node_count", fmt.Sprintf("%d", len(cluster.Nodes))).
-		WithExtra("total_steps", fmt.Sprintf("%d", len(cluster.Nodes)+2)).
 		Build()
 
 	return notificationDispatcher.Send(ctx, notif)
 }
 
 // notifyStepProgress sends step progress notifications
-func notifyStepProgress(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, state ewf.State, workflowName, stepName string, status string, err error, retryCount, maxRetries int) {
+func notifyStepProgress(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, state ewf.State, workflowName, stepName string, status string) {
 	log := logger.ForOperation("workflow", "notify_step_progress").With().
 		Str("workflow_name", workflowName).
 		Str("step_name", stepName).Logger()
@@ -115,33 +114,12 @@ func notifyStepProgress(ctx context.Context, notificationDispatcher *notificatio
 		clusterName = cluster.Name
 	}
 
-	currentStep := calculateCurrentStep(stepName)
-	total := 4
-	progressStr := fmt.Sprintf(" (%d/%d)", currentStep, total)
-
-	var builder *notification.NotificationBuilder
-	switch {
-	case err != nil:
-		msg := fmt.Sprintf("Deploying cluster %q - Step failed%s", clusterName, progressStr)
-		builder = notification.ClusterNotification(config.UserID, clusterName).Failure(msg, err)
-	case status == "completed":
-		msg := fmt.Sprintf("Deploying cluster %q - Step completed%s", clusterName, progressStr)
-		builder = notification.ClusterNotification(config.UserID, clusterName).Info(msg).WithStatus("completed")
-	case status == "retrying":
-		retryStr := fmt.Sprintf(" - retry %d/%d", retryCount, maxRetries)
-		msg := fmt.Sprintf("Deploying cluster %q - Retrying Step%s%s", clusterName, progressStr, retryStr)
-		builder = notification.ClusterNotification(config.UserID, clusterName).Info(msg).WithStatus("retrying")
-	default:
-		return
-	}
-
-	notif := builder.
-		WithSubject("Cluster Deployment Progress").
+	notif := notification.ClusterNotification(config.UserID, clusterName).
+		Info(fmt.Sprintf("Deploying cluster %q is in progress - %s: %s", clusterName, stepName, status)).
+		WithSubject("Cluster Deployment").
 		WithChannels(notification.ChannelUI).
 		WithExtra("workflow_name", workflowName).
 		WithExtra("step_name", stepName).
-		WithExtra("current_step", fmt.Sprintf("%d", currentStep)).
-		WithExtra("total_steps", fmt.Sprintf("%d", total)).
 		NoPersist().
 		Build()
 
@@ -163,13 +141,13 @@ func notifyStepHook(notificationDispatcher *notification.NotificationDispatcher)
 		if err != nil {
 			if attempts < maxAttempts {
 				attempts++
-				notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "retrying", err, attempts, maxAttempts)
+				notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "retrying")
 				wf.State[attemptKey] = attempts
 				return
 			}
-			notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "failed", err, 0, 0)
+			notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "failed")
 		} else {
-			notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "completed", nil, 0, 0)
+			notifyStepProgress(ctx, notificationDispatcher, wf.State, wf.Name, step.Name, "completed")
 		}
 	}
 }
@@ -449,18 +427,5 @@ func workflowToNotificationType(workflowName string) models.NotificationType {
 		return models.NotificationTypeUser
 	default:
 		return models.NotificationTypeDeployment
-	}
-}
-
-func calculateCurrentStep(stepName string) int {
-	switch stepName {
-	case StepDeployNetwork:
-		return 1
-	case StepDeployLeaderNode:
-		return 2
-	case StepBatchDeployAllNodes:
-		return 3
-	default:
-		return 0
 	}
 }
