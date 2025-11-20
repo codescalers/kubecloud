@@ -51,6 +51,7 @@ func TestLoadConfig(t *testing.T) {
 			"max_concurrent_sends": 10,
 			"max_attachment_size_mb": 10
 		},
+		"dev_mode": true,
 		"currency": "usd",
 		"stripe_secret": "secret",
 		"voucher_name_length": 8,
@@ -166,7 +167,7 @@ func TestDefaultTagsInConfig(t *testing.T) {
     "port": "8080"
 		},
 		"database": {
-			"dsn": "sqlite3:///app/myceliumCloud.db"
+			"dsn": "postgres://user:pass@localhost:5432/db"
 		},
 		"redis": {
 			"hostname": "localhost",
@@ -400,6 +401,67 @@ func TestLoadConfig_InvalidConfig(t *testing.T) {
 			_, err = LoadConfig()
 			require.Error(t, err, "LoadConfig() should fail with invalid config")
 			assert.Contains(t, err.Error(), tc.expectedErr)
+		})
+	}
+}
+
+func TestSQLiteProductionCheck(t *testing.T) {
+	tempDir := t.TempDir()
+	privateKeyPath := filepath.Join(tempDir, "id_rsa")
+	publicKeyPath := filepath.Join(tempDir, "id_rsa.pub")
+	err := os.WriteFile(privateKeyPath, []byte("test"), 0600)
+	require.NoError(t, err, "Failed to write test private key file")
+	err = os.WriteFile(publicKeyPath, []byte("test"), 0644)
+	require.NoError(t, err, "Failed to write test public key file")
+
+	tests := []struct {
+		name      string
+		devMode   bool
+		dsn       string
+		shouldErr bool
+	}{
+		{"sqlite with dev_mode=true allowed", true, "sqlite3:///test.db", false},
+		{"sqlite with dev_mode=false blocked", false, "sqlite3:///test.db", true},
+		{"sqlite:// scheme also blocked in production", false, "sqlite:///test.db", true},
+		{"postgres allowed in production", false, "postgres://user:pass@localhost:5432/db", false},
+		{"postgres allowed in dev", true, "postgres://user:pass@localhost:5432/db", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath := filepath.Join(tempDir, "test.json")
+			configJSON := `{
+				"server": {"host": "localhost", "port": "8080"},
+				"database": {"dsn": "` + tt.dsn + `"},
+				"redis": {"hostname": "localhost", "port": 6379, "db": 0},
+				"jwt_token": {"secret": "secret"},
+				"admins": ["admin@test.com"],
+				"mailSender": {"email": "test@test.com", "sendgrid_key": "key"},
+				"dev_mode": ` + map[bool]string{true: "true", false: "false"}[tt.devMode] + `,
+				"stripe_secret": "secret",
+				"terms_and_conditions": {"document_link": "https://test.com", "document_hash": "hash"},
+				"system_account": {"mnemonic": "test mnemonic", "network": "test"},
+				"invoice": {"name": "Test", "address": "Test", "governorate": "Test"},
+				"ssh": {"private_key_path": "` + privateKeyPath + `", "public_key_path": "` + publicKeyPath + `"},
+				"monitor_balance_interval_in_minutes": 1,
+				"notify_admins_for_pending_records_in_hours": 1,
+				"node_health_check": {"reserved_node_health_check_interval_in_hours": 1, "reserved_node_health_check_timeout_in_minutes": 1, "reserved_node_health_check_workers_num": 1}
+			}`
+			err := os.WriteFile(configPath, []byte(configJSON), 0644)
+			require.NoError(t, err, "Failed to write test config file")
+
+			viper.Reset()
+			viper.SetConfigFile(configPath)
+			err = viper.ReadInConfig()
+			require.NoError(t, err, "Failed to read test config file")
+
+			_, err = LoadConfig()
+			if tt.shouldErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "SQLite not allowed in production")
+				return
+			}
+			require.NoError(t, err)
 		})
 	}
 }
