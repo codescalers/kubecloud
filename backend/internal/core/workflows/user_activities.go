@@ -29,14 +29,6 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-func FromUSDMilliCentToUSD(amountMillicent uint64) float64 {
-	return float64(amountMillicent) / 1000
-}
-
-func FromUSDToUSDMillicent(amountUSD float64) uint64 {
-	return uint64(amountUSD * 1000)
-}
-
 func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
@@ -502,7 +494,7 @@ func CreatePendingRecord(gridClient deployer.TFPluginClient, pendingRecordRepo m
 			return fmt.Errorf("'transfer_mode' in state is not a string")
 		}
 
-		requestedTFTs, err := gridClient.SubstrateConn.FromUSDMillicentToTFT(amount)
+		requestedTFTs, err := grid.FromUSDMillicentToTFT(gridClient, amount)
 		if err != nil {
 			log.Error().Err(err).Msg("error converting USD to TFT")
 			return err

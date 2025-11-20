@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/grid"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
@@ -62,7 +63,7 @@ func (svc *StatsService) GetStats(ctx context.Context) (Stats, error) {
 	// Fetch system account balance
 	var systemBalance float64
 	if svc.gridClient != nil && svc.systemMnemonic != "" {
-		balance, err := svc.gridClient.SubstrateConn.GetUserBalanceUSD(svc.systemMnemonic)
+		balance, err := grid.GetUserBalanceUSD(*svc.gridClient, svc.systemMnemonic)
 		if err == nil {
 			systemBalance = balance
 		}

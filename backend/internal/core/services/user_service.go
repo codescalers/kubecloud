@@ -8,6 +8,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
 	"slices"
@@ -86,7 +87,7 @@ func (svc *UserService) GetUserWithPendingBalance(userID int) (UserWithPendingBa
 
 	return UserWithPendingBalance{
 		User:              user,
-		PendingBalanceUSD: workflows.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
+		PendingBalanceUSD: grid.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
 	}, nil
 }
 
@@ -101,7 +102,7 @@ func (svc *UserService) GetUserPendingBalanceInUSDMillicent(userID int) (uint64,
 		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
 	}
 
-	usdMillicentPendingAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(tftPendingAmount)
+	usdMillicentPendingAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, tftPendingAmount)
 	if err != nil {
 		return 0, err
 	}
@@ -117,20 +118,20 @@ func (svc *UserService) ListUserPendingRecordsWithUSDAmounts(userID int) ([]Pend
 
 	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
 	for _, record := range pendingRecords {
-		usdAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TFTAmount)
+		usdAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
-		usdTransferredAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
+		usdTransferredAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TransferredTFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            workflows.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: workflows.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            grid.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: grid.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 
@@ -157,7 +158,7 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 }
 
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
-	return svc.gridClient.SubstrateConn.GetUserBalanceUSDMillicent(userMnemonic)
+	return grid.GetUserBalanceUSDMillicent(svc.gridClient, userMnemonic)
 }
 
 func (svc *UserService) UpdateUserByID(user *models.User) error {
@@ -265,7 +266,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"user_id":            userID,
 		"stripe_customer_id": userStripeCustomerID,
 		"payment_method_id":  paymentMethodID,
-		"amount":             workflows.FromUSDToUSDMillicent(requestAmount),
+		"amount":             grid.FromUSDToUSDMillicent(requestAmount),
 		"mnemonic":           userMnemonic,
 		"username":           username,
 		"transfer_mode":      models.ChargeBalanceMode,
@@ -292,7 +293,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 
 	wf.State = map[string]interface{}{
 		"user_id":       userID,
-		"amount":        workflows.FromUSDToUSDMillicent(voucherValue),
+		"amount":        grid.FromUSDToUSDMillicent(voucherValue),
 		"mnemonic":      userMnemonic,
 		"username":      userUsername,
 		"transfer_mode": models.RedeemVoucherMode,

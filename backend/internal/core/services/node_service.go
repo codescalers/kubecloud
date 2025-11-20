@@ -8,6 +8,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -68,13 +69,13 @@ func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserNodes, er
 
 func (svc *NodeService) CheckUserBalanceForOneHour(userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
 	// validate user has enough balance for reserving node
-	usdMillicentBalance, err := svc.gridClient.SubstrateConn.GetUserBalanceUSDMillicent(userMnemonic)
+	usdMillicentBalance, err := grid.GetUserBalanceUSDMillicent(svc.gridClient, userMnemonic)
 	if err != nil {
 		return err
 	}
 
 	//TODO: check price in month constant
-	if usdMillicentBalance-userDebt < workflows.FromUSDToUSDMillicent(nodePriceUsd)/24/30 {
+	if usdMillicentBalance-userDebt < grid.FromUSDToUSDMillicent(nodePriceUsd)/24/30 {
 		return fmt.Errorf("you should at least have enough balance for one hour")
 	}
 

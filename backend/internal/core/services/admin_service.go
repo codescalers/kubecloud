@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/logger"
 
 	"sync"
@@ -92,7 +93,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balance, err := svc.gridClient.SubstrateConn.GetUserBalanceUSD(user.Mnemonic)
+			balance, err := grid.GetUserBalanceUSD(svc.gridClient, user.Mnemonic)
 			if err != nil {
 				mu.Lock()
 				balanceErrors = multierror.Append(balanceErrors, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
@@ -141,7 +142,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 
 	wf.State = map[string]interface{}{
 		"user_id":       transaction.UserID,
-		"amount":        workflows.FromUSDToUSDMillicent(transaction.Amount),
+		"amount":        grid.FromUSDToUSDMillicent(transaction.Amount),
 		"mnemonic":      user.Mnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
@@ -187,20 +188,20 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 
 	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
 	for _, record := range pendingRecords {
-		usdAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TFTAmount)
+		usdAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
-		usdTransferredAmount, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
+		usdTransferredAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TransferredTFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            workflows.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: workflows.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            grid.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: grid.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 

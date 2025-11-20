@@ -8,6 +8,7 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
@@ -150,7 +151,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(totalAmountTFT)
+		totalAmountUSDMillicent, err := grid.FromTFTtoUSDMillicent(svc.gridClient, totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -170,7 +171,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := workflows.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := grid.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
@@ -254,7 +255,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.U
 		totalDebt += debt
 	}
 
-	totalDebtUSDMillicent, err := svc.gridClient.SubstrateConn.FromTFTtoUSDMillicent(uint64(totalDebt))
+	totalDebtUSDMillicent, err := grid.FromTFTtoUSDMillicent(svc.gridClient, uint64(totalDebt))
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert debt to USD millicent: %w", err)
 	}

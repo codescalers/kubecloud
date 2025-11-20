@@ -7,7 +7,7 @@ import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
-	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
 	"strconv"
@@ -737,9 +737,9 @@ func (h *UserHandler) GetUserBalance(c *gin.Context) {
 	}
 
 	OK(c, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        workflows.FromUSDMilliCentToUSD(usdMillicentBalance),
-		DebtUSD:           workflows.FromUSDMilliCentToUSD(user.Debt),
-		PendingBalanceUSD: workflows.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
+		BalanceUSD:        grid.FromUSDMilliCentToUSD(usdMillicentBalance),
+		DebtUSD:           grid.FromUSDMilliCentToUSD(user.Debt),
+		PendingBalanceUSD: grid.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
 	})
 }
 
