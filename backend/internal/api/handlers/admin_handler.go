@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal/core/models"
@@ -60,13 +61,6 @@ type AdminMailInput struct {
 	Subject     string                  `form:"subject" binding:"required"`
 	Body        string                  `form:"body" binding:"required"`
 	Attachments []*multipart.FileHeader `form:"attachments"`
-}
-
-type SendMailResponse struct {
-	TotalUsers        int      `json:"total_users"`
-	SuccessfulEmails  int      `json:"successful_emails"`
-	FailedEmailsCount int      `json:"failed_emails_count"`
-	FailedEmails      []string `json:"failed_emails,omitempty"`
 }
 
 type MaintenanceModeStatus struct {
@@ -304,8 +298,10 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 }
 
 // Only accessible by admins
-// @Summary Send mail to all users
+// @Summary Start sending mail to all users (async)
 // @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
+// The endpoint returns immediately, while the actual sending happens in the background.
+// Delivery statistics are later pushed to the admin through notifications/SSE.
 // @Tags admin
 // @ID admin-mail-all-users
 // @Accept multipart/form-data
@@ -313,7 +309,7 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 // @Param subject formData string true "Email subject"
 // @Param body formData string true "Email body content"
 // @Param attachments formData file false "Email attachments (multiple files allowed)"
-// @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
+// @Success 200 {object} APIResponse "Mail sending started"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security AdminMiddleware
@@ -325,6 +321,7 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		BadRequest(c, "Invalid request format")
 		return
 	}
+	adminID := c.GetInt("user_id")
 
 	var attachments []mailservice.Attachment
 	if form, err := c.MultipartForm(); err == nil {
@@ -347,51 +344,40 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	body := h.mailService.SystemAnnouncementMailBody(input.Body)
-	emailConcurrencyLimiter := make(chan struct{}, h.mailService.MaxConcurrentSends())
+	go h.sendToAll(input.Body, input.Subject, users, adminID, attachments...)
 
-	var (
-		wg           sync.WaitGroup
-		mu           sync.Mutex
-		failedEmails []string
-	)
+	OK(c, "Mail sending started", nil)
+}
 
-	reqLog.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
-	for _, user := range users {
-		wg.Add(1)
-		emailConcurrencyLimiter <- struct{}{}
-		go func(user models.User) {
-			defer wg.Done()
-			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMailFromSystem(user.Email, input.Subject, body, attachments...)
-			if err != nil {
-				reqLog.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
-				mu.Lock()
-				failedEmails = append(failedEmails, user.Email)
-				mu.Unlock()
-			}
-		}(user)
+func (h *AdminHandler) sendToAll(body, subject string, users []models.User, adminID int, attachments ...mailservice.Attachment) {
+
+	mailBody := h.mailService.SystemAnnouncementMailBody(body)
+
+	emails := make([]string, 0, len(users))
+	for _, u := range users {
+		emails = append(emails, u.Email)
 	}
 
-	wg.Wait()
+	failedEmails := h.mailService.SendBulkSystemMails(emails, mailBody, subject, attachments...)
 
 	totalUsers := len(users)
-	responseData := SendMailResponse{
-		TotalUsers:        totalUsers,
-		SuccessfulEmails:  totalUsers - len(failedEmails),
-		FailedEmailsCount: len(failedEmails),
+	successfulEmailsCount := len(users) - len(failedEmails)
+
+	notif := notification.NewNotification(adminID, models.NotificationTypeAdmin).
+		Info(fmt.Sprintf(
+			"Mail sent to %d/%d users successfully",
+			successfulEmailsCount,
+			totalUsers,
+		)).
+		WithSubject("Mail Sending Progress").
+		WithChannels(notification.ChannelUI).
+		NoPersist().
+		Build()
+
+	if err := h.notificationDispatcher.Send(context.Background(), notif); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to send mail progress notification")
 	}
 
-	if responseData.SuccessfulEmails == 0 {
-		logger.GetLogger().Error().Msg("failed to send email to all users")
-		InternalServerError(c)
-		return
-	}
-	if responseData.FailedEmailsCount > 0 {
-		OK(c, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
-		return
-	}
-	OK(c, "Mail sent successfully to all users", responseData)
 }
 
 func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {

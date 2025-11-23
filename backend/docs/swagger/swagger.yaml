@@ -412,19 +412,6 @@ definitions:
     - name
     - public_key
     type: object
-  handlers.SendMailResponse:
-    properties:
-      failed_emails:
-        items:
-          type: string
-        type: array
-      failed_emails_count:
-        type: integer
-      successful_emails:
-        type: integer
-      total_users:
-        type: integer
-    type: object
   handlers.TwinResponse:
     properties:
       account_id:
@@ -658,6 +645,7 @@ definitions:
     - user
     - connected
     - node
+    - admin
     type: string
     x-enum-varnames:
     - NotificationTypeDeployment
@@ -665,6 +653,7 @@ definitions:
     - NotificationTypeUser
     - NotificationTypeConnected
     - NotificationTypeNode
+    - NotificationTypeAdmin
   models.SSHKey:
     properties:
       created_at:
@@ -3044,14 +3033,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Email sending results with delivery statistics
+          description: Mail sending started
           schema:
-            allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.SendMailResponse'
-              type: object
+            $ref: '#/definitions/handlers.APIResponse'
         "400":
           description: Invalid request format
           schema:
@@ -3062,7 +3046,7 @@ paths:
             $ref: '#/definitions/handlers.APIResponse'
       security:
       - AdminMiddleware: []
-      summary: Send mail to all users
+      summary: Start sending mail to all users (async)
       tags:
       - admin
   /vouchers:

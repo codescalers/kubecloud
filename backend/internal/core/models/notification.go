@@ -15,6 +15,7 @@ const (
 	NotificationTypeUser       NotificationType = "user"
 	NotificationTypeConnected  NotificationType = "connected"
 	NotificationTypeNode       NotificationType = "node"
+	NotificationTypeAdmin      NotificationType = "admin"
 )
 
 // NotificationStatus represents the status of a notification

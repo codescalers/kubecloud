@@ -2862,7 +2862,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Send mail to all users",
+                "summary": "Start sending mail to all users (async)",
                 "operationId": "admin-mail-all-users",
                 "parameters": [
                     {
@@ -2888,21 +2888,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Email sending results with delivery statistics",
+                        "description": "Mail sending started",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.SendMailResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
@@ -3890,26 +3878,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.SendMailResponse": {
-            "type": "object",
-            "properties": {
-                "failed_emails": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "failed_emails_count": {
-                    "type": "integer"
-                },
-                "successful_emails": {
-                    "type": "integer"
-                },
-                "total_users": {
-                    "type": "integer"
-                }
-            }
-        },
         "handlers.TwinResponse": {
             "type": "object",
             "properties": {
@@ -4247,14 +4215,16 @@ const docTemplate = `{
                 "billing",
                 "user",
                 "connected",
-                "node"
+                "node",
+                "admin"
             ],
             "x-enum-varnames": [
                 "NotificationTypeDeployment",
                 "NotificationTypeBilling",
                 "NotificationTypeUser",
                 "NotificationTypeConnected",
-                "NotificationTypeNode"
+                "NotificationTypeNode",
+                "NotificationTypeAdmin"
             ]
         },
         "models.SSHKey": {

@@ -219,6 +219,54 @@ func TestFakeMailService_SystemAnnouncementMailBody(t *testing.T) {
 	}
 }
 
+func TestFakeMailService_SendBulkSystemMails(t *testing.T) {
+	metrics := metrics.NewMetrics()
+	service := NewFakeMailService(metrics)
+
+	tests := []struct {
+		name          string
+		receivers     []string
+		expectedFails []string
+	}{
+		{
+			name:          "all_valid",
+			receivers:     []string{"user1@example.com", "user2@example.com"},
+			expectedFails: []string{},
+		},
+		{
+			name:          "some_invalid",
+			receivers:     []string{"valid@example.com", "invalid", "", "user@test.com"},
+			expectedFails: []string{"invalid", ""},
+		},
+		{
+			name:          "all_invalid",
+			receivers:     []string{"", "wrong@", "missingdomain"},
+			expectedFails: []string{"", "wrong@", "missingdomain"},
+		},
+		{
+			name:          "empty_list",
+			receivers:     []string{},
+			expectedFails: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			failed := service.SendBulkSystemMails(tt.receivers, "body", "subject")
+
+			if len(failed) != len(tt.expectedFails) {
+				t.Errorf("expected %d failures, got %d", len(tt.expectedFails), len(failed))
+			}
+
+			for i := range tt.expectedFails {
+				if failed[i] != tt.expectedFails[i] {
+					t.Errorf("failed[%d] = %q, want %q", i, failed[i], tt.expectedFails[i])
+				}
+			}
+		})
+	}
+}
+
 // TestSendGridMailService_NewSendGridMailService tests service initialization.
 // This scenario covers:
 // - Creates service with proper configuration
