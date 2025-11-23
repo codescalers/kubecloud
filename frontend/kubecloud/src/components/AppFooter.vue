@@ -8,6 +8,8 @@
       </div>
       <nav class="footer-links">
         <router-link to="/docs" class="footer-link">Docs</router-link>
+        <router-link to="/terms-and-conditions" class="footer-link">Terms & Conditions</router-link>
+        <router-link to="/privacy-policy" class="footer-link">Privacy Policy</router-link>
         <a href="https://github.com/codescalers/kubecloud" target="_blank" rel="noopener" class="footer-link">GitHub</a>
       </nav>
     </div>
