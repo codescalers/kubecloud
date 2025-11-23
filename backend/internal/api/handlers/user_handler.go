@@ -1055,13 +1055,19 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 		if displayName == "" {
 			displayName = workflow.Name
 		}
+
+		stepName := ""
+		if workflow.CurrentStep >= 0 && workflow.CurrentStep < len(workflow.Steps) {
+			stepName = workflow.Steps[workflow.CurrentStep].Name
+		}
+
 		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflow{
 			WorkflowID:  workflow.UUID,
 			Name:        displayName,
 			Status:      string(workflow.Status),
 			CreatedAt:   workflow.CreatedAt,
 			CurrentStep: workflow.CurrentStep,
-			StepName:    workflow.Steps[workflow.CurrentStep].Name,
+			StepName:    stepName,
 			TotalSteps:  len(workflow.Steps),
 			Metadata:    workflow.Metadata,
 		})

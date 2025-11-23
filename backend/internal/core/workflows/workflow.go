@@ -177,11 +177,4 @@ func RegisterEWFWorkflows(
 		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowDrainUser, &drainUserTemplate)
-
-	// Drain all users balances workflow
-	drainAllUsersTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
-	drainAllUsersTemplate.Steps = []ewf.Step{
-		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	engine.RegisterTemplate(WorkflowDrainAllUsers, &drainAllUsersTemplate)
 }

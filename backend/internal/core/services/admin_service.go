@@ -237,7 +237,7 @@ func (svc *AdminService) AsyncDrainAllUsersUSD() error {
 	var multiErr *multierror.Error
 
 	for _, user := range users {
-		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers)
+		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser)
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 			continue
