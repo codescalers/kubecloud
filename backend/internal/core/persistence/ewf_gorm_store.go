@@ -47,11 +47,13 @@ func (r *GormEWFRepository) SaveWorkflow(ctx context.Context, workflow ewf.Workf
 	}
 
 	gormWorkflow := models.GormWorkflowRecord{
-		UUID:      workflow.UUID,
-		Name:      workflow.Name,
-		Status:    string(workflow.Status),
-		Data:      data,
-		QueueName: workflow.QueueName,
+		UUID:        workflow.UUID,
+		Name:        workflow.Name,
+		Status:      string(workflow.Status),
+		Data:        data,
+		QueueName:   workflow.QueueName,
+		DisplayName: workflow.DisplayName,
+		Metadata:    workflow.Metadata,
 	}
 
 	if userID, ok := workflow.State[gormUserID]; ok {

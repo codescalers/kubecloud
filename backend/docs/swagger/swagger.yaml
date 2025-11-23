@@ -461,23 +461,18 @@ definitions:
       current_step:
         type: integer
       metadata:
-        $ref: '#/definitions/handlers.UserWorkflowMetadata'
+        additionalProperties:
+          type: string
+        type: object
       name:
         type: string
       status:
         type: string
+      step_name:
+        type: string
       total_steps:
         type: integer
       workflow_id:
-        type: string
-    type: object
-  handlers.UserWorkflowMetadata:
-    properties:
-      cluster_name:
-        type: string
-      node_id:
-        type: integer
-      step_name:
         type: string
     type: object
   handlers.UserWorkflowsResponse:

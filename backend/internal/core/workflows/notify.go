@@ -56,7 +56,7 @@ func sendDeploymentWorkflowNotification(ctx context.Context, notificationDispatc
 		return clusterErr
 	}
 
-	workflowDesc := GetWorkflowDescription(wf.Name)
+	workflowDesc := getWorkflowDescription(wf.Name)
 
 	if err != nil {
 		var nodeInfo string
@@ -152,7 +152,8 @@ func notifyStepHook(notificationDispatcher *notification.NotificationDispatcher)
 	}
 }
 
-func GetWorkflowDescription(workflowName string) string {
+// getWorkflowDescription returns a user-friendly description for the workflow
+func getWorkflowDescription(workflowName string) string {
 	if desc, exists := workflowsDescriptions[workflowName]; exists {
 		return desc
 	}
@@ -232,7 +233,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 			log.Warn().Msg("Missing or invalid 'username' in workflow state")
 		}
 
-		wfDesc := GetWorkflowDescription(wf.Name)
+		wfDesc := getWorkflowDescription(wf.Name)
 
 		// Admin notification
 		adminNotif := notification.BillingNotification(adminID).
@@ -305,7 +306,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 			Success(message).
 			WithSubject(subject).
 			WithStatus(status).
-			WithExtra("workflow_name", GetWorkflowDescription(wf.Name)).
+			WithExtra("workflow_name", getWorkflowDescription(wf.Name)).
 			WithExtra("amount", fmt.Sprintf("%.2f", amountUSD)).
 			Build()
 
@@ -319,7 +320,7 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 	notif := notification.BillingNotification(userID).
 		Failure(message, err).
 		WithSubject(subject).
-		WithExtra("workflow_name", GetWorkflowDescription(wf.Name)).
+		WithExtra("workflow_name", getWorkflowDescription(wf.Name)).
 		WithExtra("amount", fmt.Sprintf("%.2f", amountUSD)).
 		Build()
 
@@ -376,7 +377,7 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 		}
 	}
 
-	wfDesc := GetWorkflowDescription(wf.Name)
+	wfDesc := getWorkflowDescription(wf.Name)
 	var message, subject string
 
 	// default workflow reserve node
@@ -443,7 +444,7 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 		return nil
 	}
 
-	wfDesc := GetWorkflowDescription(wf.Name)
+	wfDesc := getWorkflowDescription(wf.Name)
 	var subject, message string
 
 	// default workflow verified
