@@ -460,9 +460,15 @@ definitions:
         type: string
       current_step:
         type: integer
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
       name:
         type: string
       status:
+        type: string
+      step_name:
         type: string
       total_steps:
         type: integer

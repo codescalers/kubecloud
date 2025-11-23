@@ -18,24 +18,6 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-var workflowsDescriptions = map[string]string{
-	WorkflowAddNode:                  "Adding Node",
-	WorkflowRemoveNode:               "Removing Node",
-	WorkflowDeleteCluster:            "Deleting Cluster",
-	WorkflowDeleteAllClusters:        "Deleting All Clusters",
-	WorkflowRollbackFailedDeployment: "Rollback",
-	WorkflowUserRegistration:         "User Registration",
-	WorkflowUserVerification:         "User Verification",
-	WorkflowChargeBalance:            "Charge Balance",
-	WorkflowAdminCreditBalance:       "Admin Credit Balance",
-	WorkflowRedeemVoucher:            "Redeem Voucher",
-	WorkflowReserveNode:              "Reserve Node",
-	WorkflowUnreserveNode:            "Unreserve Node",
-	WorkflowTrackClusterHealth:       "Cluster Health Check",
-	WorkflowDrainUser:                "Drain User Balance",
-	WorkflowDrainAllUsers:            "Drain All Users Balances",
-}
-
 func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config cfg.Configuration,
