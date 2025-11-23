@@ -186,7 +186,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.Aft
 			return
 		}
 
-		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode, ewf.WithDisplayName("Rollback failed node"))
+		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode, ewf.WithDisplayName(fmt.Sprintf("Rollback failed node %s", node.Name)))
 		if rollbackErr != nil {
 			log.Error().
 				Err(rollbackErr).

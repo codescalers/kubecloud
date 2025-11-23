@@ -284,7 +284,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		return "", err
 	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher, ewf.WithDisplayName("Redeem voucher"))
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher, ewf.WithDisplayName(fmt.Sprintf("Redeem voucher %s", voucherCode)))
 	if err != nil {
 		return "", err
 	}

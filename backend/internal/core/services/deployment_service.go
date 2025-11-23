@@ -196,7 +196,7 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster": cluster,
 	}
 
-	displayName := "Deploying cluster"
+	displayName := fmt.Sprintf("Deploying cluster %s", cluster.Name)
 	metadata := map[string]string{
 		"cluster_name": cluster.Name,
 		"node_count":   strconv.Itoa(len(cluster.Nodes)),
@@ -211,7 +211,7 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 		"project_name": projectName,
 	}
 
-	displayName := "Deleting cluster"
+	displayName := fmt.Sprintf("Deleting cluster %s", projectName)
 	metadata := map[string]string{
 		"project_name": projectName,
 	}
@@ -224,7 +224,7 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 		"config": config,
 	}
 
-	displayName := "Deleting all clusters"
+	displayName := "Deleting all user clusters"
 	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state, displayName, nil)
 }
 
@@ -235,7 +235,7 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"cluster": cl,
 		"node":    node,
 	}
-	displayName := "Adding node to cluster"
+	displayName := fmt.Sprintf("Adding node %s to cluster %s", node.Name, cl.Name)
 	metadata := map[string]string{
 		"cluster_name": cl.Name,
 		"node_name":    node.Name,
@@ -251,7 +251,7 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 		"node_name": nodeName,
 	}
 
-	displayName := "Removing node from cluster"
+	displayName := fmt.Sprintf("Removing node %s from cluster %s", nodeName, cl.Name)
 	metadata := map[string]string{
 		"cluster_name": cl.Name,
 		"node_name":    nodeName,

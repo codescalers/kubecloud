@@ -163,7 +163,7 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
-	displayName := "Reserving node"
+	displayName := fmt.Sprintf("Reserving node %d", nodeID)
 	metadata := map[string]string{
 		"node_id": strconv.FormatUint(uint64(nodeID), 10),
 	}
@@ -194,7 +194,7 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, contractID uint64, nodeID uint32) (string, error) {
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 
-	displayName := "Unreserving node"
+	displayName := fmt.Sprintf("Unreserving node %d", nodeID)
 	metadata := map[string]string{
 		"contract_id": strconv.FormatUint(contractID, 10),
 		"node_id":     strconv.FormatUint(uint64(nodeID), 10),

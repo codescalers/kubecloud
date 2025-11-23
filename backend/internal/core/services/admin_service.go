@@ -134,7 +134,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		return err
 	}
 
-	displayName := "Admin credit balance"
+	displayName := fmt.Sprintf("Admin credit balance for %s", user.Username)
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance, ewf.WithDisplayName(displayName))
 	if err != nil {
 		return err
