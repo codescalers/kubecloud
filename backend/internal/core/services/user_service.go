@@ -150,10 +150,6 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 		if err := json.Unmarshal(rec.Data, &wf); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
 		}
-
-		wf.DisplayName = rec.DisplayName
-		wf.Metadata = rec.Metadata
-
 		workflows = append(workflows, &wf)
 	}
 	return workflows, nil
