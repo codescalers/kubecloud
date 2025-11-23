@@ -394,5 +394,5 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.NotifyAdminsForPendingRecordsInHours,
 	)
 
-	return workers.NewWorkers(app.core.appCtx, workersService)
+	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)
 }
