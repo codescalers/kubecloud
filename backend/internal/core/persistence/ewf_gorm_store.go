@@ -79,6 +79,10 @@ func (r *GormEWFRepository) LoadWorkflowByName(ctx context.Context, name string)
 	if err != nil {
 		return workflow, fmt.Errorf("failed to unmarshal workflow: %w", err)
 	}
+
+	workflow.DisplayName = gormWorkflow.DisplayName
+	workflow.Metadata = gormWorkflow.Metadata
+
 	return workflow, nil
 }
 
@@ -91,6 +95,9 @@ func (r *GormEWFRepository) LoadWorkflowByUUID(ctx context.Context, uuid string)
 	if err := json.Unmarshal(gormWorkflow.Data, &workflow); err != nil {
 		return workflow, fmt.Errorf("failed to unmarshal workflow: %w", err)
 	}
+	workflow.DisplayName = gormWorkflow.DisplayName
+	workflow.Metadata = gormWorkflow.Metadata
+
 	return workflow, nil
 }
 

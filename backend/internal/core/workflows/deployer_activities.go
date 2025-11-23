@@ -583,7 +583,7 @@ func deploymentFailureHook(engine *ewf.Engine) ewf.AfterWorkflowHook {
 
 			log.Info().Str("project_name", cluster.ProjectName).Msg("triggering rollback workflow for failed deployment")
 
-			rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedDeployment)
+			rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedDeployment, ewf.WithDisplayName("Rollback failed deployment"))
 			if rollbackErr != nil {
 				log.Error().Err(rollbackErr).Str("project_name", cluster.ProjectName).Msg("failed to create rollback workflow")
 				return

@@ -49,13 +49,13 @@ func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkf
 			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
 		}
 
-		workflowDesc := getWorkflowDescription(w.Name)
 		notificationType := workflowToNotificationType(w.Name)
+		displayName := getWorkflowDisplayName(w)
 		notif := notification.NewNotification(userID, notificationType).
-			Info(workflowDesc+" has been started").
-			WithSubject(workflowDesc+" Started").
+			Info(displayName+" has been started").
+			WithSubject(displayName+" Started").
 			WithStatus("started").
-			WithExtra("workflow_name", workflowDesc).
+			WithExtra("workflow_name", displayName).
 			NoPersist().
 			Build()
 		if err = n.Send(ctx, notif); err != nil {
@@ -186,7 +186,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.Aft
 			return
 		}
 
-		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode)
+		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode, ewf.WithDisplayName("Rollback failed node"))
 		if rollbackErr != nil {
 			log.Error().
 				Err(rollbackErr).

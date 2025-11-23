@@ -134,7 +134,8 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 		return err
 	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance)
+	displayName := "Admin credit balance"
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance, ewf.WithDisplayName(displayName))
 	if err != nil {
 		return err
 	}
@@ -215,7 +216,7 @@ func (svc *AdminService) generateVoucherWithTimestamp() string {
 
 // AsyncDrainUserUSD drains a specific user's balance to the system account
 func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser, ewf.WithDisplayName("Drain user balance"))
 	if err != nil {
 		return err
 	}
@@ -237,7 +238,7 @@ func (svc *AdminService) AsyncDrainAllUsersUSD() error {
 	var multiErr *multierror.Error
 
 	for _, user := range users {
-		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser)
+		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers, ewf.WithDisplayName("Drain all users balance"))
 		if err != nil {
 			multiErr = multierror.Append(multiErr, err)
 			continue
