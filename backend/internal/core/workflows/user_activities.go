@@ -525,7 +525,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 	}
 }
 
-func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Engine) ewf.StepFn {
+func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Engine, maxConcurrent int) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		users, err := userRepo.ListAllUsers()
 		if err != nil {
@@ -534,11 +534,14 @@ func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Eng
 		multiErr := &multierror.Error{}
 		wg := sync.WaitGroup{}
 		mu := sync.Mutex{}
+		sem := make(chan struct{}, maxConcurrent)
 
 		for _, user := range users {
 			wg.Add(1)
+			sem <- struct{}{}
 			go func(user models.User) {
 				defer wg.Done()
+				defer func() { <-sem }()
 				drainDisplayName := fmt.Sprintf("Drain %s balance", user.Username)
 				wf, err := ewfEngine.NewWorkflow(WorkflowDrainUser, ewf.WithDisplayName(drainDisplayName))
 				if err != nil {
