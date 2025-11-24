@@ -141,7 +141,7 @@
                       <td>{{ node.node_id }}</td>
                       <td>{{ node.cpu }}</td>
                       <td>{{ Math.round(node.memory / 1024) }} GB</td>
-                      <td>{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</td>
+                      <td>{{ node.data_disks.reduce((a: number, b: number) => a+b, node.root_size) / 1024 }} GB</td>
                       <td>
                         <span class="truncate-cell">
                           {{ node.ip || '-' }}
@@ -218,7 +218,7 @@
                       </div>
                       <div class="d-flex justify-space-between">
                         <span class="text-medium-emphasis">Storage:</span>
-                        <span class="font-weight-medium">{{ Math.round((node.root_size + node.disk_size) / 1024) }} GB</span>
+                        <span class="font-weight-medium">{{ Math.round((node.data_disks.reduce((a: number, b: number) => a+b, node.root_size)) / 1024) }} GB</span>
                       </div>
                       <div class="d-flex justify-space-between">
                         <span class="text-medium-emphasis">IP:</span>
@@ -351,7 +351,7 @@ const totalRam = computed(() => {
 })
 const totalStorage = computed(() => {
   return filteredNodes.value.length
-    ? filteredNodes.value.reduce((sum, node) => sum + ((typeof node.root_size === 'number' ? node.root_size : 0) + (typeof node.disk_size === 'number' ? node.disk_size : 0)), 0)
+    ? filteredNodes.value.reduce((sum, node) => sum + ((typeof node.root_size === 'number' ? node.root_size : 0) + (Array.isArray(node.data_disks)? node.data_disks.reduce((a: number, b: number) => a+b, 0) : 0)), 0)
     : '-'
 })
 

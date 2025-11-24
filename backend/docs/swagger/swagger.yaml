@@ -178,9 +178,11 @@ definitions:
     properties:
       cpu:
         type: integer
-      disk_size:
+      data_disks:
         description: Storage in MB
-        type: integer
+        items:
+          type: integer
+        type: array
       entrypoint:
         type: string
       env_vars:
@@ -533,10 +535,12 @@ definitions:
       cpu:
         minimum: 1
         type: integer
-      disk_size:
+      data_disks:
         description: Storage in MB
-        minimum: 10240
-        type: integer
+        items:
+          type: integer
+        minItems: 1
+        type: array
       entrypoint:
         type: string
       env_vars:
@@ -583,7 +587,7 @@ definitions:
         - leader
     required:
     - cpu
-    - disk_size
+    - data_disks
     - memory
     - name
     - node_id
