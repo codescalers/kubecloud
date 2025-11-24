@@ -68,16 +68,6 @@ const router = createRouter({
       component: () => import('../views/DocsView.vue'),
     },
     {
-      path: '/terms-and-conditions',
-      name: 'terms-and-conditions',
-      component: () => import('../views/TermsAndConditionsView.vue'),
-    },
-    {
-      path: '/privacy-policy',
-      name: 'privacy-policy',
-      component: () => import('../views/PrivacyPolicyView.vue'),
-    },
-    {
       path: '/admin',
       name: 'admin-dashboard',
       component: () => import('../views/AdminDashboard.vue'),
