@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"kubecloud/internal/core/models"
@@ -323,6 +322,7 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	}
 	adminID := c.GetInt("user_id")
 
+	// parse attachments
 	var attachments []mailservice.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
@@ -345,41 +345,9 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	}
 
 	// send in the background to avoid blocking requests
-	go h.sendToAll(input.Body, input.Subject, users, adminID, attachments...)
+	go h.svc.SendMailToAllUsers(input.Body, input.Subject, users, adminID, attachments...)
 
 	OK(c, "Mail sending started", nil)
-}
-
-func (h *AdminHandler) sendToAll(body, subject string, users []models.User, adminID int, attachments ...mailservice.Attachment) {
-
-	mailBody := h.mailService.SystemAnnouncementMailBody(body)
-
-	emails := make([]string, 0, len(users))
-	for _, u := range users {
-		emails = append(emails, u.Email)
-	}
-
-	failedEmails := h.mailService.SendBulkSystemMails(emails, mailBody, subject, attachments...)
-
-	totalUsers := len(users)
-	successfulEmails := len(users) - failedEmails
-
-	// after sending, send an SSE notification on the progress
-	notif := notification.NewNotification(adminID, models.NotificationTypeAdmin).
-		Info(fmt.Sprintf(
-			"Mail sent to %d/%d users successfully",
-			successfulEmails,
-			totalUsers,
-		)).
-		WithSubject("Mail Sending Progress").
-		WithChannels(notification.ChannelUI).
-		NoPersist().
-		Build()
-
-	if err := h.notificationDispatcher.Send(context.Background(), notif); err != nil {
-		logger.GetLogger().Error().Err(err).Msg("failed to send mail progress notification")
-	}
-
 }
 
 func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {

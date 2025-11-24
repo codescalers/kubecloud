@@ -10,10 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 
 	cfg "kubecloud/internal/config"
-	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/metrics"
 
 	"github.com/sendgrid/sendgrid-go"
@@ -218,35 +216,4 @@ func (service SendGridMailService) NotifyAdminsMailContent(recordsNumber int) (s
 	body = strings.ReplaceAll(body, "-host-", service.systemHost)
 
 	return subject, body
-}
-
-// SendBulkSystemMails send system mails to all passed emails
-func (service SendGridMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) int {
-	emailConcurrencyLimiter := make(chan struct{}, service.MaxConcurrentSends())
-
-	var (
-		wg           sync.WaitGroup
-		mu           sync.Mutex
-		failedEmails []string
-	)
-
-	for _, receiver := range receivers {
-		wg.Add(1)
-		emailConcurrencyLimiter <- struct{}{}
-		go func(receiver string) {
-			defer wg.Done()
-			defer func() { <-emailConcurrencyLimiter }()
-			err := service.SendMailFromSystem(receiver, subject, body, attachments...)
-			if err != nil {
-				logger.GetLogger().Error().Err(err).Str("user_email", receiver).Msg("failed to send mail to user")
-				mu.Lock()
-				failedEmails = append(failedEmails, receiver)
-				mu.Unlock()
-			}
-		}(receiver)
-	}
-
-	wg.Wait()
-
-	return len(failedEmails)
 }

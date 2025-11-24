@@ -104,33 +104,3 @@ func (service FakeMailService) NotifyAdminsMailContent(recordsNumber int) (strin
 		Msg("Notify admins mail has been sent")
 	return "", ""
 }
-
-// SendBulkSystemMails send system mails to all passed emails
-func (service FakeMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) int {
-
-	var failed []string
-
-	for _, receiver := range receivers {
-		err := service.SendMailFromSystem(receiver, subject, body, attachments...)
-
-		if err != nil {
-			logger.GetLogger().Error().
-				Str("user_email", receiver).
-				Msg("failed to send email")
-			failed = append(failed, receiver)
-			continue
-		}
-
-		logger.GetLogger().Info().
-			Str("user_email", receiver).
-			Str("subject", subject).
-			Msg("email successfully")
-	}
-
-	logger.GetLogger().Info().
-		Int("total_receivers", len(receivers)).
-		Int("failed", len(failed)).
-		Msg("Bulk send summary")
-
-	return len(failed)
-}

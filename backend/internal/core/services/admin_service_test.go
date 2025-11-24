@@ -85,7 +85,7 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -109,7 +109,7 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -131,7 +131,7 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	_, err := service.ListAllUsers()
@@ -153,7 +153,7 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	err := service.DeleteUserByID(1)
@@ -175,7 +175,7 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	err := service.DeleteUserByID(999)
@@ -200,7 +200,7 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(5, 30, 100.0)
@@ -222,7 +222,7 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(0, 30, 100.0)
@@ -247,7 +247,7 @@ func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		nil, nil,
+		nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(100, 30, 50.0)
