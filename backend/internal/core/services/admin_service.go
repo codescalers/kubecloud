@@ -231,30 +231,14 @@ func (svc *AdminService) AsyncDrainUserUSD(userID, adminID int) error {
 
 // AsyncDrainAllUsersUSD drains all users' balances to the system account
 func (svc *AdminService) AsyncDrainAllUsersUSD(adminID int) error {
-	users, err := svc.ListAllUsers()
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers, ewf.WithDisplayName("Drain all users balance"))
 	if err != nil {
 		return err
 	}
 
-	var multiErr *multierror.Error
-
-	for _, user := range users {
-		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers, ewf.WithDisplayName("Drain all users balance"))
-		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
-			continue
-		}
-
-		wf.State = map[string]interface{}{
-			"target_user_id":  user.ID,
-			"user_id":         adminID,
-			"target_username": user.Username,
-		}
-
-		if err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
-			multiErr = multierror.Append(multiErr, err)
-		}
+	wf.State = map[string]interface{}{
+		"user_id": adminID,
 	}
 
-	return multiErr.ErrorOrNil()
+	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }

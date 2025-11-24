@@ -54,6 +54,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate, config.SystemAccount.Mnemonic))
+	engine.Register(StepDrainAllUsersBalance, DrainAllUsersBalanceStep(userRepo, engine))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -163,7 +164,7 @@ func RegisterEWFWorkflows(
 	// Drain all users balances workflow
 	drainAllUsersTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	drainAllUsersTemplate.Steps = []ewf.Step{
-		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: StepDrainAllUsersBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowDrainAllUsers, &drainAllUsersTemplate)
 }

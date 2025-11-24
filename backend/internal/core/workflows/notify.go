@@ -19,7 +19,11 @@ import (
 func notifyWorkflowProgress(notificationDispatcher *notification.NotificationDispatcher) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.ForOperation("workflow", "notify_workflow_progress").With().Str("workflow_name", wf.Name).Logger()
-
+		suppressNotification, _ := getFromState[bool](wf.State, "suppress_notification")
+		if suppressNotification {
+			log.Info().Msg("Suppressing notification for workflow")
+			return
+		}
 		notificationType := workflowToNotificationType(wf.Name)
 		switch notificationType {
 		case models.NotificationTypeDeployment:
@@ -512,6 +516,24 @@ func sendDrainWorkflowNotification(ctx context.Context, notificationDispatcher *
 	if errNotificationUserID != nil {
 		log.Error().Err(errNotificationUserID).Msg("failed to get notification user ID from state")
 		return errNotificationUserID
+	}
+
+	if wf.Name == WorkflowDrainAllUsers {
+		builder := notification.BillingNotification(notificationUserID).
+			WithSubject(getWorkflowDisplayName(wf)).
+			WithChannels(notification.ChannelUI).
+			NoPersist().
+			WithExtra("workflow_name", getWorkflowDisplayName(wf))
+
+		if err != nil {
+			message := "Draining all users balance failed"
+			notif := builder.Failure(message, err).Build()
+			return notificationDispatcher.Send(ctx, notif)
+		}
+
+		message := "Drained balance for all users successfully"
+		notif := builder.Success(message).Build()
+		return notificationDispatcher.Send(ctx, notif)
 	}
 
 	targetUsername, errTargetUsername := getFromState[string](wf.State, "target_username")

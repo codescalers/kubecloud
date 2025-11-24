@@ -12,12 +12,14 @@ import (
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
+	"sync"
 
 	"slices"
 	"strings"
 
 	"kubecloud/internal/infrastructure/logger"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -522,6 +524,51 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 		return nil
 	}
 }
+
+func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Engine) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		users, err := userRepo.ListAllUsers()
+		if err != nil {
+			return fmt.Errorf("failed to get all users: %w", err)
+		}
+		multiErr := &multierror.Error{}
+		wg := sync.WaitGroup{}
+		mu := sync.Mutex{}
+
+		for _, user := range users {
+			wg.Add(1)
+			go func(user models.User) {
+				defer wg.Done()
+				drainDisplayName := fmt.Sprintf("Drain %s balance", user.Username)
+				wf, err := ewfEngine.NewWorkflow(WorkflowDrainUser, ewf.WithDisplayName(drainDisplayName))
+				if err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+					return
+				}
+
+				wf.State = map[string]interface{}{
+					"target_user_id":        user.ID,
+					"target_username":       user.Username,
+					"suppress_notification": true,
+				}
+
+				if err = ewfEngine.Run(ctx, wf); err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+				}
+			}(user)
+		}
+		wg.Wait()
+		if err := multiErr.ErrorOrNil(); err != nil {
+			return fmt.Errorf("failed to drain all users balance: %w", err)
+		}
+		return nil
+	}
+}
+
 func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
