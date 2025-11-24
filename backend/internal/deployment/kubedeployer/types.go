@@ -35,10 +35,10 @@ type Node struct {
 	NodeID uint32   `json:"node_id" binding:"required"`
 
 	CPU       uint8             `json:"cpu" binding:"required,min=1"`
-	Memory    uint64            `json:"memory" binding:"required,min=2048"`    // Memory in MB
-	RootSize  uint64            `json:"root_size" binding:"required,min=5120"` // Storage in MB
-	DataDisks []uint64          `json:"data_disks" binding:"required,min=1"`   // Storage in MB
-	GPUIDs    []string          `json:"gpu_ids,omitempty"`                     // List of GPU IDs
+	Memory    uint64            `json:"memory" binding:"required,min=2048"`                 // Memory in MB
+	RootSize  uint64            `json:"root_size" binding:"required,min=5120"`              // Storage in MB
+	DataDisks []uint64          `json:"data_disks" binding:"required,min=1,dive,min=10240"` // Storage in MB
+	GPUIDs    []string          `json:"gpu_ids,omitempty"`                                  // List of GPU IDs
 	EnvVars   map[string]string `json:"env_vars"`
 
 	// Optional fields
