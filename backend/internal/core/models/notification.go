@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // NotificationType represents the type of notification
@@ -46,6 +47,7 @@ type Notification struct {
 	Status    NotificationStatus   `json:"status" gorm:"default:'unread'"`
 	CreatedAt time.Time            `json:"created_at" gorm:"autoCreateTime"`
 	ReadAt    *time.Time           `json:"read_at,omitempty"`
+	DeletedAt gorm.DeletedAt       `json:"-" gorm:"index"`
 
 	// Non-persisted fields
 	Persist bool `json:"-" gorm:"-"`
