@@ -230,9 +230,9 @@ async function getClusterPayload(): Promise<Cluster> {
       ram = Math.floor((node.total.mru * 0.99 - node.used.mru) / 1024 ** 3)
       clusterNode.cpu = cpu
       clusterNode.memory = ram * 1024
-      storagePool.forEach(pool => {
+      storagePool.forEach((pool, i) => {
         disk = Math.floor((pool.free * 0.985) / 1024 ** 3)
-        clusterNode.data_disks.push((disk * 1024) - fs)
+        clusterNode.data_disks.push((disk * 1024) - (i === 0 ? fs : 0))
       })
       return clusterNode
     }
