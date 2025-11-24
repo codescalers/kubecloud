@@ -470,13 +470,13 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 // DrainUserBalanceStep transfers a user's balance to the system account
 func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
+		userIDVal, ok := state["target_user_id"]
 		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
+			return fmt.Errorf("missing 'target_user_id' in state")
 		}
 		userID, ok := userIDVal.(int)
 		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+			return fmt.Errorf("'target_user_id' in state is not an int")
 		}
 
 		user, err := userRepo.GetUserByID(userID)
@@ -484,6 +484,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 			return fmt.Errorf("failed to get user: %w", err)
 		}
 
+		state["target_username"] = user.Username
 		// Get user's current balance in TFT from on-chain
 		balanceInTFT, err := substrateClient.GetUserTFTBalance(user.Mnemonic)
 		if err != nil {
