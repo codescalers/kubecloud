@@ -9,6 +9,8 @@
       <nav class="footer-links">
         <router-link to="/docs" class="footer-link">Docs</router-link>
         <a href="https://github.com/codescalers/kubecloud" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+        <router-link to="/terms-and-conditions" class="footer-link">Terms & Conditions</router-link>
+        <router-link to="/privacy-policy" class="footer-link">Privacy Policy</router-link>       
       </nav>
     </div>
     <v-divider class="my-4 w-75 mx-auto"></v-divider>

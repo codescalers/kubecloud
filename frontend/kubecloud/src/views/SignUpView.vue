@@ -11,71 +11,81 @@
         <p class="auth-subtitle">Join Mycelium Cloud and start your journey</p>
       </div>
       <v-form @submit.prevent="handleSignUp" class="auth-form" v-model="isFormValid">
-        <v-text-field
-          v-model="form.name"
-          label="Username"
-          prepend-inner-icon="mdi-account"
-          variant="outlined"
-          class="auth-field"
-          :rules="[RULES.username]"
-          required
-        />
-        <v-text-field
-          v-model="form.email"
-          label="Email Address"
-          type="email"
-          prepend-inner-icon="mdi-email"
-          variant="outlined"
-          class="auth-field"
-          :rules="[RULES.email]"
-          required
-        />
-        <v-text-field
-          v-model="form.password"
-          label="Password"
-          :type="showPassword ? 'text' : 'password'"
-          prepend-inner-icon="mdi-lock"
-          :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-          @click:append-inner="showPassword = !showPassword"
-          variant="outlined"
-          class="auth-field"
-          :rules="[RULES.password]"
-          required
-        />
-        <div class="password-requirements">
-          <small class="text-muted">
-            Password must contain at least 8 characters, including:
-          </small>
-          <ul class="requirements-list text-muted mt-2">
-            <li>One uppercase letter (A-Z)</li>
-            <li>One lowercase letter (a-z)</li>
-            <li>One number (0-9)</li>
-            <li>One special character (@$!%*?&)</li>
-          </ul>
+        <div class="form-grid">
+          <v-text-field
+            v-model="form.name"
+            label="Username"
+            prepend-inner-icon="mdi-account"
+            variant="outlined"
+            class="auth-field"
+            :rules="[RULES.username]"
+            required
+          />
+          <v-text-field
+            v-model="form.email"
+            label="Email Address"
+            type="email"
+            prepend-inner-icon="mdi-email"
+            variant="outlined"
+            class="auth-field"
+            :rules="[RULES.email]"
+            required
+          />
+          <v-text-field
+            v-model="form.password"
+            label="Password"
+            :type="showPassword ? 'text' : 'password'"
+            prepend-inner-icon="mdi-lock"
+            :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+            @click:append-inner="showPassword = !showPassword"
+            variant="outlined"
+            class="auth-field"
+            :rules="[RULES.password]"
+            required
+          />
+          <v-text-field
+            v-model="form.confirmPassword"
+            label="Confirm Password"
+            :type="showConfirmPassword ? 'text' : 'password'"
+            prepend-inner-icon="mdi-lock-check"
+            :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
+            @click:append-inner="showConfirmPassword = !showConfirmPassword"
+            variant="outlined"
+            class="auth-field"
+            :rules="[RULES.confirmPassword(form.confirmPassword, form.password)]"
+            required
+          />
+          <div class="password-requirements full-width">
+            <small class="text-muted">
+              Password must contain at least 8 characters, including:
+            </small>
+            <ul class="requirements-list text-muted mt-2">
+              <li>One uppercase letter (A-Z)</li>
+              <li>One lowercase letter (a-z)</li>
+              <li>One number (0-9)</li>
+              <li>One special character (@$!%*?&)</li>
+            </ul>
+          </div>
+          <div class="form-actions full-width">
+            <v-btn
+              type="submit"
+              color="white"
+              block
+              size="large"
+              variant="outlined"
+              :disabled="loading || !isFormValid"
+            >
+              <v-icon icon="mdi-account-plus" class="mr-2"></v-icon>
+              {{ 'Create Account' }}
+            </v-btn>
+            <p class="terms-links text-muted mt-4">
+              By creating an account you agree to our
+              <router-link to="/terms-and-conditions" class="link">Terms & Conditions</router-link>
+              and
+              <router-link to="/privacy-policy" class="link">Privacy Policy</router-link>.
+            </p>
+          </div>
         </div>
-        <v-text-field
-          v-model="form.confirmPassword"
-          label="Confirm Password"
-          :type="showConfirmPassword ? 'text' : 'password'"
-          prepend-inner-icon="mdi-lock-check"
-          :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
-          @click:append-inner="showConfirmPassword = !showConfirmPassword"
-          variant="outlined"
-          class="auth-field"
-          :rules="[RULES.confirmPassword(form.confirmPassword, form.password)]"
-          required
-        />
-        <v-btn
-          type="submit"
-          color="white"
-          block
-          size="large"
-          variant="outlined"
-          :disabled="loading || !isFormValid"
-        >
-          <v-icon icon="mdi-account-plus" class="mr-2"></v-icon>
-          {{ 'Create Account' }}
-        </v-btn>
       </v-form>
       <div class="auth-footer">
         <span class="auth-footer-text">Already have an account?</span>
@@ -164,7 +174,7 @@ const handleSignUp = async () => {
 }
 .auth-content {
   min-width: 320px;
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
   background: rgba(10, 25, 47, 0.92);
   border-radius: var(--radius-xl);
@@ -176,6 +186,12 @@ const handleSignUp = async () => {
   flex-direction: column;
   align-items: center;
   animation: fadeInUp 0.7s cubic-bezier(0.4,0,0.2,1);
+}
+
+@media (min-width: 960px) {
+  .auth-content {
+    max-width: 720px;
+  }
 }
 .auth-header {
   text-align: center;
@@ -198,6 +214,20 @@ const handleSignUp = async () => {
 .auth-form {
   width: 100%;
 }
+.form-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 960px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid > .full-width {
+    grid-column: span 2;
+  }
+}
 .name-fields {
   display: flex;
   gap: var(--space-2);
@@ -215,7 +245,7 @@ const handleSignUp = async () => {
   margin-bottom: var(--space-4);
 }
 .v-btn[type="submit"] {
-  @apply btn btn-primary btn-full;
+  width: 100%;
   font-size: var(--font-size-base);
   padding: var(--space-3) 0;
   border-radius: var(--radius-xl);
@@ -270,6 +300,12 @@ const handleSignUp = async () => {
   margin-bottom: var(--space-4);
 }
 
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .sign-in-link {
   text-decoration: none;
   font-weight: 500;
@@ -285,6 +321,22 @@ const handleSignUp = async () => {
   font-size: 0.758rem;
   list-style-type: disc;
   padding-left: var(--space-4);
+}
+
+.terms-links {
+  font-size: 0.75rem;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.terms-links .link {
+  color: #60a5fa;
+  text-decoration: none;
+  margin: 0 0.2rem;
+}
+
+.terms-links .link:hover {
+  text-decoration: underline;
 }
 
 .back-home-link {
