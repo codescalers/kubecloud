@@ -267,12 +267,7 @@ func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models
 
 	mailBody := svc.mailService.SystemAnnouncementMailBody(body)
 
-	emails := make([]string, 0, len(users))
-	for _, u := range users {
-		emails = append(emails, u.Email)
-	}
-
-	failedEmails := svc.sendBulkSystemMails(emails, mailBody, subject, attachments...)
+	failedEmails := svc.sendBulkSystemMails(users, mailBody, subject, attachments...)
 
 	totalUsers := len(users)
 	successfulEmails := len(users) - failedEmails
@@ -296,7 +291,7 @@ func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models
 }
 
 // SendBulkSystemMails send system mails to all passed emails
-func (svc *AdminService) sendBulkSystemMails(receivers []string, body string, subject string, attachments ...mailservice.Attachment) int {
+func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, subject string, attachments ...mailservice.Attachment) int {
 	emailConcurrencyLimiter := make(chan struct{}, svc.mailService.MaxConcurrentSends())
 
 	var (
@@ -305,20 +300,20 @@ func (svc *AdminService) sendBulkSystemMails(receivers []string, body string, su
 		failedEmails []string
 	)
 
-	for _, receiver := range receivers {
+	for _, user := range users {
 		wg.Add(1)
 		emailConcurrencyLimiter <- struct{}{}
-		go func(receiver string) {
+		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-emailConcurrencyLimiter }()
-			err := svc.mailService.SendMailFromSystem(receiver, subject, body, attachments...)
+			err := svc.mailService.SendMailFromSystem(user.Email, subject, body, attachments...)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Str("user_email", receiver).Msg("failed to send mail to user")
+				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()
-				failedEmails = append(failedEmails, receiver)
+				failedEmails = append(failedEmails, user.Email)
 				mu.Unlock()
 			}
-		}(receiver)
+		}(user)
 	}
 
 	wg.Wait()
