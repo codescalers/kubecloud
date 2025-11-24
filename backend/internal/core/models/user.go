@@ -10,7 +10,7 @@ type User struct {
 	StripeCustomerID  string    `json:"stripe_customer_id"`
 	Username          string    `json:"username" binding:"required"`
 	Email             string    `json:"email" gorm:"unique" binding:"required"`
-	Password          []byte    `json:"password" binding:"required"`
+	Password          []byte    `json:"-" binding:"required"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 	Verified          bool      `json:"verified"`
