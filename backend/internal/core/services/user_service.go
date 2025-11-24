@@ -150,7 +150,6 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 		if err := json.Unmarshal(rec.Data, &wf); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
 		}
-
 		workflows = append(workflows, &wf)
 	}
 	return workflows, nil
@@ -219,7 +218,7 @@ func (svc *UserService) IsSystemAdmin(userEmail string) bool {
 }
 
 func (svc *UserService) AsyncRegisterUser(name, email, password string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration, ewf.WithDisplayName("Register user"))
 	if err != nil {
 		return "", err
 	}
@@ -235,7 +234,7 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 }
 
 func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, userID int, userEmail, username string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification, ewf.WithDisplayName("Verify user registration"))
 	if err != nil {
 		return "", err
 	}
@@ -256,7 +255,7 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 }
 
 func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance, ewf.WithDisplayName("Charge balance"))
 	if err != nil {
 		return "", err
 	}
@@ -285,7 +284,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 		return "", err
 	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher, ewf.WithDisplayName(fmt.Sprintf("Redeem voucher %s", voucherCode)))
 	if err != nil {
 		return "", err
 	}

@@ -185,7 +185,7 @@ function prevStep() {
 async function getClusterPayload(): Promise<Cluster> {
   const token = clusterToken.value;
 
-  async function buildNode(vm: VM, type: 'master' | 'worker'): Promise<ClusterNode> {
+  async function buildNode(vm: VM, type: 'master' | 'worker'): Promise<ClusterNode> { 
     // Get all SSH keys for this VM and concatenate their public keys
     const sshKeyPublicKeys = vm.sshKeyIds
       .map(id => availableSshKeys.value.find(k => k.ID === id)?.public_key)
@@ -195,6 +195,22 @@ async function getClusterPayload(): Promise<Cluster> {
     let cpu = vm.vcpu
     let ram = vm.ram
     let disk = vm.disk
+
+    const fs = vm.rootfs * 1024
+    const clusterNode: ClusterNode = {
+      name: vm.name,
+      type: type === 'master' ? 'master' : 'worker',
+      node_id: vm.node as number, // node is number | null, but must be number here
+      cpu,
+      memory: ram * 1024, // GB to MB
+      root_size: fs, // GB to MB
+      // disk_size: (disk * 1024) - fs, // GB to MB
+      data_disks: [],
+      env_vars: {
+        SSH_KEY: sshKeyPublicKeys,
+        K3S_TOKEN: token,
+      },
+    };
 
     if (vm.fullCapabilities) {
       if (!vm.node) {
@@ -207,28 +223,24 @@ async function getClusterPayload(): Promise<Cluster> {
         // should never be the case
         throw new Error("Not not found")
       }
-      
+
+      const storagePool = await userService.getStoragePool(vm.node!)
 
       cpu = node.total.cru
       ram = Math.floor((node.total.mru * 0.99 - node.used.mru) / 1024 ** 3)
-      disk = Math.floor((node.total.sru * 0.985 - node.used.sru) / 1024 ** 3)
+      clusterNode.cpu = cpu
+      clusterNode.memory = ram * 1024
+      storagePool.forEach(pool => {
+        disk = Math.floor((pool.free * 0.985) / 1024 ** 3)
+        clusterNode.data_disks.push((disk * 1024) - fs)
+      })
+      return clusterNode
     }
 
-    const fs = vm.rootfs * 1024
-
-    return {
-      name: vm.name,
-      type: type === 'master' ? 'master' : 'worker',
-      node_id: vm.node as number, // node is number | null, but must be number here
-      cpu,
-      memory: ram * 1024, // GB to MB
-      root_size: fs, // GB to MB
-      disk_size: (disk * 1024) - fs, // GB to MB
-      env_vars: {
-        SSH_KEY: sshKeyPublicKeys,
-        K3S_TOKEN: token,
-      },
-    };
+    clusterNode.cpu = cpu
+    clusterNode.memory = ram * 1024 // GB to MB
+    clusterNode.data_disks.push((disk * 1024) - fs)
+    return clusterNode
   }
 
   const masterNodes = await Promise.all(masters.value.map(vm => buildNode(vm, 'master')))

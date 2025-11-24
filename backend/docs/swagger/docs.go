@@ -3967,10 +3967,19 @@ const docTemplate = `{
                 "current_step": {
                     "type": "integer"
                 },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "step_name": {
                     "type": "string"
                 },
                 "total_steps": {
@@ -5013,6 +5022,13 @@ const docTemplate = `{
                     }
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
