@@ -299,7 +299,7 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 
 // Only accessible by admins
 // @Summary Start sending mail to all users (async)
-// @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
+// @Description Allows admin to send a custom email to all users with optional file attachments.
 // The endpoint returns immediately, while the actual sending happens in the background.
 // Delivery statistics are later pushed to the admin through notifications/SSE.
 // @Tags admin

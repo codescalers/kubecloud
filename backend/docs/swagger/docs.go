@@ -2852,7 +2852,7 @@ const docTemplate = `{
                         "AdminMiddleware": []
                     }
                 ],
-                "description": "Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.",
+                "description": "Allows admin to send a custom email to all users with optional file attachments.",
                 "consumes": [
                     "multipart/form-data"
                 ],
