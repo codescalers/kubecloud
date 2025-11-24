@@ -36,19 +36,23 @@
             >
             <div class="profile-row">
               <div class="profile-col">
-              <v-text-field
-                v-model="passwordFormData.password"
-                :type="showPassword ? 'text' : 'password'"
-                label="New Password"
-                variant="outlined"
-                :rules="passwordRules"
-                required
-                class="password-field compact"
-                density="compact"
-                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                @click:append-inner="() => { showPassword = !showPassword }"
-                @input="triggerFormValidation"
-              />
+                <v-text-field
+                  v-model="passwordFormData.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  label="New Password"
+                  variant="outlined"
+                  :rules="[RULES.password]"
+                  validate-on="blur"
+                  required
+                  class="password-field compact"
+                  density="compact"
+                  :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                  @click:append-inner="() => { showPassword = !showPassword }"
+                  hide-details="auto"
+                />
+                <div class="text-caption text-grey-lighten-1 mt-1">
+                  Min 8 characters: uppercase, lowercase, number, and special character (@$!%*?&)
+                </div>
               </div>
               <div class="profile-col">
               <v-text-field
@@ -56,13 +60,13 @@
                 :type="showConfirmPassword ? 'text' : 'password'"
                 label="Confirm New Password"
                 variant="outlined"
-                :rules="confirmPasswordRules"
+                :rules="[(v: string) => RULES.confirmPassword(v, passwordFormData.password)]"
+                validate-on="blur"
                 required
                 class="password-field compact"
                 density="compact"
                 :append-inner-icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
                 @click:append-inner="() => { showConfirmPassword = !showConfirmPassword }"
-                @input="triggerFormValidation"
               />
               </div>
             </div>
@@ -85,13 +89,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '../../stores/user'
 import { authService } from '../../utils/authService'
+import { RULES } from '../../utils/validation'
 
-const { user } = storeToRefs(useUserStore())
 const userStore = useUserStore()
+const { user } = storeToRefs(userStore)
 
 // Change password form data
 const passwordFormData = ref({
@@ -107,36 +112,8 @@ const isFormValid = ref(false)
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-// Form validation rules
-const passwordRules = [
-  (v: string) => !!v || 'Password is required',
-  (v: string) => v.length >= 8 || 'Password must be at least 8 characters',
-  (v: string) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(v) || 'Password must contain uppercase, lowercase, and number'
-]
-
-const confirmPasswordRules = [
-  (v: string) => !!v || 'Please confirm your password',
-  (v: string) => v === passwordFormData.value.password || 'Passwords do not match'
-]
-
-function triggerFormValidation() {
-  if (passwordForm.value && passwordForm.value.validate) {
-    passwordForm.value.validate()
-  }
-}
-
-watch(
-  () => [passwordFormData.value.password, passwordFormData.value.confirmPassword],
-  triggerFormValidation
-)
-
 const passwordForm = ref()
 
-function formatDate(dateStr: string) {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  return d.toLocaleString()
-}
 
 async function changePassword() {
   if (!user.value) {
@@ -157,7 +134,7 @@ async function changePassword() {
     showPassword.value = false
     showConfirmPassword.value = false
     // Reset validation state
-    if (passwordForm.value && passwordForm.value.resetValidation) {
+    if (passwordForm.value?.resetValidation) {
       passwordForm.value.resetValidation()
     }
   } catch (err: any) {

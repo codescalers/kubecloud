@@ -9,6 +9,7 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/core/queuing"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	grid "kubecloud/internal/infrastructure/grid"
@@ -140,7 +141,7 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 		return appCore{}, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	qEngine := ewf.NewRedisQueueEngine(client)
+	qEngine := queuing.NewRedisQueueEngine(client)
 
 	// initialize workflow ewfEngine
 	ewfEngine, err := ewf.NewEngine(ewf.WithQueueEngine(qEngine), ewf.WithStore(ewfStore))
