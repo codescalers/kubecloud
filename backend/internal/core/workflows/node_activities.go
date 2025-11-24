@@ -49,8 +49,13 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deploy
 			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
 
+		// Get Identity
+		identity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
+		if err != nil {
+			return fmt.Errorf("failed to get identity from mnemonic: %w", err)
+		}
 		// Reserve the node
-		contractID, err := gridClient.SubstrateConn.CreateRentContract(mnemonic, nodeID, nil)
+		contractID, err := gridClient.SubstrateConn.CreateRentContract(identity, nodeID, nil)
 		if err != nil {
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}

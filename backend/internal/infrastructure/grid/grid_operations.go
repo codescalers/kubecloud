@@ -58,6 +58,40 @@ func GetUserBalanceUSD(gridClient deployer.TFPluginClient, userMnemonic string) 
 	return FromUSDMilliCentToUSD(usdMillicentBalance), nil
 }
 
+// TransferTFTsFromSystem transfer balance to users' account
+func TransferTFTsFromSystem(gridClient deployer.TFPluginClient, tftBalance uint64, userMnemonic string, systemMnemonic string) error {
+	// Create identity of user from mnemonic
+	userIdentity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Create identity of system from mnemonic
+	systemIdentity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(systemMnemonic)
+	if err != nil {
+		return err
+	}
+
+	return gridClient.SubstrateConn.Transfer(tftBalance, systemIdentity, userIdentity.PublicKey())
+}
+
+// TransferTFTsToSystem transfer balance to system account
+func TransferTFTsToSystem(gridClient deployer.TFPluginClient, tftBalance uint64, userMnemonic string, systemMnemonic string) error {
+	// Create identity of user from mnemonic
+	userIdentity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(userMnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Create identity of system from mnemonic
+	systemIdentity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(systemMnemonic)
+	if err != nil {
+		return err
+	}
+
+	return gridClient.SubstrateConn.Transfer(tftBalance, userIdentity, systemIdentity.PublicKey())
+}
+
 func FromUSDMilliCentToUSD(amountMillicent uint64) float64 {
 	return float64(amountMillicent) / 1000
 }

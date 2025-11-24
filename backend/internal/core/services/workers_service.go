@@ -406,7 +406,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
 	}
 
-	err = svc.gridClient.SubstrateConn.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic, svc.systemMnemonic)
+	err = grid.TransferTFTsFromSystem(svc.gridClient, amountToTransfer, user.Mnemonic, svc.systemMnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
 	}

@@ -3,6 +3,7 @@ package moneycollector
 import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/grid"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -62,7 +63,7 @@ func (m *MoneyCollector) CollectMoney() {
 			freeBalance := balance.Free.Uint64()
 			if freeBalance > MinBalanceThreshold {
 				log.Debug().Int("user_id", user.ID).Uint64("balance", freeBalance).Msg("MoneyCollector: transferring balance to system account")
-				if err := m.gridClient.SubstrateConn.TransferTFTsToSystem(freeBalance-MinBalanceThreshold, user.Mnemonic, m.config.SystemAccount.Mnemonic); err != nil {
+				if err := grid.TransferTFTsToSystem(m.gridClient, freeBalance-MinBalanceThreshold, user.Mnemonic, m.config.SystemAccount.Mnemonic); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
 				}
 				return

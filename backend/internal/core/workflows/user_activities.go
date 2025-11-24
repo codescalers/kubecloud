@@ -13,7 +13,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"net/http"
 	"time"
@@ -600,7 +600,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, gridClient deployer.TF
 		transferAmount := balanceInTFT - minBalanceThreshold
 
 		// Perform the transfer from user to system account
-		err = gridClient.SubstrateConn.TransferTFTsToSystem(transferAmount, user.Mnemonic, systemMnemonic)
+		err = grid.TransferTFTsToSystem(gridClient, transferAmount, user.Mnemonic, systemMnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to transfer balance: %w", err)
 		}
