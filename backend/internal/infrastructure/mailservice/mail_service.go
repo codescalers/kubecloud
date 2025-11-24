@@ -21,7 +21,7 @@ type MailService interface {
 	InvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string)
 	SystemAnnouncementMailBody(body string) string
 	NotifyAdminsMailContent(recordsNumber int) (string, string)
-	SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) []string
+	SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) int
 }
 
 type Attachment struct {

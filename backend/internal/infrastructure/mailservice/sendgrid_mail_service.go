@@ -47,6 +47,8 @@ type SendGridMailService struct {
 	maxAttachmentSizeMB int64
 }
 
+var _ MailService = (*SendGridMailService)(nil)
+
 // NewSendGridMailService creates new instance of sendgrid mail service
 func NewSendGridMailService(mailConfigs cfg.MailSender, systemHost string, metrics *metrics.Metrics) SendGridMailService {
 	return SendGridMailService{
@@ -219,7 +221,7 @@ func (service SendGridMailService) NotifyAdminsMailContent(recordsNumber int) (s
 }
 
 // SendBulkSystemMails send system mails to all passed emails
-func (service SendGridMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) []string {
+func (service SendGridMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) int {
 	emailConcurrencyLimiter := make(chan struct{}, service.MaxConcurrentSends())
 
 	var (
@@ -246,5 +248,5 @@ func (service SendGridMailService) SendBulkSystemMails(receivers []string, body 
 
 	wg.Wait()
 
-	return failedEmails
+	return len(failedEmails)
 }

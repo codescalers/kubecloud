@@ -106,14 +106,14 @@ func (service FakeMailService) NotifyAdminsMailContent(recordsNumber int) (strin
 }
 
 // SendBulkSystemMails send system mails to all passed emails
-func (service FakeMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) []string {
+func (service FakeMailService) SendBulkSystemMails(receivers []string, body string, subject string, attachments ...Attachment) int {
 
 	var failed []string
 
 	for _, receiver := range receivers {
 		err := service.SendMailFromSystem(receiver, subject, body, attachments...)
-		if err != nil {
 
+		if err != nil {
 			logger.GetLogger().Error().
 				Str("user_email", receiver).
 				Msg("failed to send email")
@@ -132,5 +132,5 @@ func (service FakeMailService) SendBulkSystemMails(receivers []string, body stri
 		Int("failed", len(failed)).
 		Msg("Bulk send summary")
 
-	return failed
+	return len(failed)
 }

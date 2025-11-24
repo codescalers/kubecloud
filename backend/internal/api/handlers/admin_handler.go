@@ -344,6 +344,7 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
+	// send in the background to avoid blocking requests
 	go h.sendToAll(input.Body, input.Subject, users, adminID, attachments...)
 
 	OK(c, "Mail sending started", nil)
@@ -361,12 +362,13 @@ func (h *AdminHandler) sendToAll(body, subject string, users []models.User, admi
 	failedEmails := h.mailService.SendBulkSystemMails(emails, mailBody, subject, attachments...)
 
 	totalUsers := len(users)
-	successfulEmailsCount := len(users) - len(failedEmails)
+	successfulEmails := len(users) - failedEmails
 
+	// after sending, send an SSE notification on the progress
 	notif := notification.NewNotification(adminID, models.NotificationTypeAdmin).
 		Info(fmt.Sprintf(
 			"Mail sent to %d/%d users successfully",
-			successfulEmailsCount,
+			successfulEmails,
 			totalUsers,
 		)).
 		WithSubject("Mail Sending Progress").
