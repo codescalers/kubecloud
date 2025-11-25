@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"mime/multipart"
 	"net/http"
@@ -17,7 +16,7 @@ import (
 
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/infrastructure/logger"
-	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 
@@ -28,20 +27,16 @@ import (
 type AdminHandler struct {
 	svc                    services.AdminService
 	notificationDispatcher *notification.NotificationDispatcher
-	mailSender             mailsender.MailSender
-	mailContentFormatter   mailcontentformatter.MailContentFormatter
-	mailConfig             config.MailSender
+	mailService            mailservice.MailService
 }
 
 func NewAdminHandler(svc services.AdminService,
-	notificationDispatcher *notification.NotificationDispatcher, mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, mailConfig config.MailSender,
+	notificationDispatcher *notification.NotificationDispatcher, mailService mailservice.MailService,
 ) AdminHandler {
 	return AdminHandler{
 		svc:                    svc,
 		notificationDispatcher: notificationDispatcher,
-		mailSender:             mailSender,
-		mailContentFormatter:   mailContentFormatter,
-		mailConfig:             mailConfig,
+		mailService:            mailService,
 	}
 }
 
@@ -400,7 +395,7 @@ func (h *AdminHandler) parseAttachment(fh *multipart.FileHeader) (mailsender.Att
 		return mailsender.Attachment{}, fmt.Errorf("file type not allowed for %s", fh.Filename)
 	}
 
-	maxFileSizeBytes := h.mailConfig.MaxAttachmentSizeMB * 1024 * 1024
+	maxFileSizeBytes := h.mailService.GetMailConfig().MaxAttachmentSizeMB * 1024 * 1024
 
 	if fh.Size > maxFileSizeBytes {
 		return mailsender.Attachment{}, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes)

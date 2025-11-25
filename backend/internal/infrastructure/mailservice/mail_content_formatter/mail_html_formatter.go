@@ -25,45 +25,42 @@ var notifyPaymentRecordsMail []byte
 var systemAnnouncementMail []byte
 
 type MailHTMLFormatter struct {
-	systemHost string
 }
 
-func NewMailHTMLFormatter(systemHost string) MailHTMLFormatter {
-	return MailHTMLFormatter{
-		systemHost: systemHost,
-	}
+func NewMailHTMLFormatter() MailHTMLFormatter {
+	return MailHTMLFormatter{}
 }
 
-func (f MailHTMLFormatter) FormatResetPasswordMailContent(code int, timeout int, username string) (string, string) {
+func (f MailHTMLFormatter) FormatResetPasswordMailContent(code int, timeout int, username string, systemHost string) (string, string) {
 	subject := "Reset password"
 	body := string(resetPassTemplate)
 
 	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))
 	body = strings.ReplaceAll(body, "-time-", fmt.Sprint(timeout))
 	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
-	body = strings.ReplaceAll(body, "-host-", f.systemHost)
+	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body
 }
 
-func (f MailHTMLFormatter) FormatSignUpMailContent(code int, timeout int, username string) (string, string) {
+func (f MailHTMLFormatter) FormatSignUpMailContent(code int, timeout int, username string, systemHost string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(signUpTemplate)
 
 	body = strings.ReplaceAll(body, "-code-", fmt.Sprint(code))
 	body = strings.ReplaceAll(body, "-time-", fmt.Sprint(timeout))
 	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
-	body = strings.ReplaceAll(body, "-host-", f.systemHost)
+	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body
 }
 
-func (f MailHTMLFormatter) FormatWelcomeMailContent(username string) (string, string) {
+func (f MailHTMLFormatter) FormatWelcomeMailContent(username string, systemHost string) (string, string) {
 	subject := "Welcome to Mycelium Cloud 🎉"
 	body := string(welcomeMail)
 
 	body = strings.ReplaceAll(body, "-name-", cases.Title(language.Und).String(username))
-	body = strings.ReplaceAll(body, "-host-", f.systemHost)
+	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body
 }
@@ -88,12 +85,12 @@ func (f MailHTMLFormatter) FormatSystemAnnouncementMailBody(body string) string 
 	return template
 }
 
-func (f MailHTMLFormatter) FormatNotifyAdminsMailContent(recordsNumber int) (string, string) {
+func (f MailHTMLFormatter) FormatNotifyAdminsMailContent(recordsNumber int, systemHost string) (string, string) {
 	subject := "There're pending payment requests for you to settle"
 	body := string(notifyPaymentRecordsMail)
 
 	body = strings.ReplaceAll(body, "-records-", fmt.Sprint(recordsNumber))
-	body = strings.ReplaceAll(body, "-host-", f.systemHost)
+	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body
 }

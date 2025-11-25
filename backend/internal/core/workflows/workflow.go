@@ -6,8 +6,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/kyc"
-	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
-	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
+	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
@@ -23,8 +22,7 @@ func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config cfg.Configuration,
 	db models.DB,
-	mailSender mailsender.MailSender,
-	mailContentFormatter mailcontentformatter.MailContentFormatter,
+	mailService mailservice.MailService,
 	substrate substrate.Substrate,
 	kycClient *kyc.KYCClient,
 	sponsorAddress string,
@@ -39,20 +37,20 @@ func RegisterEWFWorkflows(
 	userNodesRepo := persistence.NewGormUserNodesRepository(db)
 	pendingRecordRepo := persistence.NewGormPendingRecordRepository(db)
 
-	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mailSender, mailContentFormatter, config))
+	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mailService, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(StepUpdateCode, UpdateCodeStep(userRepo))
 	engine.Register(StepSetupTFChain, SetupTFChainStep(substrate, userRepo))
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
-	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mailSender, mailContentFormatter, config, metrics))
+	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mailService, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
 	engine.Register(StepCreatePendingRecord, CreatePendingRecord(substrate, userRepo, pendingRecordRepo, config.SystemAccount.Mnemonic))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
 	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, substrate))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, substrate))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
-	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mailSender, mailContentFormatter, config.MailSender))
+	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mailService))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate, config.SystemAccount.Mnemonic))

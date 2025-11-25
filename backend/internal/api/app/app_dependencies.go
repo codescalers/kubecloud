@@ -15,6 +15,7 @@ import (
 	grid "kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/mailservice"
 	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/metrics"
@@ -77,8 +78,7 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailSender             mailsender.MailSender
-	mailContentFormatter   mailcontentformatter.MailContentFormatter
+	mailService            mailservice.MailService
 	sseManager             *realtime.SSEManager
 	notificationDispatcher *notification.NotificationDispatcher
 }
@@ -235,13 +235,12 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
 
 		mailSender = mailsender.NewFakeMailSender(metrics)
-		mailContentFormatter = mailcontentformatter.NewMailTextFormatter(config.Server.Host)
+		mailContentFormatter = mailcontentformatter.NewMailTextFormatter()
 	} else {
 		mailSender = mailsender.NewSendGridMailSender(config.MailSender.SendGridKey, metrics)
-		mailContentFormatter = mailcontentformatter.NewMailHTMLFormatter(config.Server.Host)
+		mailContentFormatter = mailcontentformatter.NewMailHTMLFormatter()
 	}
-
-	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
+	mailService := mailservice.NewMailService(mailSender, mailContentFormatter, config)
 	sseManager := realtime.NewSSEManager()
 
 	notificationRepo := corepersistence.NewGormNotificationRepository(db)
@@ -265,8 +264,7 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 	}
 
 	return appCommunication{
-		mailSender:             mailSender,
-		mailContentFormatter:   mailContentFormatter,
+		mailService:            mailService,
 		sseManager:             sseManager,
 		notificationDispatcher: notificationDispatcher,
 	}, nil
@@ -371,14 +369,14 @@ func (app *App) createHandlers() appHandlers {
 	stripeClient := &billing.DefaultStripeClient{}
 	userHandler := handlers.NewUserHandler(
 		userService, app.communication.notificationDispatcher,
-		app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender, app.security.tokenManager, stripeClient,
+		app.communication.mailService, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
 	nodeHandler := handlers.NewNodeHandler(nodeService)
 	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService)
-	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender)
+	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailService)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 
@@ -404,7 +402,7 @@ func (app *App) createWorkers() workers.Workers {
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
-		app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender, app.infra.gridClient, app.core.ewfEngine,
+		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,

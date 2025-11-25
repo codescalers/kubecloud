@@ -7,15 +7,14 @@ import (
 
 	"github.com/xmonader/ewf"
 
-	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/mailservice"
 	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
-	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 )
 
 // SendEmailNotificationStep sends an email notification from workflow state
-func SendEmailNotificationStep(userRepo models.UserRepository, mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, mailConfig config.MailSender) ewf.StepFn {
+func SendEmailNotificationStep(userRepo models.UserRepository, mailService mailservice.MailService) ewf.StepFn {
 	return func(ctx context.Context, wf ewf.State) error {
 		log := logger.ForOperation("notification_activities", "send_email_notification")
 
@@ -57,12 +56,7 @@ func SendEmailNotificationStep(userRepo models.UserRepository, mailSender mailse
 		}
 
 		// Send via mail service
-		if err := mailSender.Send(mailsender.MailRequest{
-			From:    mailConfig.Email,
-			To:      receiver,
-			Subject: subject,
-			Body:    buf.String(),
-		}); err != nil {
+		if err := mailService.SendEmailNotification(receiver, subject, buf.String()); err != nil {
 			log.Error().Err(err).Str("receiver", receiver).Msg("failed to send email")
 			return fmt.Errorf("failed to send email notification to %s: %w", receiver, err)
 		}

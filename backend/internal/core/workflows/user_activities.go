@@ -9,8 +9,7 @@ import (
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/kyc"
-	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
-	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
+	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
 	"sync"
@@ -87,7 +86,7 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 	}
 }
 
-func SendVerificationEmailStep(mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, config cfg.Configuration) ewf.StepFn {
+func SendVerificationEmailStep(mailService mailservice.MailService, config cfg.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		emailVal, ok := state["email"]
 		if !ok {
@@ -108,14 +107,8 @@ func SendVerificationEmailStep(mailSender mailsender.MailSender, mailContentForm
 		}
 
 		code := generators.GenerateVerificationCode(config.VerificationCodeLength)
-		subject, body := mailContentFormatter.FormatSignUpMailContent(code, config.MailSender.TimeoutMin, name)
-
-		if err := mailSender.Send(mailsender.MailRequest{
-			From:    config.MailSender.Email,
-			To:      email,
-			Subject: subject,
-			Body:    body,
-		}); err != nil {
+		err := mailService.SendSignUpMail(email, code, name)
+		if err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 
@@ -305,7 +298,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 	}
 }
 
-func SendWelcomeEmailStep(mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, config cfg.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
@@ -327,13 +320,8 @@ func SendWelcomeEmailStep(mailSender mailsender.MailSender, mailContentFormatter
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		subject, body := mailContentFormatter.FormatWelcomeMailContent(name)
-		if err := mailSender.Send(mailsender.MailRequest{
-			From:    config.MailSender.Email,
-			To:      email,
-			Subject: subject,
-			Body:    body,
-		}); err != nil {
+		err := mailService.SendWelcomeEmail(email, name)
+		if err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 		return nil
