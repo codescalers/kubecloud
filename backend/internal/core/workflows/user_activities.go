@@ -12,12 +12,14 @@ import (
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
+	"sync"
 
 	"slices"
 	"strings"
 
 	"kubecloud/internal/infrastructure/logger"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -470,13 +472,13 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 // DrainUserBalanceStep transfers a user's balance to the system account
 func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
+		userIDVal, ok := state["target_user_id"]
 		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
+			return fmt.Errorf("missing 'target_user_id' in state")
 		}
 		userID, ok := userIDVal.(int)
 		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+			return fmt.Errorf("'target_user_id' in state is not an int")
 		}
 
 		user, err := userRepo.GetUserByID(userID)
@@ -484,6 +486,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 			return fmt.Errorf("failed to get user: %w", err)
 		}
 
+		state["target_username"] = user.Username
 		// Get user's current balance in TFT from on-chain
 		balanceInTFT, err := substrateClient.GetUserTFTBalance(user.Mnemonic)
 		if err != nil {
@@ -521,6 +524,54 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 		return nil
 	}
 }
+
+func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Engine, maxConcurrent int) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		users, err := userRepo.ListAllUsers()
+		if err != nil {
+			return fmt.Errorf("failed to get all users: %w", err)
+		}
+		multiErr := &multierror.Error{}
+		wg := sync.WaitGroup{}
+		mu := sync.Mutex{}
+		sem := make(chan struct{}, maxConcurrent)
+
+		for _, user := range users {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(user models.User) {
+				defer wg.Done()
+				defer func() { <-sem }()
+				drainDisplayName := fmt.Sprintf("Drain %s balance", user.Username)
+				wf, err := ewfEngine.NewWorkflow(WorkflowDrainUser, ewf.WithDisplayName(drainDisplayName))
+				if err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+					return
+				}
+
+				wf.State = map[string]interface{}{
+					"target_user_id":        user.ID,
+					"target_username":       user.Username,
+					"suppress_notification": true,
+				}
+
+				if err = ewfEngine.Run(ctx, wf); err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+				}
+			}(user)
+		}
+		wg.Wait()
+		if err := multiErr.ErrorOrNil(); err != nil {
+			return fmt.Errorf("failed to drain all users balance: %w", err)
+		}
+		return nil
+	}
+}
+
 func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]

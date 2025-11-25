@@ -24,8 +24,12 @@ const (
 func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkflowHook {
 	return func(ctx context.Context, w *ewf.Workflow) {
 		log := logger.GetLogger().With().Str("workflow_name", w.Name).Logger()
+		suppressNotification, _ := getFromState[bool](w.State, "suppress_notification")
+		if suppressNotification {
+			log.Info().Msg("Suppressing notification for workflow")
+			return
+		}
 		var userID int
-
 		cfg, err := getConfig(w.State)
 		if err == nil {
 			userID = cfg.UserID

@@ -19,7 +19,11 @@ import (
 func notifyWorkflowProgress(notificationDispatcher *notification.NotificationDispatcher) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, err error) {
 		log := logger.ForOperation("workflow", "notify_workflow_progress").With().Str("workflow_name", wf.Name).Logger()
-
+		suppressNotification, _ := getFromState[bool](wf.State, "suppress_notification")
+		if suppressNotification {
+			log.Info().Msg("Suppressing notification for workflow")
+			return
+		}
 		notificationType := workflowToNotificationType(wf.Name)
 		switch notificationType {
 		case models.NotificationTypeDeployment:
@@ -164,6 +168,11 @@ func isDeployStep(stepName string) bool {
 
 func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
 	log := logger.ForOperation("workflow", "create_billing_notification").With().Str("workflow_name", wf.Name).Logger()
+
+	if isDrainWorkflow(wf.Name) {
+		return sendDrainWorkflowNotification(ctx, notificationDispatcher, wf, err)
+	}
+
 	userIDVal, ok := wf.State["user_id"]
 	if !ok {
 		log.Error().Msg("Missing 'user_id' in workflow state")
@@ -471,7 +480,7 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 }
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{WorkflowChargeBalance, WorkflowAdminCreditBalance, WorkflowRedeemVoucher}
+	billingWf := []string{WorkflowChargeBalance, WorkflowAdminCreditBalance, WorkflowRedeemVoucher, WorkflowDrainUser, WorkflowDrainAllUsers}
 	deployWf := []string{WorkflowDeleteAllClusters, WorkflowDeleteCluster, WorkflowRemoveNode, WorkflowAddNode, WorkflowRollbackFailedDeployment}
 	nodesWf := []string{WorkflowReserveNode, WorkflowUnreserveNode}
 	userWf := []string{WorkflowUserVerification, WorkflowUserRegistration}
@@ -495,4 +504,65 @@ func getWorkflowDisplayName(workflow *ewf.Workflow) string {
 		return workflow.DisplayName
 	}
 	return workflow.Name
+}
+
+func isDrainWorkflow(name string) bool {
+	return name == WorkflowDrainUser || name == WorkflowDrainAllUsers
+}
+
+func sendDrainWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
+	log := logger.ForOperation("workflow", "create_drain_notification").With().Str("workflow_name", wf.Name).Logger()
+	notificationUserID, errNotificationUserID := getFromState[int](wf.State, "user_id")
+	if errNotificationUserID != nil {
+		log.Error().Err(errNotificationUserID).Msg("failed to get notification user ID from state")
+		return errNotificationUserID
+	}
+
+	if wf.Name == WorkflowDrainAllUsers {
+		builder := notification.BillingNotification(notificationUserID).
+			WithSubject(getWorkflowDisplayName(wf)).
+			WithChannels(notification.ChannelUI).
+			NoPersist().
+			WithExtra("workflow_name", getWorkflowDisplayName(wf))
+
+		if err != nil {
+			message := "Draining all users balance failed"
+			notif := builder.Failure(message, err).Build()
+			return notificationDispatcher.Send(ctx, notif)
+		}
+
+		message := "Drained balance for all users successfully"
+		notif := builder.Success(message).Build()
+		return notificationDispatcher.Send(ctx, notif)
+	}
+
+	targetUsername, errTargetUsername := getFromState[string](wf.State, "target_username")
+	if errTargetUsername != nil {
+		log.Error().Err(errTargetUsername).Msg("failed to get target username from state")
+		return errTargetUsername
+	}
+
+	targetUserID, errTargetUserID := getFromState[int](wf.State, "target_user_id")
+	if errTargetUserID != nil {
+		log.Error().Err(errTargetUserID).Msg("failed to get target user ID from state")
+		return errTargetUserID
+	}
+
+	builder := notification.BillingNotification(notificationUserID).
+		WithSubject(getWorkflowDisplayName(wf)).
+		WithChannels(notification.ChannelUI).
+		NoPersist().
+		WithExtra("workflow_name", getWorkflowDisplayName(wf)).
+		WithExtra("target_user_id", fmt.Sprintf("%d", targetUserID)).
+		WithExtra("target_username", targetUsername)
+
+	if err != nil {
+		message := fmt.Sprintf("Draining balance for %s failed", targetUsername)
+		notif := builder.Failure(message, err).Build()
+		return notificationDispatcher.Send(ctx, notif)
+	}
+
+	message := fmt.Sprintf("Drained balance for %s successfully", targetUsername)
+	notif := builder.Success(message).Build()
+	return notificationDispatcher.Send(ctx, notif)
 }

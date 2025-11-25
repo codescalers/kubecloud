@@ -215,43 +215,30 @@ func (svc *AdminService) generateVoucherWithTimestamp() string {
 }
 
 // AsyncDrainUserUSD drains a specific user's balance to the system account
-func (svc *AdminService) AsyncDrainUserUSD(userID int) error {
+func (svc *AdminService) AsyncDrainUserUSD(userID, adminID int) error {
 	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainUser, ewf.WithDisplayName("Drain user balance"))
 	if err != nil {
 		return err
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id": userID,
+		"target_user_id": userID,
+		"user_id":        adminID,
 	}
 
 	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }
 
 // AsyncDrainAllUsersUSD drains all users' balances to the system account
-func (svc *AdminService) AsyncDrainAllUsersUSD() error {
-	users, err := svc.ListAllUsers()
+func (svc *AdminService) AsyncDrainAllUsersUSD(adminID int) error {
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers, ewf.WithDisplayName("Drain all users balance"))
 	if err != nil {
 		return err
 	}
 
-	var multiErr *multierror.Error
-
-	for _, user := range users {
-		wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowDrainAllUsers, ewf.WithDisplayName("Drain all users balance"))
-		if err != nil {
-			multiErr = multierror.Append(multiErr, err)
-			continue
-		}
-
-		wf.State = map[string]interface{}{
-			"user_id": user.ID,
-		}
-
-		if err := svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync()); err != nil {
-			multiErr = multierror.Append(multiErr, err)
-		}
+	wf.State = map[string]interface{}{
+		"user_id": adminID,
 	}
 
-	return multiErr.ErrorOrNil()
+	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }
