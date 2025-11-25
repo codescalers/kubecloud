@@ -16,9 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
 
@@ -34,7 +33,8 @@ type WorkerService struct {
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
-	gridClient             deployer.TFPluginClient
+	substrateClient        grid.SubstrateClient
+	gridProxyClient        proxy.Client
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
 
@@ -54,12 +54,13 @@ func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
-	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
+	substrateClient grid.SubstrateClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
+	gridProxyClient proxy.Client,
 ) WorkerService {
 	return WorkerService{
 		ctx:                ctx,
@@ -74,7 +75,8 @@ func NewWorkersService(
 		ewfEngine:              ewfEngine,
 		graphql:                graphql,
 		firesquidClient:        firesquidClient,
-		gridClient:             gridClient,
+		substrateClient:        substrateClient,
+		gridProxyClient:        gridProxyClient,
 
 		systemMnemonic:     systemMnemonic,
 		invoiceCompanyData: invoiceCompanyData,
@@ -151,7 +153,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := grid.FromTFTtoUSDMillicent(svc.gridClient, totalAmountTFT)
+		totalAmountUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -239,14 +241,14 @@ func (svc WorkerService) UpdateUserDebt() error {
 }
 
 func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.UserNodes) (uint64, error) {
-	identity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(userMnemonic)
+
+	calculatorClient, err := svc.substrateClient.NewCalculator(userMnemonic)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create identity: %w", err)
+		return 0, fmt.Errorf("failed to create new calculator: %w", err)
 	}
 
 	var totalDebt int64
 	for _, node := range userNodes {
-		calculatorClient := calculator.NewCalculator(svc.gridClient.SubstrateConn, identity)
 		debt, err := calculatorClient.CalculateContractOverdue(node.ContractID, time.Hour)
 		if err != nil {
 			logger.ForOperation("debt_tracker", "calc_overdue").Error().Err(err).Msg("Failed to calculate contract overdue")
@@ -255,7 +257,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.U
 		totalDebt += debt
 	}
 
-	totalDebtUSDMillicent, err := grid.FromTFTtoUSDMillicent(svc.gridClient, uint64(totalDebt))
+	totalDebtUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(uint64(totalDebt))
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert debt to USD millicent: %w", err)
 	}
@@ -340,7 +342,7 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 
 	for userNode := range jobs {
 
-		node, err := svc.gridClient.GridProxyClient.Node(ctx, userNode.NodeID)
+		node, err := svc.gridProxyClient.Node(ctx, userNode.NodeID)
 		if err != nil {
 			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("failed to get node for health check")
 			continue
@@ -364,10 +366,6 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 	log := logger.ForOperation("balance_monitor", "settle_pending_payments")
 
-	systemIdentity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(svc.systemMnemonic)
-	if err != nil {
-		return
-	}
 	for _, record := range records {
 		// Already settled
 		if record.TransferredTFTAmount >= record.TFTAmount {
@@ -375,19 +373,17 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.gridClient.SubstrateConn.GetBalance(systemIdentity)
+		systemTFTBalance, err := svc.substrateClient.GetFreeBalance(svc.systemMnemonic)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
 		}
 
-		systemTFTBalanceFree := systemTFTBalance.Free.Uint64()
-
 		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
-		if systemTFTBalanceFree < amountToTransfer {
+		if systemTFTBalance < amountToTransfer {
 			log.Warn().
 				Int("record_id", record.ID).
-				Uint64("system_balance", systemTFTBalanceFree).
+				Uint64("system_balance", systemTFTBalance).
 				Uint64("amount_needed", amountToTransfer).
 				Msg("Insufficient system balance to settle pending record")
 			continue
@@ -406,7 +402,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
 	}
 
-	err = grid.TransferTFTsFromSystem(svc.gridClient, amountToTransfer, user.Mnemonic, svc.systemMnemonic)
+	err = svc.substrateClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
 	}

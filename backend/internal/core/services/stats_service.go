@@ -5,7 +5,6 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/grid"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -14,7 +13,7 @@ type StatsService struct {
 	userRepo        models.UserRepository
 	clusterRepo     models.ClusterRepository
 	gridProxyClient proxy.Client
-	gridClient      *deployer.TFPluginClient
+	substrateClient *grid.SubstrateClient
 	systemMnemonic  string
 }
 
@@ -22,14 +21,14 @@ func NewStatsService(
 	userRepo models.UserRepository,
 	clusterRepo models.ClusterRepository,
 	gridProxyClient proxy.Client,
-	gridClient deployer.TFPluginClient,
+	substrateClient grid.SubstrateClient,
 	systemMnemonic string,
 ) StatsService {
 	return StatsService{
 		userRepo:        userRepo,
 		clusterRepo:     clusterRepo,
 		gridProxyClient: gridProxyClient,
-		gridClient:      &gridClient,
+		substrateClient: &substrateClient,
 		systemMnemonic:  systemMnemonic,
 	}
 }
@@ -62,8 +61,8 @@ func (svc *StatsService) GetStats(ctx context.Context) (Stats, error) {
 
 	// Fetch system account balance
 	var systemBalance float64
-	if svc.gridClient != nil && svc.systemMnemonic != "" {
-		balance, err := grid.GetUserBalanceUSD(*svc.gridClient, svc.systemMnemonic)
+	if svc.substrateClient != nil && svc.systemMnemonic != "" {
+		balance, err := svc.substrateClient.GetUserBalanceUSD(svc.systemMnemonic)
 		if err == nil {
 			systemBalance = balance
 		}

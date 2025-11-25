@@ -80,6 +80,7 @@ type appCommunication struct {
 
 // appInfrastructure contains grid and blockchain related services
 type appInfrastructure struct {
+	substrateClient grid.SubstrateClient
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
@@ -267,6 +268,8 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
 	}
 
+	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, gridClient)
+
 	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to connect to firesquid client")
@@ -279,6 +282,7 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 	}
 
 	return appInfrastructure{
+		substrateClient: substrateClient,
 		gridClient:      gridClient,
 		graphql:         graphQl,
 		firesquidClient: fireSquidClient,
@@ -300,21 +304,21 @@ func (app *App) createHandlers() appHandlers {
 	// Services
 	userService := services.NewUserService(
 		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
-		app.infra.gridClient, app.core.ewfEngine,
+		app.infra.substrateClient, app.core.ewfEngine,
 		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
 		app.config.Admins,
 	)
 
 	statsService := services.NewStatsService(
 		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
-		app.infra.gridClient, app.config.SystemAccount.Mnemonic,
+		app.infra.substrateClient, app.config.SystemAccount.Mnemonic,
 	)
 
 	notificationAPIService := services.NewNotificationService(notificationRepo)
 
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
-		app.infra.gridClient,
+		app.infra.gridClient.GridProxyClient, app.infra.substrateClient,
 	)
 
 	invoiceService := services.NewInvoiceService(
@@ -328,7 +332,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.gridClient, app.core.ewfEngine,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
@@ -370,7 +374,7 @@ func (app *App) createWorkers() workers.Workers {
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
-		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
+		app.communication.mailService, app.infra.substrateClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
@@ -379,6 +383,7 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
 		app.config.MonitorBalanceIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
+		app.infra.gridClient.GridProxyClient,
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService)

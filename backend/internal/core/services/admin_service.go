@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/xmonader/ewf"
 )
 
@@ -25,9 +24,9 @@ type AdminService struct {
 	voucherRepo models.VoucherRepository
 	transRepo   models.TransactionRepository
 
-	appCtx     context.Context
-	gridClient deployer.TFPluginClient
-	ewfEngine  *ewf.Engine
+	appCtx          context.Context
+	substrateClient grid.SubstrateClient
+	ewfEngine       *ewf.Engine
 }
 
 func NewAdminService(appCtx context.Context,
@@ -36,7 +35,7 @@ func NewAdminService(appCtx context.Context,
 	pendingRecordRepo models.PendingRecordRepository,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
-	gridClient deployer.TFPluginClient,
+	substrateClient grid.SubstrateClient,
 	ewfEngine *ewf.Engine,
 ) AdminService {
 	return AdminService{
@@ -46,9 +45,9 @@ func NewAdminService(appCtx context.Context,
 		voucherRepo: voucherRepo,
 		transRepo:   transactionRepo,
 
-		appCtx:     appCtx,
-		gridClient: gridClient,
-		ewfEngine:  ewfEngine,
+		appCtx:          appCtx,
+		substrateClient: substrateClient,
+		ewfEngine:       ewfEngine,
 	}
 }
 
@@ -93,7 +92,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balance, err := grid.GetUserBalanceUSD(svc.gridClient, user.Mnemonic)
+			balance, err := svc.substrateClient.GetUserBalanceUSD(user.Mnemonic)
 			if err != nil {
 				mu.Lock()
 				balanceErrors = multierror.Append(balanceErrors, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
@@ -189,12 +188,12 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 
 	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
 	for _, record := range pendingRecords {
-		usdAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TFTAmount)
+		usdAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
-		usdTransferredAmount, err := grid.FromTFTtoUSDMillicent(svc.gridClient, record.TransferredTFTAmount)
+		usdTransferredAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
 		if err != nil {
 			return nil, err
 		}

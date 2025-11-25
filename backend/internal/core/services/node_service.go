@@ -11,7 +11,7 @@ import (
 	"kubecloud/internal/infrastructure/grid"
 	"strconv"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 )
@@ -25,21 +25,23 @@ type NodeService struct {
 	nodesRepo models.UserNodesRepository
 	userRepo  models.UserRepository
 
-	appCtx     context.Context
-	ewfEngine  *ewf.Engine
-	gridClient deployer.TFPluginClient
+	appCtx          context.Context
+	ewfEngine       *ewf.Engine
+	gridProxyClient proxy.Client
+	substrateClient grid.SubstrateClient
 }
 
 func NewNodeService(
 	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
-	appCtx context.Context, ewfEngine *ewf.Engine, gridClient deployer.TFPluginClient,
+	appCtx context.Context, ewfEngine *ewf.Engine, gridProxyClient proxy.Client, substrateClient grid.SubstrateClient,
 ) NodeService {
 	return NodeService{
-		nodesRepo:  userNodesRepo,
-		userRepo:   userRepo,
-		appCtx:     appCtx,
-		ewfEngine:  ewfEngine,
-		gridClient: gridClient,
+		nodesRepo:       userNodesRepo,
+		userRepo:        userRepo,
+		appCtx:          appCtx,
+		ewfEngine:       ewfEngine,
+		gridProxyClient: gridProxyClient,
+		substrateClient: substrateClient,
 	}
 }
 
@@ -52,12 +54,12 @@ type Pool struct {
 }
 
 func (svc *NodeService) GetNodes(ctx context.Context, filter proxyTypes.NodeFilter, limit proxyTypes.Limit) ([]proxyTypes.Node, int, error) {
-	return svc.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
+	return svc.gridProxyClient.Nodes(ctx, filter, limit)
 }
 
 func (svc *NodeService) GetZos3Nodes(ctx context.Context, filter proxyTypes.NodeFilter, limit proxyTypes.Limit) ([]proxyTypes.Node, int, error) {
 	filter.Features = Zos3NodeFeatures
-	return svc.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
+	return svc.gridProxyClient.Nodes(ctx, filter, limit)
 }
 
 func (svc *NodeService) GetUserByID(userID int) (models.User, error) {
@@ -70,7 +72,7 @@ func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserNodes, er
 
 func (svc *NodeService) CheckUserBalanceForOneHour(userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
 	// validate user has enough balance for reserving node
-	usdMillicentBalance, err := grid.GetUserBalanceUSDMillicent(svc.gridClient, userMnemonic)
+	usdMillicentBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
 	if err != nil {
 		return err
 	}
@@ -93,29 +95,19 @@ func (svc *NodeService) GetTwinIDFromUserID(userID int) (uint64, error) {
 		return 0, err
 	}
 
-	identity, err := svc.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(user.Mnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	twinID, err := svc.gridClient.SubstrateConn.GetTwinByPubKey(identity.PublicKey())
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(twinID), nil
+	return svc.substrateClient.GetTwinIDFromUserMnemonic(user.Mnemonic)
 }
 
 func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilter, limit proxyTypes.Limit) ([]proxyTypes.Twin, int, error) {
-	return svc.gridClient.GridProxyClient.Twins(ctx, filter, limit)
+	return svc.gridProxyClient.Twins(ctx, filter, limit)
 }
 
-func (h *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
-	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, nodeID)
+func (svc *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
+
+	nc, err := svc.substrateClient.GetNodeClient(nodeID)
 	if err != nil {
 		return nil, err
 	}
-
 	storagePool, err := nc.Pools(ctx)
 	if err != nil {
 		return nil, err
