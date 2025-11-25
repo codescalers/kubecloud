@@ -78,6 +78,10 @@ func deploymentFromNode(
 		gpus = append(gpus, zosTypes.GPU(gpuID))
 	}
 
+	if node.EnvVars == nil {
+		node.EnvVars = make(map[string]string)
+	}
+
 	vm := workloads.VM{
 		Name:           node.Name,
 		NodeID:         node.NodeID,
