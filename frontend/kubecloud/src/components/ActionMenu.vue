@@ -60,10 +60,18 @@
 import { onMounted, ref, computed, onBeforeUnmount } from 'vue'
 import ActionMenuItem from './ActionMenuItem.vue'
 import { userService, type UserWorkflowsResponse } from '@/utils/userService'
+import { watch } from 'vue'
 
 const workflows = ref<UserWorkflowsResponse[]>([])
 const openMenu = ref(true)
 const active = computed(() => workflows.value.length > 0)
+
+// reset open for next time
+watch([active, openMenu], ([newActive, newOpenMenu]) => {
+  if (!newActive && !newOpenMenu) {
+    openMenu.value = true
+  }
+})
 
 let intervalId: NodeJS.Timeout | null = null
 onBeforeUnmount(() => intervalId && clearInterval(intervalId))
