@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/xmonader/ewf"
@@ -108,7 +109,7 @@ func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiv
 	tplName := string(notification.Type)
 
 	var buf bytes.Buffer
-	emailTpls := mailservice.GetEmailTemplates()
+	emailTpls := mailcontentformatter.GetNotificationEmailTemplates()
 	if err := emailTpls.ExecuteTemplate(&buf, tplName, notification); err != nil {
 		return fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
 	}

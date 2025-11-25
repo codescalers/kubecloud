@@ -1,6 +1,9 @@
 package mailsender
 
-import "context"
+import (
+	"context"
+	"net/mail"
+)
 
 type MailRequest struct {
 	From        string
@@ -16,4 +19,9 @@ type Attachment struct {
 
 type MailSender interface {
 	Send(ctx context.Context, req MailRequest) error
+}
+
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
 }

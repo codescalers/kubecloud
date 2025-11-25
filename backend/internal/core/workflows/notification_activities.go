@@ -10,6 +10,7 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 )
 
 // SendEmailNotificationStep sends an email notification from workflow state
@@ -46,7 +47,7 @@ func SendEmailNotificationStep(userRepo models.UserRepository, mailService mails
 		}
 
 		// Get email template and render
-		emailTpls := mailservice.GetEmailTemplates()
+		emailTpls := mailcontentformatter.GetNotificationEmailTemplates()
 		var buf bytes.Buffer
 		tplName := string(notif.Type)
 		if err := emailTpls.ExecuteTemplate(&buf, tplName, notif); err != nil {

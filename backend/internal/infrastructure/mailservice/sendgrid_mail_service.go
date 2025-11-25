@@ -20,19 +20,19 @@ import (
 	"golang.org/x/text/language"
 )
 
-//go:embed templates/reset_password.html
+//go:embed mail_content_formatter/templates/reset_password.html
 var resetPassTemplate []byte
 
-//go:embed templates/welcome.html
+//go:embed mail_content_formatter/templates/welcome.html
 var welcomeMail []byte
 
-//go:embed templates/signup.html
+//go:embed mail_content_formatter/templates/signup.html
 var signUpTemplate []byte
 
-//go:embed templates/pending_record_notification.html
+//go:embed mail_content_formatter/templates/pending_record_notification.html
 var notifyPaymentRecordsMail []byte
 
-//go:embed templates/system_announcement.html
+//go:embed mail_content_formatter/templates/system_announcement.html
 var systemAnnouncementMail []byte
 
 // MailService struct hods all functionalities of mail service
