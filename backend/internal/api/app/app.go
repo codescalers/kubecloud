@@ -8,7 +8,6 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/metrics"
 
 	"net"
 	"net/http"
@@ -100,9 +99,6 @@ func (app *App) registerHandlers() {
 
 	app.router.Use(middlewares.CorsMiddleware())
 	app.router.Use(app.core.metrics.Middleware())
-
-	app.core.metrics.StartGORMMetricsCollector(app.core.db, metrics.MetricsCollectorInterval)
-	app.core.metrics.StartGoRuntimeMetricsCollector(metrics.MetricsCollectorInterval)
 
 	v1 := app.router.Group("/api/v1")
 	{
@@ -223,6 +219,8 @@ func (app *App) StartBackgroundWorkers() {
 	go app.workers.MonitorSystemBalanceAndHandleSettlement()
 	go app.workers.TrackClusterHealth()
 	go app.workers.TrackReservedNodeHealth()
+	go app.workers.CollectGORMMetrics()
+	go app.workers.CollectGoRuntimeMetrics()
 }
 
 // Run starts the server
