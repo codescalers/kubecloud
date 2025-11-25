@@ -3,14 +3,14 @@
     location="bottom end"
     max-width="400px"
     :model-value="openMenu && active"
-    @update:model-value="openMenu = $event && active"
+    @update:model-value="() => null"
   >
-    <template v-slot:activator="{ props }">
+    <template v-slot:activator="{ props: { onClick, onKeydown, ...res } }">
       <v-btn
         icon
         rounded="xl"
         variant="flat"
-        v-bind="props"
+        v-bind="res"
         :disabled="!active"
         :style="{
           position: 'fixed',
@@ -18,6 +18,7 @@
           bottom: '90px',
           zIndex: '99999',
         }"
+        @click="openMenu = !openMenu"
       >
         <div :style="{ position: 'relative' }">
           <v-icon
