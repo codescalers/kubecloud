@@ -6,7 +6,19 @@
     @update:model-value="openMenu = $event && active"
   >
     <template v-slot:activator="{ props }">
-      <v-btn icon variant="text" color="white" v-bind="props" :disabled="!active">
+      <v-btn
+        icon
+        rounded="xl"
+        variant="flat"
+        v-bind="props"
+        :disabled="!active"
+        :style="{
+          position: 'fixed',
+          right: '23px',
+          bottom: '90px',
+          zIndex: '99999',
+        }"
+      >
         <div :style="{ position: 'relative' }">
           <v-icon
             icon="mdi-lightning-bolt"
