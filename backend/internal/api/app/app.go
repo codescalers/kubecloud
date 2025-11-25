@@ -22,6 +22,7 @@ import (
 	"github.com/stripe/stripe-go/v82"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	// Import the generated docs package
 	_ "kubecloud/docs/swagger"
@@ -100,6 +101,7 @@ func (app *App) registerHandlers() {
 
 	app.router.Use(middlewares.CorsMiddleware())
 	app.router.Use(app.core.metrics.Middleware())
+	app.router.Use(otelgin.Middleware("kubecloud"))
 
 	app.core.metrics.StartGORMMetricsCollector(app.core.db, metrics.MetricsCollectorInterval)
 	app.core.metrics.StartGoRuntimeMetricsCollector(metrics.MetricsCollectorInterval)
@@ -270,6 +272,12 @@ func (app *App) Shutdown() error {
 	if app.core.db != nil {
 		if err := app.core.db.Close(); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to close database connection")
+		}
+	}
+
+	if app.core.tracerProvider != nil {
+		if err := app.core.tracerProvider.Shutdown(context.Background()); err != nil {
+			logger.GetLogger().Error().Err(err).Msg("Failed to shutdown tracer provider")
 		}
 	}
 

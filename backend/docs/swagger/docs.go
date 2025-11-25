@@ -3290,9 +3290,20 @@ const docTemplate = `{
                 }
             }
         },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
         "gridtypes.Unit": {
             "type": "integer",
-            "format": "int64",
             "enum": [
                 1024,
                 1048576,
@@ -4283,6 +4294,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
                 "id": {
                     "description": "Primary key",
                     "type": "integer"
@@ -4435,7 +4449,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4469,12 +4482,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "pending_balance_usd": {
                     "type": "number"
                 },
@@ -4502,7 +4509,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4539,12 +4545,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 },
                 "sponsored": {
                     "type": "boolean"
@@ -4937,8 +4937,7 @@ const docTemplate = `{
                 "externalSK": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "iprange": {
@@ -4949,8 +4948,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -4959,8 +4957,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -4970,15 +4967,13 @@ const docTemplate = `{
                 "nodeDeploymentID": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer",
-                        "format": "int64"
+                        "type": "integer"
                     }
                 },
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "nodesIPRange": {
@@ -4988,8 +4983,7 @@ const docTemplate = `{
                     }
                 },
                 "publicNodeID": {
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                 },
                 "solutionType": {
                     "type": "string"
@@ -5009,16 +5003,14 @@ const docTemplate = `{
                     "description": "network number",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "mask": {
                     "description": "network mask",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 }
             }
