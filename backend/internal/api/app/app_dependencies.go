@@ -15,7 +15,8 @@ import (
 	grid "kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/persistence"
@@ -76,7 +77,8 @@ type appSecurity struct {
 
 // appCommunication contains notification and communication related services
 type appCommunication struct {
-	mailService            mailservice.MailService
+	mailSender             mailsender.MailSender
+	mailContentFormatter   mailcontentformatter.MailContentFormatter
 	sseManager             *realtime.SSEManager
 	notificationDispatcher *notification.NotificationDispatcher
 }
@@ -105,7 +107,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appCommunication, err := createAppCommunication(ctx, config, appCore.db, appCore.ewfEngine, appCore.metrics)
+	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics)
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -225,14 +227,18 @@ func createAppSecurity(ctx context.Context, config cfg.Configuration) (appSecuri
 	}, nil
 }
 
-func createAppCommunication(ctx context.Context, config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
-	var mailService mailservice.MailService
+func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+	var mailSender mailsender.MailSender
+	var mailContentFormatter mailcontentformatter.MailContentFormatter
 
 	if config.DevMode {
 		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
-		mailService = mailservice.NewFakeMailService(metrics)
+
+		mailSender = mailsender.NewFakeMailSender(metrics)
+		mailContentFormatter = mailcontentformatter.NewMailTextFormatter(config.Server.Host)
 	} else {
-		mailService = mailservice.NewSendGridMailService(config.MailSender, config.Server.Host, metrics)
+		mailSender = mailsender.NewSendGridMailSender(config.MailSender.SendGridKey, metrics)
+		mailContentFormatter = mailcontentformatter.NewMailHTMLFormatter(config.Server.Host)
 	}
 
 	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
@@ -246,7 +252,7 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailService, userRepo)
+	emailNotifier := notification.NewEmailNotifier(mailSender, mailContentFormatter, config.MailSender, userRepo)
 	err = emailNotifier.ParseTemplates()
 	if err != nil {
 		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
@@ -259,7 +265,8 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 	}
 
 	return appCommunication{
-		mailService:            mailService,
+		mailSender:             mailSender,
+		mailContentFormatter:   mailContentFormatter,
 		sseManager:             sseManager,
 		notificationDispatcher: notificationDispatcher,
 	}, nil
@@ -364,14 +371,14 @@ func (app *App) createHandlers() appHandlers {
 	stripeClient := &billing.DefaultStripeClient{}
 	userHandler := handlers.NewUserHandler(
 		userService, app.communication.notificationDispatcher,
-		app.communication.mailService, app.security.tokenManager, stripeClient,
+		app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
 	nodeHandler := handlers.NewNodeHandler(nodeService)
 	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
-	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, app.communication.mailService)
-	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailService)
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceService)
+	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 
@@ -397,7 +404,7 @@ func (app *App) createWorkers() workers.Workers {
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
-		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
+		app.communication.mailSender, app.communication.mailContentFormatter, app.config.MailSender, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,

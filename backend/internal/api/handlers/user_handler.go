@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
+	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
-	"kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 	"sort"
@@ -27,7 +29,9 @@ import (
 type UserHandler struct {
 	svc                    services.UserService
 	notificationDispatcher *notification.NotificationDispatcher
-	mailService            mailservice.MailService
+	mailSender             mailsender.MailSender
+	mailContentFormatter   mailcontentformatter.MailContentFormatter
+	mailConfig             config.MailSender
 	tokenManager           auth.TokenManager
 	stripeClient           billing.StripeClient
 }
@@ -35,14 +39,18 @@ type UserHandler struct {
 func NewUserHandler(
 	svc services.UserService,
 	notificationDispatcher *notification.NotificationDispatcher,
-	mailService mailservice.MailService,
+	mailSender mailsender.MailSender,
+	mailContentFormatter mailcontentformatter.MailContentFormatter,
+	mailConfig config.MailSender,
 	tokenManager auth.TokenManager,
 	stripeClient billing.StripeClient,
 ) UserHandler {
 	return UserHandler{
 		svc:                    svc,
 		notificationDispatcher: notificationDispatcher,
-		mailService:            mailService,
+		mailSender:             mailSender,
+		mailContentFormatter:   mailContentFormatter,
+		mailConfig:             mailConfig,
 		tokenManager:           tokenManager,
 		stripeClient:           stripeClient,
 	}
@@ -444,8 +452,13 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	code := h.svc.GenerateRandomCode()
 
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.svc.CodeTimeoutInMinutes(), user.Username)
-	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
+	subject, body := h.mailContentFormatter.FormatResetPasswordMailContent(code, h.svc.CodeTimeoutInMinutes(), user.Username)
+	err = h.mailSender.Send(mailsender.MailRequest{
+		From:    h.mailConfig.Email,
+		To:      request.Email,
+		Subject: subject,
+		Body:    body,
+	})
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to send verification code")
 		InternalServerError(c)

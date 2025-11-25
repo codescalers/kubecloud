@@ -1,9 +1,9 @@
 package mailsender
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
+	"kubecloud/internal/infrastructure/metrics"
 	"mime"
 	"path/filepath"
 
@@ -13,18 +13,21 @@ import (
 
 type SendGridMailSender struct {
 	client  *sendgrid.Client
+	metrics *metrics.Metrics
 }
 
-func NewSendGridMailSender(sendGridKey string) SendGridMailSender {
+func NewSendGridMailSender(sendGridKey string, metrics *metrics.Metrics) SendGridMailSender {
 	return SendGridMailSender{
 		client:  sendgrid.NewSendClient(sendGridKey),
+		metrics: metrics,
 	}
 }
 
-func (s SendGridMailSender) Send(ctx context.Context, req MailRequest) error {
+func (s SendGridMailSender) Send(req MailRequest) error {
 	from := mail.NewEmail("Mycelium Cloud", req.From)
 
 	if !isValidEmail(req.To) {
+		s.metrics.IncrementEmailFailed()
 		return fmt.Errorf("email %v is not valid", req.To)
 	}
 
@@ -47,7 +50,9 @@ func (s SendGridMailSender) Send(ctx context.Context, req MailRequest) error {
 	_, err := s.client.Send(message)
 
 	if err != nil {
+		s.metrics.IncrementEmailFailed()
 		return err
 	}
+	s.metrics.IncrementEmailSent()
 	return nil
 }

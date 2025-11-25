@@ -1,7 +1,6 @@
 package mailsender
 
 import (
-	"context"
 	"net/mail"
 )
 
@@ -18,7 +17,7 @@ type Attachment struct {
 }
 
 type MailSender interface {
-	Send(ctx context.Context, req MailRequest) error
+	Send(req MailRequest) error
 }
 
 func isValidEmail(email string) bool {

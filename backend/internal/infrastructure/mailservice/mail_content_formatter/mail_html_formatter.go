@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	_ "embed"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	_ "embed"
 )
 
 //go:embed templates/reset_password.html

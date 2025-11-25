@@ -6,20 +6,16 @@ import (
 	"net/http"
 	"strconv"
 
-	"kubecloud/internal/infrastructure/mailservice"
-
 	"github.com/gin-gonic/gin"
 )
 
 type InvoiceHandler struct {
-	svc         services.InvoiceService
-	mailService mailservice.MailService
+	svc services.InvoiceService
 }
 
-func NewInvoiceHandler(svc services.InvoiceService, mailService mailservice.MailService) InvoiceHandler {
+func NewInvoiceHandler(svc services.InvoiceService) InvoiceHandler {
 	return InvoiceHandler{
-		svc:         svc,
-		mailService: mailService,
+		svc: svc,
 	}
 }
 

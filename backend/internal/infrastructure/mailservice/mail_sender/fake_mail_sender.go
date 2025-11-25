@@ -1,25 +1,29 @@
 package mailsender
 
 import (
-	"context"
 	"fmt"
 	"strings"
 
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/metrics"
 )
 
 // FakeMailSender overrides MailSender methods for development purposes
 type FakeMailSender struct {
+	metrics *metrics.Metrics
 }
 
 // NewFakeMailSender creates a new fake mail sender for development
-func NewFakeMailSender() FakeMailSender {
-	return FakeMailSender{}
+func NewFakeMailSender(metrics *metrics.Metrics) FakeMailSender {
+	return FakeMailSender{
+		metrics: metrics,
+	}
 }
 
 // Send overrides to track metrics without actually sending
-func (s FakeMailSender) Send(ctx context.Context, req MailRequest) error {
+func (s FakeMailSender) Send(req MailRequest) error {
 	if !isValidEmail(req.To) {
+		s.metrics.IncrementEmailFailed()
 		return fmt.Errorf("email %v is not valid", req.To)
 	}
 
@@ -29,7 +33,7 @@ func (s FakeMailSender) Send(ctx context.Context, req MailRequest) error {
 	}
 
 	logger.GetLogger().Info().Msg(formatMailSummaryBox(req, files))
-
+	s.metrics.IncrementEmailSent()
 	return nil
 }
 

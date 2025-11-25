@@ -4,25 +4,28 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/mailservice"
 	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/xmonader/ewf"
 )
 
 type EmailNotifier struct {
-	mailService mailservice.MailService
-	userRepo    models.UserRepository
-	engine      *ewf.Engine
+	mailSender mailsender.MailSender
+	mailConfig config.MailSender
+	userRepo   models.UserRepository
+	engine     *ewf.Engine
 }
 
-func NewEmailNotifier(mailService mailservice.MailService, userRepo models.UserRepository) *EmailNotifier {
+func NewEmailNotifier(mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, mailConfig config.MailSender, userRepo models.UserRepository) *EmailNotifier {
 	return &EmailNotifier{
-		mailService: mailService,
-		userRepo:    userRepo,
+		mailSender: mailSender,
+		mailConfig: mailConfig,
+		userRepo:   userRepo,
 	}
 }
 
@@ -103,7 +106,7 @@ func (n *EmailNotifier) queueEmailViaEWF(ctx context.Context, notification model
 
 // sendEmailDirect sends the email immediately (fallback when EWF unavailable)
 func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiverEmail string) error {
-	from := mail.NewEmail("MyceliumCloud", n.mailService.SystemMail())
+	from := mail.NewEmail("MyceliumCloud", n.mailConfig.Email)
 	receiver := mail.NewEmail("MyceliumCloud User", receiverEmail)
 
 	tplName := string(notification.Type)
@@ -124,6 +127,11 @@ func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiv
 		mail.NewContent("text/html", buf.String()),
 	}
 
-	err := n.mailService.SendMailFromSystem(receiverEmail, subject, buf.String())
+	err := n.mailSender.Send(mailsender.MailRequest{
+		From:    n.mailConfig.Email,
+		To:      receiverEmail,
+		Subject: subject,
+		Body:    buf.String(),
+	})
 	return err
 }

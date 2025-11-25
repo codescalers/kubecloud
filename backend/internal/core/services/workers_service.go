@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/billing"
-	cfg "kubecloud/internal/config"
+	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -31,7 +32,9 @@ type WorkerService struct {
 	clusterRepo        models.ClusterRepository
 	pendingRecordsRepo models.PendingRecordRepository
 
-	mailService            mailservice.MailService
+	mailSender             mailsender.MailSender
+	mailContentFormatter   mailcontentformatter.MailContentFormatter
+	mailConfig             config.MailSender
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
 	substrateClient        substrate.Substrate
@@ -41,7 +44,7 @@ type WorkerService struct {
 
 	// configs
 	systemMnemonic                          string
-	invoiceCompanyData                      cfg.InvoiceCompanyData
+	invoiceCompanyData                      config.InvoiceCompanyData
 	currency                                string
 	clusterHealthCheckIntervalInHours       int
 	reservedNodeHealthCheckIntervalInHours  int
@@ -54,10 +57,12 @@ type WorkerService struct {
 func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
-	mailService mailservice.MailService,
+	mailSender mailsender.MailSender,
+	mailContentFormatter mailcontentformatter.MailContentFormatter,
+	mailConfig config.MailSender,
 	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
-	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
+	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
@@ -70,7 +75,9 @@ func NewWorkersService(
 		clusterRepo:        clusterRepo,
 		pendingRecordsRepo: pendingRecordsRepo,
 
-		mailService:            mailService,
+		mailSender:             mailSender,
+		mailContentFormatter:   mailContentFormatter,
+		mailConfig:             mailConfig,
 		notificationDispatcher: notificationDispatcher,
 		ewfEngine:              ewfEngine,
 		graphql:                graphql,
@@ -204,10 +211,18 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		return err
 	}
 
-	subject, body := svc.mailService.InvoiceMailContent(totalInvoiceCostUSD, svc.currency, invoice.ID)
-	return svc.mailService.SendMailFromSystem(user.Email, subject, body, mailservice.Attachment{
-		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
-		Data:     invoice.FileData,
+	subject, body := svc.mailContentFormatter.FormatInvoiceMailContent(totalInvoiceCostUSD, svc.currency, invoice.ID)
+	return svc.mailSender.Send(mailsender.MailRequest{
+		From:    svc.mailConfig.Email,
+		To:      user.Email,
+		Subject: subject,
+		Body:    body,
+		Attachments: []mailsender.Attachment{
+			{
+				FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
+				Data:     invoice.FileData,
+			},
+		},
 	})
 }
 
@@ -416,7 +431,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 }
 
 func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingRecord) error {
-	subject, body := svc.mailService.NotifyAdminsMailContent(len(records))
+	subject, body := svc.mailContentFormatter.FormatNotifyAdminsMailContent(len(records))
 
 	admins, err := svc.userRepo.ListAdmins()
 	if err != nil {
@@ -424,7 +439,12 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingR
 	}
 
 	for _, admin := range admins {
-		err = svc.mailService.SendMailFromSystem(admin.Email, subject, body)
+		err = svc.mailSender.Send(mailsender.MailRequest{
+			From:    svc.mailConfig.Email,
+			To:      admin.Email,
+			Subject: subject,
+			Body:    body,
+		})
 		if err != nil {
 			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue
