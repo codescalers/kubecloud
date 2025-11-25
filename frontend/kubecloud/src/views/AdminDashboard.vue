@@ -11,6 +11,7 @@ import AdminSystemSection from '../components/AdminSystemCard.vue'
 import AdminInvoicesTable from '../components/AdminInvoicesTable.vue'
 import AdminPendingRecordsCard from '../components/dashboard/AdminPendingRecordsCard.vue'
 import AdminEmailsCard from '../components/dashboard/AdminEmailsCard.vue'
+import AdminWorkflowsTable from '../components/AdminWorkflowsTable.vue'
 
 const AdminSidebar = defineAsyncComponent(() => import('../components/AdminSidebar.vue'))
 const selected = ref('overview')
@@ -211,6 +212,7 @@ async function loadStats() {
             @drainUser="handleDrainUser"
             @drainAllUsers="handleDrainAllUsers"
           />
+          <AdminWorkflowsTable v-else-if="selected === 'workflows'" />
           <AdminClustersSection v-else-if="selected === 'clusters'" />
           <AdminSystemSection v-else-if="selected === 'system'" />
           <AdminVouchersSection

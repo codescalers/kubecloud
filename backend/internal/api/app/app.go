@@ -128,6 +128,7 @@ func (app *App) registerHandlers() {
 			usersGroup.POST("/mail", app.handlers.adminHandler.SendMailToAllUsersHandler)
 			adminGroup.GET("/pending-records", app.handlers.adminHandler.ListPendingRecordsHandler)
 			adminGroup.GET("/invoices", app.handlers.invoiceHandler.ListAllInvoicesHandler)
+			adminGroup.GET("/workflows", app.handlers.adminHandler.ListAllWorkflowsHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{
