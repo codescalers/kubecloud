@@ -307,6 +307,7 @@ func (app *App) createHandlers() appHandlers {
 	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
 	transactionRepo := corepersistence.NewGormTransactionRepository(app.core.db)
 	settingsRepo := corepersistence.NewGormSettingsRepository(app.core.db)
+	ewfRepo := corepersistence.NewGormEWFRepository(app.core.db)
 
 	// Services
 	userService := services.NewUserService(
@@ -341,7 +342,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, ewfRepo,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
