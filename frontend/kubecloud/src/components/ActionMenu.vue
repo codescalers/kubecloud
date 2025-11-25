@@ -62,7 +62,7 @@ import ActionMenuItem from './ActionMenuItem.vue'
 import { userService, type UserWorkflowsResponse } from '@/utils/userService'
 
 const workflows = ref<UserWorkflowsResponse[]>([])
-const openMenu = ref(false)
+const openMenu = ref(true)
 const active = computed(() => workflows.value.length > 0)
 
 let intervalId: NodeJS.Timeout | null = null
