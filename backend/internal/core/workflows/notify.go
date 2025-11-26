@@ -54,6 +54,23 @@ func sendDeploymentWorkflowNotification(ctx context.Context, notificationDispatc
 		return confErr
 	}
 
+	if wf.Name == WorkflowDeleteAllClusters {
+		displayName := getWorkflowDisplayName(wf)
+		message := fmt.Sprintf("%s completed successfully", displayName)
+
+		builder := notification.ClusterNotification(config.UserID, "").
+			WithSubject("All clusters deleted").
+			WithExtra("workflow_name", displayName)
+
+		if err != nil {
+			message = fmt.Sprintf("%s failed", displayName)
+			builder = builder.Failure(message, err)
+			return notificationDispatcher.Send(ctx, builder.Build())
+		}
+		builder = builder.Success(message)
+		return notificationDispatcher.Send(ctx, builder.Build())
+	}
+
 	cluster, clusterErr := statemanager.GetCluster(wf.State)
 	if clusterErr != nil {
 		log.Error().Err(clusterErr).Msg("failed to get cluster from state")
