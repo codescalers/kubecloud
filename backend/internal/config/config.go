@@ -36,8 +36,9 @@ type Configuration struct {
 	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
-	Logger LoggerConfig `json:"logger"`
-	Loki   LokiConfig   `json:"loki"`
+	Logger    LoggerConfig    `json:"logger"`
+	Loki      LokiConfig      `json:"loki"`
+	Telemetry TelemetryConfig `json:"telemetry"`
 }
 
 type SSHConfig struct {
@@ -122,6 +123,10 @@ type LokiLabels struct {
 	App  string `json:"app,omitempty" default:"myceliumCloud"`
 	Env  string `json:"env,omitempty" default:"main"`
 	Host string `json:"host,omitempty"`
+}
+
+type TelemetryConfig struct {
+	OTLPEndpoint string `json:"otlp_endpoint" default:"jaeger:4317"` // gRPC endpoint for OTLP exporter
 }
 
 type ReservedNodeHealthCheckConfig struct {
@@ -379,5 +384,9 @@ func applyDefaultValues(config *Configuration) {
 	}
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
+
+	if config.Telemetry.OTLPEndpoint == "" {
+		config.Telemetry.OTLPEndpoint = "jaeger:4317"
 	}
 }

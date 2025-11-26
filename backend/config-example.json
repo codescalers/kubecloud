@@ -69,5 +69,8 @@
       "env": "dev",
       "host": ""
     }
+  },
+  "telemetry": {
+    "otlp_endpoint": "jaeger:4317"
   }
 }

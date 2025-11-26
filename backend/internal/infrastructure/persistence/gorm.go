@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/core/models"
 
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 // GormDB struct implements models.DB interface with gorm
@@ -18,6 +19,10 @@ type GormDB struct {
 func NewGormStorage(dialector gorm.Dialector) (*GormDB, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 

@@ -161,7 +161,7 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 		return
 	}
 
-	twinID, err := h.svc.GetTwinIDFromUserID(userID)
+	twinID, err := h.svc.GetTwinIDFromUserID(c.Request.Context(), userID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve twin ID")
 		InternalServerError(c)
@@ -284,7 +284,7 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.CheckUserBalanceForOneHour(user.Mnemonic, user.Debt, node.PriceUsd); err != nil {
+	if err := h.svc.CheckUserBalanceForOneHour(c.Request.Context(), user.Mnemonic, user.Debt, node.PriceUsd); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check user balance")
 		BadRequest(c, "You should at least have enough balance for one hour")
 		return

@@ -21,6 +21,7 @@ import (
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/telemetry"
 
 	"net/url"
 	"os"
@@ -57,10 +58,11 @@ type appDependencies struct {
 
 // appCore contains essential application services
 type appCore struct {
-	appCtx    context.Context
-	db        models.DB
-	metrics   *metrics.Metrics
-	ewfEngine *ewf.Engine
+	appCtx         context.Context
+	db             models.DB
+	metrics        *metrics.Metrics
+	ewfEngine      *ewf.Engine
+	tracerProvider *telemetry.TracerProvider
 }
 
 // appSecurity contains authentication and security related services
@@ -118,6 +120,16 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 }
 
 func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, error) {
+	tp, err := telemetry.InitTracerProvider(ctx, telemetry.Config{
+		ServiceName:    "kubecloud",
+		ServiceVersion: "1.0.0", // TODO:
+		Environment:    config.SystemAccount.Network,
+		OTLPEndpoint:   config.Telemetry.OTLPEndpoint,
+	})
+	if err != nil {
+		return appCore{}, fmt.Errorf("failed to initialize tracer provider: %w", err)
+	}
+
 	dbPoolConfig := models.DBPoolConfig{
 		MaxOpenConns:           config.Database.MaxOpenConns,
 		MaxIdleConns:           config.Database.MaxIdleConns,
@@ -153,10 +165,11 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 	}
 
 	return appCore{
-		appCtx:    ctx,
-		db:        db,
-		metrics:   metrics.NewMetrics(),
-		ewfEngine: ewfEngine,
+		appCtx:         ctx,
+		db:             db,
+		metrics:        metrics.NewMetrics(),
+		ewfEngine:      ewfEngine,
+		tracerProvider: tp,
 	}, nil
 }
 

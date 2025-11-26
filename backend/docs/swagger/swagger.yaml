@@ -7,13 +7,20 @@ definitions:
       refresh_token:
         type: string
     type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
   gridtypes.Unit:
     enum:
     - 1024
     - 1048576
     - 1073741824
     - 1099511627776
-    format: int64
     type: integer
     x-enum-varnames:
     - Kilobyte
@@ -679,6 +686,8 @@ definitions:
     properties:
       created_at:
         type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
       id:
         description: Primary key
         type: integer
@@ -806,10 +815,6 @@ definitions:
         type: string
       id:
         type: integer
-      password:
-        items:
-          type: integer
-        type: array
       pending_balance_usd:
         type: number
       sponsored:
@@ -826,7 +831,6 @@ definitions:
         type: boolean
     required:
     - email
-    - password
     - username
     type: object
   services.UserWithUSDBalance:
@@ -855,10 +859,6 @@ definitions:
         type: string
       id:
         type: integer
-      password:
-        items:
-          type: integer
-        type: array
       sponsored:
         type: boolean
       ssh_key:
@@ -873,7 +873,6 @@ definitions:
         type: boolean
     required:
     - email
-    - password
     - username
     type: object
   types.BIOS:
@@ -1122,7 +1121,6 @@ definitions:
         $ref: '#/definitions/zos.IPNet'
       externalSK:
         items:
-          format: int32
           type: integer
         type: array
       iprange:
@@ -1130,14 +1128,12 @@ definitions:
       keys:
         additionalProperties:
           items:
-            format: int32
             type: integer
           type: array
         type: object
       myceliumKeys:
         additionalProperties:
           items:
-            format: int32
             type: integer
           type: array
         type: object
@@ -1145,12 +1141,10 @@ definitions:
         type: string
       nodeDeploymentID:
         additionalProperties:
-          format: int64
           type: integer
         type: object
       nodes:
         items:
-          format: int32
           type: integer
         type: array
       nodesIPRange:
@@ -1158,7 +1152,6 @@ definitions:
           $ref: '#/definitions/zos.IPNet'
         type: object
       publicNodeID:
-        format: int32
         type: integer
       solutionType:
         type: string
@@ -1172,13 +1165,11 @@ definitions:
       ip:
         description: network number
         items:
-          format: int32
           type: integer
         type: array
       mask:
         description: network mask
         items:
-          format: int32
           type: integer
         type: array
     type: object
