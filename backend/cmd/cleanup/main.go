@@ -14,7 +14,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	// substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 )
 
@@ -67,16 +66,12 @@ func main() {
 	}
 	defer db.Close()
 
-	gridClient, err := deployer.NewTFPluginClient(
-		config.SystemAccount.Mnemonic, deployer.WithNetwork(config.SystemAccount.Network),
-	)
+	substrateClient, err := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create TF plugin client")
 		return
 	}
-	substrateClient := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
-
-	defer gridClient.Close()
+	defer substrateClient.Close()
 
 	moneyCollector := moneycollector.NewMoneyCollector(corepersistence.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()

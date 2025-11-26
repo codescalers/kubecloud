@@ -89,7 +89,7 @@ func (app *App) registerEWFWorkflows() {
 		app.security.sponsorKeyPair,
 		app.core.metrics,
 		app.communication.notificationDispatcher,
-		app.infra.gridClient.GridProxyClient,
+		app.infra.substrateClient.GridProxyClient(),
 		stripeClient,
 	)
 }
@@ -273,7 +273,7 @@ func (app *App) Shutdown() error {
 		}
 	}
 
-	app.infra.gridClient.Close()
+	app.infra.substrateClient.Close()
 
 	logger.CloseLogger()
 

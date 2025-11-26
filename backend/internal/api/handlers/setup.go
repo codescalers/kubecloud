@@ -19,7 +19,6 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 type setup struct {
@@ -143,14 +142,10 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	gridClient, err := deployer.NewTFPluginClient(
-		configuration.SystemAccount.Mnemonic, deployer.WithNetwork(configuration.SystemAccount.Network),
-	)
+	substrateClient, err := substrate.NewSubstrateClient(configuration.SystemAccount.Mnemonic, configuration.SystemAccount.Network, configuration.Debug)
 	if err != nil {
 		return setup{}, err
 	}
-
-	substrateClient := substrate.NewSubstrateClient(configuration.SystemAccount.Mnemonic, gridClient)
 
 	tokenManager := auth.NewTokenHandler(
 		configuration.JwtToken.Secret,
@@ -177,14 +172,14 @@ func SetUp(t testing.TB) (setup, error) {
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()
-		gridClient.Close()
+		substrateClient.Close()
 	})
 
 	return setup{
 		tokenManager:    tokenManager,
 		substrateClient: substrateClient,
 		router:          router,
-		network:         gridClient.Network,
+		network:         configuration.SystemAccount.Network,
 
 		userRepo:           corepersistence.NewGormUserRepository(db),
 		voucherRepo:        corepersistence.NewGormVoucherRepository(db),

@@ -17,6 +17,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 )
 
 type substrateClient struct {
@@ -26,11 +27,32 @@ type substrateClient struct {
 
 var _ Substrate = (*substrateClient)(nil)
 
-func NewSubstrateClient(systemMnemonic string, gridClient deployer.TFPluginClient) Substrate {
+func NewSubstrateClient(systemMnemonic string, network string, debug bool) (Substrate, error) {
+	pluginOpts := []deployer.PluginOpt{
+		deployer.WithNetwork(network),
+		deployer.WithDisableSentry(),
+	}
+	if debug {
+		pluginOpts = append(pluginOpts, deployer.WithLogs())
+	}
+
+	gridClient, err := deployer.NewTFPluginClient(
+		systemMnemonic,
+		pluginOpts...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create TF grid client: %w", err)
+	}
+
 	return &substrateClient{
 		systemMnemonic: systemMnemonic,
 		gridClient:     &gridClient,
-	}
+	}, nil
+}
+
+// GridProxyClient returns the grid proxy client from the grid client
+func (s *substrateClient) GridProxyClient() proxy.Client {
+	return s.gridClient.GridProxyClient
 }
 
 // FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
@@ -332,4 +354,8 @@ func (s *substrateClient) SetupUserOnTFChain(termsAndConditions config.TermsANDC
 		Str("address", address).
 		Msg("Twin created successfully")
 	return mnemonic, twinID, nil
+}
+
+func (s *substrateClient) Close() {
+	s.gridClient.Close()
 }

@@ -82,7 +82,6 @@ type appCommunication struct {
 // appInfrastructure contains grid and blockchain related services
 type appInfrastructure struct {
 	substrateClient substrate.Substrate
-	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
 }
@@ -253,23 +252,10 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 }
 
 func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
-	pluginOpts := []deployer.PluginOpt{
-		deployer.WithNetwork(config.SystemAccount.Network),
-		deployer.WithDisableSentry(),
-	}
-	if config.Debug {
-		pluginOpts = append(pluginOpts, deployer.WithLogs())
-	}
-
-	gridClient, err := deployer.NewTFPluginClient(
-		config.SystemAccount.Mnemonic,
-		pluginOpts...,
-	)
+	substrateClient, err := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
 	if err != nil {
-		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
 	}
-
-	substrateClient := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
 
 	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {
@@ -284,7 +270,6 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 
 	return appInfrastructure{
 		substrateClient: substrateClient,
-		gridClient:      gridClient,
 		graphql:         graphQl,
 		firesquidClient: fireSquidClient,
 	}, nil
@@ -311,7 +296,7 @@ func (app *App) createHandlers() appHandlers {
 	)
 
 	statsService := services.NewStatsService(
-		userRepo, clusterRepo, app.infra.gridClient.GridProxyClient,
+		userRepo, clusterRepo, app.infra.substrateClient.GridProxyClient(),
 		app.infra.substrateClient, app.config.SystemAccount.Mnemonic,
 	)
 
@@ -319,7 +304,7 @@ func (app *App) createHandlers() appHandlers {
 
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
-		app.infra.gridClient.GridProxyClient, app.infra.substrateClient,
+		app.infra.substrateClient.GridProxyClient(), app.infra.substrateClient,
 	)
 
 	invoiceService := services.NewInvoiceService(
@@ -384,7 +369,7 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
 		app.config.MonitorBalanceIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
-		app.infra.gridClient.GridProxyClient,
+		app.infra.substrateClient.GridProxyClient(),
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService)

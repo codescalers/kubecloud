@@ -6,9 +6,11 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 )
 
 type Substrate interface {
+	GridProxyClient() proxy.Client
 	FromTFTtoUSDMillicent(amount uint64) (uint64, error)
 	FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error)
 	GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error)
@@ -26,4 +28,5 @@ type Substrate interface {
 	CreateRentContract(mnemonic string, nodeID uint32) (uint64, error)
 	CancelContract(mnemonic string, contractID uint64) error
 	SetupUserOnTFChain(termsAndConditions config.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error)
+	Close()
 }
