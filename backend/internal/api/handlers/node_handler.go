@@ -86,6 +86,8 @@ func (h *NodeHandler) ListAllGridNodesHandler(c *gin.Context) {
 
 	limit := proxyTypes.DefaultLimit()
 	limit.RetCount = true
+	limit.SortBy = "uptime"
+	limit.SortOrder = "desc"
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
 		BadRequest(c, "Invalid limit params")
