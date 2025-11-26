@@ -5,11 +5,11 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"time"
 
@@ -23,7 +23,7 @@ func RegisterEWFWorkflows(
 	config cfg.Configuration,
 	db models.DB,
 	mail mailservice.MailService,
-	substrateClient grid.SubstrateClient,
+	substrateClient substrate.Substrate,
 	kycClient *kyc.KYCClient,
 	sponsorAddress string,
 	sponsorKeyPair subkey.KeyPair,

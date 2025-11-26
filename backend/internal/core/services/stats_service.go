@@ -3,7 +3,7 @@ package services
 import (
 	"context"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/substrate"
 
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -13,7 +13,7 @@ type StatsService struct {
 	userRepo        models.UserRepository
 	clusterRepo     models.ClusterRepository
 	gridProxyClient proxy.Client
-	substrateClient *grid.SubstrateClient
+	substrateClient substrate.Substrate
 	systemMnemonic  string
 }
 
@@ -21,14 +21,14 @@ func NewStatsService(
 	userRepo models.UserRepository,
 	clusterRepo models.ClusterRepository,
 	gridProxyClient proxy.Client,
-	substrateClient grid.SubstrateClient,
+	substrateClient substrate.Substrate,
 	systemMnemonic string,
 ) StatsService {
 	return StatsService{
 		userRepo:        userRepo,
 		clusterRepo:     clusterRepo,
 		gridProxyClient: gridProxyClient,
-		substrateClient: &substrateClient,
+		substrateClient: substrateClient,
 		systemMnemonic:  systemMnemonic,
 	}
 }

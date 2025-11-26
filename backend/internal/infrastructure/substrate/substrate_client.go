@@ -1,29 +1,40 @@
-package grid
+package substrate
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"kubecloud/internal/config"
+	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/logger"
 	"math"
+	"net/http"
+	"time"
 
+	"github.com/cosmos/go-bip39"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 )
 
-type SubstrateClient struct {
-	gridClient     deployer.TFPluginClient
+type substrateClient struct {
+	gridClient     *deployer.TFPluginClient
 	systemMnemonic string
 }
 
-func NewSubstrateClient(systemMnemonic string, gridClient deployer.TFPluginClient) SubstrateClient {
-	return SubstrateClient{
+var _ Substrate = (*substrateClient)(nil)
+
+func NewSubstrateClient(systemMnemonic string, gridClient deployer.TFPluginClient) Substrate {
+	return &substrateClient{
 		systemMnemonic: systemMnemonic,
-		gridClient:     gridClient,
+		gridClient:     &gridClient,
 	}
 }
 
 // FromTFTtoUSDMillicent converts TFT amount to USD Millicent (1/1000 of a dollar)
-func (s *SubstrateClient) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
+func (s *substrateClient) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
 	price, err := s.gridClient.SubstrateConn.GetTFTPrice()
 	if err != nil {
 		return 0, err
@@ -35,7 +46,7 @@ func (s *SubstrateClient) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
 
 // FromUSDMillicentToTFT converts USD Millicent to TFT amount
 // This avoids floating point precision issues by accepting an integer value
-func (s *SubstrateClient) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error) {
+func (s *substrateClient) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error) {
 	price, err := s.gridClient.SubstrateConn.GetTFTPrice()
 	if err != nil {
 		return 0, err
@@ -57,7 +68,7 @@ func FromUSDToUSDMillicent(amountUSD float64) uint64 {
 
 // GetUserBalanceUSDMillicent gets balance of user in USD Millicent
 // This avoids floating point precision issues by returning an integer value
-func (s *SubstrateClient) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
+func (s *substrateClient) GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error) {
 	// Create identity of user from mnemonic
 	userIdentity, err := s.getIdentity(userMnemonic)
 	if err != nil {
@@ -73,7 +84,7 @@ func (s *SubstrateClient) GetUserBalanceUSDMillicent(userMnemonic string) (uint6
 }
 
 // GetUserBalanceUSD gets balance of user in USD
-func (s *SubstrateClient) GetUserBalanceUSD(userMnemonic string) (float64, error) {
+func (s *substrateClient) GetUserBalanceUSD(userMnemonic string) (float64, error) {
 	usdMillicentBalance, err := s.GetUserBalanceUSDMillicent(userMnemonic)
 	if err != nil {
 		return 0, err
@@ -83,7 +94,7 @@ func (s *SubstrateClient) GetUserBalanceUSD(userMnemonic string) (float64, error
 }
 
 // TransferTFTsFromSystem transfer balance to users' account
-func (s *SubstrateClient) TransferTFTsFromSystem(tftBalance uint64, userMnemonic string) error {
+func (s *substrateClient) TransferTFTsFromSystem(tftBalance uint64, userMnemonic string) error {
 	// Create identity of user from mnemonic
 	userIdentity, err := s.getIdentity(userMnemonic)
 	if err != nil {
@@ -99,7 +110,7 @@ func (s *SubstrateClient) TransferTFTsFromSystem(tftBalance uint64, userMnemonic
 }
 
 // TransferTFTsToSystem transfer balance to system account
-func (s *SubstrateClient) TransferTFTsToSystem(tftBalance uint64, userMnemonic string) error {
+func (s *substrateClient) TransferTFTsToSystem(tftBalance uint64, userMnemonic string) error {
 	// Create identity of user from mnemonic
 	userIdentity, err := s.getIdentity(userMnemonic)
 	if err != nil {
@@ -115,12 +126,12 @@ func (s *SubstrateClient) TransferTFTsToSystem(tftBalance uint64, userMnemonic s
 }
 
 // SystemIdentity creates identity of system from mnemonic
-func (s *SubstrateClient) SystemIdentity() (substrate.Identity, error) {
+func (s *substrateClient) SystemIdentity() (substrate.Identity, error) {
 	return s.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(s.systemMnemonic)
 }
 
 // GetTwinIDFromMnemonic gets twinID from user mnemonic
-func (s *SubstrateClient) GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error) {
+func (s *substrateClient) GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error) {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return 0, err
@@ -135,12 +146,12 @@ func (s *SubstrateClient) GetTwinIDFromUserMnemonic(mnemonic string) (uint64, er
 }
 
 // GetNodeClient gents the node client given nodeID
-func (s *SubstrateClient) GetNodeClient(nodeID uint32) (*client.NodeClient, error) {
+func (s *substrateClient) GetNodeClient(nodeID uint32) (*client.NodeClient, error) {
 	return s.gridClient.NcPool.GetNodeClient(s.gridClient.SubstrateConn, nodeID)
 }
 
 // NewCalculator creates a new Calculator from user mnemonic
-func (s *SubstrateClient) NewCalculator(mnemonic string) (calculator.Calculator, error) {
+func (s *substrateClient) NewCalculator(mnemonic string) (calculator.Calculator, error) {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return calculator.Calculator{}, err
@@ -152,7 +163,7 @@ func (s *SubstrateClient) NewCalculator(mnemonic string) (calculator.Calculator,
 }
 
 // GetFreeBalance returns free balance from user mnemonic
-func (s *SubstrateClient) GetFreeBalance(mnemonic string) (uint64, error) {
+func (s *substrateClient) GetFreeBalanceTFT(mnemonic string) (uint64, error) {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return 0, err
@@ -166,7 +177,7 @@ func (s *SubstrateClient) GetFreeBalance(mnemonic string) (uint64, error) {
 }
 
 // GetUserAddress gets user address from user mnemonic
-func (s *SubstrateClient) GetUserAddress(mnemonic string) (string, error) {
+func (s *substrateClient) GetUserAddress(mnemonic string) (string, error) {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return "", err
@@ -175,7 +186,7 @@ func (s *SubstrateClient) GetUserAddress(mnemonic string) (string, error) {
 	return identity.Address(), nil
 }
 
-func (s *SubstrateClient) getIdentity(mnemonic string) (substrate.Identity, error) {
+func (s *substrateClient) getIdentity(mnemonic string) (substrate.Identity, error) {
 	identity, err := s.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
 	if err != nil {
 		return nil, fmt.Errorf("identity creation failed: %w", err)
@@ -184,7 +195,7 @@ func (s *SubstrateClient) getIdentity(mnemonic string) (substrate.Identity, erro
 }
 
 // AcceptTermsAndConditions accepts terms and conditions given user mnemonic
-func (s *SubstrateClient) AcceptTermsAndConditions(mnemonic, docLink, docHash string) error {
+func (s *substrateClient) AcceptTermsAndConditions(mnemonic, docLink, docHash string) error {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return err
@@ -199,7 +210,7 @@ func (s *SubstrateClient) AcceptTermsAndConditions(mnemonic, docLink, docHash st
 }
 
 // CreateTwin creates a twin given user mnemonic
-func (s *SubstrateClient) CreateTwin(mnemonic string) (uint32, error) {
+func (s *substrateClient) CreateTwin(mnemonic string) (uint32, error) {
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
 		return 0, err
@@ -214,7 +225,7 @@ func (s *SubstrateClient) CreateTwin(mnemonic string) (uint32, error) {
 }
 
 // CreateRentContract creates rent contract on a node given its id and user mnemonic
-func (s *SubstrateClient) CreateRentContract(mnemonic string, nodeID uint32) (uint64, error) {
+func (s *substrateClient) CreateRentContract(mnemonic string, nodeID uint32) (uint64, error) {
 	// Get Identity
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
@@ -230,7 +241,7 @@ func (s *SubstrateClient) CreateRentContract(mnemonic string, nodeID uint32) (ui
 }
 
 // CancelContract cancels a contract given its ID and user mnemonic
-func (s *SubstrateClient) CancelContract(mnemonic string, contractID uint64) error {
+func (s *substrateClient) CancelContract(mnemonic string, contractID uint64) error {
 	// Get Identity
 	identity, err := s.getIdentity(mnemonic)
 	if err != nil {
@@ -238,4 +249,87 @@ func (s *SubstrateClient) CancelContract(mnemonic string, contractID uint64) err
 	}
 
 	return s.gridClient.SubstrateConn.CancelContract(identity, contractID)
+}
+
+// GenerateMnemonic generate mnemonic
+func GenerateMnemonic() (string, error) {
+	entropy, err := bip39.NewEntropy(128)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate entropy: %w", err)
+	}
+
+	mnemonic, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate mnemonic: %w", err)
+	}
+
+	if !bip39.IsMnemonicValid(mnemonic) {
+		return "", fmt.Errorf("generated mnemonic is not valid")
+	}
+
+	return mnemonic, nil
+}
+
+// Activates user account with activation service
+func activateAccount(substrateAccountID, network string) error {
+	activationServiceURL := grid.ActivationServiceURLs[network]
+
+	body := map[string]string{"substrateAccountID": substrateAccountID}
+	jsonData, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("failed to marshal activation payload: %w", err)
+	}
+
+	resp, err := http.Post(activationServiceURL, "application/json", bytes.NewReader(jsonData))
+	if err != nil {
+		return fmt.Errorf("activation request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("activation failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}
+
+// SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
+func (s *substrateClient) SetupUserOnTFChain(termsAndConditions config.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error) {
+	mnemonic, err = GenerateMnemonic()
+	if err != nil {
+		return "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
+	}
+
+	address, err := s.GetUserAddress(mnemonic)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to get user address: %w", err)
+	}
+
+	// Activate account with activation service
+	if err := activateAccount(address, network); err != nil {
+		return "", 0, fmt.Errorf("activation failed: %w", err)
+	}
+
+	// Wait a few seconds for account activation to complete
+	time.Sleep(7 * time.Second)
+
+	// Accept terms and conditions
+	err = s.AcceptTermsAndConditions(mnemonic, termsAndConditions.DocumentLink, termsAndConditions.DocumentHash)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to accept terms and conditions: %w", err)
+	}
+
+	// Create Twin
+	twinID, err = s.CreateTwin(mnemonic)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to create twin: %w", err)
+	}
+
+	log := logger.ForOperation("chain_account", "create_twin")
+	log.Debug().
+		Uint32("twin_id", twinID).
+		Str("address", address).
+		Msg("Twin created successfully")
+	return mnemonic, twinID, nil
 }

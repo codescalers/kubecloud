@@ -8,9 +8,9 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
+	"kubecloud/internal/infrastructure/substrate"
 	"slices"
 	"time"
 
@@ -23,7 +23,7 @@ type UserService struct {
 	prRepo      models.PendingRecordRepository
 
 	appCtx          context.Context
-	substrateClient grid.SubstrateClient
+	substrateClient substrate.Substrate
 	ewfEngine       *ewf.Engine
 	kycClient       *kyc.KYCClient
 	metrics         *metrics.Metrics
@@ -37,7 +37,7 @@ func NewUserService(appCtx context.Context,
 	userRepo models.UserRepository,
 	voucherRepo models.VoucherRepository,
 	pendingRecordRepo models.PendingRecordRepository,
-	substrateClient grid.SubstrateClient,
+	substrateClient substrate.Substrate,
 	ewfEngine *ewf.Engine,
 	kycClient *kyc.KYCClient,
 	metrics *metrics.Metrics,
@@ -86,7 +86,7 @@ func (svc *UserService) GetUserWithPendingBalance(userID int) (UserWithPendingBa
 
 	return UserWithPendingBalance{
 		User:              user,
-		PendingBalanceUSD: grid.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
+		PendingBalanceUSD: substrate.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
 	}, nil
 }
 
@@ -129,8 +129,8 @@ func (svc *UserService) ListUserPendingRecordsWithUSDAmounts(userID int) ([]Pend
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            grid.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: grid.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            substrate.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: substrate.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 
@@ -264,7 +264,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"user_id":            userID,
 		"stripe_customer_id": userStripeCustomerID,
 		"payment_method_id":  paymentMethodID,
-		"amount":             grid.FromUSDToUSDMillicent(requestAmount),
+		"amount":             substrate.FromUSDToUSDMillicent(requestAmount),
 		"mnemonic":           userMnemonic,
 		"username":           username,
 		"transfer_mode":      models.ChargeBalanceMode,
@@ -291,7 +291,7 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 
 	wf.State = map[string]interface{}{
 		"user_id":       userID,
-		"amount":        grid.FromUSDToUSDMillicent(voucherValue),
+		"amount":        substrate.FromUSDToUSDMillicent(voucherValue),
 		"mnemonic":      userMnemonic,
 		"username":      userUsername,
 		"transfer_mode": models.RedeemVoucherMode,

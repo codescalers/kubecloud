@@ -20,6 +20,7 @@ import (
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"net/url"
 	"os"
@@ -80,7 +81,7 @@ type appCommunication struct {
 
 // appInfrastructure contains grid and blockchain related services
 type appInfrastructure struct {
-	substrateClient grid.SubstrateClient
+	substrateClient substrate.Substrate
 	gridClient      deployer.TFPluginClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
@@ -268,7 +269,7 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
 	}
 
-	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
+	substrateClient := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
 
 	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {

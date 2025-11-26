@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
@@ -18,7 +18,7 @@ const (
 	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -69,7 +69,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient g
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractIDVal, ok := state["contract_id"]
 		if !ok {

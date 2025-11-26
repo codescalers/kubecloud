@@ -3,7 +3,7 @@ package moneycollector
 import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/substrate"
 	"sync"
 
 	"github.com/rs/zerolog/log"
@@ -12,14 +12,14 @@ import (
 type MoneyCollector struct {
 	userRepo        models.UserRepository
 	config          cfg.Configuration
-	substrateClient grid.SubstrateClient
+	substrateClient substrate.Substrate
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient grid.SubstrateClient) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient substrate.Substrate) *MoneyCollector {
 	return &MoneyCollector{
 		userRepo:        userRepo,
 		config:          config,
@@ -48,7 +48,7 @@ func (m *MoneyCollector) CollectMoney() {
 				return
 			}
 
-			freeBalance, err := m.substrateClient.GetFreeBalance(user.Mnemonic)
+			freeBalance, err := m.substrateClient.GetFreeBalanceTFT(user.Mnemonic)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return

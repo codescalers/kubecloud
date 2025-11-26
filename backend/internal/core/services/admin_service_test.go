@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -83,7 +83,7 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return(users, nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -109,7 +109,7 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return([]models.User{}, nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -133,7 +133,7 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return(nil, fmt.Errorf("database error"))
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -157,7 +157,7 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 
 	mockUserRepo.On("DeleteUserByID", 1).Return(nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -181,7 +181,7 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 
 	mockUserRepo.On("DeleteUserByID", 999).Return(fmt.Errorf("user not found"))
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -208,7 +208,7 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 		return v != nil && v.Value == 100.0
 	})).Return(nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -232,7 +232,7 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),
@@ -259,7 +259,7 @@ func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 		return v != nil && v.Value == 50.0
 	})).Return(nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 
 	service := NewAdminService(
 		context.Background(),

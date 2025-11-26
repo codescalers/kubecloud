@@ -1,29 +1,23 @@
 package workflows
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
-	"net/http"
-	"time"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"slices"
 	"strings"
 
 	"kubecloud/internal/infrastructure/logger"
 
-	"github.com/cosmos/go-bip39"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -152,90 +146,7 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-// GenerateMnemonic generate mnemonic
-func GenerateMnemonic() (string, error) {
-	entropy, err := bip39.NewEntropy(128)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate entropy: %w", err)
-	}
-
-	mnemonic, err := bip39.NewMnemonic(entropy)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate mnemonic: %w", err)
-	}
-
-	if !bip39.IsMnemonicValid(mnemonic) {
-		return "", fmt.Errorf("generated mnemonic is not valid")
-	}
-
-	return mnemonic, nil
-}
-
-// Activates user account with activation service
-func activateAccount(substrateAccountID, network string) error {
-	activationServiceURL := grid.ActivationServiceURLs[network]
-
-	body := map[string]string{"substrateAccountID": substrateAccountID}
-	jsonData, err := json.Marshal(body)
-	if err != nil {
-		return fmt.Errorf("failed to marshal activation payload: %w", err)
-	}
-
-	resp, err := http.Post(activationServiceURL, "application/json", bytes.NewReader(jsonData))
-	if err != nil {
-		return fmt.Errorf("activation request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("activation failed with status %d: %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	return nil
-}
-
-// SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
-func SetupUserOnTFChain(substrateClient grid.SubstrateClient, termsAndConditions cfg.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error) {
-	mnemonic, err = GenerateMnemonic()
-	if err != nil {
-		return "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
-	}
-
-	address, err := substrateClient.GetUserAddress(mnemonic)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to get user address: %w", err)
-	}
-
-	// Activate account with activation service
-	if err := activateAccount(address, network); err != nil {
-		return "", 0, fmt.Errorf("activation failed: %w", err)
-	}
-
-	// Wait a few seconds for account activation to complete
-	time.Sleep(7 * time.Second)
-
-	// Accept terms and conditions
-	err = substrateClient.AcceptTermsAndConditions(mnemonic, termsAndConditions.DocumentLink, termsAndConditions.DocumentHash)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to accept terms and conditions: %w", err)
-	}
-
-	// Create Twin
-	twinID, err = substrateClient.CreateTwin(mnemonic)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to create twin: %w", err)
-	}
-
-	log := logger.ForOperation("chain_account", "create_twin")
-	log.Debug().
-		Uint32("twin_id", twinID).
-		Str("address", address).
-		Msg("Twin created successfully")
-	return mnemonic, twinID, nil
-}
-
-func SetupTFChainStep(substrateClient grid.SubstrateClient, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
+func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -256,7 +167,7 @@ func SetupTFChainStep(substrateClient grid.SubstrateClient, userRepo models.User
 			return nil
 		}
 
-		mnemonic, _, err := SetupUserOnTFChain(substrateClient, config.TermsANDConditions, config.SystemAccount.Network)
+		mnemonic, _, err := substrateClient.SetupUserOnTFChain(config.TermsANDConditions, config.SystemAccount.Network)
 		if err != nil {
 			return err
 		}
@@ -455,7 +366,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeCl
 	}
 }
 
-func CreatePendingRecord(substrateClient grid.SubstrateClient, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
+func CreatePendingRecord(substrateClient substrate.Substrate, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_pending_record")
 		amountVal, ok := state["amount"]
@@ -557,7 +468,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 }
 
 // DrainUserBalanceStep transfers a user's balance to the system account
-func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
+func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -573,7 +484,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient grid.S
 			return fmt.Errorf("failed to get user: %w", err)
 		}
 
-		balanceInTFT, err := substrateClient.GetFreeBalance(user.Mnemonic)
+		balanceInTFT, err := substrateClient.GetFreeBalanceTFT(user.Mnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to get user balance: %w", err)
 		}

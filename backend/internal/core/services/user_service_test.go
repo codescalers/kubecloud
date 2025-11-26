@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -201,7 +201,7 @@ func TestUserService_GetUserByEmail_Success(t *testing.T) {
 
 	mockUserRepo.On("GetUserByEmail", "test@example.com").Return(expectedUser, nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -224,7 +224,7 @@ func TestUserService_GetUserByEmail_NotFound(t *testing.T) {
 	mockUserRepo.On("GetUserByEmail", "invalid@example.com").
 		Return(nil, fmt.Errorf("user not found"))
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -245,7 +245,7 @@ func TestUserService_CreateSSHKey_Success(t *testing.T) {
 
 	mockUserRepo.On("CreateSSHKey", mock.AnythingOfType("*models.SSHKey")).Return(nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -268,7 +268,7 @@ func TestUserService_DeleteSSHKey_Success(t *testing.T) {
 
 	mockUserRepo.On("DeleteSSHKey", 5, 1).Return("my-key", nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -291,7 +291,7 @@ func TestUserService_IsVerificationCodeExpired_Expired(t *testing.T) {
 	// Code from 20 minutes ago, timeout is 5 minutes
 	oldTime := time.Now().Add(-20 * time.Minute)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -312,7 +312,7 @@ func TestUserService_IsVerificationCodeExpired_NotExpired(t *testing.T) {
 	// Code from 2 minutes ago, timeout is 5 minutes
 	recentTime := time.Now().Add(-2 * time.Minute)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -330,7 +330,7 @@ func TestUserService_IsSystemAdmin_True(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockPRRepo := new(mockPendingRecordRepo)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -348,7 +348,7 @@ func TestUserService_IsSystemAdmin_False(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockPRRepo := new(mockPendingRecordRepo)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -373,7 +373,7 @@ func TestUserService_GetVoucherByCode_Success(t *testing.T) {
 
 	mockVoucherRepo.On("GetVoucherByCode", "PROMO100").Return(expectedVoucher, nil)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -395,7 +395,7 @@ func TestUserService_GetVoucherByCode_NotFound(t *testing.T) {
 	mockVoucherRepo.On("GetVoucherByCode", "INVALID").
 		Return(nil, fmt.Errorf("voucher not found"))
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -414,7 +414,7 @@ func TestUserService_GenerateRandomCode_ValidRange(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockPRRepo := new(mockPendingRecordRepo)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,
@@ -434,7 +434,7 @@ func TestUserService_CodeTimeoutInMinutes(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockPRRepo := new(mockPendingRecordRepo)
 
-	var substrateClient grid.SubstrateClient
+	var substrateClient substrate.Substrate
 	service := NewUserService(
 		context.Background(),
 		mockUserRepo, mockVoucherRepo, mockPRRepo, substrateClient,

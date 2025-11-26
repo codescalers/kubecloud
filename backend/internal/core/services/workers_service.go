@@ -8,10 +8,10 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
@@ -33,7 +33,7 @@ type WorkerService struct {
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
-	substrateClient        grid.SubstrateClient
+	substrateClient        substrate.Substrate
 	gridProxyClient        proxy.Client
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
@@ -54,7 +54,7 @@ func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
-	substrateClient grid.SubstrateClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
+	substrateClient substrate.Substrate, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
@@ -173,7 +173,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := grid.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := substrate.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
@@ -373,7 +373,7 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.substrateClient.GetFreeBalance(svc.systemMnemonic)
+		systemTFTBalance, err := svc.substrateClient.GetFreeBalanceTFT(svc.systemMnemonic)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue

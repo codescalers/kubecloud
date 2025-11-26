@@ -5,8 +5,8 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/persistence"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"os"
 
@@ -74,7 +74,7 @@ func main() {
 		log.Error().Err(err).Msg("Failed to create TF plugin client")
 		return
 	}
-	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
+	substrateClient := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
 
 	defer gridClient.Close()
 

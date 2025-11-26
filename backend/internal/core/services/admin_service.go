@@ -7,8 +7,8 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
@@ -25,7 +25,7 @@ type AdminService struct {
 	transRepo   models.TransactionRepository
 
 	appCtx          context.Context
-	substrateClient grid.SubstrateClient
+	substrateClient substrate.Substrate
 	ewfEngine       *ewf.Engine
 }
 
@@ -35,7 +35,7 @@ func NewAdminService(appCtx context.Context,
 	pendingRecordRepo models.PendingRecordRepository,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
-	substrateClient grid.SubstrateClient,
+	substrateClient substrate.Substrate,
 	ewfEngine *ewf.Engine,
 ) AdminService {
 	return AdminService{
@@ -142,7 +142,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 
 	wf.State = map[string]interface{}{
 		"user_id":       transaction.UserID,
-		"amount":        grid.FromUSDToUSDMillicent(transaction.Amount),
+		"amount":        substrate.FromUSDToUSDMillicent(transaction.Amount),
 		"mnemonic":      user.Mnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
@@ -200,8 +200,8 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            grid.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: grid.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            substrate.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: substrate.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 

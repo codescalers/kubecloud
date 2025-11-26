@@ -6,9 +6,8 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
-	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/persistence"
+	"kubecloud/internal/infrastructure/substrate"
 
 	"os"
 	"os/exec"
@@ -25,7 +24,7 @@ import (
 
 type setup struct {
 	tokenManager    auth.TokenManager
-	substrateClient grid.SubstrateClient
+	substrateClient substrate.Substrate
 	router          *gin.Engine
 	network         string
 
@@ -151,7 +150,7 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	substrateClient := grid.NewSubstrateClient(configuration.SystemAccount.Mnemonic, gridClient)
+	substrateClient := substrate.NewSubstrateClient(configuration.SystemAccount.Mnemonic, gridClient)
 
 	tokenManager := auth.NewTokenHandler(
 		configuration.JwtToken.Secret,
@@ -207,7 +206,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := workflows.SetupUserOnTFChain(s.substrateClient, s.termsAndConditions, s.network)
+		mnemonic, _, err := s.substrateClient.SetupUserOnTFChain(s.termsAndConditions, s.network)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
