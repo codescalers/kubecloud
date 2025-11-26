@@ -251,11 +251,7 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 	}
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
-	emailNotifier := notification.NewEmailNotifier(mailSender, mailContentFormatter, config.MailSender, userRepo)
-	err = emailNotifier.ParseTemplates()
-	if err != nil {
-		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
-	}
+	emailNotifier := notification.NewEmailNotifier(mailService, userRepo)
 
 	notificationDispatcher.RegisterNotifier(sseNotifier)
 	notificationDispatcher.RegisterNotifier(emailNotifier)

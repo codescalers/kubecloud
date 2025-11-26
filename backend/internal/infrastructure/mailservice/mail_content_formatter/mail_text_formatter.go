@@ -8,9 +8,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-type MailTextFormatter struct {
-	systemHost string
-}
+type MailTextFormatter struct{}
 
 func NewMailTextFormatter() MailTextFormatter {
 	return MailTextFormatter{}
@@ -64,7 +62,7 @@ func (f MailTextFormatter) FormatSystemAnnouncementMailBody(body string) string 
 	if lines == "" {
 		return ""
 	}
-	return fmt.Sprintf("System announcement from %s:\n\n%s", f.systemHost, lines)
+	return fmt.Sprintf("System announcement from Mycelium Cloud:\n\n%s", lines)
 }
 
 func (f MailTextFormatter) FormatNotifyAdminsMailContent(recordsNumber int, systemHost string) (string, string) {

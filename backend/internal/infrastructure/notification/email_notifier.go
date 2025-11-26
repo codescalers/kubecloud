@@ -4,28 +4,25 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
+	mailservice "kubecloud/internal/infrastructure/mailservice"
 	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
-	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/xmonader/ewf"
 )
 
 type EmailNotifier struct {
-	mailSender mailsender.MailSender
-	mailConfig config.MailSender
-	userRepo   models.UserRepository
-	engine     *ewf.Engine
+	mailService mailservice.MailService
+	userRepo    models.UserRepository
+	engine      *ewf.Engine
 }
 
-func NewEmailNotifier(mailSender mailsender.MailSender, mailContentFormatter mailcontentformatter.MailContentFormatter, mailConfig config.MailSender, userRepo models.UserRepository) *EmailNotifier {
+func NewEmailNotifier(mailService mailservice.MailService, userRepo models.UserRepository) *EmailNotifier {
 	return &EmailNotifier{
-		mailSender: mailSender,
-		mailConfig: mailConfig,
-		userRepo:   userRepo,
+		mailService: mailService,
+		userRepo:    userRepo,
 	}
 }
 
@@ -36,11 +33,6 @@ func (n *EmailNotifier) SetEWFEngine(engine *ewf.Engine) {
 
 func (n *EmailNotifier) GetType() string {
 	return ChannelEmail
-}
-
-// ParseTemplates is now a no-op since templates are embedded
-func (n *EmailNotifier) ParseTemplates() error {
-	return nil
 }
 
 // Notify sends email notification using async delivery via EWF if available, or direct send as fallback
@@ -106,7 +98,7 @@ func (n *EmailNotifier) queueEmailViaEWF(ctx context.Context, notification model
 
 // sendEmailDirect sends the email immediately (fallback when EWF unavailable)
 func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiverEmail string) error {
-	from := mail.NewEmail("MyceliumCloud", n.mailConfig.Email)
+	from := mail.NewEmail("MyceliumCloud", n.mailService.GetMailConfig().Email)
 	receiver := mail.NewEmail("MyceliumCloud User", receiverEmail)
 
 	tplName := string(notification.Type)
@@ -127,11 +119,6 @@ func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiv
 		mail.NewContent("text/html", buf.String()),
 	}
 
-	err := n.mailSender.Send(mailsender.MailRequest{
-		From:    n.mailConfig.Email,
-		To:      receiverEmail,
-		Subject: subject,
-		Body:    buf.String(),
-	})
+	err := n.mailService.SendEmailNotification(receiverEmail, subject, buf.String())
 	return err
 }
