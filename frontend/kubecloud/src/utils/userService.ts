@@ -168,7 +168,7 @@ export class UserService {
 
   // Reserve a node
   async reserveNode(nodeId: number, data: ReserveNodeRequest = {}) {
-    await api.post<ApiResponse<ReserveNodeResponse>>(
+    return api.post<ApiResponse<ReserveNodeResponse>>(
       `/v1/user/nodes/${nodeId}`,
       data,
       { requiresAuth: true, showNotifications: true },
@@ -183,7 +183,7 @@ export class UserService {
 
   // Unreserve a node
   async unreserveNode(contractId: string, nodeId: number) {
-    await api.delete<ApiResponse<UnreserveNodeResponse>>(
+    return api.delete<ApiResponse<UnreserveNodeResponse>>(
       `/v1/user/nodes/unreserve/${contractId}`,
       { requiresAuth: true, showNotifications: true },
     )
