@@ -62,13 +62,6 @@ type AdminMailInput struct {
 	Attachments []*multipart.FileHeader `form:"attachments"`
 }
 
-type SendMailResponse struct {
-	TotalUsers        int      `json:"total_users"`
-	SuccessfulEmails  int      `json:"successful_emails"`
-	FailedEmailsCount int      `json:"failed_emails_count"`
-	FailedEmails      []string `json:"failed_emails,omitempty"`
-}
-
 type MaintenanceModeStatus struct {
 	Enabled bool `json:"enabled"`
 }
@@ -304,8 +297,10 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 }
 
 // Only accessible by admins
-// @Summary Send mail to all users
-// @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
+// @Summary Start sending mail to all users (async)
+// @Description Allows admin to send a custom email to all users with optional file attachments.
+// The endpoint returns immediately, while the actual sending happens in the background.
+// Delivery statistics are later pushed to the admin through notifications/SSE.
 // @Tags admin
 // @ID admin-mail-all-users
 // @Accept multipart/form-data
@@ -313,7 +308,7 @@ func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
 // @Param subject formData string true "Email subject"
 // @Param body formData string true "Email body content"
 // @Param attachments formData file false "Email attachments (multiple files allowed)"
-// @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
+// @Success 200 {object} APIResponse "Mail sending started"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security AdminMiddleware
@@ -325,7 +320,9 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		BadRequest(c, "Invalid request format")
 		return
 	}
+	adminID := c.GetInt("user_id")
 
+	// parse attachments
 	var attachments []mailservice.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
@@ -347,51 +344,10 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	body := h.mailService.SystemAnnouncementMailBody(input.Body)
-	emailConcurrencyLimiter := make(chan struct{}, h.mailService.MaxConcurrentSends())
+	// send in the background to avoid blocking requests
+	go h.svc.SendMailToAllUsers(input.Body, input.Subject, users, adminID, attachments...)
 
-	var (
-		wg           sync.WaitGroup
-		mu           sync.Mutex
-		failedEmails []string
-	)
-
-	reqLog.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
-	for _, user := range users {
-		wg.Add(1)
-		emailConcurrencyLimiter <- struct{}{}
-		go func(user models.User) {
-			defer wg.Done()
-			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMailFromSystem(user.Email, input.Subject, body, attachments...)
-			if err != nil {
-				reqLog.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
-				mu.Lock()
-				failedEmails = append(failedEmails, user.Email)
-				mu.Unlock()
-			}
-		}(user)
-	}
-
-	wg.Wait()
-
-	totalUsers := len(users)
-	responseData := SendMailResponse{
-		TotalUsers:        totalUsers,
-		SuccessfulEmails:  totalUsers - len(failedEmails),
-		FailedEmailsCount: len(failedEmails),
-	}
-
-	if responseData.SuccessfulEmails == 0 {
-		logger.GetLogger().Error().Msg("failed to send email to all users")
-		InternalServerError(c)
-		return
-	}
-	if responseData.FailedEmailsCount > 0 {
-		OK(c, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
-		return
-	}
-	OK(c, "Mail sent successfully to all users", responseData)
+	OK(c, "Mail sending started", nil)
 }
 
 func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {

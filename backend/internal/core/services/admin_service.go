@@ -8,6 +8,8 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
@@ -25,9 +27,11 @@ type AdminService struct {
 	transRepo   models.TransactionRepository
 	ewfRepo     *persistence.GormEWFRepository
 
-	appCtx          context.Context
-	substrateClient substrate.Substrate
-	ewfEngine       *ewf.Engine
+	appCtx                 context.Context
+	substrateClient        substrate.Substrate
+	ewfEngine              *ewf.Engine
+	mailService            mailservice.MailService
+	notificationDispatcher *notification.NotificationDispatcher
 }
 
 func NewAdminService(appCtx context.Context,
@@ -38,6 +42,8 @@ func NewAdminService(appCtx context.Context,
 	transactionRepo models.TransactionRepository,
 	substrateClient substrate.Substrate,
 	ewfEngine *ewf.Engine,
+	mailService mailservice.MailService,
+	notificationDispatcher *notification.NotificationDispatcher,
 	ewfRepo *persistence.GormEWFRepository,
 ) AdminService {
 	return AdminService{
@@ -48,9 +54,11 @@ func NewAdminService(appCtx context.Context,
 		transRepo:   transactionRepo,
 		ewfRepo:     ewfRepo,
 
-		appCtx:          appCtx,
-		substrateClient: substrateClient,
-		ewfEngine:       ewfEngine,
+		appCtx:                 appCtx,
+		substrateClient:        substrateClient,
+		ewfEngine:              ewfEngine,
+		mailService:            mailService,
+		notificationDispatcher: notificationDispatcher,
 	}
 }
 
@@ -367,4 +375,62 @@ func (svc *AdminService) convertToAdminWorkflows(workflows []*ewf.Workflow) []Ad
 	}
 
 	return adminWorkflows
+}
+
+func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models.User, adminID int, attachments ...mailservice.Attachment) {
+
+	mailBody := svc.mailService.SystemAnnouncementMailBody(body)
+
+	failedEmails := svc.sendBulkSystemMails(users, mailBody, subject, attachments...)
+
+	totalUsers := len(users)
+	successfulEmails := len(users) - failedEmails
+
+	// after sending, send an SSE notification on the progress
+	notif := notification.NewNotification(adminID, models.NotificationTypeAdmin).
+		Info(fmt.Sprintf(
+			"Mail sent to %d/%d users successfully",
+			successfulEmails,
+			totalUsers,
+		)).
+		WithSubject("Mail Sending Progress").
+		WithChannels(notification.ChannelUI).
+		NoPersist().
+		Build()
+
+	if err := svc.notificationDispatcher.Send(svc.appCtx, notif); err != nil {
+		logger.GetLogger().Error().Err(err).Msg("failed to send mail progress notification")
+	}
+
+}
+
+// SendBulkSystemMails send system mails to all passed emails
+func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, subject string, attachments ...mailservice.Attachment) int {
+	emailConcurrencyLimiter := make(chan struct{}, svc.mailService.MaxConcurrentSends())
+
+	var (
+		wg           sync.WaitGroup
+		mu           sync.Mutex
+		failedEmails []string
+	)
+
+	for _, user := range users {
+		wg.Add(1)
+		emailConcurrencyLimiter <- struct{}{}
+		go func(user models.User) {
+			defer wg.Done()
+			defer func() { <-emailConcurrencyLimiter }()
+			err := svc.mailService.SendMailFromSystem(user.Email, subject, body, attachments...)
+			if err != nil {
+				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
+				mu.Lock()
+				failedEmails = append(failedEmails, user.Email)
+				mu.Unlock()
+			}
+		}(user)
+	}
+
+	wg.Wait()
+
+	return len(failedEmails)
 }
