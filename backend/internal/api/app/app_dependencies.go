@@ -342,7 +342,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, ewfRepo, app.communication.mailService, app.communication.notificationDispatcher,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher, ewfRepo,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
