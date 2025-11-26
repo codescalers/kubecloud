@@ -57,13 +57,14 @@ func (m MailService) SendInvoiceMail(to string, invoiceTotal float64, currency s
 	})
 }
 
-func (m MailService) SendSystemAnnouncementMail(to string, body string) error {
+func (m MailService) SendSystemAnnouncementMail(to string, body string, subject string, attachments ...mailsender.Attachment) error {
 	mailBody := m.mailContentFormatter.FormatSystemAnnouncementMailBody(body)
 	return m.mailSender.Send(mailsender.MailRequest{
-		From:    m.config.MailSender.Email,
-		To:      to,
-		Subject: "System Announcement",
-		Body:    mailBody,
+		From:        m.config.MailSender.Email,
+		To:          to,
+		Subject:     subject,
+		Body:        mailBody,
+		Attachments: attachments,
 	})
 }
 
