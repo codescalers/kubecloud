@@ -3539,9 +3539,12 @@ const docTemplate = `{
                 "cpu": {
                     "type": "integer"
                 },
-                "disk_size": {
+                "data_disks": {
                     "description": "Storage in MB",
-                    "type": "integer"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "entrypoint": {
                     "type": "string"
@@ -3932,10 +3935,19 @@ const docTemplate = `{
                 "current_step": {
                     "type": "integer"
                 },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "step_name": {
                     "type": "string"
                 },
                 "total_steps": {
@@ -4028,7 +4040,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "cpu",
-                "disk_size",
+                "data_disks",
                 "memory",
                 "name",
                 "node_id",
@@ -4043,10 +4055,13 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 1
                 },
-                "disk_size": {
+                "data_disks": {
                     "description": "Storage in MB",
-                    "type": "integer",
-                    "minimum": 10240
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "entrypoint": {
                     "type": "string"

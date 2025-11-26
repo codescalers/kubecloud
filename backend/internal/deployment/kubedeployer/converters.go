@@ -51,14 +51,35 @@ func deploymentFromNode(
 		return workloads.Deployment{}, fmt.Errorf("failed to encrypt mnemonic: %v", err)
 	}
 
-	disk := workloads.Disk{
-		Name:   fmt.Sprintf("%s_data", node.Name),
-		SizeGB: node.DiskSize / 1024,
+	var disks []workloads.Disk
+	var mounts []workloads.Mount
+
+	for i, size := range node.DataDisks {
+		diskName := fmt.Sprintf("%s_disk_%d", node.Name, i)
+		disk := workloads.Disk{
+			Name:   diskName,
+			SizeGB: size / 1024,
+		}
+		disks = append(disks, disk)
+
+		mountPoint := fmt.Sprintf("/mnt/%s", diskName)
+		if i == 0 {
+			mountPoint = K3S_DATA_DIR
+		}
+
+		mounts = append(mounts, workloads.Mount{
+			Name:       disk.Name,
+			MountPoint: mountPoint,
+		})
 	}
 
 	var gpus []zosTypes.GPU
 	for _, gpuID := range node.GPUIDs {
 		gpus = append(gpus, zosTypes.GPU(gpuID))
+	}
+
+	if node.EnvVars == nil {
+		node.EnvVars = make(map[string]string)
 	}
 
 	vm := workloads.VM{
@@ -73,13 +94,8 @@ func deploymentFromNode(
 		NetworkName:    networkName,
 		IP:             node.IP,
 		MyceliumIPSeed: ipSeed,
-		Mounts: []workloads.Mount{
-			{
-				Name:       disk.Name,
-				MountPoint: K3S_DATA_DIR,
-			},
-		},
-		GPUs: gpus,
+		Mounts:         mounts,
+		GPUs:           gpus,
 	}
 
 	vm.EnvVars["K3S_NODE_NAME"] = node.Name
@@ -120,7 +136,7 @@ func deploymentFromNode(
 		node.NodeID,
 		projectName, nil,
 		networkName,
-		[]workloads.Disk{disk}, nil,
+		disks, nil,
 		[]workloads.VM{vm}, nil, nil, nil,
 	)
 
@@ -133,9 +149,9 @@ func nodeFromDeployment(
 	vm := depl.Vms[0]
 	var node Node
 
-	diskSizeMb := uint64(0)
-	if len(depl.Disks) > 0 {
-		diskSizeMb = depl.Disks[0].SizeGB * 1024
+	var dataDisks []uint64
+	for _, disk := range depl.Disks {
+		dataDisks = append(dataDisks, disk.SizeGB*1024)
 	}
 
 	node.Name = vm.Name
@@ -143,11 +159,10 @@ func nodeFromDeployment(
 	node.CPU = vm.CPU
 	node.Memory = vm.MemoryMB
 	node.RootSize = vm.RootfsSizeMB
-	node.DiskSize = diskSizeMb
+	node.DataDisks = dataDisks
 	node.EnvVars = vm.EnvVars
 	node.Flist = vm.Flist
 	node.Entrypoint = vm.Entrypoint
-	node.DiskSize = depl.Disks[0].SizeGB * 1024
 	node.GPUIDs = make([]string, len(vm.GPUs))
 
 	for i, gpu := range vm.GPUs {

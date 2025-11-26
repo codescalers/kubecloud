@@ -3,10 +3,23 @@
     location="bottom end"
     max-width="400px"
     :model-value="openMenu && active"
-    @update:model-value="openMenu = $event && active"
+    @update:model-value="() => null"
   >
-    <template v-slot:activator="{ props }">
-      <v-btn icon variant="text" color="white" v-bind="props" :disabled="!active">
+    <template v-slot:activator="{ props: { onClick, onKeydown, ...res } }">
+      <v-btn
+        icon
+        rounded="xl"
+        variant="flat"
+        v-bind="res"
+        :disabled="!active"
+        :style="{
+          position: 'fixed',
+          right: '23px',
+          bottom: '90px',
+          zIndex: '99999',
+        }"
+        @click="openMenu = !openMenu"
+      >
         <div :style="{ position: 'relative' }">
           <v-icon
             icon="mdi-lightning-bolt"
@@ -48,10 +61,18 @@
 import { onMounted, ref, computed, onBeforeUnmount } from 'vue'
 import ActionMenuItem from './ActionMenuItem.vue'
 import { userService, type UserWorkflowsResponse } from '@/utils/userService'
+import { watch } from 'vue'
 
 const workflows = ref<UserWorkflowsResponse[]>([])
-const openMenu = ref(false)
+const openMenu = ref(true)
 const active = computed(() => workflows.value.length > 0)
+
+// reset open for next time
+watch([active, openMenu], ([newActive, newOpenMenu]) => {
+  if (!newActive && !newOpenMenu) {
+    openMenu.value = true
+  }
+})
 
 let intervalId: NodeJS.Timeout | null = null
 onBeforeUnmount(() => intervalId && clearInterval(intervalId))

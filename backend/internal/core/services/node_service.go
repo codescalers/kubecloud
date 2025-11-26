@@ -9,6 +9,7 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
+	"strconv"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
@@ -162,8 +163,12 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
+	displayName := fmt.Sprintf("Reserving node %d", nodeID)
+	metadata := map[string]string{
+		"node_id": strconv.FormatUint(uint64(nodeID), 10),
+	}
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode, ewf.WithQueue(queueName))
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowReserveNode, ewf.WithQueue(queueName), ewf.WithDisplayName(displayName), ewf.WithMetadata(metadata))
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +194,12 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 func (svc *NodeService) AsyncUnreserveNode(userID int, userMnemonic string, contractID uint64, nodeID uint32) (string, error) {
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode, ewf.WithQueue(queueName))
+	displayName := fmt.Sprintf("Unreserving node %d", nodeID)
+	metadata := map[string]string{
+		"contract_id": strconv.FormatUint(contractID, 10),
+		"node_id":     strconv.FormatUint(uint64(nodeID), 10),
+	}
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUnreserveNode, ewf.WithQueue(queueName), ewf.WithDisplayName(displayName), ewf.WithMetadata(metadata))
 	if err != nil {
 		return "", err
 	}

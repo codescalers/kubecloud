@@ -402,6 +402,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	reqLog := requestLogger(c, "DrainUserHandler")
+	adminID := c.GetInt("user_id")
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
@@ -410,7 +411,7 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.AsyncDrainUserUSD(id); err != nil {
+	if err := h.svc.AsyncDrainUserUSD(id, adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain user balance")
 		InternalServerError(c)
 		return
@@ -432,12 +433,61 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 // DrainAllUsersHandler drains all users' balances to the system account
 func (h *AdminHandler) DrainAllUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "DrainAllUsersHandler")
+	adminID := c.GetInt("user_id")
 
-	if err := h.svc.AsyncDrainAllUsersUSD(); err != nil {
+	if err := h.svc.AsyncDrainAllUsersUSD(adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain all users' balances")
 		InternalServerError(c)
 		return
 	}
 
 	Accepted(c, "All users' balance drain initiated, transfers in progress", nil)
+}
+
+// @Summary List all workflows
+// @Description Returns all workflows in the system with optional filtering by status
+// @Tags admin
+// @ID list-all-workflows
+// @Accept json
+// @Produce json
+// @Param status query string false "Filter workflows by status (pending, running, completed, failed)"
+// @Success 200 {object} APIResponse{data=[]services.AdminWorkflow} "Workflows retrieved successfully"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /workflows [get]
+// ListAllWorkflowsHandler returns all workflows in the system with pagination
+func (h *AdminHandler) ListAllWorkflowsHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "ListAllWorkflowsHandler")
+	status := c.Query("status")
+
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	total, workflows, err := h.svc.ListAllWorkflowsPaginated(status, page, limit)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to list all workflows")
+		InternalServerError(c)
+		return
+	}
+
+	OK(c, "Workflows are retrieved successfully", gin.H{
+		"workflows":   workflows,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": (total + limit - 1) / limit,
+	})
 }

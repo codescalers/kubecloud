@@ -18,24 +18,6 @@ import (
 	"github.com/xmonader/ewf"
 )
 
-var workflowsDescriptions = map[string]string{
-	WorkflowAddNode:                  "Adding Node",
-	WorkflowRemoveNode:               "Removing Node",
-	WorkflowDeleteCluster:            "Deleting Cluster",
-	WorkflowDeleteAllClusters:        "Deleting All Clusters",
-	WorkflowRollbackFailedDeployment: "Rollback",
-	WorkflowUserRegistration:         "User Registration",
-	WorkflowUserVerification:         "User Verification",
-	WorkflowChargeBalance:            "Charge Balance",
-	WorkflowAdminCreditBalance:       "Admin Credit Balance",
-	WorkflowRedeemVoucher:            "Redeem Voucher",
-	WorkflowReserveNode:              "Reserve Node",
-	WorkflowUnreserveNode:            "Unreserve Node",
-	WorkflowTrackClusterHealth:       "Cluster Health Check",
-	WorkflowDrainUser:                "Drain User Balance",
-	WorkflowDrainAllUsers:            "Drain All Users Balances",
-}
-
 func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config cfg.Configuration,
@@ -72,6 +54,7 @@ func RegisterEWFWorkflows(
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate, config.SystemAccount.Mnemonic))
+	engine.Register(StepDrainAllUsersBalance, DrainAllUsersBalanceStep(userRepo, engine, config.MailSender.MaxConcurrentSends))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -181,7 +164,7 @@ func RegisterEWFWorkflows(
 	// Drain all users balances workflow
 	drainAllUsersTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	drainAllUsersTemplate.Steps = []ewf.Step{
-		{Name: StepDrainUserBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
+		{Name: StepDrainAllUsersBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowDrainAllUsers, &drainAllUsersTemplate)
 }

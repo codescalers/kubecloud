@@ -57,4 +57,5 @@ const (
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
 	StepDrainUserBalance        = "drain-user-balance"
+	StepDrainAllUsersBalance    = "drain-all-users-balance"
 )

@@ -72,7 +72,7 @@ const onNodeSelected = async (val: any, index: number) => {
   if (val) {
     loading.value = true
     const vm = props.vm
-    const requiredStorage = (vm.disk || 0) + vm.rootfs
+    const requiredStorage = (vm.fullCapabilities ? 0 : vm.disk || 0) + vm.rootfs
     try {
       const isValid = await nodeStoragePool.validateNodeStoragePool(requiredStorage, val)
       if (!isValid) {

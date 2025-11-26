@@ -9,7 +9,7 @@ export interface ClusterNode {
   cpu: number;
   memory: number;      // MB
   root_size: number;    // MB
-  disk_size: number;    // MB
+  data_disks: number[];    // MB
   env_vars: Record<string, string>;
   ip?: string;
   mycelium_ip?: string;

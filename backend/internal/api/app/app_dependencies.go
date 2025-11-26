@@ -307,6 +307,7 @@ func (app *App) createHandlers() appHandlers {
 	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
 	transactionRepo := corepersistence.NewGormTransactionRepository(app.core.db)
 	settingsRepo := corepersistence.NewGormSettingsRepository(app.core.db)
+	ewfRepo := corepersistence.NewGormEWFRepository(app.core.db)
 
 	// Services
 	userService := services.NewUserService(
@@ -341,7 +342,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, ewfRepo, app.communication.mailService, app.communication.notificationDispatcher,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
@@ -394,5 +395,5 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.NotifyAdminsForPendingRecordsInHours,
 	)
 
-	return workers.NewWorkers(app.core.appCtx, workersService)
+	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/core/models"
+	"math/rand/v2"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -85,6 +86,8 @@ func (h *NodeHandler) ListAllGridNodesHandler(c *gin.Context) {
 
 	limit := proxyTypes.DefaultLimit()
 	limit.RetCount = true
+	limit.SortBy = "uptime"
+	limit.SortOrder = "desc"
 	err := queryParamsToStruct(query, &limit)
 	if err != nil {
 		BadRequest(c, "Invalid limit params")
@@ -112,7 +115,7 @@ func (h *NodeHandler) ListAllGridNodesHandler(c *gin.Context) {
 }
 
 // @Summary List nodes
-// @Description List nodes from proxy [rented nodes first + randomized shared nodes]
+// @Description List nodes from proxy [rented nodes first, then available nodes sorted by uptime]
 // @Tags nodes
 // @ID list-nodes
 // @Accept json
@@ -141,7 +144,10 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 
 	limit := proxyTypes.DefaultLimit()
 	limit.RetCount = true
-	limit.Randomize = true
+
+	// prioritize nodes by uptime
+	limit.SortBy = "uptime"
+	limit.SortOrder = "desc"
 	err = queryParamsToStruct(query, &limit)
 	if err != nil {
 		BadRequest(c, "Invalid limit params")
@@ -172,6 +178,10 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 		InternalServerError(c)
 		return
 	}
+
+	rand.Shuffle(len(availableNodes), func(i, j int) {
+		availableNodes[i], availableNodes[j] = availableNodes[j], availableNodes[i]
+	})
 
 	// Combine all nodes without duplicates
 	var allNodes []proxyTypes.Node

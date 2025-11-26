@@ -196,7 +196,6 @@ func (r *GormUserRepository) ListRemainingWorkflowsByUserID(userID int) ([]model
 
 	if err := r.db.Where("user_id = ?", userID).
 		Where("status IN ?", []string{string(ewf.StatusPending), string(ewf.StatusRunning)}).
-		Order("uuid DESC").
 		Find(&records).Error; err != nil {
 		return nil, err
 	}
