@@ -267,11 +267,13 @@ const reserveNode = async (node: NormalizedNode) => {
       return
     }
     if (!listeningToNodeUpdate.value) {
-      window.addEventListener('node-update', handleNodeUpdate)
+      // window.addEventListener('node-update', handleNodeUpdate)
       listeningToNodeUpdate.value = true
     }
     reservingNodeIds.value.push(node.nodeId)
-    await userService.reserveNode(node.nodeId)
+    const {data} = await userService.reserveNode(node.nodeId)
+    await userService.waitTaskTocomplete((data as any).data.workflow_id)
+    await fetchNodes(nodeFilters)
   } catch (err) {
     console.error(err)
     reservingNodeIds.value.splice(reservingNodeIds.value.indexOf(node.nodeId), 1)

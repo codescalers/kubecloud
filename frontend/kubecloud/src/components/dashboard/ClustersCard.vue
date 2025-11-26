@@ -254,6 +254,7 @@ import { useClusterStore } from '../../stores/clusters'
 import { useNotificationStore } from '../../stores/notifications'
 import { useKubeconfig } from '../../composables/useKubeconfig'
 import { useUserStore } from '@/stores/user'
+import { userService } from '@/utils/userService'
 
 const EditClusterNodesDialog = defineAsyncComponent(() => import('./EditClusterNodesDialog.vue'))
 
@@ -389,13 +390,21 @@ async function confirmDeleteAll() {
   if (filteredClusters.value.length === 0) return
 
   deletingAll.value = true
+  let taskId: string | null = null
   try {
-    await clusterStore.deleteAllDeployments()
+    const { data } = await clusterStore.deleteAllDeployments()
+    taskId = (data as any).data.task_id;
   } catch (error: any) {
     notificationStore.error('Delete All Failed', error?.message || 'Failed to delete all deployments')
     deletingAll.value = false // Reset on error
   } finally {
     showDeleteAllModal.value = false
+  }
+
+  if (taskId) {
+    await userService.waitTaskTocomplete(taskId)
+    await clusterStore.fetchClusters()    
+    deletingAll.value = false
   }
 }
 
