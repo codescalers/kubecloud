@@ -284,7 +284,7 @@ func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models
 		NoPersist().
 		Build()
 
-	if err := svc.notificationDispatcher.Send(context.Background(), notif); err != nil {
+	if err := svc.notificationDispatcher.Send(svc.appCtx, notif); err != nil {
 		logger.GetLogger().Error().Err(err).Msg("failed to send mail progress notification")
 	}
 
