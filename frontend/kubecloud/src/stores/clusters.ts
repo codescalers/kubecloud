@@ -124,7 +124,7 @@ export const useClusterStore = defineStore('clusters', () => {
     error.value = null
 
     try {
-      await api.delete('/v1/deployments', { requiresAuth: true })
+      return await api.delete('/v1/deployments', { requiresAuth: true })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to delete all deployments'
       throw err
