@@ -24,7 +24,6 @@ import (
 	"kubecloud/internal/infrastructure/logger"
 
 	"github.com/cosmos/go-bip39"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -197,44 +196,46 @@ func activateAccount(substrateAccountID, network string) error {
 }
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
-func SetupUserOnTFChain(gridClient deployer.TFPluginClient, termsAndConditions cfg.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error) {
+func SetupUserOnTFChain(substrateClient grid.SubstrateClient, termsAndConditions cfg.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error) {
 	mnemonic, err = GenerateMnemonic()
 	if err != nil {
 		return "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
 	}
 
-	identity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
+	address, err := substrateClient.GetUserAddress(mnemonic)
 	if err != nil {
-		return "", 0, fmt.Errorf("identity creation failed: %w", err)
+		return "", 0, fmt.Errorf("failed to get user address: %w", err)
 	}
 
 	// Activate account with activation service
-	if err := activateAccount(identity.Address(), network); err != nil {
+	if err := activateAccount(address, network); err != nil {
 		return "", 0, fmt.Errorf("activation failed: %w", err)
 	}
 
 	// Wait a few seconds for account activation to complete
 	time.Sleep(7 * time.Second)
 
-	if err := gridClient.SubstrateConn.AcceptTermsAndConditions(identity, termsAndConditions.DocumentLink, termsAndConditions.DocumentHash); err != nil {
-		return "", 0, fmt.Errorf("accept terms failed: %w", err)
+	// Accept terms and conditions
+	err = substrateClient.AcceptTermsAndConditions(mnemonic, termsAndConditions.DocumentLink, termsAndConditions.DocumentHash)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to accept terms and conditions: %w", err)
 	}
 
 	// Create Twin
-	twinID, err = gridClient.SubstrateConn.CreateTwin(identity, "", []byte{})
+	twinID, err = substrateClient.CreateTwin(mnemonic)
 	if err != nil {
-		return "", 0, fmt.Errorf("create twin failed: %w", err)
+		return "", 0, fmt.Errorf("failed to create twin: %w", err)
 	}
 
 	log := logger.ForOperation("chain_account", "create_twin")
 	log.Debug().
 		Uint32("twin_id", twinID).
-		Str("address", identity.Address()).
+		Str("address", address).
 		Msg("Twin created successfully")
 	return mnemonic, twinID, nil
 }
 
-func SetupTFChainStep(gridClient deployer.TFPluginClient, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
+func SetupTFChainStep(substrateClient grid.SubstrateClient, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -255,7 +256,7 @@ func SetupTFChainStep(gridClient deployer.TFPluginClient, userRepo models.UserRe
 			return nil
 		}
 
-		mnemonic, _, err := SetupUserOnTFChain(gridClient, config.TermsANDConditions, config.SystemAccount.Network)
+		mnemonic, _, err := SetupUserOnTFChain(substrateClient, config.TermsANDConditions, config.SystemAccount.Network)
 		if err != nil {
 			return err
 		}
@@ -454,7 +455,7 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeCl
 	}
 }
 
-func CreatePendingRecord(gridClient deployer.TFPluginClient, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
+func CreatePendingRecord(substrateClient grid.SubstrateClient, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_pending_record")
 		amountVal, ok := state["amount"]
@@ -494,7 +495,7 @@ func CreatePendingRecord(gridClient deployer.TFPluginClient, pendingRecordRepo m
 			return fmt.Errorf("'transfer_mode' in state is not a string")
 		}
 
-		requestedTFTs, err := grid.FromUSDMillicentToTFT(gridClient, amount)
+		requestedTFTs, err := substrateClient.FromUSDMillicentToTFT(amount)
 		if err != nil {
 			log.Error().Err(err).Msg("error converting USD to TFT")
 			return err
@@ -556,7 +557,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 }
 
 // DrainUserBalanceStep transfers a user's balance to the system account
-func DrainUserBalanceStep(userRepo models.UserRepository, gridClient deployer.TFPluginClient, systemMnemonic string) ewf.StepFn {
+func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -572,18 +573,10 @@ func DrainUserBalanceStep(userRepo models.UserRepository, gridClient deployer.TF
 			return fmt.Errorf("failed to get user: %w", err)
 		}
 
-		userIdentity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(user.Mnemonic)
-		if err != nil {
-			return fmt.Errorf("failed to get user Identity from mnemonic %v", err)
-		}
-
-		// Get user's current balance in TFT from on-chain
-		balance, err := gridClient.SubstrateConn.GetBalance(userIdentity)
+		balanceInTFT, err := substrateClient.GetFreeBalance(user.Mnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to get user balance: %w", err)
 		}
-
-		balanceInTFT := balance.Free.Uint64()
 
 		// Minimum balance threshold to keep (0.00001 TFT)
 		const minBalanceThreshold uint64 = 1e5
@@ -600,7 +593,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, gridClient deployer.TF
 		transferAmount := balanceInTFT - minBalanceThreshold
 
 		// Perform the transfer from user to system account
-		err = grid.TransferTFTsToSystem(gridClient, transferAmount, user.Mnemonic, systemMnemonic)
+		err = substrateClient.TransferTFTsToSystem(transferAmount, user.Mnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to transfer balance: %w", err)
 		}

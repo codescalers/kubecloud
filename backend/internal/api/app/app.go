@@ -83,7 +83,7 @@ func (app *App) registerEWFWorkflows() {
 		app.config,
 		app.core.db,
 		app.communication.mailService,
-		app.infra.gridClient,
+		app.infra.substrateClient,
 		app.security.kycClient,
 		app.security.sponsorAddress,
 		app.security.sponsorKeyPair,

@@ -5,6 +5,7 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/persistence"
 
 	"os"
@@ -69,14 +70,14 @@ func main() {
 	gridClient, err := deployer.NewTFPluginClient(
 		config.SystemAccount.Mnemonic, deployer.WithNetwork(config.SystemAccount.Network),
 	)
-
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create TF plugin client")
 		return
 	}
+	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
 
 	defer gridClient.Close()
 
-	moneyCollector := moneycollector.NewMoneyCollector(corepersistence.NewGormUserRepository(db), config, gridClient)
+	moneyCollector := moneycollector.NewMoneyCollector(corepersistence.NewGormUserRepository(db), config, substrateClient)
 	moneyCollector.CollectMoney()
 }

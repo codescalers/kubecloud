@@ -7,24 +7,23 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
 
 type MoneyCollector struct {
-	userRepo   models.UserRepository
-	config     cfg.Configuration
-	gridClient deployer.TFPluginClient
+	userRepo        models.UserRepository
+	config          cfg.Configuration
+	substrateClient grid.SubstrateClient
 }
 
 const (
 	MinBalanceThreshold = 1e5
 )
 
-func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, gridClient deployer.TFPluginClient) *MoneyCollector {
+func NewMoneyCollector(userRepo models.UserRepository, config cfg.Configuration, substrateClient grid.SubstrateClient) *MoneyCollector {
 	return &MoneyCollector{
-		userRepo:   userRepo,
-		config:     config,
-		gridClient: gridClient,
+		userRepo:        userRepo,
+		config:          config,
+		substrateClient: substrateClient,
 	}
 }
 
@@ -49,21 +48,14 @@ func (m *MoneyCollector) CollectMoney() {
 				return
 			}
 
-			userIdentity, err := m.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(user.Mnemonic)
-			if err != nil {
-				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user identity")
-				return
-			}
-
-			balance, err := m.gridClient.SubstrateConn.GetBalance(userIdentity)
+			freeBalance, err := m.substrateClient.GetFreeBalance(user.Mnemonic)
 			if err != nil {
 				log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to get user balance")
 				return
 			}
-			freeBalance := balance.Free.Uint64()
 			if freeBalance > MinBalanceThreshold {
 				log.Debug().Int("user_id", user.ID).Uint64("balance", freeBalance).Msg("MoneyCollector: transferring balance to system account")
-				if err := grid.TransferTFTsToSystem(m.gridClient, freeBalance-MinBalanceThreshold, user.Mnemonic, m.config.SystemAccount.Mnemonic); err != nil {
+				if err := m.substrateClient.TransferTFTsToSystem(freeBalance-MinBalanceThreshold, user.Mnemonic); err != nil {
 					log.Error().Err(err).Int("user_id", user.ID).Msg("MoneyCollector: failed to transfer balance")
 				}
 				return

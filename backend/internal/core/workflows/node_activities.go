@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/grid"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
@@ -18,7 +18,7 @@ const (
 	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deployer.TFPluginClient) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["user_id"]
 		if !ok {
@@ -49,13 +49,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deploy
 			return fmt.Errorf("'mnemonic' in state is not a string")
 		}
 
-		// Get Identity
-		identity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
-		if err != nil {
-			return fmt.Errorf("failed to get identity from mnemonic: %w", err)
-		}
-		// Reserve the node
-		contractID, err := gridClient.SubstrateConn.CreateRentContract(identity, nodeID, nil)
+		contractID, err := substrateClient.CreateRentContract(mnemonic, nodeID)
 		if err != nil {
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
 		}
@@ -75,7 +69,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deploy
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient deployer.TFPluginClient) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient grid.SubstrateClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractIDVal, ok := state["contract_id"]
 		if !ok {
@@ -92,12 +86,7 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient depl
 			return fmt.Errorf("missing 'mnemonic' in state")
 		}
 
-		identity, err := gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(mnemonic)
-		if err != nil {
-			return fmt.Errorf("failed to get identity from mnemonic %v", identity)
-		}
-
-		err = gridClient.SubstrateConn.CancelContract(identity, contractID)
+		err = substrateClient.CancelContract(mnemonic, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}

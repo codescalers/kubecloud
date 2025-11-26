@@ -268,7 +268,7 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 		return appInfrastructure{}, fmt.Errorf("failed to create TF grid client: %w", err)
 	}
 
-	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, gridClient)
+	substrateClient := grid.NewSubstrateClient(config.SystemAccount.Mnemonic, gridClient)
 
 	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/persistence"
 
 	"os"
@@ -23,9 +24,10 @@ import (
 )
 
 type setup struct {
-	tokenManager auth.TokenManager
-	gridClient   deployer.TFPluginClient
-	router       *gin.Engine
+	tokenManager    auth.TokenManager
+	substrateClient grid.SubstrateClient
+	router          *gin.Engine
+	network         string
 
 	userRepo           models.UserRepository
 	voucherRepo        models.VoucherRepository
@@ -149,6 +151,8 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
+	substrateClient := grid.NewSubstrateClient(configuration.SystemAccount.Mnemonic, gridClient)
+
 	tokenManager := auth.NewTokenHandler(
 		configuration.JwtToken.Secret,
 		time.Duration(configuration.JwtToken.AccessExpiryMinutes)*time.Minute,
@@ -178,9 +182,10 @@ func SetUp(t testing.TB) (setup, error) {
 	})
 
 	return setup{
-		tokenManager: tokenManager,
-		gridClient:   gridClient,
-		router:       router,
+		tokenManager:    tokenManager,
+		substrateClient: substrateClient,
+		router:          router,
+		network:         gridClient.Network,
 
 		userRepo:           corepersistence.NewGormUserRepository(db),
 		voucherRepo:        corepersistence.NewGormVoucherRepository(db),
@@ -202,7 +207,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := workflows.SetupUserOnTFChain(s.gridClient, s.termsAndConditions, s.gridClient.Network)
+		mnemonic, _, err := workflows.SetupUserOnTFChain(s.substrateClient, s.termsAndConditions, s.network)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)
