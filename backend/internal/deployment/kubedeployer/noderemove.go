@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/telemetry"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -25,7 +26,7 @@ func getNodeToRemove(ctx context.Context, cluster *Cluster, nodeName string) (*N
 		if node.Name == nodeName {
 			if node.Type == NodeTypeLeader {
 				err := fmt.Errorf("cannot remove leader nodes")
-				span.RecordError(err)
+				telemetry.RecordError(span, err)
 				return nil, -1, err
 			}
 			span.SetAttributes(
@@ -39,7 +40,7 @@ func getNodeToRemove(ctx context.Context, cluster *Cluster, nodeName string) (*N
 	}
 
 	err := fmt.Errorf("node %s not found in cluster", nodeName)
-	span.RecordError(err)
+	telemetry.RecordError(span, err)
 	return nil, -1, err
 }
 
@@ -200,7 +201,7 @@ func (c *Client) cancelNodeContracts(ctx context.Context, contractsToCancel []ui
 		Interface("contract_ids", existingContractsToCancel).
 		Msg("Canceling contracts")
 	if err := c.GridClient.BatchCancelContract(existingContractsToCancel); err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to cancel node and/or network contracts: %v", err)
 	}
 
@@ -308,7 +309,7 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 	span.AddEvent("Finding node to remove")
 	nodeToRemove, nodeIndex, err := getNodeToRemove(ctx, cluster, nodeName)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return err
 	}
 
@@ -332,7 +333,7 @@ func (c *Client) RemoveNode(ctx context.Context, cluster *Cluster, nodeName stri
 		),
 	)
 	if err := c.cancelNodeContracts(ctx, contractsToCancel, nodeToRemove.Name); err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return err
 	}
 

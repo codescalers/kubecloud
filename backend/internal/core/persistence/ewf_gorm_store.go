@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"kubecloud/internal/core/models"
+	"sort"
 
 	"github.com/xmonader/ewf"
 	"gorm.io/gorm"
@@ -189,6 +190,36 @@ func (r *GormEWFRepository) LoadAllQueueMetadata(ctx context.Context) ([]*ewf.Qu
 
 func (r *GormEWFRepository) DeleteQueueMetadata(ctx context.Context, name string) error {
 	return r.db.WithContext(ctx).Delete(&QueueMetadataRecord{}, "name = ?", name).Error
+}
+
+// ListAllWorkflows returns all workflows with optional filtering by status
+func (r *GormEWFRepository) ListAllWorkflows(ctx context.Context, status string) ([]*ewf.Workflow, error) {
+	var records []models.GormWorkflowRecord
+	query := r.db.WithContext(ctx)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if err := query.Find(&records).Error; err != nil {
+		return nil, err
+	}
+
+	var workflows []*ewf.Workflow
+	for _, record := range records {
+		var workflow ewf.Workflow
+		if err := json.Unmarshal(record.Data, &workflow); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal workflow: %w", err)
+		}
+		workflows = append(workflows, &workflow)
+	}
+
+	// Sort by CreatedAt descending
+	sort.Slice(workflows, func(i, j int) bool {
+		return workflows[i].CreatedAt.After(workflows[j].CreatedAt)
+	})
+
+	return workflows, nil
 }
 
 func (r *GormEWFRepository) Close() error {

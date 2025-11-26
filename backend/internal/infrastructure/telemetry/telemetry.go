@@ -7,6 +7,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -100,4 +101,60 @@ func (tp *TracerProvider) Shutdown(ctx context.Context) error {
 // Tracer returns a tracer for the given name
 func (tp *TracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.Tracer {
 	return tp.provider.Tracer(name, opts...)
+}
+
+// startSpan starts a new span with the given name and returns the span and a context containing the span
+func startSpan(ctx context.Context, tracerName, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	tracer := otel.Tracer(tracerName)
+	return tracer.Start(ctx, spanName, opts...)
+}
+
+// addSpanAttributes adds attributes to the span in the current context
+func addSpanAttributes(span trace.Span, attributes ...attribute.KeyValue) {
+	span.SetAttributes(attributes...)
+}
+
+// RecordError records an error in the span and sets the span status to error
+func RecordError(span trace.Span, err error, attributes ...attribute.KeyValue) {
+	span.SetStatus(codes.Error, err.Error())
+	span.RecordError(err, trace.WithAttributes(attributes...))
+}
+
+// wrapWithSpan wraps a function with a span
+func wrapWithSpan(ctx context.Context, tracerName, spanName string, fn func(context.Context) error, attributes ...attribute.KeyValue) error {
+	ctx, span := startSpan(ctx, tracerName, spanName)
+	defer span.End()
+
+	if len(attributes) > 0 {
+		addSpanAttributes(span, attributes...)
+	}
+
+	err := fn(ctx)
+	if err != nil {
+		RecordError(span, err)
+	}
+
+	return err
+}
+
+// ServiceTracer creates a helper struct for a specific service to simplify tracing
+type ServiceTracer struct {
+	serviceName string
+}
+
+// NewServiceTracer creates a new ServiceTracer for the given service name
+func NewServiceTracer(serviceName string) *ServiceTracer {
+	return &ServiceTracer{
+		serviceName: serviceName,
+	}
+}
+
+// StartSpan starts a new span for this service
+func (st *ServiceTracer) StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return startSpan(ctx, st.serviceName, spanName, opts...)
+}
+
+// WrapWithSpan wraps a function with a span for this service
+func (st *ServiceTracer) WrapWithSpan(ctx context.Context, spanName string, fn func(context.Context) error, attributes ...attribute.KeyValue) error {
+	return wrapWithSpan(ctx, st.serviceName, spanName, fn, attributes...)
 }

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/telemetry"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
@@ -42,7 +43,7 @@ func (n *Node) AssignNodeIP(ctx context.Context, gridClient deployer.TFPluginCli
 
 	ip, err := getIpForVm(ctx, gridClient, networkName, n.NodeID)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to get IP for node %s: %v", n.Name, err)
 	}
 
@@ -112,7 +113,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		c.GridClient.Network,
 	)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to create VM for node: %v", err)
 	}
 
@@ -133,7 +134,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 			Str("node_name", node.Name).
 			Uint32("node_id", node.NodeID).
 			Msg("Failed to deploy node to grid")
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to deploy node %s: %v", node.Name, err)
 	}
 
@@ -145,7 +146,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 
 	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to load deployment for node %s: %v", node.Name, err)
 	}
 
@@ -220,7 +221,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 	leaderNode, err := cluster.GetLeaderNode()
 	if err != nil {
 		log.Error().Err(err).Str("cluster", cluster.Name).Msg("Failed to get leader node")
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to get leader node IP: %v", err)
 	}
 	leaderIP = leaderNode.IP
@@ -244,7 +245,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 			c.GridClient.Network,
 		)
 		if err != nil {
-			span.RecordError(err)
+			telemetry.RecordError(span, err)
 			return fmt.Errorf("failed to create VM for node %s: %v", node.Name, err)
 		}
 		deployments = append(deployments, &depl)
@@ -318,7 +319,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 			return fmt.Errorf("failed to deploy %d nodes (%v): %v", len(failedNodes), failedNodes, batchErr)
 		}
 		err := fmt.Errorf("failed to deploy %d nodes: %v", len(failedNodes), failedNodes)
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return err
 	}
 
@@ -384,7 +385,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 			if _, exists := net.MyceliumKeys[nodeID]; !exists {
 				key, err := workloads.RandomMyceliumKey()
 				if err != nil {
-					span.RecordError(err)
+					telemetry.RecordError(span, err)
 					return fmt.Errorf("failed to generate mycelium key for node %d: %v", nodeID, err)
 				}
 				net.MyceliumKeys[nodeID] = key
@@ -420,7 +421,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 	err = c.GridClient.NetworkDeployer.Deploy(ctx, &net)
 	cluster.Network = net
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to deploy network: %v", err)
 	}
 
@@ -455,7 +456,7 @@ func (c *Client) CancelCluster(ctx context.Context, cluster Cluster) error {
 		Msg("Collected cluster contracts")
 
 	if err := c.cancelNodeContracts(ctx, clusterContracts, cluster.Name); err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to cancel cluster contracts: %v", err)
 	}
 
@@ -485,7 +486,7 @@ func (c *Client) CancelAllContractsForUser(ctx context.Context, contractIDs []ui
 	}
 
 	if err := c.cancelNodeContracts(ctx, contractIDs, "user"); err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to cancel user contracts: %v", err)
 	}
 

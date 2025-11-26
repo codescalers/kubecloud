@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/infrastructure/logger"
+	"kubecloud/internal/infrastructure/telemetry"
 	"net"
 	"strings"
 	"time"
@@ -36,13 +37,13 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 
 	if privateKey == "" {
 		err := fmt.Errorf("private key cannot be empty")
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	if len(c.Nodes) == 0 {
 		err := fmt.Errorf("cluster %s has no nodes", c.Name)
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
@@ -87,7 +88,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 	}
 
 	err := fmt.Errorf("no leader or master node found in cluster %s (checked %d nodes)", c.Name, len(c.Nodes))
-	span.RecordError(err)
+	telemetry.RecordError(span, err)
 	return "", err
 }
 
@@ -105,7 +106,7 @@ func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 	ip := node.MyceliumIP
 	if ip == "" {
 		err := fmt.Errorf("no mycelium IP address found for node %s", node.Name)
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
@@ -125,13 +126,13 @@ func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 			Str("ip", ip).
 			Str("node", node.Name).
 			Msg("Failed to execute SSH command")
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", fmt.Errorf("failed to execute SSH command on node %s (%s): %w", node.Name, ip, err)
 	}
 
 	if !isValidKubeconfig(kubeconfig) {
 		err := fmt.Errorf("invalid kubeconfig content retrieved from node %s (%s): missing required fields", node.Name, ip)
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
@@ -164,7 +165,7 @@ func executeSSHCommand(ctx context.Context, privateKey, address, command string)
 
 	key, err := ssh.ParsePrivateKey([]byte(privateKey))
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", fmt.Errorf("failed to parse SSH private key: %w", err)
 	}
 
@@ -230,7 +231,7 @@ func executeSSHCommand(ctx context.Context, privateKey, address, command string)
 
 	if client == nil {
 		err := fmt.Errorf("failed to establish SSH connection to %s after %d attempts: %w", address, sshMaxRetries, lastErr)
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		span.SetAttributes(attribute.Int("ssh.attempts_failed", sshMaxRetries))
 		return "", err
 	}
@@ -238,7 +239,7 @@ func executeSSHCommand(ctx context.Context, privateKey, address, command string)
 
 	session, err := client.NewSession()
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", fmt.Errorf("failed to create SSH session for %s: %w", address, err)
 	}
 	defer session.Close()
@@ -249,7 +250,7 @@ func executeSSHCommand(ctx context.Context, privateKey, address, command string)
 
 	output, err := session.CombinedOutput(command)
 	if err != nil {
-		span.RecordError(err)
+		telemetry.RecordError(span, err)
 		return "", fmt.Errorf("failed to execute command '%s' on %s: %w (output: %s)", command, address, err, string(output))
 	}
 

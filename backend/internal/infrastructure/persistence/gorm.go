@@ -6,8 +6,8 @@ import (
 
 	"kubecloud/internal/core/models"
 
-	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 // GormDB struct implements models.DB interface with gorm
@@ -22,7 +22,7 @@ func NewGormStorage(dialector gorm.Dialector) (*GormDB, error) {
 		return nil, err
 	}
 
-	if err := db.Use(otelgorm.NewPlugin(otelgorm.WithDBName("kubecloud"))); err != nil {
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 

@@ -65,6 +65,20 @@ export interface SystemEmailResponse {
   total_users: number
 }
 
+export interface AdminWorkflow {
+  uuid: string
+  name: string
+  display_name: string
+  status: string
+  current_step: number
+  total_steps: number
+  step_name: string
+  state: Record<string, any>
+  user_id: number
+  created_at: string
+  queue_name: string
+  metadata: Record<string, string>
+}
 
 export interface Invoice {
   id: number
@@ -192,6 +206,56 @@ export class AdminService {
       timeout: 60000,
     })
     return response.data
+  }
+
+  // List all workflows (requires admin auth)
+  async listWorkflows(status?: string): Promise<AdminWorkflow[]> {
+    const url = status ? `/v1/workflows?status=${status}` : '/v1/workflows'
+    const response = await api.get<ApiResponse<{ workflows: AdminWorkflow[] }>>(url, {
+      requiresAuth: true,
+      showNotifications: true,
+      errorMessage: 'Failed to load workflows'
+    })
+    return response.data.data?.workflows || []
+  }
+
+  // List workflows with pagination
+  async listWorkflowsPaginated(status?: string, page: number = 1, limit: number = 10): Promise<{ workflows: AdminWorkflow[]; total: number; page: number; limit: number; total_pages: number }> {
+    try {
+      const params = new URLSearchParams()
+      if (status) params.append('status', status)
+      params.append('page', page.toString())
+      params.append('limit', limit.toString())
+      
+      const url = `/v1/workflows?${params.toString()}`
+      const response = await api.get<ApiResponse<{ workflows: AdminWorkflow[]; total: number; page: number; limit: number; total_pages: number }>>(url, {
+        requiresAuth: true,
+        errorMessage: 'Failed to load workflows'
+      })
+
+      // Handle the response safely
+      if (!response || !response.data) {
+        console.warn('Empty response from workflows endpoint')
+        return { workflows: [], total: 0, page, limit, total_pages: 0 }
+      }
+
+      const data = response.data.data
+      if (!data) {
+        console.warn('No data in workflows response')
+        return { workflows: [], total: 0, page, limit, total_pages: 0 }
+      }
+
+      return {
+        workflows: data.workflows || [],
+        total: data.total || 0,
+        page: data.page || page,
+        limit: data.limit || limit,
+        total_pages: data.total_pages || 0
+      }
+    } catch (error) {
+      console.error('Error fetching workflows:', error)
+      throw error
+    }
   }
 
 
