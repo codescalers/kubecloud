@@ -1946,7 +1946,7 @@ const docTemplate = `{
                         "UserMiddleware": []
                     }
                 ],
-                "description": "List nodes from proxy [rented nodes first + randomized shared nodes]",
+                "description": "List nodes from proxy [rented nodes first, then available nodes sorted by uptime]",
                 "consumes": [
                     "application/json"
                 ],
@@ -3264,6 +3264,64 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/workflows": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns all workflows in the system with optional filtering by status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List all workflows",
+                "operationId": "list-all-workflows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter workflows by status (pending, running, completed, failed)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflows retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.AdminWorkflow"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3292,6 +3350,7 @@ const docTemplate = `{
         },
         "gridtypes.Unit": {
             "type": "integer",
+            "format": "int64",
             "enum": [
                 1024,
                 1048576,
@@ -4317,6 +4376,54 @@ const docTemplate = `{
                 }
             }
         },
+        "services.AdminWorkflow": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "current_step": {
+                    "type": "integer"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "queue_name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "status": {
+                    "type": "string"
+                },
+                "step_name": {
+                    "type": "string"
+                },
+                "total_steps": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
         "services.ClusterData": {
             "type": "object",
             "properties": {
@@ -4907,7 +5014,8 @@ const docTemplate = `{
                 "externalSK": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "iprange": {
@@ -4918,7 +5026,8 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer"
+                            "type": "integer",
+                            "format": "int32"
                         }
                     }
                 },
@@ -4927,7 +5036,8 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer"
+                            "type": "integer",
+                            "format": "int32"
                         }
                     }
                 },
@@ -4937,13 +5047,15 @@ const docTemplate = `{
                 "nodeDeploymentID": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int64"
                     }
                 },
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "nodesIPRange": {
@@ -4953,7 +5065,8 @@ const docTemplate = `{
                     }
                 },
                 "publicNodeID": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int32"
                 },
                 "solutionType": {
                     "type": "string"
@@ -4973,14 +5086,16 @@ const docTemplate = `{
                     "description": "network number",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 },
                 "mask": {
                     "description": "network mask",
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "int32"
                     }
                 }
             }

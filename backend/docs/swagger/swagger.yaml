@@ -21,6 +21,7 @@ definitions:
     - 1048576
     - 1073741824
     - 1099511627776
+    format: int64
     type: integer
     x-enum-varnames:
     - Kilobyte
@@ -716,6 +717,38 @@ definitions:
     - expires_at
     - value
     type: object
+  services.AdminWorkflow:
+    properties:
+      created_at:
+        type: string
+      current_step:
+        type: integer
+      display_name:
+        type: string
+      error:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      queue_name:
+        type: string
+      state:
+        additionalProperties: {}
+        type: object
+      status:
+        type: string
+      step_name:
+        type: string
+      total_steps:
+        type: integer
+      user_id:
+        type: integer
+      uuid:
+        type: string
+    type: object
   services.ClusterData:
     properties:
       cluster:
@@ -1110,6 +1143,7 @@ definitions:
         $ref: '#/definitions/zos.IPNet'
       externalSK:
         items:
+          format: int32
           type: integer
         type: array
       iprange:
@@ -1117,12 +1151,14 @@ definitions:
       keys:
         additionalProperties:
           items:
+            format: int32
             type: integer
           type: array
         type: object
       myceliumKeys:
         additionalProperties:
           items:
+            format: int32
             type: integer
           type: array
         type: object
@@ -1130,10 +1166,12 @@ definitions:
         type: string
       nodeDeploymentID:
         additionalProperties:
+          format: int64
           type: integer
         type: object
       nodes:
         items:
+          format: int32
           type: integer
         type: array
       nodesIPRange:
@@ -1141,6 +1179,7 @@ definitions:
           $ref: '#/definitions/zos.IPNet'
         type: object
       publicNodeID:
+        format: int32
         type: integer
       solutionType:
         type: string
@@ -1154,11 +1193,13 @@ definitions:
       ip:
         description: network number
         items:
+          format: int32
           type: integer
         type: array
       mask:
         description: network mask
         items:
+          format: int32
           type: integer
         type: array
     type: object
@@ -2344,7 +2385,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: List nodes from proxy [rented nodes first + randomized shared nodes]
+      description: List nodes from proxy [rented nodes first, then available nodes
+        sorted by uptime]
       operationId: list-nodes
       parameters:
       - description: 'Filter by healthy nodes (default: true)'
@@ -3157,6 +3199,41 @@ paths:
       summary: Get workflow status
       tags:
       - workflow
+  /workflows:
+    get:
+      consumes:
+      - application/json
+      description: Returns all workflows in the system with optional filtering by
+        status
+      operationId: list-all-workflows
+      parameters:
+      - description: Filter workflows by status (pending, running, completed, failed)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Workflows retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.AdminWorkflow'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List all workflows
+      tags:
+      - admin
 securityDefinitions:
   BearerAuth:
     in: header
