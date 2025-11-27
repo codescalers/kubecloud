@@ -143,7 +143,7 @@ func (svc *NodeService) GetTwinIDFromUserID(ctx context.Context, userID int) (ui
 	}
 
 	span.SetAttributes(attribute.Int64("twin_id", int64(twinID)))
-	return uint64(twinID), nil
+	return twinID, nil
 }
 
 func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilter, limit proxyTypes.Limit) ([]proxyTypes.Twin, int, error) {
@@ -151,11 +151,10 @@ func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilt
 }
 
 func (svc *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
-	ctx, span := h.tracer.StartSpan(ctx, "GetNodePools")
+	ctx, span := svc.tracer.StartSpan(ctx, "GetNodePools")
 	defer span.End()
 
 	span.SetAttributes(attribute.Int64("node_id", int64(nodeID)))
-
 
 	nc, err := svc.substrateClient.GetNodeClient(nodeID)
 	if err != nil {
