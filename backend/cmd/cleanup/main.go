@@ -68,7 +68,7 @@ func main() {
 
 	substrateClient, err := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create TF plugin client")
+		log.Error().Err(err).Msg("Failed to create substrate client")
 		return
 	}
 	defer substrateClient.Close()
