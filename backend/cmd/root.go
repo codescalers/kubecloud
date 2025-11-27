@@ -199,7 +199,7 @@ func addFlags() error {
 	}
 
 	// === Telemetry ===
-	if err := bindStringFlag(rootCmd, "telemetry.otlp_endpoint", "localhost:4317", "OpenTelemetry gRPC endpoint"); err != nil {
+	if err := bindStringFlag(rootCmd, "telemetry.otlp_endpoint", "jaeger:4317", "OpenTelemetry gRPC endpoint"); err != nil {
 		return fmt.Errorf("failed to bind telemetry.otlp_endpoint flag: %w", err)
 	}
 
