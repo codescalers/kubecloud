@@ -31,10 +31,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
+      redis-db:
+        condition: service_started
       mycelium:
         condition: service_started
       postgres:
         condition: service_healthy
+      jaeger:
+        condition: service_started
     working_dir: /app
     volumes:
       - ./backend/myceliumCloud.db:/app/myceliumCloud.db
@@ -43,6 +47,8 @@ services:
       - /root/.ssh:/root/.ssh:ro
     environment:
       - MYCELIUM_HOST=localhost
+      - REDIS_HOST=redis-db
+      - REDIS_PORT=6379
       - APP_ENV=dev
       - HOSTNAME=backend-1
     command: ["/myceliumcloud", "--config", "/app/config.json"]
@@ -126,6 +132,26 @@ services:
       - loki
     networks:
       - app-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=badger
+      - BADGER_EPHEMERAL=false
+      - BADGER_DIRECTORY_VALUE=/badger/data
+      - BADGER_DIRECTORY_KEY=/badger/key
+    volumes:
+      - ./jaeger-data:/badger
+    networks:
+      - app-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:latest
     container_name: postgres

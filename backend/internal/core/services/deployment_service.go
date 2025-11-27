@@ -10,11 +10,13 @@ import (
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
+	"kubecloud/internal/infrastructure/telemetry"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/xmonader/ewf"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type DeploymentService struct {
@@ -23,6 +25,7 @@ type DeploymentService struct {
 
 	appCtx    context.Context
 	ewfEngine *ewf.Engine
+	tracer    *telemetry.ServiceTracer
 
 	// configs
 	debug             bool
@@ -42,6 +45,7 @@ func NewDeploymentService(appCtx context.Context,
 
 		appCtx:    appCtx,
 		ewfEngine: ewfEngine,
+		tracer:    telemetry.NewServiceTracer("deployment_service"),
 
 		debug:             debug,
 		sshPublicKey:      sshPublicKey,
@@ -76,8 +80,14 @@ func (svc *DeploymentService) GetClusterDataByProjectName(userID int, projectNam
 }
 
 func (svc *DeploymentService) ListUserClustersData(userID int) ([]ClusterData, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "ListUserClustersData")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int("user_id", userID))
+
 	clusters, err := svc.clusterRepo.ListUserClusters(userID)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, err
 	}
 
@@ -85,17 +95,28 @@ func (svc *DeploymentService) ListUserClustersData(userID int) ([]ClusterData, e
 	for _, cluster := range clusters {
 		clusterDataItem, err := svc.GetClusterData(cluster)
 		if err != nil {
+			telemetry.RecordError(span, err)
 			return nil, err
 		}
 		clusterData = append(clusterData, clusterDataItem)
 	}
 
+	span.SetAttributes(attribute.Int("cluster_count", len(clusterData)))
 	return clusterData, nil
 }
 
 func (svc *DeploymentService) GetClusterData(cluster models.Cluster) (ClusterData, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "GetClusterData")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("cluster_id", cluster.ID),
+		attribute.String("project_name", cluster.ProjectName),
+	)
+
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return ClusterData{}, err
 	}
 
@@ -109,27 +130,42 @@ func (svc *DeploymentService) GetClusterData(cluster models.Cluster) (ClusterDat
 }
 
 func (svc *DeploymentService) GetClusterKubeconfig(ctx context.Context, cluster *models.Cluster) (string, error) {
+	ctx, span := svc.tracer.StartSpan(ctx, "GetClusterKubeconfig")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("cluster_id", cluster.ID),
+		attribute.String("project_name", cluster.ProjectName),
+	)
+
 	if cluster.Kubeconfig != "" {
+		span.SetAttributes(attribute.Bool("cached_kubeconfig", true))
 		return cluster.Kubeconfig, nil
 	}
 
+	span.SetAttributes(attribute.Bool("cached_kubeconfig", false))
+
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	privateKeyBytes, err := os.ReadFile(svc.sshPrivateKeyPath)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	kubeconfig, err := clusterResult.GetKubeconfig(ctx, string(privateKeyBytes))
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	cluster.Kubeconfig = kubeconfig
 	if err = svc.clusterRepo.UpdateCluster(cluster); err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
@@ -169,23 +205,39 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 }
 
 func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string) (string, ewf.WorkflowStatus, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "handleDeploymentAction")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user_id", userID),
+		attribute.String("workflow_name", workflowName),
+		attribute.String("display_name", displayName),
+	)
+
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 
 	wf, err := svc.ewfEngine.NewWorkflow(workflowName, ewf.WithQueue(queueName), ewf.WithDisplayName(displayName), ewf.WithMetadata(metadata))
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
 	wf.State = state
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
+	span.SetAttributes(
+		attribute.String("workflow_uuid", wf.UUID),
+		attribute.String("workflow_status", string(wf.Status)),
+	)
 	return wf.UUID, wf.Status, nil
 }
 

@@ -9,11 +9,13 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/telemetry"
 	"strconv"
 
 	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 var Zos3NodeFeatures = []string{
@@ -29,6 +31,7 @@ type NodeService struct {
 	ewfEngine       *ewf.Engine
 	gridProxyClient proxy.Client
 	substrateClient substrate.Substrate
+	tracer          *telemetry.ServiceTracer
 }
 
 func NewNodeService(
@@ -42,6 +45,7 @@ func NewNodeService(
 		ewfEngine:       ewfEngine,
 		gridProxyClient: gridProxyClient,
 		substrateClient: substrateClient,
+		tracer:          telemetry.NewServiceTracer("node_service"),
 	}
 }
 
@@ -54,7 +58,22 @@ type Pool struct {
 }
 
 func (svc *NodeService) GetNodes(ctx context.Context, filter proxyTypes.NodeFilter, limit proxyTypes.Limit) ([]proxyTypes.Node, int, error) {
-	return svc.gridProxyClient.Nodes(ctx, filter, limit)
+	ctx, span := svc.tracer.StartSpan(ctx, "GetNodes")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.String("filter", fmt.Sprintf("%+v", filter)),
+		attribute.String("limit", fmt.Sprintf("%+v", limit)),
+	)
+
+	nodes, count, err := svc.gridProxyClient.Nodes(ctx, filter, limit)
+	if err != nil {
+		telemetry.RecordError(span, err)
+		return nil, 0, err
+	}
+
+	span.SetAttributes(attribute.Int("node_count", count))
+	return nodes, count, nil
 }
 
 func (svc *NodeService) GetZos3Nodes(ctx context.Context, filter proxyTypes.NodeFilter, limit proxyTypes.Limit) ([]proxyTypes.Node, int, error) {
@@ -70,16 +89,32 @@ func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserNodes, er
 	return svc.nodesRepo.GetUserNodeByNodeID(uint64(nodeID))
 }
 
-func (svc *NodeService) CheckUserBalanceForOneHour(userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
+func (svc *NodeService) CheckUserBalanceForOneHour(ctx context.Context, userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
+	_, span := svc.tracer.StartSpan(ctx, "CheckUserBalanceForOneHour")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Float64("node_price_usd", nodePriceUsd),
+		attribute.Int64("user_debt", int64(userDebt)),
+	)
+
 	// validate user has enough balance for reserving node
 	usdMillicentBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return err
 	}
 
+	span.SetAttributes(attribute.Int64("balance_usd_millicent", int64(usdMillicentBalance)))
+
 	//TODO: check price in month constant
-	if usdMillicentBalance-userDebt < substrate.FromUSDToUSDMillicent(nodePriceUsd)/24/30 {
-		return fmt.Errorf("you should at least have enough balance for one hour")
+	requiredBalance := substrate.FromUSDToUSDMillicent(nodePriceUsd) / 24 / 30
+	span.SetAttributes(attribute.Int64("required_balance", int64(requiredBalance)))
+
+	if usdMillicentBalance-userDebt < requiredBalance {
+		err := fmt.Errorf("you should at least have enough balance for one hour")
+		telemetry.RecordError(span, err)
+		return err
 	}
 
 	return nil
@@ -89,13 +124,26 @@ func (svc *NodeService) GetUserNodeByContractID(contractID uint64) (models.UserN
 	return svc.nodesRepo.GetUserNodeByContractID(contractID)
 }
 
-func (svc *NodeService) GetTwinIDFromUserID(userID int) (uint64, error) {
+func (svc *NodeService) GetTwinIDFromUserID(ctx context.Context, userID int) (uint64, error) {
+	_, span := svc.tracer.StartSpan(ctx, "GetTwinIDFromUserID")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int("user_id", userID))
+
 	user, err := svc.userRepo.GetUserByID(userID)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return 0, err
 	}
 
-	return svc.substrateClient.GetTwinIDFromUserMnemonic(user.Mnemonic)
+	twinID, err := svc.substrateClient.GetTwinIDFromUserMnemonic(user.Mnemonic)
+	if err != nil {
+		telemetry.RecordError(span, err)
+		return 0, err
+	}
+
+	span.SetAttributes(attribute.Int64("twin_id", int64(twinID)))
+	return uint64(twinID), nil
 }
 
 func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilter, limit proxyTypes.Limit) ([]proxyTypes.Twin, int, error) {
@@ -103,13 +151,20 @@ func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilt
 }
 
 func (svc *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
+	ctx, span := h.tracer.StartSpan(ctx, "GetNodePools")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int64("node_id", int64(nodeID)))
+
 
 	nc, err := svc.substrateClient.GetNodeClient(nodeID)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, err
 	}
 	storagePool, err := nc.Pools(ctx)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, err
 	}
 
@@ -122,12 +177,22 @@ func (svc *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool
 		})
 	}
 
+	span.SetAttributes(attribute.Int("pool_count", len(pools)))
 	return pools, nil
 }
 
 func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, healthy bool) ([]proxyTypes.Node, int, error) {
-	twinID, err := svc.GetTwinIDFromUserID(userID)
+	ctx, span := svc.tracer.StartSpan(ctx, "GetRentedNodesForUser")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user_id", userID),
+		attribute.Bool("healthy", healthy),
+	)
+
+	twinID, err := svc.GetTwinIDFromUserID(ctx, userID)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, 0, err
 	}
 
@@ -144,9 +209,11 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 
 	nodes, count, err := svc.GetNodes(ctx, filter, limit)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, 0, err
 	}
 
+	span.SetAttributes(attribute.Int("node_count", count))
 	return nodes, count, nil
 }
 

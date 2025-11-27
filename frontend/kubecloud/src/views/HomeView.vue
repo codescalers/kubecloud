@@ -212,7 +212,7 @@ const features = [
             Ready to Transform Your Kubernetes Experience?
           </h2>
           <p class="text-md-h6 text-boady-1 opacity-92 mb-8" style="color: #60a5fa;">
-            Join thousands of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
+            Join a growing community of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
           </p>
           <v-btn
             v-if="userStore.isLoggedIn"
@@ -224,15 +224,14 @@ const features = [
             Deploy Cluster
           </v-btn>
           <v-btn
-  v-else
-  variant="flat"
-  color="blue"
-  size="large"
-  to="/deploy"
-  class="hover-btn"
->
-
-            Start Your Free Trial
+            v-else
+            variant="flat"
+            color="blue"
+            size="large"
+            to="/sign-up"
+            class="hover-btn"
+          >
+            Get Started
           </v-btn>
         </div>
       </div>

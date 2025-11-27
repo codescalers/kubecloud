@@ -156,6 +156,7 @@ import { useNodeManagement } from '@/composables/useNodeManagement'
 import type { RentedNode } from '@/composables/useNodeManagement'
 import { useNotificationStore } from '../../stores/notifications'
 import NodeCard from '../NodeCard.vue'
+import { userService } from '@/utils/userService'
 
 const router = useRouter()
 const {
@@ -212,9 +213,11 @@ const handleUnreserve = async () => {
   unreservingNodes.value.push(nodeId)
   try {
     listeningToNodeUpdate.value = true
-    window.addEventListener('node-update', handleNodeUpdate)
-    await unreserveNode(contractId.toString(), contractId)
+    // window.addEventListener('node-update', handleNodeUpdate)
+    const { data } = await unreserveNode(contractId.toString(), contractId)
     showUnreserveDialog.value = false
+    await userService.waitTaskTocomplete((data as any).data.workflow_id)
+    await fetchRentedNodes()
     selectedNode.value = null
   } catch (err) {
     console.error('Failed to unreserve node. Please try again.')

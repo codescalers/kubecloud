@@ -45,6 +45,8 @@ type SendGridMailService struct {
 	maxAttachmentSizeMB int64
 }
 
+var _ MailService = (*SendGridMailService)(nil)
+
 // NewSendGridMailService creates new instance of sendgrid mail service
 func NewSendGridMailService(mailConfigs cfg.MailSender, systemHost string, metrics *metrics.Metrics) SendGridMailService {
 	return SendGridMailService{

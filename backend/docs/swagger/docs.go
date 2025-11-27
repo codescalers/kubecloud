@@ -2852,7 +2852,7 @@ const docTemplate = `{
                         "AdminMiddleware": []
                     }
                 ],
-                "description": "Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.",
+                "description": "Allows admin to send a custom email to all users with optional file attachments.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -2862,7 +2862,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Send mail to all users",
+                "summary": "Start sending mail to all users (async)",
                 "operationId": "admin-mail-all-users",
                 "parameters": [
                     {
@@ -2888,21 +2888,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Email sending results with delivery statistics",
+                        "description": "Mail sending started",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.SendMailResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
@@ -3290,9 +3278,20 @@ const docTemplate = `{
                 }
             }
         },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
         "gridtypes.Unit": {
             "type": "integer",
-            "format": "int64",
             "enum": [
                 1024,
                 1048576,
@@ -3893,26 +3892,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.SendMailResponse": {
-            "type": "object",
-            "properties": {
-                "failed_emails": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "failed_emails_count": {
-                    "type": "integer"
-                },
-                "successful_emails": {
-                    "type": "integer"
-                },
-                "total_users": {
-                    "type": "integer"
-                }
-            }
-        },
         "handlers.TwinResponse": {
             "type": "object",
             "properties": {
@@ -4262,14 +4241,16 @@ const docTemplate = `{
                 "billing",
                 "user",
                 "connected",
-                "node"
+                "node",
+                "admin"
             ],
             "x-enum-varnames": [
                 "NotificationTypeDeployment",
                 "NotificationTypeBilling",
                 "NotificationTypeUser",
                 "NotificationTypeConnected",
-                "NotificationTypeNode"
+                "NotificationTypeNode",
+                "NotificationTypeAdmin"
             ]
         },
         "models.SSHKey": {
@@ -4282,6 +4263,9 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string"
+                },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
                     "description": "Primary key",
@@ -4435,7 +4419,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4469,12 +4452,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "pending_balance_usd": {
                     "type": "number"
                 },
@@ -4502,7 +4479,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4539,12 +4515,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 },
                 "sponsored": {
                     "type": "boolean"
@@ -4937,8 +4907,7 @@ const docTemplate = `{
                 "externalSK": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "iprange": {
@@ -4949,8 +4918,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -4959,8 +4927,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -4970,15 +4937,13 @@ const docTemplate = `{
                 "nodeDeploymentID": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer",
-                        "format": "int64"
+                        "type": "integer"
                     }
                 },
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "nodesIPRange": {
@@ -4988,8 +4953,7 @@ const docTemplate = `{
                     }
                 },
                 "publicNodeID": {
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                 },
                 "solutionType": {
                     "type": "string"
@@ -5009,16 +4973,14 @@ const docTemplate = `{
                     "description": "network number",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "mask": {
                     "description": "network mask",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 }
             }

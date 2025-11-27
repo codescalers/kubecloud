@@ -168,7 +168,7 @@ export class UserService {
 
   // Reserve a node
   async reserveNode(nodeId: number, data: ReserveNodeRequest = {}) {
-    await api.post<ApiResponse<ReserveNodeResponse>>(
+    return api.post<ApiResponse<ReserveNodeResponse>>(
       `/v1/user/nodes/${nodeId}`,
       data,
       { requiresAuth: true, showNotifications: true },
@@ -183,7 +183,7 @@ export class UserService {
 
   // Unreserve a node
   async unreserveNode(contractId: string, nodeId: number) {
-    await api.delete<ApiResponse<UnreserveNodeResponse>>(
+    return api.delete<ApiResponse<UnreserveNodeResponse>>(
       `/v1/user/nodes/unreserve/${contractId}`,
       { requiresAuth: true, showNotifications: true },
     )
@@ -311,6 +311,20 @@ export class UserService {
     return response.data.data.pending_records
   }
 
+  async waitTaskTocomplete(id: string): Promise<boolean> {
+    const res = await api.get<ApiResponse<"completed" | "failed">>(`/v1/workflow/${id}`)
+    if (res.data.data === "failed") {
+      return false
+    }
+
+    if (res.data.data === "completed") {
+      return true
+    }
+
+    await new Promise(res => setTimeout(res, 5000))
+    return this.waitTaskTocomplete(id)
+  }
+  
   // Fetch twin account info
   async getTwinAccount(twinId: number): Promise<TwinResponse> {
     const response = await api.get<ApiResponse<TwinResponse>>(`/v1/twins/${twinId}/account`, {
