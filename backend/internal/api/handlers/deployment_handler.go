@@ -53,7 +53,7 @@ type NodeInput struct {
 	CPU        uint8             `json:"cpu" binding:"required"`
 	Memory     uint64            `json:"memory" binding:"required"`    // Memory in MB
 	RootSize   uint64            `json:"root_size" binding:"required"` // Storage in MB
-	DiskSize   uint64            `json:"disk_size"`                    // Storage in MB
+	DataDisks  []uint64          `json:"data_disks"`                   // Storage in MB
 	EnvVars    map[string]string `json:"env_vars"`                     // SSH_KEY, etc.
 	GPUIDs     []string          `json:"gpu_ids,omitempty"`            // List of GPU IDs
 	Flist      string            `json:"flist,omitempty"`

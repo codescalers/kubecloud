@@ -10,6 +10,7 @@ import (
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -1072,6 +1073,11 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 			Metadata:    workflow.Metadata,
 		})
 	}
+
+	// sort workflows ascending by the creation time
+	sort.Slice(userWorkflowsResponse, func(i, j int) bool {
+		return userWorkflowsResponse[i].CreatedAt.Before(userWorkflowsResponse[j].CreatedAt)
+	})
 
 	OK(c, "User workflows retrieved successfully", gin.H{
 		"workflows": userWorkflowsResponse,

@@ -1,9 +1,9 @@
-import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker, type ApiError } from './api'
+import { api, type ApiError } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
 import type { NodeFilters } from '@/composables/useNodes'
+import type { NodeStoragePool } from "../types/normalizedNode";
 
 export interface ReserveNodeRequest {
   // Add any required fields if needed
@@ -329,6 +329,13 @@ export class UserService {
     )
     return res.data.data.workflows || []
   }
+
+  async getStoragePool(nodeId: number) {
+    const nodeStoragePoolResponse: ApiResponse<ApiResponse<NodeStoragePool>> = await api.get(`/v1/nodes/${nodeId}/storage-pool`, {
+      showNotifications: false
+    })
+    return nodeStoragePoolResponse.data.data.pools.filter((pool) => pool.type === "ssd")
+  };
 
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {
     await new Promise((resolve, reject) => {

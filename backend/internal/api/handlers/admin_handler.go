@@ -446,6 +446,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	reqLog := requestLogger(c, "DrainUserHandler")
+	adminID := c.GetInt("user_id")
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
@@ -454,7 +455,7 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.AsyncDrainUserUSD(id); err != nil {
+	if err := h.svc.AsyncDrainUserUSD(id, adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain user balance")
 		InternalServerError(c)
 		return
@@ -476,8 +477,9 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 // DrainAllUsersHandler drains all users' balances to the system account
 func (h *AdminHandler) DrainAllUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "DrainAllUsersHandler")
+	adminID := c.GetInt("user_id")
 
-	if err := h.svc.AsyncDrainAllUsersUSD(); err != nil {
+	if err := h.svc.AsyncDrainAllUsersUSD(adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain all users' balances")
 		InternalServerError(c)
 		return
