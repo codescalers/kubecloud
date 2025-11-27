@@ -39,7 +39,9 @@ func (l *RedisLocker) AcquireWorkflowLock(ctx context.Context, nodeIDs []uint32,
 	})
 
 	if err := l.acquireKeys(ctx, keys); err != nil {
-		if rollErr := l.rollbackLocks(ctx, keys); rollErr != nil {
+		//rollback nodes locks
+		nodeLockKeys := lockKeys(nodeIDs, nodeLockKey)
+		if rollErr := l.rollbackLocks(ctx, nodeLockKeys); rollErr != nil {
 			return rollErr
 		}
 		return err

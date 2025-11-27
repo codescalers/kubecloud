@@ -247,6 +247,9 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		if releaseErr := svc.locker.ReleaseLock(svc.appCtx, []uint32{nodeID}, wf.UUID); releaseErr != nil {
+			err = fmt.Errorf("%w: failed to release workflow lock: %v", err, releaseErr)
+		}
 		return "", err
 	}
 

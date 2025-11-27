@@ -258,10 +258,6 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncDeployCluster(config, cluster)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start deployment workflow")
-		err = h.locker.ReleaseLock(c.Request.Context(), nodeIDs, wfUUID)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to release nodes locks")
-		}
 		InternalServerError(c)
 		return
 	}
@@ -443,10 +439,6 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncAddNode(config, cl, cluster.Nodes[0])
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start add node workflow")
-		err = h.locker.ReleaseLock(c.Request.Context(), []uint32{cluster.Nodes[0].NodeID}, wfUUID)
-		if err != nil {
-			reqLog.Error().Err(err).Msg("failed to release nodes locks")
-		}
 		InternalServerError(c)
 		return
 	}

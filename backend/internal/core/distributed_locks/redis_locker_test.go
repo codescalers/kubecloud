@@ -47,7 +47,8 @@ func TestRedisLocker_AcquireNodesLocks_NodeAlreadyLocked(t *testing.T) {
 	err := locker.AcquireNodesLocks(context.Background(), []uint32{1, 2})
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to acquire lock for key locked:2")
+	require.ErrorIs(t, err, ErrNodeLocked)
+	require.Contains(t, err.Error(), "locked:2")
 	require.Equal(t, int64(0), client.Exists(context.Background(), "locked:1").Val(), "previous locks should be rolled back")
 }
 

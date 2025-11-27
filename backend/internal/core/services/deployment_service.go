@@ -244,6 +244,11 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		if len(nodeIDs) > 0 {
+			if releaseErr := svc.locker.ReleaseLock(svc.appCtx, nodeIDs, wf.UUID); releaseErr != nil {
+				err = fmt.Errorf("%w: failed to release workflow lock: %v", err, releaseErr)
+			}
+		}
 		telemetry.RecordError(span, err)
 		return "", "", err
 	}
