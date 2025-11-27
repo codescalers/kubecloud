@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cosmos/go-bip39"
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
@@ -271,25 +270,6 @@ func (s *substrateClient) CancelContract(mnemonic string, contractID uint64) err
 	}
 
 	return s.gridClient.SubstrateConn.CancelContract(identity, contractID)
-}
-
-// GenerateMnemonic generate mnemonic
-func GenerateMnemonic() (string, error) {
-	entropy, err := bip39.NewEntropy(128)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate entropy: %w", err)
-	}
-
-	mnemonic, err := bip39.NewMnemonic(entropy)
-	if err != nil {
-		return "", fmt.Errorf("failed to generate mnemonic: %w", err)
-	}
-
-	if !bip39.IsMnemonicValid(mnemonic) {
-		return "", fmt.Errorf("generated mnemonic is not valid")
-	}
-
-	return mnemonic, nil
 }
 
 // Activates user account with activation service
