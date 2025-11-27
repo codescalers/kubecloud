@@ -390,14 +390,6 @@ github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcY
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.1.1/go.mod h1:RaEWvsqvNKKvBPvcKeFjrG2cJqOkHTiyTpzz23ni57g=
 github.com/xdg-go/stringprep v1.0.3/go.mod h1:W3f5j4i+9rC0kuIEJL0ky1VpHXQU3ocBgklLGvcBnW8=
-github.com/xmonader/ewf v0.0.0-20251123101535-96a8e622afb2 h1:Z8VQ/AhxNEPmwJ/l+ComRnNsYkhk1ISL4Utl6A1xEZA=
-github.com/xmonader/ewf v0.0.0-20251123101535-96a8e622afb2/go.mod h1:HHJAGMjQ0Ut8+zgu00GxF++LioJzDek5R6G/aYnor4E=
-github.com/xmonader/ewf v0.0.0-20251127113411-b5e57ad1386f h1:PnPkpBVtayft0zpBzfoPG1yFYUrr7j5BT8bn04zEhHA=
-github.com/xmonader/ewf v0.0.0-20251127113411-b5e57ad1386f/go.mod h1:HHJAGMjQ0Ut8+zgu00GxF++LioJzDek5R6G/aYnor4E=
-github.com/xmonader/ewf v0.0.0-20251127125313-3dd2eada12f0 h1:PR/zRv89y03fsuRz7f9Z13u1EEujs0gylGigQCKCK2Q=
-github.com/xmonader/ewf v0.0.0-20251127125313-3dd2eada12f0/go.mod h1:HHJAGMjQ0Ut8+zgu00GxF++LioJzDek5R6G/aYnor4E=
-github.com/xmonader/ewf v0.0.0-20251127140659-210bf6576e6c h1:SL8W+zqf8Lfu3XE/8ucKDBcuDK0u0Uv0IActww5eOe4=
-github.com/xmonader/ewf v0.0.0-20251127140659-210bf6576e6c/go.mod h1:HHJAGMjQ0Ut8+zgu00GxF++LioJzDek5R6G/aYnor4E=
 github.com/xmonader/ewf v0.0.0-20251127155219-5a8a59ee967f h1:CJjASv4Bxdt8tCc142xnqcXXNYO527OWNriBpGRyhQs=
 github.com/xmonader/ewf v0.0.0-20251127155219-5a8a59ee967f/go.mod h1:HHJAGMjQ0Ut8+zgu00GxF++LioJzDek5R6G/aYnor4E=
 github.com/xyproto/randomstring v1.0.5 h1:YtlWPoRdgMu3NZtP45drfy1GKoojuR7hmRcnhZqKjWU=
