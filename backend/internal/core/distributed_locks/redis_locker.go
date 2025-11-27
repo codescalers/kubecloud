@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -118,7 +119,8 @@ func (l *RedisLocker) GetLockedNodes(ctx context.Context) ([]uint32, error) {
 	}
 	nodes := make([]uint32, len(keys))
 	for i, key := range keys {
-		value, parseErr := strconv.ParseUint(key[len("locked:"):], 10, 32)
+		nodeID := strings.Split(key, ":")[1]
+		value, parseErr := strconv.ParseUint(nodeID, 10, 32)
 		if parseErr != nil {
 			return nil, fmt.Errorf("failed to parse locked node id from %s: %w", key, parseErr)
 		}

@@ -13,4 +13,5 @@ type DistributedLocks interface {
 	AcquireWorkflowLock(ctx context.Context, nodeIDs []uint32, workflowID string) error
 	ReleaseLock(ctx context.Context, nodeID uint32, workflowID string) error
 	GetAllWorkflowsLocks(ctx context.Context) ([]string, error)
+	GetLockedNodes(ctx context.Context) ([]uint32, error)
 }

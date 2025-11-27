@@ -303,3 +303,22 @@ func (svc *NodeService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 
 	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
+
+func (svc *NodeService) FilterLockedNodes(ctx context.Context, nodes []proxyTypes.Node) ([]proxyTypes.Node, error) {
+	lockedNodes, err := svc.locker.GetLockedNodes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	lockedSet := make(map[uint32]bool, len(lockedNodes))
+	for _, id := range lockedNodes {
+		lockedSet[id] = true
+	}
+	unlockedNodes := make([]proxyTypes.Node, 0, len(nodes))
+	for _, node := range nodes {
+		if lockedSet[uint32(node.NodeID)] {
+			continue
+		}
+		unlockedNodes = append(unlockedNodes, node)
+	}
+	return unlockedNodes, nil
+}

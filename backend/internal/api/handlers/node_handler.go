@@ -136,7 +136,7 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "ListNodesHandler")
 
-	rentedNodes, rentedNodesCount, err := h.svc.GetRentedNodesForUser(c.Request.Context(), userID, true)
+	rentedNodes, _, err := h.svc.GetRentedNodesForUser(c.Request.Context(), userID, true)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve rented nodes")
 		InternalServerError(c)
@@ -175,7 +175,7 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 	filter.Healthy = &healthy
 	filter.AvailableFor = &twinID
 
-	availableNodes, availableNodesCount, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, limit)
+	availableNodes, _, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve available nodes")
 		InternalServerError(c)
@@ -188,7 +188,6 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 
 	// Combine all nodes without duplicates
 	var allNodes []proxyTypes.Node
-	duplicatesCount := 0
 	seen := make(map[int]bool)
 
 	for _, node := range rentedNodes {
@@ -202,14 +201,19 @@ func (h *NodeHandler) ListNodesHandler(c *gin.Context) {
 		if !seen[node.NodeID] {
 			seen[node.NodeID] = true
 			allNodes = append(allNodes, node)
-		} else {
-			duplicatesCount++
 		}
 	}
 
+	unlockedNodes, err := h.svc.FilterLockedNodes(c.Request.Context(), allNodes)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to filter locked nodes")
+		InternalServerError(c)
+		return
+	}
+
 	OK(c, "Nodes retrieved successfully", ListNodesResponse{
-		Total: rentedNodesCount + availableNodesCount - duplicatesCount,
-		Nodes: allNodes,
+		Total: len(unlockedNodes),
+		Nodes: unlockedNodes,
 	})
 }
 
@@ -338,15 +342,22 @@ func (h *NodeHandler) ListRentableNodesHandler(c *gin.Context) {
 	limit := proxyTypes.DefaultLimit()
 	limit.Randomize = true
 
-	nodes, count, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, limit)
+	nodes, _, err := h.svc.GetZos3Nodes(c.Request.Context(), filter, limit)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to retrieve nodes")
 		InternalServerError(c)
 		return
 	}
 
+	unlockedNodes, err := h.svc.FilterLockedNodes(c.Request.Context(), nodes)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to filter locked nodes")
+		InternalServerError(c)
+		return
+	}
+
 	var nodesWithDiscount []NodesWithDiscount
-	for _, node := range nodes {
+	for _, node := range unlockedNodes {
 		nodesWithDiscount = append(nodesWithDiscount, NodesWithDiscount{
 			Node:          node,
 			DiscountPrice: node.PriceUsd * 0.5,
@@ -354,7 +365,7 @@ func (h *NodeHandler) ListRentableNodesHandler(c *gin.Context) {
 	}
 
 	OK(c, "Nodes are retrieved successfully", ListNodesWithDiscountResponse{
-		Total: count,
+		Total: len(nodesWithDiscount),
 		Nodes: nodesWithDiscount,
 	})
 }

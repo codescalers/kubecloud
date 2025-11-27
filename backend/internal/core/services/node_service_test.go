@@ -1,14 +1,53 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"kubecloud/internal/core/models"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
+
+type MockDistributedLocks struct {
+	mock.Mock
+}
+
+func (m *MockDistributedLocks) GetLockedNodes(ctx context.Context) ([]uint32, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uint32), args.Error(1)
+}
+
+func (m *MockDistributedLocks) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) error {
+
+	args := m.Called(ctx, nodeIDs)
+	return args.Error(0)
+}
+
+func (m *MockDistributedLocks) AcquireWorkflowLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
+	args := m.Called(ctx, nodeIDs, workflowID)
+	return args.Error(0)
+}
+
+func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, nodeID uint32, workflowID string) error {
+	args := m.Called(ctx, nodeID, workflowID)
+	return args.Error(0)
+}
+
+func (m *MockDistributedLocks) GetAllWorkflowsLocks(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]string), args.Error(1)
+}
 
 // Test 1: NodeService - GetUserNodeByNodeID SUCCESS
 func TestNodeService_GetUserNodeByNodeID_Success(t *testing.T) {
@@ -136,4 +175,57 @@ func TestNodeService_GetUserByID_NotFound(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "user not found")
+}
+
+// Test 7: NodeService - FilterLockedNodes SUCCESS
+func TestNodeService_FilterLockedNodes_Success(t *testing.T) {
+	mockLocker := new(MockDistributedLocks)
+	mockNodesRepo := new(mockUserNodesRepo)
+	mockUserRepo := new(mockUserRepo)
+
+	nodes := []proxyTypes.Node{
+		{NodeID: 100},
+		{NodeID: 101},
+		{NodeID: 102},
+	}
+
+	mockLocker.On("GetLockedNodes", context.Background()).Return([]uint32{101}, nil)
+
+	service := NodeService{
+		locker:    mockLocker,
+		nodesRepo: mockNodesRepo,
+		userRepo:  mockUserRepo,
+	}
+
+	unlockedNodes, err := service.FilterLockedNodes(context.Background(), nodes)
+
+	require.NoError(t, err)
+	assert.Equal(t, []proxyTypes.Node{nodes[0], nodes[2]}, unlockedNodes)
+}
+
+// Test 8: NodeService - FilterLockedNodes ERROR
+func TestNodeService_FilterLockedNodes_Error(t *testing.T) {
+	mockLocker := new(MockDistributedLocks)
+	mockNodesRepo := new(mockUserNodesRepo)
+	mockUserRepo := new(mockUserRepo)
+
+	mockLocker.On("GetLockedNodes", context.Background()).Return(nil, fmt.Errorf("locked nodes error"))
+
+	nodes := []proxyTypes.Node{
+		{NodeID: 100},
+		{NodeID: 101},
+		{NodeID: 102},
+	}
+
+	service := NodeService{
+		locker:    mockLocker,
+		nodesRepo: mockNodesRepo,
+		userRepo:  mockUserRepo,
+	}
+
+	unlockedNodes, err := service.FilterLockedNodes(context.Background(), nodes)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "locked nodes error")
+	assert.Empty(t, unlockedNodes)
 }
