@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"math/rand/v2"
 	"net/url"
@@ -17,12 +18,14 @@ import (
 )
 
 type NodeHandler struct {
-	svc services.NodeService
+	svc    services.NodeService
+	locker distributedlocks.DistributedLocks
 }
 
-func NewNodeHandler(svc services.NodeService) NodeHandler {
+func NewNodeHandler(svc services.NodeService, locker distributedlocks.DistributedLocks) NodeHandler {
 	return NodeHandler{
-		svc: svc,
+		svc:    svc,
+		locker: locker,
 	}
 }
 
@@ -287,6 +290,16 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	if err := h.svc.CheckUserBalanceForOneHour(c.Request.Context(), user.Mnemonic, user.Debt, node.PriceUsd); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check user balance")
 		BadRequest(c, "You should at least have enough balance for one hour")
+		return
+	}
+
+	if err = h.locker.AcquireNodesLocks(c.Request.Context(), []uint32{nodeID}); err != nil {
+		reqLog.Error().Err(err).Msg("failed to acquire nodes locks")
+		if errors.Is(err, distributedlocks.ErrNodeLocked) {
+			Conflict(c, err.Error())
+			return
+		}
+		InternalServerError(c)
 		return
 	}
 

@@ -218,10 +218,6 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 }
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
-	if err := svc.locker.AcquireNodesLocks(svc.appCtx, []uint32{nodeID}); err != nil {
-		return "", err
-	}
-
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 	displayName := fmt.Sprintf("Reserving node %d", nodeID)
 	metadata := map[string]string{
@@ -243,6 +239,10 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		return "", err
+	}
+
+	if err = svc.locker.AcquireWorkflowLock(svc.appCtx, []uint32{nodeID}, wf.UUID); err != nil {
 		return "", err
 	}
 

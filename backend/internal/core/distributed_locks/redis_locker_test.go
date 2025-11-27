@@ -55,13 +55,11 @@ func TestRedisLocker_AcquireWorkflowLock(t *testing.T) {
 	client := newTestRedisClient(t)
 	locker := &RedisLocker{client: client, lockTimeout: time.Minute}
 
-	ok, err := locker.AcquireWorkflowLock(context.Background(), 1, "wf-1")
+	err := locker.AcquireWorkflowLock(context.Background(), []uint32{1}, "wf-1")
 	require.NoError(t, err)
-	require.True(t, ok)
 
-	ok, err = locker.AcquireWorkflowLock(context.Background(), 1, "wf-1")
-	require.NoError(t, err)
-	require.False(t, ok)
+	err = locker.AcquireWorkflowLock(context.Background(), []uint32{1}, "wf-1")
+	require.Error(t, err)
 }
 
 func TestRedisLocker_ReleaseLock(t *testing.T) {

@@ -210,7 +210,7 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
 
-func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string) (string, ewf.WorkflowStatus, error) {
+func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string, nodeIDs []uint32) (workflowID string, status ewf.WorkflowStatus, err error) {
 	_, span := svc.tracer.StartSpan(context.Background(), "handleDeploymentAction")
 	defer span.End()
 
@@ -235,6 +235,14 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 		return "", "", err
 	}
 
+	if len(nodeIDs) > 0 {
+
+		if err = svc.locker.AcquireWorkflowLock(svc.appCtx, nodeIDs, wf.UUID); err != nil {
+			return "", "", err
+		}
+
+	}
+
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		telemetry.RecordError(span, err)
 		return "", "", err
@@ -252,10 +260,6 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 	for _, node := range cluster.Nodes {
 		nodeIDs = append(nodeIDs, node.NodeID)
 	}
-	if err := svc.locker.AcquireNodesLocks(svc.appCtx, nodeIDs); err != nil {
-		return "", "", err
-	}
-
 	state := ewf.State{
 		"config":  config,
 		"cluster": cluster,
@@ -266,7 +270,7 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster_name": cluster.Name,
 		"node_count":   strconv.Itoa(len(cluster.Nodes)),
 	}
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeployCluster, state, displayName, metadata)
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeployCluster, state, displayName, metadata, nodeIDs)
 }
 
 func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfig, projectName string) (string, ewf.WorkflowStatus, error) {
@@ -280,7 +284,7 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 	metadata := map[string]string{
 		"project_name": projectName,
 	}
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteCluster, state, displayName, metadata)
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteCluster, state, displayName, metadata, nil)
 }
 
 func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientConfig) (string, ewf.WorkflowStatus, error) {
@@ -290,14 +294,10 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 	}
 
 	displayName := "Deleting all user clusters"
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state, displayName, nil)
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state, displayName, nil, nil)
 }
 
 func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, node kubedeployer.Node) (string, ewf.WorkflowStatus, error) {
-
-	if err := svc.locker.AcquireNodesLocks(svc.appCtx, []uint32{node.NodeID}); err != nil {
-		return "", "", err
-	}
 
 	state := ewf.State{
 		"config":  config,
@@ -309,7 +309,7 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"cluster_name": cl.Name,
 		"node_name":    node.Name,
 	}
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state, displayName, metadata)
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state, displayName, metadata, []uint32{node.NodeID})
 }
 
 func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, nodeName string) (string, ewf.WorkflowStatus, error) {
@@ -325,5 +325,5 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 		"cluster_name": cl.Name,
 		"node_name":    nodeName,
 	}
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state, displayName, metadata)
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state, displayName, metadata, nil)
 }
