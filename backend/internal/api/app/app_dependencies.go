@@ -67,7 +67,7 @@ type appCore struct {
 	db             models.DB
 	metrics        *metrics.Metrics
 	ewfEngine      *ewf.Engine
-	locker    distributedlocks.DistributedLocks
+	locker         distributedlocks.DistributedLocks
 	tracerProvider *telemetry.TracerProvider
 }
 
@@ -169,14 +169,14 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
-	locker := distributedlocks.NewRedisLocker(client, time.Duration(config.Redis.LockTimeoutInHours)*time.Hour)
+	locker := distributedlocks.NewRedisLocker(client, time.Duration(config.Locks.LockTimeoutInHours)*time.Hour)
 
 	return appCore{
 		appCtx:         ctx,
 		db:             db,
 		metrics:        metrics.NewMetrics(),
 		ewfEngine:      ewfEngine,
-		locker:    locker,
+		locker:         locker,
 		tracerProvider: tp,
 	}, nil
 }
@@ -401,7 +401,7 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours, app.config.CheckUserDebtIntervalInHours,
-		app.config.LocksReleaseIntervalInMinutes,
+		app.config.Locks.LocksReleaseIntervalInMinutes,
 		app.core.locker,
 	)
 
