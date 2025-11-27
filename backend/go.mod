@@ -30,7 +30,7 @@ require (
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.4
 	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.4
 	github.com/vedhavyas/go-subkey v1.0.3
-	github.com/xmonader/ewf v0.0.0-20251123101535-96a8e622afb2
+	github.com/xmonader/ewf v0.0.0-20251127125313-3dd2eada12f0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.63.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0

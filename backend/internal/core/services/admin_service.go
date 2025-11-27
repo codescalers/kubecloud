@@ -268,6 +268,7 @@ type AdminWorkflow struct {
 	CreatedAt   time.Time         `json:"created_at"`
 	QueueName   string            `json:"queue_name"`
 	Metadata    map[string]string `json:"metadata"`
+	Error       string            `json:"error"`
 }
 
 // ListAllWorkflows returns all workflows with optional filtering by status
@@ -371,6 +372,7 @@ func (svc *AdminService) convertToAdminWorkflows(workflows []*ewf.Workflow) []Ad
 			CreatedAt:   wf.CreatedAt,
 			QueueName:   wf.QueueName,
 			Metadata:    wf.Metadata,
+			Error:       wf.Error,
 		})
 	}
 
