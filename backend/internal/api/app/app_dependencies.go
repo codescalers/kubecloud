@@ -7,6 +7,7 @@ import (
 	"kubecloud/internal/auth"
 	"kubecloud/internal/billing"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/queuing"
@@ -66,6 +67,7 @@ type appCore struct {
 	db             models.DB
 	metrics        *metrics.Metrics
 	ewfEngine      *ewf.Engine
+	locker    distributedlocks.DistributedLocks
 	tracerProvider *telemetry.TracerProvider
 }
 
@@ -167,11 +169,14 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
+	locker := distributedlocks.NewRedisLocker(client, time.Duration(config.Redis.LockTimeoutInHours)*time.Hour)
+
 	return appCore{
 		appCtx:         ctx,
 		db:             db,
 		metrics:        metrics.NewMetrics(),
 		ewfEngine:      ewfEngine,
+		locker:    locker,
 		tracerProvider: tp,
 	}, nil
 }
@@ -334,6 +339,7 @@ func (app *App) createHandlers() appHandlers {
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
 		app.infra.gridClient,
+		app.core.locker,
 	)
 
 	invoiceService := services.NewInvoiceService(
@@ -342,6 +348,7 @@ func (app *App) createHandlers() appHandlers {
 
 	deploymentService := services.NewDeploymentService(
 		app.core.appCtx, clusterRepo, userRepo, userNodesRepo, app.core.ewfEngine,
+		app.core.locker,
 		app.config.Debug, app.security.sshPublicKey, app.config.SSH.PrivateKeyPath, app.config.SystemAccount.Network,
 	)
 
@@ -394,6 +401,8 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours, app.config.CheckUserDebtIntervalInHours,
+		app.config.LocksReleaseIntervalInMinutes,
+		app.core.locker,
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)

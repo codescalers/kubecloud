@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"kubecloud/internal/billing"
 	"kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/gridclient"
@@ -13,6 +14,9 @@ import (
 	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
+	"slices"
+	"strconv"
+	"strings"
 
 	"sync"
 	"time"
@@ -49,6 +53,9 @@ type WorkerService struct {
 	reservedNodeHealthCheckWorkersNum       int
 	monitorBalanceIntervalInMinutes         int
 	notifyAdminsForPendingRecordsInHours    int
+	locksReleaseIntervalInMinutes           int
+
+	locker distributedlocks.DistributedLocks
 	usersBalanceCheckIntervalInHours        int
 }
 
@@ -61,7 +68,8 @@ func NewWorkersService(
 	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
-	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
+	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours, locksReleaseIntervalInMinutes int,
+	locker distributedlocks.DistributedLocks,
 	usersBalanceCheckIntervalInHours int,
 	checkUserDebtIntervalInHours int,
 ) WorkerService {
@@ -80,6 +88,8 @@ func NewWorkersService(
 		firesquidClient:        firesquidClient,
 		gridClient:             gridClient,
 
+		locker: locker,
+
 		systemMnemonic:     systemMnemonic,
 		invoiceCompanyData: invoiceCompanyData,
 		currency:           currency,
@@ -91,6 +101,7 @@ func NewWorkersService(
 		reservedNodeHealthCheckWorkersNum:       reservedNodeHealthCheckWorkersNum,
 		monitorBalanceIntervalInMinutes:         monitorBalanceIntervalInMinutes,
 		notifyAdminsForPendingRecordsInHours:    notifyAdminsForPendingRecordsInHours,
+		locksReleaseIntervalInMinutes:           locksReleaseIntervalInMinutes,
 		usersBalanceCheckIntervalInHours:        usersBalanceCheckIntervalInHours,
 	}
 }
@@ -134,6 +145,10 @@ func (svc WorkerService) GetMonitorBalanceInterval() time.Duration {
 
 func (svc WorkerService) GetNotifyAdminsForPendingRecordsInterval() time.Duration {
 	return time.Duration(svc.notifyAdminsForPendingRecordsInHours) * time.Hour
+}
+
+func (svc WorkerService) GetLocksReleaseInterval() time.Duration {
+	return time.Duration(svc.locksReleaseIntervalInMinutes) * time.Minute
 }
 
 func (svc WorkerService) GetUsersBalanceCheckInterval() time.Duration {
@@ -470,6 +485,38 @@ func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
 	}
 
 	return svc.ewfEngine.Run(svc.ctx, wf, ewf.WithAsync())
+}
+
+func (svc WorkerService) GetAllWorkflowsLocks() ([]string, error) {
+	return svc.locker.GetAllWorkflowsLocks(svc.ctx)
+}
+
+func (svc WorkerService) ReleaseLocks(key string) error {
+	keyParts := strings.Split(key, ":")
+	if len(keyParts) != 3 {
+		return fmt.Errorf("invalid lock key format: %s", key)
+	}
+
+	nodeID, err := strconv.ParseUint(keyParts[1], 10, 32)
+	if err != nil {
+		return fmt.Errorf("invalid node ID: %w", err)
+	}
+
+	workflowID := keyParts[2]
+	workflow, err := svc.ewfEngine.Store().LoadWorkflowByUUID(svc.ctx, workflowID)
+	if err != nil {
+		return fmt.Errorf("failed to load workflow by UUID: %w", err)
+	}
+
+	if !slices.Contains([]ewf.WorkflowStatus{ewf.StatusCompleted, ewf.StatusFailed}, workflow.Status) {
+		return nil
+	}
+
+	if err := svc.locker.ReleaseLock(svc.ctx, uint32(nodeID), workflowID); err != nil {
+		return fmt.Errorf("failed to release nodes locks: %w", err)
+	}
+
+	return nil
 }
 
 func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) error {

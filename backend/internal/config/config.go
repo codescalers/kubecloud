@@ -34,6 +34,7 @@ type Configuration struct {
 	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	LocksReleaseIntervalInMinutes        int                           `json:"locks_release_interval_in_minutes" validate:"required,gt=0" default:"5"`
 	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	UsersBalanceCheckIntervalInHours     int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
 	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
@@ -50,10 +51,11 @@ type SSHConfig struct {
 }
 
 type RedisConfig struct {
-	Hostname string `json:"hostname" validate:"hostname|ip|url"`
-	Port     int    `json:"port" validate:"min=1,max=65535"`
-	Password string `json:"password"`
-	DB       int    `json:"db" validate:"min=0"`
+	Hostname           string `json:"hostname" validate:"hostname|ip|url"`
+	Port               int    `json:"port" validate:"min=1,max=65535"`
+	Password           string `json:"password"`
+	DB                 int    `json:"db" validate:"min=0"`
+	LockTimeoutInHours int    `json:"lock_timeout_in_hours" validate:"required,min=1" default:"1"`
 }
 
 // Server struct holds server's information
@@ -389,6 +391,14 @@ func applyDefaultValues(config *Configuration) {
 	}
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
+
+	if config.Redis.LockTimeoutInHours == 0 {
+		config.Redis.LockTimeoutInHours = 24
+	}
+
+	if config.LocksReleaseIntervalInMinutes == 0 {
+		config.LocksReleaseIntervalInMinutes = 5
 	}
 
 	if config.Telemetry.OTLPEndpoint == "" {

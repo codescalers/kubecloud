@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
@@ -29,12 +30,14 @@ type NodeService struct {
 	appCtx     context.Context
 	ewfEngine  *ewf.Engine
 	gridClient gridclient.GridClient
+	locker          distributedlocks.DistributedLocks
 	tracer     *telemetry.ServiceTracer
 }
 
 func NewNodeService(
 	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
 	appCtx context.Context, ewfEngine *ewf.Engine, gridClient gridclient.GridClient,
+	locker distributedlocks.DistributedLocks,
 ) NodeService {
 	return NodeService{
 		nodesRepo:  userNodesRepo,
@@ -42,6 +45,7 @@ func NewNodeService(
 		appCtx:     appCtx,
 		ewfEngine:  ewfEngine,
 		gridClient: gridClient,
+		locker:          locker,
 		tracer:     telemetry.NewServiceTracer("node_service"),
 	}
 }
@@ -214,6 +218,10 @@ func (svc *NodeService) GetRentedNodesForUser(ctx context.Context, userID int, h
 }
 
 func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID uint32) (string, error) {
+	if err := svc.locker.AcquireNodesLocks(svc.appCtx, []uint32{nodeID}); err != nil {
+		return "", err
+	}
+
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 	displayName := fmt.Sprintf("Reserving node %d", nodeID)
 	metadata := map[string]string{

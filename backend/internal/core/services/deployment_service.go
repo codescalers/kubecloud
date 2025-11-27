@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
@@ -27,6 +28,8 @@ type DeploymentService struct {
 	ewfEngine *ewf.Engine
 	tracer    *telemetry.ServiceTracer
 
+	locker distributedlocks.DistributedLocks
+
 	// configs
 	debug             bool
 	sshPublicKey      string
@@ -37,6 +40,7 @@ type DeploymentService struct {
 func NewDeploymentService(appCtx context.Context,
 	clusterRepo models.ClusterRepository, userRepo models.UserRepository,
 	userNodesRepo models.UserNodesRepository, ewfEngine *ewf.Engine,
+	locker distributedlocks.DistributedLocks,
 	debug bool, sshPublicKey, sshPrivateKeyPath, systemNetwork string,
 ) DeploymentService {
 	return DeploymentService{
@@ -46,6 +50,8 @@ func NewDeploymentService(appCtx context.Context,
 		appCtx:    appCtx,
 		ewfEngine: ewfEngine,
 		tracer:    telemetry.NewServiceTracer("deployment_service"),
+
+		locker: locker,
 
 		debug:             debug,
 		sshPublicKey:      sshPublicKey,
@@ -242,6 +248,13 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 }
 
 func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
+	nodeIDs := make([]uint32, 0, len(cluster.Nodes))
+	for _, node := range cluster.Nodes {
+		nodeIDs = append(nodeIDs, node.NodeID)
+	}
+	if err := svc.locker.AcquireNodesLocks(svc.appCtx, nodeIDs); err != nil {
+		return "", "", err
+	}
 
 	state := ewf.State{
 		"config":  config,
@@ -281,6 +294,10 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 }
 
 func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, node kubedeployer.Node) (string, ewf.WorkflowStatus, error) {
+
+	if err := svc.locker.AcquireNodesLocks(svc.appCtx, []uint32{node.NodeID}); err != nil {
+		return "", "", err
+	}
 
 	state := ewf.State{
 		"config":  config,
