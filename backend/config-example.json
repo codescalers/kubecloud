@@ -57,13 +57,15 @@
 		"reserved_node_health_check_workers_num": 10
 	},
   "logger": {
-    "log_dir": "./app/logs",
+    "log_dir": "./logs",
     "max_size": 512,
     "max_backups": 12,
     "max_age": 30,
     "compress": true
   },
   "loki": {
+		"url": "http://loki:3100/loki/api/v1/push",
+    "flush_interval_second": 5,
     "labels": {
       "app": "myceliumCloud",
       "env": "dev",

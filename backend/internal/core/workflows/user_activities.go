@@ -72,6 +72,9 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 
 		if err == models.ErrUserNotFound {
 			if err = userRepo.RegisterUser(&user); err != nil {
+				if models.IsUniqueViolation(err) {
+					return fmt.Errorf("user with this email already exists (possibly soft-deleted): %w", err)
+				}
 				return fmt.Errorf("user registration failed: %w", err)
 			}
 			return nil
