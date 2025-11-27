@@ -491,32 +491,41 @@ func (svc WorkerService) GetAllWorkflowsLocks() ([]string, error) {
 	return svc.locker.GetAllWorkflowsLocks(svc.ctx)
 }
 
-func (svc WorkerService) ReleaseLocks(key string) error {
-	keyParts := strings.Split(key, ":")
-	if len(keyParts) != 3 {
-		return fmt.Errorf("invalid lock key format: %s", key)
+func (svc WorkerService) ReleaseLocks(keys []string) {
+	log := logger.ForOperation("locks_worker", "release_locks")
+	workflowsNodes := map[string][]uint32{}
+	for _, key := range keys {
+		parts := strings.Split(key, ":")
+		if len(parts) != 3 {
+			log.Error().Str("key", key).Msg("invalid lock key format")
+			continue
+		}
+
+		workflowID := parts[2]
+		nodeID, err := strconv.ParseUint(parts[1], 10, 32)
+		if err != nil {
+			log.Error().Str("key", key).Msg("invalid node ID")
+			continue
+		}
+		workflowsNodes[workflowID] = append(workflowsNodes[workflowID], uint32(nodeID))
 	}
 
-	nodeID, err := strconv.ParseUint(keyParts[1], 10, 32)
-	if err != nil {
-		return fmt.Errorf("invalid node ID: %w", err)
+	for workflowID := range workflowsNodes {
+		workflow, err := svc.ewfEngine.Store().LoadWorkflowByUUID(svc.ctx, workflowID)
+		if err != nil {
+			log.Error().Str("workflow_id", workflowID).Msg("failed to load workflow")
+			continue
+		}
+		if !slices.Contains([]ewf.WorkflowStatus{ewf.StatusCompleted, ewf.StatusFailed}, workflow.Status) {
+			continue
+		}
+		nodeIDs := workflowsNodes[workflowID]
+		if err := svc.locker.ReleaseLock(svc.ctx, nodeIDs, workflowID); err != nil {
+			log.Error().Str("workflow_id", workflow.UUID).Msg("failed to release locks")
+			continue
+		}
 	}
 
-	workflowID := keyParts[2]
-	workflow, err := svc.ewfEngine.Store().LoadWorkflowByUUID(svc.ctx, workflowID)
-	if err != nil {
-		return fmt.Errorf("failed to load workflow by UUID: %w", err)
-	}
-
-	if !slices.Contains([]ewf.WorkflowStatus{ewf.StatusCompleted, ewf.StatusFailed}, workflow.Status) {
-		return nil
-	}
-
-	if err := svc.locker.ReleaseLock(svc.ctx, uint32(nodeID), workflowID); err != nil {
-		return fmt.Errorf("failed to release nodes locks: %w", err)
-	}
-
-	return nil
 }
 
 func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) error {

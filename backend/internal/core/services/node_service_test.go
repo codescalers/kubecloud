@@ -36,8 +36,8 @@ func (m *MockDistributedLocks) AcquireWorkflowLock(ctx context.Context, nodeIDs 
 	return args.Error(0)
 }
 
-func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, nodeID uint32, workflowID string) error {
-	args := m.Called(ctx, nodeID, workflowID)
+func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
+	args := m.Called(ctx, nodeIDs, workflowID)
 	return args.Error(0)
 }
 

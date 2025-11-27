@@ -25,12 +25,7 @@ func (w Workers) ReleaseWorkflowLocks() {
 			if len(keys) == 0 {
 				continue
 			}
-
-			for _, key := range keys {
-				if err := w.svc.ReleaseLocks(key); err != nil {
-					log.Error().Err(err).Str("key", key).Msg("failed to release lock")
-				}
-			}
+			w.svc.ReleaseLocks(keys)
 		}
 	}
 }

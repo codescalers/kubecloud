@@ -214,7 +214,7 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "locks.lock_timeout_in_hours", 24, "Redis lock timeout (hours)"); err != nil {
 		return fmt.Errorf("failed to bind locks.lock_timeout_in_hours flag: %w", err)
 	}
-	if err := bindIntFlag(rootCmd, "locks.locks_release_interval_in_minutes", 5, "Locks release interval (minutes)"); err != nil {
+	if err := bindIntFlag(rootCmd, "locks.locks_release_interval_in_minutes", 2, "Locks release interval (minutes)"); err != nil {
 		return fmt.Errorf("failed to bind locks.locks_release_interval_in_minutes flag: %w", err)
 	}
 

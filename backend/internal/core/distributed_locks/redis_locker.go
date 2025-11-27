@@ -101,10 +101,13 @@ func (l *RedisLocker) rollbackLocks(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (l *RedisLocker) ReleaseLock(ctx context.Context, nodeID uint32, workflowID string) error {
-	lockedKey := nodeLockKey(nodeID)
-	usedKey := workflowLockKey(nodeID, workflowID)
-	return l.client.Del(ctx, lockedKey, usedKey).Err()
+func (l *RedisLocker) ReleaseLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
+	lockedKeys := lockKeys(nodeIDs, nodeLockKey)
+	usedKeys := lockKeys(nodeIDs, func(id uint32) string {
+		return workflowLockKey(id, workflowID)
+	})
+	allWorkflowsLocks := append(lockedKeys, usedKeys...)
+	return l.client.Del(ctx, allWorkflowsLocks...).Err()
 }
 
 // GetAllWorkflowsLocks gets all workflow locks.

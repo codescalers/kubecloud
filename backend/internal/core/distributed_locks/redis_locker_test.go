@@ -69,7 +69,7 @@ func TestRedisLocker_ReleaseLock(t *testing.T) {
 	require.NoError(t, client.Set(context.Background(), "locked:1", 1, 0).Err())
 	require.NoError(t, client.Set(context.Background(), "used:1:wf-1", 1, 0).Err())
 
-	err := locker.ReleaseLock(context.Background(), 1, "wf-1")
+	err := locker.ReleaseLock(context.Background(), []uint32{1}, "wf-1")
 
 	require.NoError(t, err)
 	require.Equal(t, int64(0), client.Exists(context.Background(), "locked:1").Val())

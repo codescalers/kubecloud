@@ -399,7 +399,7 @@ func applyDefaultValues(config *Configuration) {
 		config.Locks.LockTimeoutInHours = 24
 	}
 	if config.Locks.LocksReleaseIntervalInMinutes == 0 {
-		config.Locks.LocksReleaseIntervalInMinutes = 5
+		config.Locks.LocksReleaseIntervalInMinutes = 2
 	}
 
 	if config.Telemetry.OTLPEndpoint == "" {

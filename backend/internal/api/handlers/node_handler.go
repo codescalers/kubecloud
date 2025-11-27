@@ -310,6 +310,10 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncReserveNode(userID, user.Mnemonic, nodeID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start workflow to reserve node")
+		err = h.locker.ReleaseLock(c.Request.Context(), []uint32{nodeID}, wfUUID)
+		if err != nil {
+			reqLog.Error().Err(err).Msg("failed to release nodes locks")
+		}
 		InternalServerError(c)
 		return
 	}
