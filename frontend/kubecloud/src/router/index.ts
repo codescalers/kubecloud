@@ -1,4 +1,9 @@
-import { createRouter, createWebHistory, type NavigationGuardNext, type RouteLocationNormalizedGeneric } from 'vue-router'
+import {
+  createRouter,
+  createWebHistory,
+  type NavigationGuardNext,
+  type RouteLocationNormalizedGeneric,
+} from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import { useUserStore } from '../stores/user'
 import { useMaintenanceStore } from '../stores/maintenance'
@@ -20,19 +25,19 @@ const router = createRouter({
       path: '/sign-in',
       name: 'sign-in',
       component: () => import('../views/SignInView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/sign-up',
       name: 'sign-up',
       component: () => import('../views/SignUpView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/UserDashboard.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/features',
@@ -44,13 +49,13 @@ const router = createRouter({
       name: 'manage-cluster',
       component: () => import('../components/dashboard/ManageClusterView.vue'),
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/deploy',
       name: 'deploy-cluster',
       component: () => import('../views/DeployClusterView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/nodes',
@@ -71,35 +76,35 @@ const router = createRouter({
       path: '/admin',
       name: 'admin-dashboard',
       component: () => import('../views/AdminDashboard.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
     {
       path: '/register/verify',
       name: 'register-verify',
       component: () => import('../views/RegisterVerifyView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('../views/ForgotPasswordView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/pending-requests',
       name: 'pending-requests',
-      component: () => import('../views/PendingRecordsView.vue')
+      component: () => import('../views/PendingRecordsView.vue'),
     },
     {
       path: '/maintenance',
       name: 'maintenance',
-      component: () => import('../components/MaintenanceView.vue')
+      component: () => import('../components/MaintenanceView.vue'),
     },
     {
       path: '/notifications',
       name: 'notifications',
       component: () => import('../views/NotificationsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/terms-and-conditions',
@@ -115,7 +120,7 @@ const router = createRouter({
   scrollBehavior() {
     // Always scroll to top on route change
     return { top: 0 }
-  }
+  },
 })
 
 /**
@@ -124,8 +129,12 @@ const router = createRouter({
  * @param next - Navigation function
  * @returns true if navigation was handled, false if should continue
  */
-async function handleMaintenanceCheck(to: RouteLocationNormalizedGeneric, next: NavigationGuardNext): Promise<boolean> {
+async function handleMaintenanceCheck(
+  to: RouteLocationNormalizedGeneric,
+  next: NavigationGuardNext,
+): Promise<boolean> {
   const maintenanceStore = useMaintenanceStore()
+  const userStore = useUserStore()
   const lastChecked = maintenanceStore.lastChecked
   // Check maintenance status if not checked recently (within last hour)
   if (!lastChecked || lastChecked.getTime() < Date.now() - 60 * 60 * 1000) {
@@ -136,33 +145,39 @@ async function handleMaintenanceCheck(to: RouteLocationNormalizedGeneric, next: 
       return false // Continue with normal routing on error
     }
   }
-  
+
   if (to.path === '/maintenance' && !maintenanceStore.isMaintenanceMode) {
     next('/')
-    return true   
+    return true
   }
-  
+
   if (maintenanceStore.isMaintenanceMode) {
     // Allow access to maintenance page itself
     if (to.path === '/maintenance') {
       next()
-      return true 
+      return true
     }
+    // Allow admin routes during maintenance mode if user is admin
+    if (to.meta.requiresAdmin && userStore.isAdmin) {
+      next()
+      return true
+    }
+    // Allow public routes during maintenance
     if (maintenanceStore.isRouteAllowed(to.path)) {
       next()
-      return true 
+      return true
     }
     next('/maintenance')
-    return true 
+    return true
   }
-  
-  return false 
+
+  return false
 }
 
 router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
   const maintenanceStore = useMaintenanceStore()
-  
+
   // Handle maintenance mode checks
   const maintenanceHandled = await handleMaintenanceCheck(to, next)
   if (maintenanceHandled) {
@@ -201,7 +216,7 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
     // Not an admin, redirect to dashboard
     return next('/dashboard')
-  }  // For public routes (home, features, etc.), allow access to everyone
+  } // For public routes (home, features, etc.), allow access to everyone
   next()
 })
 
