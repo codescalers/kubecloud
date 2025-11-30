@@ -149,6 +149,7 @@ func hookClusterHealthCheck(notificationService *notification.NotificationDispat
 			Failure(message, err).
 			WithSubject("Cluster health check failed").
 			WithChannels(notification.ChannelEmail).
+			WithExtra("workflow_name", getWorkflowDisplayName(wf)).
 			Build()
 
 		if err := notificationService.Send(ctx, notif); err != nil {
