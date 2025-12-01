@@ -6,10 +6,13 @@ import (
 )
 
 var ErrVoucherNotFound = fmt.Errorf("voucher is not found")
+var ErrVoucherRedeemed = fmt.Errorf("unredeemed voucher with this code is not found")
 
 // Voucher struct holds all data for vouchers, voucher used only by one user.db.
 type Voucher struct {
 	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    int       `json:"user_id"`
+	Username  string    `json:"username"`
 	Code      string    `json:"code" gorm:"unique;not null" validate:"required"`
 	Value     float64   `json:"value" gorm:"not null" validate:"required,gt=0"`
 	Redeemed  bool      `json:"redeemed" gorm:"default:false"`

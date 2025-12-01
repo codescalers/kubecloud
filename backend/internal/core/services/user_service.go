@@ -279,7 +279,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 }
 
 func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, userMnemonic, userUsername, voucherCode string) (string, error) {
-	err := svc.voucherRepo.RedeemVoucher(voucherCode)
+	err := svc.voucherRepo.RedeemVoucher(userID, userUsername, voucherCode)
 	if err != nil {
 		return "", err
 	}
