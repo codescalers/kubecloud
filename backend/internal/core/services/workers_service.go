@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/billing"
-	cfg "kubecloud/internal/config"
+	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -41,7 +42,7 @@ type WorkerService struct {
 
 	// configs
 	systemMnemonic                          string
-	invoiceCompanyData                      cfg.InvoiceCompanyData
+	invoiceCompanyData                      config.InvoiceCompanyData
 	currency                                string
 	clusterHealthCheckIntervalInHours       int
 	reservedNodeHealthCheckIntervalInHours  int
@@ -57,7 +58,7 @@ func NewWorkersService(
 	mailService mailservice.MailService,
 	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
-	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
+	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
@@ -204,11 +205,14 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		return err
 	}
 
-	subject, body := svc.mailService.InvoiceMailContent(totalInvoiceCostUSD, svc.currency, invoice.ID)
-	return svc.mailService.SendMailFromSystem(user.Email, subject, body, mailservice.Attachment{
-		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
-		Data:     invoice.FileData,
-	})
+	attachments := []mailsender.Attachment{
+		{
+			FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
+			Data:     invoice.FileData,
+		},
+	}
+
+	return svc.mailService.SendInvoiceMail(user.Email, totalInvoiceCostUSD, svc.currency, invoice.ID, attachments)
 }
 
 func (svc WorkerService) UpdateUserDebt() error {
@@ -416,7 +420,6 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 }
 
 func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingRecord) error {
-	subject, body := svc.mailService.NotifyAdminsMailContent(len(records))
 
 	admins, err := svc.userRepo.ListAdmins()
 	if err != nil {
@@ -424,7 +427,7 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingR
 	}
 
 	for _, admin := range admins {
-		err = svc.mailService.SendMailFromSystem(admin.Email, subject, body)
+		err = svc.mailService.SendNotifyAdminsEmail(admin.Email, len(records))
 		if err != nil {
 			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue
