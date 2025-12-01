@@ -29,7 +29,7 @@ func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkf
 			log.Info().Msg("Suppressing notification for workflow")
 			return
 		}
-	
+
 		config, err := getConfig(w.State)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to get config from state")
