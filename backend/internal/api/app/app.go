@@ -218,6 +218,7 @@ func (app *App) registerHandlers() {
 func (app *App) StartBackgroundWorkers() {
 	go app.workers.MonthlyInvoicesHandler()
 	go app.workers.TrackUserDebt()
+	go app.workers.TrackUsersBalance()
 	go app.workers.MonitorSystemBalanceAndHandleSettlement()
 	go app.workers.TrackClusterHealth()
 	go app.workers.TrackReservedNodeHealth()
