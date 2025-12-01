@@ -2,6 +2,7 @@ package mailcontentformatter
 
 import (
 	"fmt"
+	"kubecloud/internal/core/models"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -73,4 +74,13 @@ func (f MailTextFormatter) FormatNotifyAdminsMailContent(recordsNumber int, syst
 	)
 
 	return subject, body
+}
+
+func (f MailTextFormatter) FormatNotificationMailContent(notification models.Notification) (string, string, error) {
+	subject := notification.Payload["subject"]
+	if subject == "" {
+		subject = fmt.Sprintf("%s notification", cases.Title(language.Und).String(string(notification.Type)))
+	}
+
+	return subject, notification.String(), nil
 }

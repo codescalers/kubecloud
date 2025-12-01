@@ -1,7 +1,9 @@
 package mailservice
 
 import (
+	"fmt"
 	cfg "kubecloud/internal/config"
+	"kubecloud/internal/core/models"
 	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 )
@@ -78,7 +80,11 @@ func (m MailService) SendNotifyAdminsEmail(to string, recordsNumber int) error {
 	})
 }
 
-func (m MailService) SendEmailNotification(to string, subject string, body string) error {
+func (m MailService) SendEmailNotification(to string, notification models.Notification) error {
+	subject, body, err := m.mailContentFormatter.FormatNotificationMailContent(notification)
+	if err != nil {
+		return fmt.Errorf("failed to format notification: %w", err)
+	}
 	return m.mailSender.Send(mailsender.MailRequest{
 		From:    m.config.MailSender.Email,
 		To:      to,

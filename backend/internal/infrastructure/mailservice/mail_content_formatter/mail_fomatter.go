@@ -1,5 +1,7 @@
 package mailcontentformatter
 
+import "kubecloud/internal/core/models"
+
 type MailContentFormatter interface {
 	FormatResetPasswordMailContent(code int, timeout int, username string, systemHost string) (string, string)
 	FormatSignUpMailContent(code int, timeout int, username string, systemHost string) (string, string)
@@ -7,4 +9,5 @@ type MailContentFormatter interface {
 	FormatInvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string)
 	FormatSystemAnnouncementMailBody(body string) string
 	FormatNotifyAdminsMailContent(recordsNumber int, systemHost string) (string, string)
+	FormatNotificationMailContent(notification models.Notification) (string, string, error)
 }

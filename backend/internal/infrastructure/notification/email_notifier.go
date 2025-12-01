@@ -1,15 +1,12 @@
 package notification
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
-	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/xmonader/ewf"
 )
 
@@ -58,7 +55,7 @@ func (n *EmailNotifier) Notify(notification *models.Notification) error {
 	}
 
 	// Fallback: send directly (used during testing or if EWF unavailable)
-	return n.sendEmailDirect(*notification, receiverEmail)
+	return n.mailService.SendEmailNotification(receiverEmail, *notification)
 }
 
 // queueEmailViaEWF uses the EWF workflow for guaranteed email delivery with retries
@@ -94,31 +91,4 @@ func (n *EmailNotifier) queueEmailViaEWF(ctx context.Context, notification model
 		Msg("email notification queued for delivery via EWF")
 
 	return nil
-}
-
-// sendEmailDirect sends the email immediately (fallback when EWF unavailable)
-func (n *EmailNotifier) sendEmailDirect(notification models.Notification, receiverEmail string) error {
-	from := mail.NewEmail("MyceliumCloud", n.mailService.GetMailConfig().Email)
-	receiver := mail.NewEmail("MyceliumCloud User", receiverEmail)
-
-	tplName := string(notification.Type)
-
-	var buf bytes.Buffer
-	emailTpls := mailcontentformatter.GetNotificationEmailTemplates()
-	if err := emailTpls.ExecuteTemplate(&buf, tplName, notification); err != nil {
-		return fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
-	}
-
-	subject := notification.Payload["subject"]
-	if subject == "" {
-		subject = string(notification.Type) + " Notification"
-	}
-
-	message := mail.NewSingleEmail(from, subject, receiver, "", buf.String())
-	message.Content = []*mail.Content{
-		mail.NewContent("text/html", buf.String()),
-	}
-
-	err := n.mailService.SendEmailNotification(receiverEmail, subject, buf.String())
-	return err
 }

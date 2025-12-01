@@ -1,10 +1,13 @@
 package mailcontentformatter
 
 import (
+	"bytes"
 	"fmt"
+	"kubecloud/internal/core/models"
 	"strings"
 
 	_ "embed"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -93,4 +96,21 @@ func (f MailHTMLFormatter) FormatNotifyAdminsMailContent(recordsNumber int, syst
 	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body
+}
+
+func (f MailHTMLFormatter) FormatNotificationMailContent(notification models.Notification) (string, string, error) {
+	tplName := string(notification.Type)
+
+	var buf bytes.Buffer
+	emailTpls := GetNotificationEmailTemplates()
+	if err := emailTpls.ExecuteTemplate(&buf, tplName, notification); err != nil {
+		return "", "", fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
+	}
+
+	subject := notification.Payload["subject"]
+	if subject == "" {
+		subject = string(notification.Type) + " Notification"
+	}
+
+	return subject, buf.String(), nil
 }

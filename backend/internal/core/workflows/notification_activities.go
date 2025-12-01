@@ -1,7 +1,6 @@
 package workflows
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -10,7 +9,6 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
-	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
 )
 
 // SendEmailNotificationStep sends an email notification from workflow state
@@ -40,28 +38,12 @@ func SendEmailNotificationStep(userRepo models.UserRepository, mailService mails
 
 		receiver := user.Email
 
-		// Send the email
-		subject := notif.Payload["subject"]
-		if subject == "" {
-			subject = string(notif.Type) + " Notification"
-		}
-
-		// Get email template and render
-		emailTpls := mailcontentformatter.GetNotificationEmailTemplates()
-		var buf bytes.Buffer
-		tplName := string(notif.Type)
-		if err := emailTpls.ExecuteTemplate(&buf, tplName, notif); err != nil {
-			log.Error().Err(err).Str("template", tplName).Msg("failed to execute email template")
-			return fmt.Errorf("failed to execute notification template '%s': %w", tplName, err)
-		}
-
 		// Send via mail service
-		if err := mailService.SendEmailNotification(receiver, subject, buf.String()); err != nil {
+		if err := mailService.SendEmailNotification(receiver, *notif); err != nil {
 			log.Error().Err(err).Str("receiver", receiver).Msg("failed to send email")
 			return fmt.Errorf("failed to send email notification to %s: %w", receiver, err)
 		}
-
-		log.Debug().Str("receiver", receiver).Str("notification_type", tplName).Msg("email notification sent")
+		log.Debug().Str("receiver", receiver).Str("notification_type", string(notif.Type)).Msg("email notification sent")
 		return nil
 	}
 }
