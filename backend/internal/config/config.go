@@ -35,6 +35,7 @@ type Configuration struct {
 	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
 	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	UsersBalanceCheckIntervalInHours     int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
+	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
 	Logger    LoggerConfig    `json:"logger"`
@@ -393,5 +394,9 @@ func applyDefaultValues(config *Configuration) {
 
 	if config.UsersBalanceCheckIntervalInHours == 0 {
 		config.UsersBalanceCheckIntervalInHours = 6
+	}
+
+	if config.CheckUserDebtIntervalInHours == 0 {
+		config.CheckUserDebtIntervalInHours = 48
 	}
 }

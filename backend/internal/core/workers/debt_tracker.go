@@ -25,14 +25,21 @@ func (w Workers) TrackUserDebt() {
 func (w Workers) TrackUsersBalance() {
 	ticker := time.NewTicker(w.svc.GetUsersBalanceCheckInterval())
 	defer ticker.Stop()
+	log := logger.ForOperation("debt_tracker", "track_users_balance")
+	log.Info().Msg("Starting users balance check")
+	// run once on startup
+	if err := w.svc.CheckUsersBalance(); err != nil {
+		log.Error().Err(err).Msg("Failed to check users balance on startup")
+	}
 
 	for {
 		select {
 		case <-w.ctx.Done():
 			return
 		case <-ticker.C:
+			log.Info().Msg("Checking users balance")
 			if err := w.svc.CheckUsersBalance(); err != nil {
-				logger.ForOperation("debt_tracker", "check_users_balance").Error().Err(err).Msg("Failed to check users balance")
+				log.Error().Err(err).Msg("Failed to check users balance")
 			}
 		}
 	}

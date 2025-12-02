@@ -80,7 +80,7 @@
         <h1>{{ index .Payload "subject" }}</h1>
       </div>
       <div class="content">
-        <p>{{ index .Payload "message" }}</p>
+        <p style="white-space: pre-line">{{ index .Payload "message" }}</p>
 
         {{ $amount := index .Payload "amount" }} {{ if $amount }}
         <div class="kv">

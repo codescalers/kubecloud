@@ -45,6 +45,7 @@ type WorkerService struct {
 	systemMnemonic                          string
 	invoiceCompanyData                      config.InvoiceCompanyData
 	currency                                string
+	checkUserDebtIntervalInHours            int
 	clusterHealthCheckIntervalInHours       int
 	reservedNodeHealthCheckIntervalInHours  int
 	reservedNodeHealthCheckTimeoutInMinutes int
@@ -65,6 +66,7 @@ func NewWorkersService(
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
 	usersBalanceCheckIntervalInHours int,
+	checkUserDebtIntervalInHours int,
 ) WorkerService {
 	return WorkerService{
 		ctx:                ctx,
@@ -86,6 +88,7 @@ func NewWorkersService(
 		invoiceCompanyData: invoiceCompanyData,
 		currency:           currency,
 
+		checkUserDebtIntervalInHours:            checkUserDebtIntervalInHours,
 		clusterHealthCheckIntervalInHours:       clusterHealthCheckIntervalInHours,
 		reservedNodeHealthCheckIntervalInHours:  reservedNodeHealthCheckIntervalInHours,
 		reservedNodeHealthCheckTimeoutInMinutes: reservedNodeHealthCheckTimeoutInMinutes,
@@ -123,6 +126,10 @@ func (svc WorkerService) GetClusterHealthCheckInterval() time.Duration {
 
 func (svc WorkerService) GetReservedNodeHealthCheckInterval() time.Duration {
 	return time.Duration(svc.reservedNodeHealthCheckIntervalInHours) * time.Hour
+}
+
+func (svc WorkerService) GetCheckUserDebtInterval() time.Duration {
+	return time.Duration(svc.checkUserDebtIntervalInHours) * time.Hour
 }
 
 func (svc WorkerService) GetMonitorBalanceInterval() time.Duration {
@@ -469,8 +476,8 @@ func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
 	return svc.ewfEngine.Run(svc.ctx, wf, ewf.WithAsync())
 }
 
-func (svc WorkerService) checkUserDebtForTwoDays(user models.User, contractIDs []uint64) error {
-	totalDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs, 2*24*time.Hour)
+func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) error {
+	totalDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs, svc.GetCheckUserDebtInterval())
 	if err != nil {
 		return fmt.Errorf("failed to calculate debt: %w", err)
 	}
@@ -478,11 +485,22 @@ func (svc WorkerService) checkUserDebtForTwoDays(user models.User, contractIDs [
 	if err != nil {
 		return fmt.Errorf("failed to get user balance: %w", err)
 	}
-	if userBalance > totalDebt {
+	if userBalance >= totalDebt {
 		return nil
 	}
+	days := int(svc.GetCheckUserDebtInterval() / (24 * time.Hour))
+	if days == 0 {
+		days = 1
+	}
+	totalDebtUSD := substrate.FromUSDMilliCentToUSD(totalDebt)
+	userBalanceUSD := substrate.FromUSDMilliCentToUSD(userBalance)
+
+	message := fmt.Sprintf(
+		"Your balance is not enough to cover the debt for upcoming %d day(s).\nTotal debt: $%.2f\nUser balance: $%.2f",
+		days, totalDebtUSD, userBalanceUSD,
+	)
 	notif := notification.NewNotification(user.ID, models.NotificationTypeBilling).
-		Warning("Your balance is not enough to cover the debt for upcoming 2 days").
+		Warning(message).
 		WithSubject("User Balance Not Enough").
 		WithChannels(notification.ChannelEmail, notification.ChannelUI).
 		WithExtra("user_id", fmt.Sprintf("%d", user.ID)).
@@ -495,7 +513,7 @@ func (svc WorkerService) checkUserDebtForTwoDays(user models.User, contractIDs [
 }
 
 func (svc WorkerService) CheckUsersBalance() error {
-	userContractIDs, err := svc.buildContractIDs()
+	userContractIDs, err := svc.getUserContractIDs()
 	if err != nil {
 		return fmt.Errorf("failed to build contract IDs: %w", err)
 	}
@@ -513,15 +531,23 @@ func (svc WorkerService) CheckUsersBalance() error {
 		}
 		wg.Add(1)
 		balanceCheckLimiter <- struct{}{}
+
 		go func(user models.User, contractIDs []uint64) {
 			defer wg.Done()
 			defer func() { <-balanceCheckLimiter }()
-			err := svc.checkUserDebtForTwoDays(user, contractIDs)
-			if err != nil {
-				multiErrMu.Lock()
-				multiErr = multierror.Append(multiErr, err)
-				multiErrMu.Unlock()
+			select {
+			case <-svc.ctx.Done():
+				return
+			default:
 			}
+
+			err := svc.checkUserDebt(user, contractIDs)
+			if err == nil {
+				return
+			}
+			multiErrMu.Lock()
+			multiErr = multierror.Append(multiErr, err)
+			multiErrMu.Unlock()
 		}(user, userContractIDs[user.ID])
 	}
 	wg.Wait()
@@ -531,7 +557,7 @@ func (svc WorkerService) CheckUsersBalance() error {
 	return nil
 }
 
-func (svc WorkerService) buildContractIDs() (map[int][]uint64, error) {
+func (svc WorkerService) getUserContractIDs() (map[int][]uint64, error) {
 	clusters, err := svc.clusterRepo.ListAllClusters()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list clusters: %w", err)

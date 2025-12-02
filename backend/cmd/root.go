@@ -166,6 +166,9 @@ func addFlags() error {
 	if err := bindIntFlag(rootCmd, "users_balance_check_interval_in_hours", 6, "Number of hours to check users balance"); err != nil {
 		return fmt.Errorf("failed to bind users_balance_check_interval_in_hours flag: %w", err)
 	}
+	if err := bindIntFlag(rootCmd, "check_user_debt_interval_in_hours", 48, "Number of upcoming hours to check user debt"); err != nil {
+		return fmt.Errorf("failed to bind check_user_debt_interval_in_hours flag: %w", err)
+	}
 
 	// === Logger Config ===
 	if err := bindStringFlag(rootCmd, "logger.log_dir", "./logs", "Logger directory"); err != nil {
