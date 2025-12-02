@@ -524,7 +524,7 @@ func (svc WorkerService) CheckUsersBalance() error {
 	multiErr := &multierror.Error{}
 	var multiErrMu sync.Mutex
 	var wg sync.WaitGroup
-	balanceCheckLimiter := make(chan struct{}, svc.mailService.MaxConcurrentSends())
+	balanceCheckLimiter := make(chan struct{}, svc.mailService.GetMailConfig().MaxConcurrentSends)
 	for _, user := range users {
 		if _, ok := userContractIDs[user.ID]; !ok {
 			continue
