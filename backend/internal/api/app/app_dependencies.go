@@ -402,11 +402,7 @@ func (app *App) createWorkers() workers.Workers {
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.infra.substrateClient, app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
-		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,
-		app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes,
-		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
-		app.config.MonitorBalanceIntervalInMinutes,
-		app.config.NotifyAdminsForPendingRecordsInHours,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours, app.config.CheckUserDebtIntervalInHours,
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)
