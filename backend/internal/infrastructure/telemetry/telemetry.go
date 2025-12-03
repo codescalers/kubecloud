@@ -85,6 +85,10 @@ func InitTracerProvider(ctx context.Context, config Config) (*TracerProvider, er
 	}, nil
 }
 
+func (tp *TracerProvider) TraceProvider() *sdktrace.TracerProvider {
+	return tp.provider
+}
+
 // Shutdown gracefully shuts down the tracer provider
 func (tp *TracerProvider) Shutdown(ctx context.Context) error {
 	if tp.provider == nil {

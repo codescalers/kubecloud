@@ -2,6 +2,7 @@ package kubedeployer
 
 import (
 	"fmt"
+	"kubecloud/internal/infrastructure/telemetry"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 )
@@ -11,13 +12,17 @@ type Client struct {
 	mnemonic   string
 }
 
-func NewClient(mnemonic, gridNet string, debug bool) (*Client, error) {
+func NewClient(mnemonic, gridNet string, debug bool, tp *telemetry.TracerProvider) (*Client, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(gridNet),
 		deployer.WithDisableSentry(),
 	}
 	if debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
+	}
+
+	if tp != nil {
+		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp.TraceProvider()))
 	}
 
 	tfplugin, err := deployer.NewTFPluginClient(
