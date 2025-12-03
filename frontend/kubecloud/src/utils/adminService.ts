@@ -78,6 +78,7 @@ export interface AdminWorkflow {
   created_at: string
   queue_name: string
   metadata: Record<string, string>
+  error?: string
 }
 
 export interface Invoice {
