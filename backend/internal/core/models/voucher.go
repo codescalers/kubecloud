@@ -1,12 +1,12 @@
 package models
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
-var ErrVoucherNotFound = fmt.Errorf("voucher is not found")
-var ErrVoucherRedeemed = fmt.Errorf("unredeemed voucher with this code is not found")
+var ErrVoucherNotFound = errors.New("voucher is not found")
+var ErrVoucherRedeemed = errors.New("voucher is already redeemed")
 
 // Voucher struct holds all data for vouchers, voucher used only by one user.db.
 type Voucher struct {
