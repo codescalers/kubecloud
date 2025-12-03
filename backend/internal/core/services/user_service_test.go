@@ -139,8 +139,8 @@ func (m *mockVoucherRepo) GetVoucherByCode(code string) (models.Voucher, error) 
 	return args.Get(0).(models.Voucher), args.Error(1)
 }
 
-func (m *mockVoucherRepo) RedeemVoucher(code string) error {
-	args := m.Called(code)
+func (m *mockVoucherRepo) RedeemVoucher(userID int, username, code string) error {
+	args := m.Called(userID, username, code)
 	return args.Error(0)
 }
 
