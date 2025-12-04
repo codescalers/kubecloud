@@ -6,7 +6,6 @@ import (
 	"kubecloud/internal/deployment/kubedeployer"
 
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/telemetry"
 
 	"github.com/xmonader/ewf"
 	"go.opentelemetry.io/otel"
@@ -15,12 +14,11 @@ import (
 
 // ClientConfig represents the configuration needed to create a kubeclient
 type ClientConfig struct {
-	SSHPublicKey  string                    `json:"ssh_public_key"`
-	Mnemonic      string                    `json:"mnemonic"`
-	UserID        int                       `json:"user_id"`
-	Network       string                    `json:"network"`
-	Debug         bool                      `json:"debug"`
-	TraceProvider *telemetry.TracerProvider `json:"-"`
+	SSHPublicKey string `json:"ssh_public_key"`
+	Mnemonic     string `json:"mnemonic"`
+	UserID       int    `json:"user_id"`
+	Network      string `json:"network"`
+	Debug        bool   `json:"debug"`
 }
 
 // ValidateConfig validates the client configuration

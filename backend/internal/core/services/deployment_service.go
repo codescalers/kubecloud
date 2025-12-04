@@ -32,14 +32,12 @@ type DeploymentService struct {
 	sshPublicKey      string
 	sshPrivateKeyPath string
 	systemNetwork     string
-	traceProvider     *telemetry.TracerProvider
 }
 
 func NewDeploymentService(appCtx context.Context,
 	clusterRepo models.ClusterRepository, userRepo models.UserRepository,
 	userNodesRepo models.UserNodesRepository, ewfEngine *ewf.Engine,
 	debug bool, sshPublicKey, sshPrivateKeyPath, systemNetwork string,
-	traceProvider *telemetry.TracerProvider,
 ) DeploymentService {
 	return DeploymentService{
 		clusterRepo: clusterRepo,
@@ -53,7 +51,6 @@ func NewDeploymentService(appCtx context.Context,
 		sshPublicKey:      sshPublicKey,
 		sshPrivateKeyPath: sshPrivateKeyPath,
 		systemNetwork:     systemNetwork,
-		traceProvider:     traceProvider,
 	}
 }
 
@@ -182,12 +179,11 @@ func (svc *DeploymentService) GetClientConfig(userID int) (statemanager.ClientCo
 	}
 
 	return statemanager.ClientConfig{
-		SSHPublicKey:  svc.sshPublicKey,
-		Mnemonic:      user.Mnemonic,
-		UserID:        userID,
-		Network:       svc.systemNetwork,
-		Debug:         svc.debug,
-		TraceProvider: svc.traceProvider,
+		SSHPublicKey: svc.sshPublicKey,
+		Mnemonic:     user.Mnemonic,
+		UserID:       userID,
+		Network:      svc.systemNetwork,
+		Debug:        svc.debug,
 	}, nil
 }
 

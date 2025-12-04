@@ -97,7 +97,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appInfrastructure, err := createAppInfrastructure(config, appCore.tracerProvider)
+	appInfrastructure, err := createAppInfrastructure(config)
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -266,16 +266,13 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 	}, nil
 }
 
-func createAppInfrastructure(config cfg.Configuration, tp *telemetry.TracerProvider) (appInfrastructure, error) {
+func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),
 	}
 	if config.Debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
-	}
-	if tp != nil {
-		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp.TraceProvider()))
 	}
 
 	gridClient, err := deployer.NewTFPluginClient(
@@ -355,7 +352,6 @@ func (app *App) createHandlers() appHandlers {
 	deploymentService := services.NewDeploymentService(
 		app.core.appCtx, clusterRepo, userRepo, userNodesRepo, app.core.ewfEngine,
 		app.config.Debug, app.security.sshPublicKey, app.config.SSH.PrivateKeyPath, app.config.SystemAccount.Network,
-		app.core.tracerProvider,
 	)
 
 	adminService := services.NewAdminService(
