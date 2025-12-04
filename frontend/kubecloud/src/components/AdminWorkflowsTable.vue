@@ -132,6 +132,10 @@
               <strong>Created At:</strong>
               <span>{{ formatDate(selectedWorkflow.created_at) }}</span>
             </div>
+            <div class="detail-row" v-if="selectedWorkflow.error">
+              <strong>Error:</strong>
+              <span class="error-message">{{ selectedWorkflow.error }}</span>
+            </div>
             <div class="detail-section" v-if="selectedWorkflow.metadata && Object.keys(selectedWorkflow.metadata).length > 0">
               <strong>Metadata:</strong>
               <pre class="json-display">{{ JSON.stringify(selectedWorkflow.metadata, null, 2) }}</pre>
@@ -386,6 +390,16 @@ onMounted(async () => {
   background: rgba(0, 0, 0, 0.2);
   padding: 0.125rem 0.5rem;
   border-radius: 0.25rem;
+}
+.error-message {
+  color: #ef4444;
+  font-weight: 500;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .json-display {
   background: rgba(0, 0, 0, 0.3);

@@ -311,17 +311,21 @@ func (r *GormVoucherRepository) GetVoucherByCode(code string) (models.Voucher, e
 	return voucher, query.Error
 }
 
-func (r *GormVoucherRepository) RedeemVoucher(code string) error {
+func (r *GormVoucherRepository) RedeemVoucher(userID int, username, code string) error {
 	result := r.db.Model(&models.Voucher{}).
-		Where("code = ?", code).
-		Update("redeemed", true)
+		Where("code = ? AND redeemed = ?", code, false).
+		Updates(map[string]interface{}{
+			"redeemed": true,
+			"username": username,
+			"user_id":  userID,
+		})
 
 	if result.Error != nil {
 		return result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("no voucher found with Code %s", code)
+		return models.ErrVoucherRedeemed
 	}
 
 	return nil

@@ -28,7 +28,7 @@ require (
 	github.com/swaggo/swag v1.16.6
 	github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30
 	github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.5-0.20251204132643-92491788b7f9
-	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.4
+	github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.5
 	github.com/vedhavyas/go-subkey v1.0.3
 	github.com/xmonader/ewf v0.0.0-20251127155219-5a8a59ee967f
 	go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin v0.63.0
