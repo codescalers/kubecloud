@@ -8,16 +8,15 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
 
@@ -33,8 +32,7 @@ type WorkerService struct {
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
-	substrateClient        substrate.Substrate
-	gridProxyClient        proxy.Client
+	gridClient             gridclient.GridClient
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
 
@@ -54,13 +52,12 @@ func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
-	substrateClient substrate.Substrate, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
+	gridClient gridclient.GridClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
-	gridProxyClient proxy.Client,
 ) WorkerService {
 	return WorkerService{
 		ctx:                ctx,
@@ -75,8 +72,7 @@ func NewWorkersService(
 		ewfEngine:              ewfEngine,
 		graphql:                graphql,
 		firesquidClient:        firesquidClient,
-		substrateClient:        substrateClient,
-		gridProxyClient:        gridProxyClient,
+		gridClient:             gridClient,
 
 		systemMnemonic:     systemMnemonic,
 		invoiceCompanyData: invoiceCompanyData,
@@ -153,7 +149,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(totalAmountTFT)
+		totalAmountUSDMillicent, err := svc.gridClient.FromTFTtoUSDMillicent(totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -173,7 +169,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := substrate.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := gridclient.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
@@ -242,7 +238,7 @@ func (svc WorkerService) UpdateUserDebt() error {
 
 func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.UserNodes) (uint64, error) {
 
-	calculatorClient, err := svc.substrateClient.NewCalculator(userMnemonic)
+	calculatorClient, err := svc.gridClient.NewCalculator(userMnemonic)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create new calculator: %w", err)
 	}
@@ -257,7 +253,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, userNodes []models.U
 		totalDebt += debt
 	}
 
-	totalDebtUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(uint64(totalDebt))
+	totalDebtUSDMillicent, err := svc.gridClient.FromTFTtoUSDMillicent(uint64(totalDebt))
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert debt to USD millicent: %w", err)
 	}
@@ -342,7 +338,7 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 
 	for userNode := range jobs {
 
-		node, err := svc.gridProxyClient.Node(ctx, userNode.NodeID)
+		node, err := svc.gridClient.Node(ctx, userNode.NodeID)
 		if err != nil {
 			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("failed to get node for health check")
 			continue
@@ -373,7 +369,7 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.substrateClient.GetFreeBalanceTFT(svc.systemMnemonic)
+		systemTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(svc.systemMnemonic)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
@@ -402,7 +398,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
 	}
 
-	err = svc.substrateClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
+	err = svc.gridClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
 	}

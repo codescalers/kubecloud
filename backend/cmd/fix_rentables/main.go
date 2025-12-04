@@ -44,12 +44,12 @@ func main() {
 		return
 	}
 
-	substrateClient, err := substrate.NewManager(tfchainURL).Substrate()
+	gridClient, err := substrate.NewManager(tfchainURL).Substrate()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create substrate client")
 		return
 	}
-	defer substrateClient.Close()
+	defer gridClient.Close()
 
 	// Get all user_nodes records
 	var allRecords []models.UserNodes
@@ -70,7 +70,7 @@ func main() {
 	removedTotal := 0
 
 	for _, record := range allRecords {
-		contract, err := substrateClient.GetContract(record.ContractID)
+		contract, err := gridClient.GetContract(record.ContractID)
 		if err != nil && !strings.Contains(err.Error(), "not found") {
 			log.Error().Err(err).Uint64("contract_id", record.ContractID).Msg("Failed to get contract")
 			continue

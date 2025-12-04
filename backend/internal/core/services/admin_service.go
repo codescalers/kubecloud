@@ -7,10 +7,10 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
 	"sync"
@@ -28,7 +28,7 @@ type AdminService struct {
 	ewfRepo     *persistence.GormEWFRepository
 
 	appCtx                 context.Context
-	substrateClient        substrate.Substrate
+	gridClient             gridclient.GridClient
 	ewfEngine              *ewf.Engine
 	mailService            mailservice.MailService
 	notificationDispatcher *notification.NotificationDispatcher
@@ -40,7 +40,7 @@ func NewAdminService(appCtx context.Context,
 	pendingRecordRepo models.PendingRecordRepository,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
-	substrateClient substrate.Substrate,
+	gridClient gridclient.GridClient,
 	ewfEngine *ewf.Engine,
 	mailService mailservice.MailService,
 	notificationDispatcher *notification.NotificationDispatcher,
@@ -55,7 +55,7 @@ func NewAdminService(appCtx context.Context,
 		ewfRepo:     ewfRepo,
 
 		appCtx:                 appCtx,
-		substrateClient:        substrateClient,
+		gridClient:             gridClient,
 		ewfEngine:              ewfEngine,
 		mailService:            mailService,
 		notificationDispatcher: notificationDispatcher,
@@ -103,7 +103,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balance, err := svc.substrateClient.GetUserBalanceUSD(user.Mnemonic)
+			balance, err := svc.gridClient.GetUserBalanceUSD(user.Mnemonic)
 			if err != nil {
 				mu.Lock()
 				balanceErrors = multierror.Append(balanceErrors, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
@@ -153,7 +153,7 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 
 	wf.State = map[string]interface{}{
 		"user_id":       transaction.UserID,
-		"amount":        substrate.FromUSDToUSDMillicent(transaction.Amount),
+		"amount":        gridclient.FromUSDToUSDMillicent(transaction.Amount),
 		"mnemonic":      user.Mnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
@@ -199,20 +199,20 @@ func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecords
 
 	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
 	for _, record := range pendingRecords {
-		usdAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TFTAmount)
+		usdAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
-		usdTransferredAmount, err := svc.substrateClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
+		usdTransferredAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
 		if err != nil {
 			return nil, err
 		}
 
 		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
 			PendingRecord:        record,
-			USDAmount:            substrate.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: substrate.FromUSDMilliCentToUSD(usdTransferredAmount),
+			USDAmount:            gridclient.FromUSDMilliCentToUSD(usdAmount),
+			TransferredUSDAmount: gridclient.FromUSDMilliCentToUSD(usdTransferredAmount),
 		})
 	}
 

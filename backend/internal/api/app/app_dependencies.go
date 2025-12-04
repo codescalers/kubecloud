@@ -13,6 +13,7 @@ import (
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	grid "kubecloud/internal/infrastructure/grid"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
 	mailservice "kubecloud/internal/infrastructure/mailservice"
@@ -20,7 +21,6 @@ import (
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
-	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/infrastructure/telemetry"
 
 	"net/url"
@@ -83,7 +83,7 @@ type appCommunication struct {
 
 // appInfrastructure contains grid and blockchain related services
 type appInfrastructure struct {
-	substrateClient substrate.Substrate
+	gridClient      gridclient.GridClient
 	firesquidClient graphql.GraphQl
 	graphql         graphql.GraphQl
 }
@@ -265,7 +265,7 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 }
 
 func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
-	substrateClient, err := substrate.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
+	gridClient, err := gridclient.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
 	if err != nil {
 		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
 	}
@@ -282,7 +282,7 @@ func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error
 	}
 
 	return appInfrastructure{
-		substrateClient: substrateClient,
+		gridClient:      gridClient,
 		graphql:         graphQl,
 		firesquidClient: fireSquidClient,
 	}, nil
@@ -304,21 +304,20 @@ func (app *App) createHandlers() appHandlers {
 	// Services
 	userService := services.NewUserService(
 		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
-		app.infra.substrateClient, app.core.ewfEngine,
+		app.infra.gridClient, app.core.ewfEngine,
 		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
 		app.config.Admins,
 	)
 
 	statsService := services.NewStatsService(
-		userRepo, clusterRepo, app.infra.substrateClient.GridProxyClient(),
-		app.infra.substrateClient, app.config.SystemAccount.Mnemonic,
+		userRepo, clusterRepo, app.infra.gridClient, app.config.SystemAccount.Mnemonic,
 	)
 
 	notificationAPIService := services.NewNotificationService(notificationRepo)
 
 	nodeService := services.NewNodeService(
 		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
-		app.infra.substrateClient.GridProxyClient(), app.infra.substrateClient,
+		app.infra.gridClient,
 	)
 
 	invoiceService := services.NewInvoiceService(
@@ -332,7 +331,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher, ewfRepo,
+		transactionRepo, app.infra.gridClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher, ewfRepo,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
@@ -374,7 +373,7 @@ func (app *App) createWorkers() workers.Workers {
 
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
-		app.communication.mailService, app.infra.substrateClient, app.core.ewfEngine,
+		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
@@ -383,7 +382,6 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
 		app.config.MonitorBalanceIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
-		app.infra.substrateClient.GridProxyClient(),
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)

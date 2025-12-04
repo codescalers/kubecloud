@@ -6,8 +6,8 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/persistence"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"os"
 	"os/exec"
@@ -22,10 +22,10 @@ import (
 )
 
 type setup struct {
-	tokenManager    auth.TokenManager
-	substrateClient substrate.Substrate
-	router          *gin.Engine
-	network         string
+	tokenManager auth.TokenManager
+	gridClient   gridclient.GridClient
+	router       *gin.Engine
+	network      string
 
 	userRepo           models.UserRepository
 	voucherRepo        models.VoucherRepository
@@ -142,7 +142,7 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	substrateClient, err := substrate.NewSubstrateClient(configuration.SystemAccount.Mnemonic, configuration.SystemAccount.Network, configuration.Debug)
+	gridClient, err := gridclient.NewSubstrateClient(configuration.SystemAccount.Mnemonic, configuration.SystemAccount.Network, configuration.Debug)
 	if err != nil {
 		return setup{}, err
 	}
@@ -172,14 +172,14 @@ func SetUp(t testing.TB) (setup, error) {
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()
-		substrateClient.Close()
+		gridClient.Close()
 	})
 
 	return setup{
-		tokenManager:    tokenManager,
-		substrateClient: substrateClient,
-		router:          router,
-		network:         configuration.SystemAccount.Network,
+		tokenManager: tokenManager,
+		gridClient:   gridClient,
+		router:       router,
+		network:      configuration.SystemAccount.Network,
 
 		userRepo:           corepersistence.NewGormUserRepository(db),
 		voucherRepo:        corepersistence.NewGormVoucherRepository(db),
@@ -201,7 +201,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := s.substrateClient.SetupUserOnTFChain(s.termsAndConditions, s.network)
+		mnemonic, _, err := s.gridClient.SetupUserOnTFChain(s.termsAndConditions, s.network)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/gridclient"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -83,12 +83,12 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return(users, nil)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -109,12 +109,12 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return([]models.User{}, nil)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -133,12 +133,12 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 
 	mockUserRepo.On("ListAllUsers").Return(nil, fmt.Errorf("database error"))
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	_, err := service.ListAllUsers()
@@ -157,12 +157,12 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 
 	mockUserRepo.On("DeleteUserByID", 1).Return(nil)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	err := service.DeleteUserByID(1)
@@ -181,12 +181,12 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 
 	mockUserRepo.On("DeleteUserByID", 999).Return(fmt.Errorf("user not found"))
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	err := service.DeleteUserByID(999)
@@ -208,12 +208,12 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 		return v != nil && v.Value == 100.0
 	})).Return(nil)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(5, 30, 100.0)
@@ -232,12 +232,12 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(0, 30, 100.0)
@@ -259,12 +259,12 @@ func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 		return v != nil && v.Value == 50.0
 	})).Return(nil)
 
-	var substrateClient substrate.Substrate
+	var gridClient gridclient.GridClient
 
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		substrateClient, nil, nil, nil, nil,
+		gridClient, nil, nil, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(100, 30, 50.0)
