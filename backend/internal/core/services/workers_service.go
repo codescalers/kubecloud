@@ -477,7 +477,7 @@ func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) e
 	if err != nil {
 		return fmt.Errorf("failed to calculate debt: %w", err)
 	}
-	userBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(user.Mnemonic)
+	userBalance, err := svc.gridClient.GetUserBalanceUSDMillicent(user.Mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to get user balance: %w", err)
 	}
@@ -488,8 +488,8 @@ func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) e
 	if days == 0 {
 		days = 1
 	}
-	totalDebtUSD := substrate.FromUSDMilliCentToUSD(totalDebt)
-	userBalanceUSD := substrate.FromUSDMilliCentToUSD(userBalance)
+	totalDebtUSD := gridclient.FromUSDMilliCentToUSD(totalDebt)
+	userBalanceUSD := gridclient.FromUSDMilliCentToUSD(userBalance)
 
 	message := fmt.Sprintf(
 		"Your balance is not enough to cover the debt for upcoming %d day(s).\nTotal debt: $%.2f\nUser balance: $%.2f",
