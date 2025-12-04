@@ -1,6 +1,9 @@
 package models
 
 import (
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -110,4 +113,41 @@ func WithPayload(payload map[string]string) NotificationOption {
 	return func(n *Notification) {
 		n.Payload = payload
 	}
+}
+
+func (n Notification) String() string {
+	payloadStr := "{}"
+	if len(n.Payload) > 0 {
+		keys := make([]string, 0, len(n.Payload))
+		for k := range n.Payload {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		parts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			parts = append(parts, fmt.Sprintf("%s=%q", k, n.Payload[k]))
+		}
+		payloadStr = fmt.Sprintf("{%s}", strings.Join(parts, ", "))
+	}
+
+	return fmt.Sprintf(
+		`Notification:
+  id=%s
+  user_id=%d
+  type=%s
+  severity=%s
+  task_id=%s
+  status=%s
+  created_at=%s
+  payload=%s`,
+		n.ID,
+		n.UserID,
+		n.Type,
+		n.Severity,
+		n.TaskID,
+		n.Status,
+		n.CreatedAt.Format("2006-01-02 15:04:05"),
+		payloadStr,
+	)
 }

@@ -7,7 +7,7 @@ import (
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/kyc"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
 
@@ -21,7 +21,7 @@ func RegisterEWFWorkflows(
 	engine *ewf.Engine,
 	config cfg.Configuration,
 	db models.DB,
-	mail mailservice.MailService,
+	mailService mailservice.MailService,
 	gridClient gridclient.GridClient,
 	kycClient *kyc.KYCClient,
 	sponsorAddress string,
@@ -35,20 +35,20 @@ func RegisterEWFWorkflows(
 	userNodesRepo := persistence.NewGormUserNodesRepository(db)
 	pendingRecordRepo := persistence.NewGormPendingRecordRepository(db)
 
-	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mail, config))
+	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mailService, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(StepUpdateCode, UpdateCodeStep(userRepo))
 	engine.Register(StepSetupTFChain, SetupTFChainStep(gridClient, userRepo, config))
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
-	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mail, metrics))
+	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mailService, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
 	engine.Register(StepCreatePendingRecord, CreatePendingRecord(gridClient, pendingRecordRepo))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
 	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, gridClient))
 	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, gridClient))
 	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
-	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mail))
+	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mailService))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(gridClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, gridClient))

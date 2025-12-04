@@ -10,7 +10,6 @@ RUN go mod download
 RUN CGO_ENABLED=1 go build -v -o ./myceliumcloud
 
 FROM alpine:latest
-COPY --from=builder /app/internal/infrastructure/mailservice/templates /app/internal/infrastructure/mailservice/templates
 COPY --from=builder /app/myceliumcloud /myceliumcloud
 
 EXPOSE 8080

@@ -1,7 +1,7 @@
-import router from "@/router"
-import { api } from "./api"
-import type { ApiResponse } from "./authService"
-import type { PendingRecord } from "./userService"
+import router from '@/router'
+import { api } from './api'
+import type { ApiResponse } from './authService'
+import type { PendingRecord } from './userService'
 
 // Types for admin requests and responses
 export interface User {
@@ -59,9 +59,9 @@ export interface SystemEmail {
 }
 
 export interface SystemEmailResponse {
-  failed_emails: string[],
-  failed_emails_count: number,
-  successful_emails: number,
+  failed_emails: string[]
+  failed_emails_count: number
+  successful_emails: number
   total_users: number
 }
 
@@ -78,6 +78,7 @@ export interface AdminWorkflow {
   created_at: string
   queue_name: string
   metadata: Record<string, string>
+  error?: string
 }
 
 export interface Invoice {
@@ -107,7 +108,7 @@ export class AdminService {
     const response = await api.get<ApiResponse<{ users: User[] }>>('/v1/users', {
       requiresAuth: true,
       showNotifications: true,
-      errorMessage: 'Failed to load users'
+      errorMessage: 'Failed to load users',
     })
     return response.data.data?.users || []
   }
@@ -118,7 +119,7 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Deleting user...',
-      errorMessage: 'Failed to delete user'
+      errorMessage: 'Failed to delete user',
     })
     return response.data
   }
@@ -129,29 +130,37 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Crediting user...',
-      errorMessage: 'Failed to credit user'
+      errorMessage: 'Failed to credit user',
     })
     return response.data
   }
 
   // Drain a user's balance to system account (requires admin auth)
   async drainUser(userId: number): Promise<void> {
-    await api.post<void>(`/v1/users/${userId}/drain`, {}, {
-      requiresAuth: true,
-      showNotifications: true,
-      loadingMessage: 'Draining user balance...',
-      errorMessage: 'Failed to drain user balance'
-    })
+    await api.post<void>(
+      `/v1/users/${userId}/drain`,
+      {},
+      {
+        requiresAuth: true,
+        showNotifications: true,
+        loadingMessage: 'Draining user balance...',
+        errorMessage: 'Failed to drain user balance',
+      },
+    )
   }
 
   // Drain all users' balances to system account (requires admin auth)
   async drainAllUsers(): Promise<void> {
-    await api.post<void>(`/v1/users/drain-all`, {}, {
-      requiresAuth: true,
-      showNotifications: true,
-      loadingMessage: 'Draining all users\' balances...',
-      errorMessage: 'Failed to drain all users\' balances'
-    })
+    await api.post<void>(
+      `/v1/users/drain-all`,
+      {},
+      {
+        requiresAuth: true,
+        showNotifications: true,
+        loadingMessage: "Draining all users' balances...",
+        errorMessage: "Failed to drain all users' balances",
+      },
+    )
   }
 
   // Generate vouchers (requires admin auth)
@@ -160,7 +169,7 @@ export class AdminService {
       requiresAuth: true,
       showNotifications: true,
       loadingMessage: 'Generating vouchers...',
-      errorMessage: 'Failed to generate vouchers'
+      errorMessage: 'Failed to generate vouchers',
     })
     return response.data
   }
@@ -170,7 +179,7 @@ export class AdminService {
     const response = await api.get<ApiResponse<{ vouchers: Voucher[] }>>('/v1/vouchers', {
       requiresAuth: true,
       showNotifications: true,
-      errorMessage: 'Failed to load vouchers'
+      errorMessage: 'Failed to load vouchers',
     })
     return response.data.data?.vouchers || []
   }
@@ -180,18 +189,21 @@ export class AdminService {
     const response = await api.get<ApiResponse<{ invoices: Invoice[] }>>('/v1/invoices', {
       requiresAuth: true,
       showNotifications: true,
-      errorMessage: 'Failed to load invoices'
+      errorMessage: 'Failed to load invoices',
     })
     return response.data.data?.invoices || []
   }
 
-      // List all pending records (requires admin auth)
+  // List all pending records (requires admin auth)
   async listPendingRecords(): Promise<PendingRecord[]> {
-    const response = await api.get<ApiResponse<{ pending_records: PendingRecord[] }>>('/v1/pending-records', {
-      requiresAuth: true,
-      showNotifications: true,
-      errorMessage: 'Failed to load payments'
-    })
+    const response = await api.get<ApiResponse<{ pending_records: PendingRecord[] }>>(
+      '/v1/pending-records',
+      {
+        requiresAuth: true,
+        showNotifications: true,
+        errorMessage: 'Failed to load payments',
+      },
+    )
     return response.data.data?.pending_records || []
   }
 
@@ -214,23 +226,41 @@ export class AdminService {
     const response = await api.get<ApiResponse<{ workflows: AdminWorkflow[] }>>(url, {
       requiresAuth: true,
       showNotifications: true,
-      errorMessage: 'Failed to load workflows'
+      errorMessage: 'Failed to load workflows',
     })
     return response.data.data?.workflows || []
   }
 
   // List workflows with pagination
-  async listWorkflowsPaginated(status?: string, page: number = 1, limit: number = 10): Promise<{ workflows: AdminWorkflow[]; total: number; page: number; limit: number; total_pages: number }> {
+  async listWorkflowsPaginated(
+    status?: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    workflows: AdminWorkflow[]
+    total: number
+    page: number
+    limit: number
+    total_pages: number
+  }> {
     try {
       const params = new URLSearchParams()
       if (status) params.append('status', status)
       params.append('page', page.toString())
       params.append('limit', limit.toString())
-      
+
       const url = `/v1/workflows?${params.toString()}`
-      const response = await api.get<ApiResponse<{ workflows: AdminWorkflow[]; total: number; page: number; limit: number; total_pages: number }>>(url, {
+      const response = await api.get<
+        ApiResponse<{
+          workflows: AdminWorkflow[]
+          total: number
+          page: number
+          limit: number
+          total_pages: number
+        }>
+      >(url, {
         requiresAuth: true,
-        errorMessage: 'Failed to load workflows'
+        errorMessage: 'Failed to load workflows',
       })
 
       // Handle the response safely
@@ -250,7 +280,7 @@ export class AdminService {
         total: data.total || 0,
         page: data.page || page,
         limit: data.limit || limit,
-        total_pages: data.total_pages || 0
+        total_pages: data.total_pages || 0,
       }
     } catch (error) {
       console.error('Error fetching workflows:', error)
@@ -258,19 +288,23 @@ export class AdminService {
     }
   }
 
-
   async SetMaintenanceModeStatus(status: boolean): Promise<void> {
     try {
-      const response = await api.put('/v1/system/maintenance/status', { enabled: status }, {
-        requiresAuth: true,
-        showNotifications: true,
-        loadingMessage: 'Setting maintenance mode...',
-        successMessage: 'Maintenance mode set successfully, redirecting to maintenance page in 3 seconds',
-        errorMessage: 'Failed to set maintenance mode'
-      })
-      setTimeout(() => {
-        router.push('/maintenance')
-      }, 3000)
+      const response = await api.put(
+        '/v1/system/maintenance/status',
+        { enabled: status },
+        {
+          requiresAuth: true,
+          showNotifications: true,
+          loadingMessage: status ? 'Enabling maintenance mode...' : 'Disabling maintenance mode...',
+          successMessage: status
+            ? 'Maintenance mode enabled successfully'
+            : 'Maintenance mode disabled successfully',
+          errorMessage: 'Failed to set maintenance mode',
+        },
+      )
+      // Note: No redirect needed - router guard will handle redirecting non-admin users
+      // Admins can continue working on the admin dashboard
     } catch (error) {
       console.error(error)
       throw error

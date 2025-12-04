@@ -120,7 +120,7 @@
     </div>
   </nav>
 
-  <ActionMenu />
+  <ActionMenu v-if="isLoggedIn" />
 </template>
 
 <script setup lang="ts">

@@ -10,6 +10,7 @@ import (
 	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 	"time"
 
@@ -268,6 +269,7 @@ type AdminWorkflow struct {
 	CreatedAt   time.Time         `json:"created_at"`
 	QueueName   string            `json:"queue_name"`
 	Metadata    map[string]string `json:"metadata"`
+	Error       string            `json:"error"`
 }
 
 // ListAllWorkflows returns all workflows with optional filtering by status
@@ -371,17 +373,16 @@ func (svc *AdminService) convertToAdminWorkflows(workflows []*ewf.Workflow) []Ad
 			CreatedAt:   wf.CreatedAt,
 			QueueName:   wf.QueueName,
 			Metadata:    wf.Metadata,
+			Error:       wf.Error,
 		})
 	}
 
 	return adminWorkflows
 }
 
-func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models.User, adminID int, attachments ...mailservice.Attachment) {
+func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models.User, adminID int, attachments ...mailsender.Attachment) {
 
-	mailBody := svc.mailService.SystemAnnouncementMailBody(body)
-
-	failedEmails := svc.sendBulkSystemMails(users, mailBody, subject, attachments...)
+	failedEmails := svc.sendBulkSystemMails(users, body, subject, attachments...)
 
 	totalUsers := len(users)
 	successfulEmails := len(users) - failedEmails
@@ -405,8 +406,8 @@ func (svc *AdminService) SendMailToAllUsers(body, subject string, users []models
 }
 
 // SendBulkSystemMails send system mails to all passed emails
-func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, subject string, attachments ...mailservice.Attachment) int {
-	emailConcurrencyLimiter := make(chan struct{}, svc.mailService.MaxConcurrentSends())
+func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, subject string, attachments ...mailsender.Attachment) int {
+	emailConcurrencyLimiter := make(chan struct{}, svc.mailService.GetMailConfig().MaxConcurrentSends)
 
 	var (
 		wg           sync.WaitGroup
@@ -420,7 +421,7 @@ func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, s
 		go func(user models.User) {
 			defer wg.Done()
 			defer func() { <-emailConcurrencyLimiter }()
-			err := svc.mailService.SendMailFromSystem(user.Email, subject, body, attachments...)
+			err := svc.mailService.SendSystemAnnouncementMail(user.Email, body, subject, attachments...)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
 				mu.Lock()

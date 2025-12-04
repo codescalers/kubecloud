@@ -444,8 +444,7 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	code := h.svc.GenerateRandomCode()
 
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.svc.CodeTimeoutInMinutes(), user.Username)
-	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
+	err = h.mailService.SendResetPasswordMail(request.Email, code, user.Username)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to send verification code")
 		InternalServerError(c)

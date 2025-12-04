@@ -7,6 +7,7 @@ import (
 
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/gridclient"
+	"kubecloud/internal/infrastructure/mailservice"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -68,6 +69,8 @@ func (m *mockTransactionRepo) CreateTransaction(transaction *models.Transaction)
 	return args.Error(0)
 }
 
+var dummyMailService = mailservice.MailService{}
+
 // Test 1: ListAllUsers - SUCCESS
 func TestAdminService_ListAllUsers_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
@@ -88,7 +91,7 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -114,7 +117,7 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	result, err := service.ListAllUsers()
@@ -138,7 +141,7 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	_, err := service.ListAllUsers()
@@ -162,7 +165,7 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	err := service.DeleteUserByID(1)
@@ -186,7 +189,7 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	err := service.DeleteUserByID(999)
@@ -213,7 +216,7 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(5, 30, 100.0)
@@ -237,7 +240,7 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(0, 30, 100.0)
@@ -264,7 +267,7 @@ func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 	service := NewAdminService(
 		context.Background(),
 		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
-		gridClient, nil, nil, nil, nil,
+		gridClient, nil, dummyMailService, nil, nil,
 	)
 
 	vouchers, err := service.GenerateVouchers(100, 30, 50.0)

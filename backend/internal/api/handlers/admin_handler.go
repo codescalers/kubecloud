@@ -3,16 +3,21 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"kubecloud/internal/core/models"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/infrastructure/logger"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 
 	"github.com/gin-gonic/gin"
@@ -322,8 +327,7 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	}
 	adminID := c.GetInt("user_id")
 
-	// parse attachments
-	var attachments []mailservice.Attachment
+	var attachments []mailsender.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
 			reqLog.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
@@ -350,7 +354,7 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 	OK(c, "Mail sending started", nil)
 }
 
-func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailservice.Attachment, error) {
+func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailsender.Attachment, error) {
 	if len(fileHeaders) == 0 {
 		return nil, nil
 	}
@@ -358,7 +362,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 	var (
 		mu       sync.Mutex
 		multiErr *multierror.Error
-		results  []mailservice.Attachment
+		results  []mailsender.Attachment
 		wg       sync.WaitGroup
 	)
 
@@ -367,7 +371,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 		go func(fh *multipart.FileHeader) {
 			defer wg.Done()
 
-			attachment, err := h.mailService.ParseAttachment(fh)
+			attachment, err := h.parseAttachment(fh)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Str("filename", fh.Filename).Msg("failed to parse attachment")
 				mu.Lock()
@@ -384,6 +388,43 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 
 	wg.Wait()
 	return results, multiErr.ErrorOrNil()
+}
+
+func (h *AdminHandler) parseAttachment(fh *multipart.FileHeader) (mailsender.Attachment, error) {
+	if !isAttachmentAllowed(fh.Filename) {
+		return mailsender.Attachment{}, fmt.Errorf("file type not allowed for %s", fh.Filename)
+	}
+
+	maxFileSizeBytes := h.mailService.GetMailConfig().MaxAttachmentSizeMB * 1024 * 1024
+
+	if fh.Size > maxFileSizeBytes {
+		return mailsender.Attachment{}, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes)
+	}
+
+	file, err := fh.Open()
+	if err != nil {
+		return mailsender.Attachment{}, fmt.Errorf("failed to open attachment file: %w", err)
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return mailsender.Attachment{}, fmt.Errorf("failed to read attachment file: %w", err)
+	}
+
+	return mailsender.Attachment{
+		FileName: fh.Filename,
+		Data:     fileData,
+	}, nil
+}
+
+func isAttachmentAllowed(filename string) bool {
+	allowedAttachmentTypes := []string{
+		".pdf", ".doc", ".docx", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".zip",
+	}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	return slices.Contains(allowedAttachmentTypes, ext)
 }
 
 // @Summary Drain user balance
