@@ -9,6 +9,8 @@ import (
 	"kubecloud/internal/infrastructure/telemetry"
 
 	"github.com/xmonader/ewf"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // ClientConfig represents the configuration needed to create a kubeclient
@@ -58,8 +60,15 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
+	// get global trace provider
+	globalTp := otel.GetTracerProvider()
+
+	if _, isNoop := globalTp.(*noop.TracerProvider); globalTp == nil || isNoop {
+		log.Warn().Msg("Tracer provider is no-op, tracing will not work")
+	}
+
 	// Create new client
-	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, config.TraceProvider)
+	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, globalTp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient: %w", err)
 	}

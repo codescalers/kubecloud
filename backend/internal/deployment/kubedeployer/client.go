@@ -2,9 +2,9 @@ package kubedeployer
 
 import (
 	"fmt"
-	"kubecloud/internal/infrastructure/telemetry"
 
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Client struct {
@@ -12,7 +12,7 @@ type Client struct {
 	mnemonic   string
 }
 
-func NewClient(mnemonic, gridNet string, debug bool, tp *telemetry.TracerProvider) (*Client, error) {
+func NewClient(mnemonic, gridNet string, debug bool, tp trace.TracerProvider) (*Client, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(gridNet),
 		deployer.WithDisableSentry(),
@@ -22,7 +22,7 @@ func NewClient(mnemonic, gridNet string, debug bool, tp *telemetry.TracerProvide
 	}
 
 	if tp != nil {
-		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp.TraceProvider()))
+		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp))
 	}
 
 	tfplugin, err := deployer.NewTFPluginClient(
