@@ -103,6 +103,11 @@ func (tp *TracerProvider) Tracer(name string, opts ...trace.TracerOption) trace.
 	return tp.provider.Tracer(name, opts...)
 }
 
+// Provider returns the trace provider
+func (tp *TracerProvider) Provider() *sdktrace.TracerProvider {
+	return tp.provider
+}
+
 // startSpan starts a new span with the given name and returns the span and a context containing the span
 func startSpan(ctx context.Context, tracerName, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
 	tracer := otel.Tracer(tracerName)
