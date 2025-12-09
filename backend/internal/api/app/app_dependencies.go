@@ -25,6 +25,8 @@ import (
 	"kubecloud/internal/infrastructure/substrate"
 	"kubecloud/internal/infrastructure/telemetry"
 
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
 	"net/url"
 	"os"
 	"strings"
@@ -97,7 +99,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appInfrastructure, err := createAppInfrastructure(config)
+	appInfrastructure, err := createAppInfrastructure(config, appCore.tracerProvider.Provider())
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -266,13 +268,17 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 	}, nil
 }
 
-func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
+func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvider) (appInfrastructure, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),
 	}
 	if config.Debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
+	}
+
+	if tp != nil {
+		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp))
 	}
 
 	gridClient, err := deployer.NewTFPluginClient(
