@@ -891,12 +891,12 @@ func VerifyClusterReadyStep() ewf.StepFn {
 
 		kubeconfig, ok := state["kubeconfig"].(string)
 		if !ok || kubeconfig == "" {
-			return fmt.Errorf("kubeconfig not found in workflow state")
+			return fmt.Errorf("kubeconfig not found in workflow state for cluster %s", cluster.Name)
 		}
 
 		nodes, err := getNodesOfCluster(ctx, kubeconfig)
 		if err != nil {
-			return fmt.Errorf("failed to get nodes of cluster: %w", err)
+			return fmt.Errorf("failed to get nodes of cluster %s: %w", cluster.Name, err)
 		}
 
 		// Create map of k8s node health by node name (lowercase for matching)
@@ -981,12 +981,12 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 
 		kubeconfig, err := getFromState[string](state, "kubeconfig")
 		if err != nil {
-			return fmt.Errorf("failed to get kubeconfig from state: %w", err)
+			return fmt.Errorf("failed to get kubeconfig from state for cluster %s: %w", cluster.Name, err)
 		}
 
 		nodes, err := getNodesOfCluster(ctx, kubeconfig)
 		if err != nil {
-			return fmt.Errorf("failed to get nodes of cluster: %w", err)
+			return fmt.Errorf("failed to get nodes of cluster %s: %w", cluster.Name, err)
 		}
 
 		// Create map of k8s node health by node name
@@ -1015,13 +1015,13 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 
 		dbCluster, err := clusterRepo.GetClusterByName(config.UserID, cluster.ProjectName)
 		if err != nil {
-			return fmt.Errorf("failed to get cluster from database: %w", err)
+			return fmt.Errorf("failed to get cluster %s from database: %w", cluster.Name, err)
 		}
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
-			return fmt.Errorf("failed to set cluster result: %w", err)
+			return fmt.Errorf("failed to set cluster result for cluster %s: %w", cluster.Name, err)
 		}
 		if err := clusterRepo.UpdateCluster(&dbCluster); err != nil {
-			return fmt.Errorf("failed to update cluster in database: %w", err)
+			return fmt.Errorf("failed to update cluster %s in database: %w", cluster.Name, err)
 		}
 		return nil
 	}
@@ -1044,7 +1044,7 @@ func CheckClusterHealthStep(privateKeyPath string) ewf.StepFn {
 		}
 		_, err = cluster.GetKubeconfig(ctx, string(privateKeyBytes))
 		if err != nil {
-			return fmt.Errorf("%w for cluster %s: %s", ErrClusterNotHealthy, cluster.Name, err.Error())
+			return fmt.Errorf("%w for cluster %s: %w", ErrClusterNotHealthy, cluster.Name, err)
 		}
 		return nil
 	}
