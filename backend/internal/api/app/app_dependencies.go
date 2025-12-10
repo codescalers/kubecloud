@@ -266,7 +266,7 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 }
 
 func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
-	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
+	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.Debug, config.DisableSentry, gridclient.WithNetwork(config.SystemAccount.Network))
 	if err != nil {
 		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
 	}

@@ -57,13 +57,36 @@ type gridClient struct {
 
 var _ GridClient = (*gridClient)(nil)
 
-func NewGridClient(systemMnemonic string, network string, debug bool) (GridClient, error) {
+type ClientOpts func(*clientCfg)
+type clientCfg struct {
+	network string
+}
+
+func WithNetwork(network string) ClientOpts {
+	return func(c *clientCfg) {
+		c.network = network
+	}
+}
+
+func NewGridClient(systemMnemonic string, debug bool, disableSentry bool, opts ...ClientOpts) (GridClient, error) {
+	cfg := &clientCfg{}
+
+	for _, o := range opts {
+		o(cfg)
+	}
+
 	pluginOpts := []deployer.PluginOpt{
-		deployer.WithNetwork(network),
 		deployer.WithDisableSentry(),
 	}
+
 	if debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
+	}
+	if disableSentry {
+		pluginOpts = append(pluginOpts, deployer.WithDisableSentry())
+	}
+	if cfg.network != "" {
+		pluginOpts = append(pluginOpts, deployer.WithNetwork(cfg.network))
 	}
 
 	gridCl, err := deployer.NewTFPluginClient(
