@@ -63,7 +63,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 				Str("node_ip", node.MyceliumIP).
 				Msg("Attempting to retrieve kubeconfig from node")
 
-			kubeconfig, err := getKubeconfigViaSSH(ctx, privateKey, &node)
+			kubeconfig, err := GetKubeconfigViaSSH(ctx, privateKey, &node)
 			if err != nil {
 				log.Debug().
 					Err(err).
@@ -92,7 +92,7 @@ func (c *Cluster) GetKubeconfig(ctx context.Context, privateKey string) (string,
 	return "", err
 }
 
-func getKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (string, error) {
+func GetKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (string, error) {
 	ctx, span := getTracer().Start(ctx, "getKubeconfigViaSSH",
 		trace.WithAttributes(
 			attribute.String("node.name", node.Name),

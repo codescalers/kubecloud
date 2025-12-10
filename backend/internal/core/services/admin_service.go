@@ -153,12 +153,14 @@ func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) err
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       transaction.UserID,
 		"amount":        gridclient.FromUSDToUSDMillicent(transaction.Amount),
-		"mnemonic":      user.Mnemonic,
 		"username":      user.Username,
 		"transfer_mode": models.AdminCreditMode,
 		"admin_id":      transaction.AdminID,
+		"config": map[string]interface{}{
+			"user_id":  transaction.UserID,
+			"mnemonic": user.Mnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, transaction.AdminID); err != nil {
@@ -235,7 +237,9 @@ func (svc *AdminService) AsyncDrainUserUSD(userID, adminID int) error {
 
 	wf.State = map[string]interface{}{
 		"target_user_id": userID,
-		"user_id":        adminID,
+		"config": map[string]interface{}{
+			"user_id": adminID,
+		},
 	}
 
 	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
@@ -249,7 +253,9 @@ func (svc *AdminService) AsyncDrainAllUsersUSD(adminID int) error {
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id": adminID,
+		"config": map[string]interface{}{
+			"user_id": adminID,
+		},
 	}
 
 	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())

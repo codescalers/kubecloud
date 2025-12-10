@@ -452,7 +452,7 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingR
 }
 
 func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowTrackClusterHealth, ewf.WithDisplayName("Track cluster health"))
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowTrackClusterHealth, ewf.WithDisplayName("Cluster Health Check"))
 	if err != nil {
 		return fmt.Errorf("failed to create health tracking workflow: %w", err)
 	}

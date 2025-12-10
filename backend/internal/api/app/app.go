@@ -43,7 +43,12 @@ type App struct {
 func NewApp(ctx context.Context, config cfg.Configuration) (*App, error) {
 	// Disable gin's default logging since we're using zerolog
 	gin.DisableConsoleColor()
+
 	gin.SetMode(gin.ReleaseMode)
+
+	if config.Debug {
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// Create router without default middleware
 	router := gin.New()

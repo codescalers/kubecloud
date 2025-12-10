@@ -74,6 +74,10 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 			if err = userRepo.RegisterUser(&user); err != nil {
 				return fmt.Errorf("user registration failed: %w", err)
 			}
+			// Store user_id in state for later use (e.g., in hooks/notifications)
+			state["config"] = map[string]interface{}{
+				"user_id": user.ID,
+			}
 			return nil
 		}
 
@@ -81,7 +85,9 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 		if updateErr := userRepo.UpdateUserByID(&user); updateErr != nil {
 			return fmt.Errorf("failed to update user: %w", updateErr)
 		}
-
+		state["config"] = map[string]interface{}{
+			"user_id": user.ID,
+		}
 		return nil
 	}
 }
@@ -149,22 +155,22 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 
 func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
 		if len(strings.TrimSpace(existingUser.Mnemonic)) > 0 {
-			state["mnemonic"] = existingUser.Mnemonic
+			// Update config with mnemonic
+			state["config"] = map[string]interface{}{
+				"user_id":  userConfig.UserID,
+				"mnemonic": existingUser.Mnemonic,
+			}
 			return nil
 		}
 
@@ -174,29 +180,29 @@ func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepo
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:       userID,
+			ID:       userConfig.UserID,
 			Mnemonic: mnemonic,
 		}); err != nil {
 			return fmt.Errorf("failed to update user mnemonic: %w", err)
 		}
 
-		state["mnemonic"] = mnemonic
+		// Update config with mnemonic
+		state["config"] = map[string]interface{}{
+			"user_id":  userConfig.UserID,
+			"mnemonic": mnemonic,
+		}
 		return nil
 	}
 }
 
 func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billing.StripeClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -229,7 +235,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billi
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:               userID,
+			ID:               userConfig.UserID,
 			StripeCustomerID: customer.ID,
 		}); err != nil {
 			return fmt.Errorf("failed to update user stripe customer: %w", err)
@@ -242,16 +248,12 @@ func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billi
 func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_kyc_sponsorship")
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -260,14 +262,11 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 			return nil
 		}
 
-		mnemonicVal, ok := state["mnemonic"]
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
+		// Get mnemonic from config
+		if userConfig.Mnemonic == "" {
+			return fmt.Errorf("missing 'mnemonic' in config")
 		}
-		mnemonic, ok := mnemonicVal.(string)
-		if !ok {
-			return fmt.Errorf("'mnemonic' in state is not a string")
-		}
+		mnemonic := userConfig.Mnemonic
 
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
@@ -287,7 +286,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:             userID,
+			ID:             userConfig.UserID,
 			Sponsored:      true,
 			AccountAddress: sponseeAddress,
 		}); err != nil {
@@ -380,13 +379,9 @@ func CreatePendingRecord(gridClient gridclient.GridClient, pendingRecordRepo mod
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		usernameVal, ok := state["username"]
@@ -414,7 +409,7 @@ func CreatePendingRecord(gridClient gridclient.GridClient, pendingRecordRepo mod
 		}
 
 		if err = pendingRecordRepo.CreatePendingRecord(&models.PendingRecord{
-			UserID:       userID,
+			UserID:       config.UserID,
 			Username:     username,
 			TFTAmount:    requestedTFTs,
 			TransferMode: transferMode,
@@ -429,13 +424,9 @@ func CreatePendingRecord(gridClient gridclient.GridClient, pendingRecordRepo mod
 
 func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		amountVal, ok := state["amount"]
@@ -447,7 +438,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := userRepo.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(config.UserID)
 		if err != nil {
 			return fmt.Errorf("user not found: %w", err)
 		}
@@ -457,7 +448,11 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
-		state["mnemonic"] = user.Mnemonic
+		// Update config with mnemonic
+		state["config"] = map[string]interface{}{
+			"user_id":  config.UserID,
+			"mnemonic": user.Mnemonic,
+		}
 		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
 		if netBalance < 0 {
 			netBalance = 0
@@ -572,13 +567,9 @@ func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Eng
 
 func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		amountVal, ok := state["amount"]
@@ -590,7 +581,7 @@ func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := userRepo.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(config.UserID)
 		if err != nil {
 			return fmt.Errorf("user is not found: %w", err)
 		}

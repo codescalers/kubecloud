@@ -51,6 +51,7 @@ type Node struct {
 	PlanetaryIP  string `json:"planetary_ip,omitempty"`
 	ContractID   uint64 `json:"contract_id,omitempty"`
 	OriginalName string `json:"original_name,omitempty"`
+	Healthy      bool   `json:"healthy"`
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for Node to support backward compatibility

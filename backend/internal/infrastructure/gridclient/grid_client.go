@@ -19,6 +19,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type GridClient interface {
@@ -59,12 +60,19 @@ var _ GridClient = (*gridClient)(nil)
 
 type ClientOpts func(*clientCfg)
 type clientCfg struct {
-	network string
+	network       string
+	traceProvider *sdktrace.TracerProvider
 }
 
 func WithNetwork(network string) ClientOpts {
 	return func(c *clientCfg) {
 		c.network = network
+	}
+}
+
+func WithTracerProvider(tp *sdktrace.TracerProvider) ClientOpts {
+	return func(c *clientCfg) {
+		c.traceProvider = tp
 	}
 }
 

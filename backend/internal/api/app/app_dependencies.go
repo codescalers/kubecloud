@@ -25,6 +25,8 @@ import (
 	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/telemetry"
 
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+
 	"net/url"
 	"os"
 	"strings"
@@ -96,7 +98,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appInfrastructure, err := createAppInfrastructure(config)
+	appInfrastructure, err := createAppInfrastructure(config, appCore.tracerProvider.Provider())
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -265,8 +267,13 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 	}, nil
 }
 
-func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
-	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.Debug, config.DisableSentry, gridclient.WithNetwork(config.SystemAccount.Network))
+func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvider) (appInfrastructure, error) {
+	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic,
+		config.Debug, config.DisableSentry,
+		gridclient.WithNetwork(config.SystemAccount.Network),
+		gridclient.WithTracerProvider(tp),
+	)
+	
 	if err != nil {
 		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
 	}

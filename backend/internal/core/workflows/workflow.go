@@ -53,6 +53,8 @@ func RegisterEWFWorkflows(
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, gridClient))
 	engine.Register(StepDrainAllUsersBalance, DrainAllUsersBalanceStep(userRepo, engine, config.MailSender.MaxConcurrentSends))
+	engine.Register(StepCheckClusterNodesHealth, CheckClusterNodesHealthStep(clusterRepo))
+	engine.Register(StepCheckClusterHealth, CheckClusterHealthStep(config.SSH.PrivateKeyPath))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	registerWorkflowTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{
@@ -135,8 +137,8 @@ func RegisterEWFWorkflows(
 	trackClusterHealthWFTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	trackClusterHealthWFTemplate.Steps = []ewf.Step{
 		{Name: StepVerifyClusterInDB, RetryPolicy: standardRetryPolicy},
-		{Name: StepFetchKubeconfig, RetryPolicy: standardRetryPolicy},
-		{Name: StepVerifyClusterReady, RetryPolicy: standardRetryPolicy},
+		{Name: StepCheckClusterNodesHealth, RetryPolicy: standardRetryPolicy},
+		{Name: StepCheckClusterHealth, RetryPolicy: standardRetryPolicy},
 	}
 	trackClusterHealthWFTemplate.AfterWorkflowHooks = []ewf.AfterWorkflowHook{hookClusterHealthCheck(notificationDispatcher)}
 	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
