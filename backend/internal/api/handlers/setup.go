@@ -201,7 +201,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := s.gridClient.SetupUserOnTFChain(s.termsAndConditions, s.network)
+		mnemonic, _, err := s.gridClient.SetupUserOnTFChain(s.termsAndConditions)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)

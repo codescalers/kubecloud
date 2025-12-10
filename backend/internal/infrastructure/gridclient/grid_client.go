@@ -40,7 +40,7 @@ type GridClient interface {
 	CreateTwin(mnemonic string) (uint32, error)
 	CreateRentContract(mnemonic string, nodeID uint32) (uint64, error)
 	CancelContract(mnemonic string, contractID uint64) error
-	SetupUserOnTFChain(termsAndConditions config.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error)
+	SetupUserOnTFChain(termsAndConditions config.TermsANDConditions) (mnemonic string, twinID uint32, err error)
 
 	// grid-proxy client methods
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
@@ -374,7 +374,7 @@ func activateAccount(substrateAccountID, network string) error {
 }
 
 // SetupUserOnTFChain performs all TFChain setup steps and returns mnemonic, identity, twin ID
-func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDConditions, network string) (mnemonic string, twinID uint32, err error) {
+func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDConditions) (mnemonic string, twinID uint32, err error) {
 	mnemonic, err = GenerateMnemonic()
 	if err != nil {
 		return "", 0, fmt.Errorf("generate mnemonic failed: %w", err)
@@ -386,7 +386,7 @@ func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDCondit
 	}
 
 	// Activate account with activation service
-	if err := activateAccount(address, network); err != nil {
+	if err := activateAccount(address, s.gridClient.Network); err != nil {
 		return "", 0, fmt.Errorf("activation failed: %w", err)
 	}
 

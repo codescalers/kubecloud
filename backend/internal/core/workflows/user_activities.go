@@ -174,7 +174,7 @@ func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepo
 			return nil
 		}
 
-		mnemonic, _, err := gridClient.SetupUserOnTFChain(config.TermsANDConditions, config.SystemAccount.Network)
+		mnemonic, _, err := gridClient.SetupUserOnTFChain(config.TermsANDConditions)
 		if err != nil {
 			return err
 		}
