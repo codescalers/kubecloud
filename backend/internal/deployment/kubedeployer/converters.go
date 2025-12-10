@@ -96,6 +96,7 @@ func deploymentFromNode(
 		MyceliumIPSeed: ipSeed,
 		Mounts:         mounts,
 		GPUs:           gpus,
+		Corex:          true,
 	}
 
 	vm.EnvVars["K3S_NODE_NAME"] = node.Name
