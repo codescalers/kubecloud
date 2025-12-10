@@ -245,9 +245,11 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 
 	// Start the user-verification workflow
 	wf.State = ewf.State{
-		"email":   userEmail,
-		"name":    username,
-		"user_id": userID,
+		"email": userEmail,
+		"name":  username,
+		"config": map[string]interface{}{
+			"user_id": userID,
+		},
 	}
 
 	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
@@ -261,13 +263,15 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 	}
 
 	wf.State = ewf.State{
-		"user_id":            userID,
 		"stripe_customer_id": userStripeCustomerID,
 		"payment_method_id":  paymentMethodID,
 		"amount":             substrate.FromUSDToUSDMillicent(requestAmount),
-		"mnemonic":           userMnemonic,
 		"username":           username,
 		"transfer_mode":      models.ChargeBalanceMode,
+		"config": map[string]interface{}{
+			"user_id":  userID,
+			"mnemonic": userMnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
@@ -290,11 +294,13 @@ func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, use
 	}
 
 	wf.State = map[string]interface{}{
-		"user_id":       userID,
 		"amount":        substrate.FromUSDToUSDMillicent(voucherValue),
-		"mnemonic":      userMnemonic,
 		"username":      userUsername,
 		"transfer_mode": models.RedeemVoucherMode,
+		"config": map[string]interface{}{
+			"user_id":  userID,
+			"mnemonic": userMnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {

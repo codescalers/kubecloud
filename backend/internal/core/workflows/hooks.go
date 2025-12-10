@@ -29,33 +29,16 @@ func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkf
 			log.Info().Msg("Suppressing notification for workflow")
 			return
 		}
-		var userID int
-		cfg, err := getConfig(w.State)
-		if err == nil {
-			userID = cfg.UserID
-			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
-		}
 
+		config, err := getConfig(w.State)
 		if err != nil {
-			log.Warn().Err(err).Msg("failed to get user ID from config in workflow state, attempting to retrieve from state directly")
-			userIDVal, ok := w.State["user_id"]
-			if !ok {
-				log.Error().Msg("user ID is missing in workflow state")
-				return
-			}
-
-			var convErr error
-			userID, convErr = toInt(userIDVal)
-			if convErr != nil {
-				log.Error().Err(convErr).Msg("failed to convert user_id to int")
-				return
-			}
-			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
+			log.Error().Err(err).Msg("failed to get config from state")
+			return
 		}
 
 		notificationType := workflowToNotificationType(w.Name)
 		displayName := getWorkflowDisplayName(w)
-		notif := notification.NewNotification(userID, notificationType).
+		notif := notification.NewNotification(config.UserID, notificationType).
 			Info(displayName+" has been started").
 			WithSubject(displayName+" Started").
 			WithStatus("started").
