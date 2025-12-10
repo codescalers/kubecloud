@@ -275,7 +275,7 @@ func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvid
 	)
 
 	if err != nil {
-		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
+		return appInfrastructure{}, fmt.Errorf("failed to create grid client: %w", err)
 	}
 
 	fireSquidClient, err := graphql.NewGraphQl(grid.FireSquidURLs[config.SystemAccount.Network]...)

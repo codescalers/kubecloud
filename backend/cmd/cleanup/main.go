@@ -67,7 +67,7 @@ func main() {
 
 	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.Debug, config.DisableSentry, gridclient.WithNetwork(config.SystemAccount.Network))
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create substrate client")
+		log.Error().Err(err).Msg("Failed to create grid client")
 		return
 	}
 	defer gridClient.Close()
