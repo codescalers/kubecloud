@@ -45,8 +45,8 @@ require (
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
 	gorm.io/plugin/opentelemetry v0.1.16
-	k8s.io/api v0.34.1
-	k8s.io/apimachinery v0.34.1
+	k8s.io/api v0.34.3
+	k8s.io/apimachinery v0.34.3
 	k8s.io/client-go v0.34.1
 )
 
