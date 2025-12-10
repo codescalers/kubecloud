@@ -296,7 +296,7 @@ func sendAdminCreditBalanceWorkflowNotification(ctx context.Context, notificatio
 		userBuilder = userBuilder.Failure("Funds transfer to your account failed", err).
 			WithSubject("Your Account Credit Failed")
 	} else {
-		userBuilder = userBuilder.Success(fmt.Sprintf("Funds were credited to your account. Amount added: $%.2f.", amountUSD)).
+		userBuilder = userBuilder.Success("Funds were credited to your account.").
 			WithSubject("Your Account Has Been Credited").
 			WithStatus("succeeded").
 			WithExtra("amount", fmt.Sprintf("%.2f", amountUSD))
