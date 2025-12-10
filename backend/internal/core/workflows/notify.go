@@ -319,33 +319,17 @@ func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *n
 		return confErr
 	}
 
-	// Extract node information from workflow state
-	var nodeID uint32
-	var contractID uint64
-
-	if nodeIDVal, ok := wf.State["node_id"]; ok {
-		switch v := nodeIDVal.(type) {
-		case uint32:
-			nodeID = v
-		case float64:
-			nodeID = uint32(v)
-		case int64:
-			nodeID = uint32(v)
-		case int:
-			nodeID = uint32(v)
-		}
+	nodeID, nodeIDErr := getUint32FromState(wf.State, "node_id")
+	if nodeIDErr != nil {
+		log.Warn().Err(nodeIDErr).Msg("failed to get node ID from state")
+		notif := buildGenericWorkflowNotification(wf, config.UserID, err)
+		return notificationDispatcher.Send(ctx, notif)
 	}
-	if contractIDVal, ok := wf.State["contract_id"]; ok {
-		switch v := contractIDVal.(type) {
-		case uint64:
-			contractID = v
-		case float64:
-			contractID = uint64(v)
-		case int64:
-			contractID = uint64(v)
-		case int:
-			contractID = uint64(v)
-		}
+	contractID, contractIDErr := getUint64FromState(wf.State, "contract_id")
+	if contractIDErr != nil {
+		log.Warn().Err(contractIDErr).Msg("failed to get contract ID from state")
+		notif := buildGenericWorkflowNotification(wf, config.UserID, err)
+		return notificationDispatcher.Send(ctx, notif)
 	}
 
 	displayName := getWorkflowDisplayName(wf)
