@@ -142,7 +142,7 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	gridClient, err := gridclient.NewSubstrateClient(configuration.SystemAccount.Mnemonic, configuration.SystemAccount.Network, configuration.Debug)
+	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, configuration.SystemAccount.Network, configuration.Debug)
 	if err != nil {
 		return setup{}, err
 	}

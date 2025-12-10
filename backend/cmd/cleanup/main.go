@@ -65,7 +65,7 @@ func main() {
 	}
 	defer db.Close()
 
-	gridClient, err := gridclient.NewSubstrateClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
+	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.SystemAccount.Network, config.Debug)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create substrate client")
 		return

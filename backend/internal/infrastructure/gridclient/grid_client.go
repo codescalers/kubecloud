@@ -57,7 +57,7 @@ type gridClient struct {
 
 var _ GridClient = (*gridClient)(nil)
 
-func NewSubstrateClient(systemMnemonic string, network string, debug bool) (GridClient, error) {
+func NewGridClient(systemMnemonic string, network string, debug bool) (GridClient, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(network),
 		deployer.WithDisableSentry(),
