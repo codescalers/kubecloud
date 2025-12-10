@@ -87,6 +87,5 @@ func createNetworkWorkload(networkName, projectName string, nodes []uint32) (wor
 		}},
 		MyceliumKeys: keys,
 		SolutionType: projectName,
-		AddWGAccess:  true,
 	}, nil
 }
