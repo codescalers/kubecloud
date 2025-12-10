@@ -273,7 +273,7 @@ func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvid
 		gridclient.WithNetwork(config.SystemAccount.Network),
 		gridclient.WithTracerProvider(tp),
 	)
-	
+
 	if err != nil {
 		return appInfrastructure{}, fmt.Errorf("failed to create substrate client: %w", err)
 	}
