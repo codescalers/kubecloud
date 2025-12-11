@@ -17,6 +17,7 @@
     "audit": "yarn audit --summary --level critical"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "@nuxt/eslint": "1.12.1",
     "eslint": "^9.0.0",
     "nuxt": "^4.2.2",
@@ -26,7 +27,9 @@
   "devDependencies": {
     "@types/node": "^25.0.0",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.7.4"
+    "prettier": "^3.7.4",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vuetify": "^3.11.3"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx,vue}": [

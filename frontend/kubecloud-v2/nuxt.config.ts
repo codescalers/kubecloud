@@ -1,7 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import vuetify, { transformAssetUrls } from "vite-plugin-vuetify"
 
-const preCommit = process.env.PRE_COMMIT === "y"
-const prod = process.env.NODE_ENV === "production" && !preCommit
+const prod = process.env.NODE_ENV === "production"
 
 export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
@@ -12,5 +12,17 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
   },
+  build: {
+    transpile: ["vuetify"],
+  },
+  vite: {
+    plugins: [vuetify({ autoImport: true })],
+    vue: {
+      template: {
+        transformAssetUrls,
+      },
+    },
+  },
+  css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles"],
   modules: ["@nuxt/eslint"],
 })
