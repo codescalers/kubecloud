@@ -3,5 +3,5 @@
 </template>
 
 <script lang="ts" setup>
-console.log("about")
+console.log ("about")
 </script>
