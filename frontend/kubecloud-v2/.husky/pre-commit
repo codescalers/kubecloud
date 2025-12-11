@@ -1,0 +1,3 @@
+yarn typecheck
+PRE_COMMIT=y yarn generate
+yarn lint-staged
