@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+  <DefaultLayoutBase>
     <slot />
-  </v-app>
+  </DefaultLayoutBase>
 </template>

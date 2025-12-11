@@ -1,9 +1,9 @@
 <template>
-  <div>Docs Getting Started</div>
+  <div>Login</div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({
-  layout: "docs",
+  layout: "plain",
 })
 </script>
