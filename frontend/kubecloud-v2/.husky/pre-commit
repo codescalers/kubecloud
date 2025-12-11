@@ -1,3 +1,9 @@
+#!/usr/bin/env sh
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Run kubecloud-v2 checks
+cd frontend/kubecloud-v2 || exit 1
+
 yarn typecheck
 PRE_COMMIT=y yarn generate
 yarn lint-staged
