@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+cd frontend/kubecloud-v2
+
+yarn typecheck
+PRE_COMMIT=y yarn generate
+yarn lint-staged
