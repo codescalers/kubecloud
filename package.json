@@ -1,0 +1,10 @@
+{
+  "name": "kubecloud",
+  "repository": "git@github.com:codescalers/kubecloud.git",
+  "devDependencies": {
+    "husky": "^8.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install"
+  }
+}

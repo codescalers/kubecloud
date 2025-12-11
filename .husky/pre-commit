@@ -1,0 +1,32 @@
+
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# --- HELPER FUNCTION: Check for Staged Files ---
+# Checks if any staged files match the start of the given path pattern.
+# Usage: staged_files_exist "directory_path"
+staged_files_exist() {
+  local path_pattern="$1"
+  # Use git diff --cached to look only at staged files
+  # Use grep -q (quiet) and the regex anchor ^ to ensure it starts with the directory path
+  git diff --cached --name-only | grep -q "^$path_pattern/"
+}
+
+# -----------------------------------
+# RUN FRONTEND HOOK
+# -----------------------------------
+# The script we want to run inside the frontend directory
+FRONTEND_SCRIPT="frontend/kubecloud-v2/pre-commit"
+
+if staged_files_exist "frontend"; then
+  echo "--- Running Frontend Checks (Files staged in: frontend/) ---"
+  
+  if [ -f "$FRONTEND_SCRIPT" ]; then
+    # Execute the custom script. If it fails, abort the commit.
+    sh "$FRONTEND_SCRIPT" || { echo "❌ Frontend checks failed."; exit 1; }
+  else
+    echo "⚠️ WARNING: Frontend check script not found at $FRONTEND_SCRIPT"
+  fi
+fi
+
+echo "✅ All required checks passed. Proceeding with commit."
