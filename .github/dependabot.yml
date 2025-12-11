@@ -18,6 +18,21 @@ updates:
 
   # Maintain dependencies for npm
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directory: "/frontend/kubecloud"
     schedule:
       interval: "monthly"
+
+  # Maintain dependencies for npm (kubecloud-v2)
+  - package-ecosystem: "npm"
+    directory: "/frontend/kubecloud-v2"
+    schedule:
+      interval: "daily"
+    groups:
+      minor-patch:
+        update-types:
+          - minor
+          - patch
+    labels:
+      - "dependencies"
+      - "yarn"
+    open-pull-requests-limit: 10
