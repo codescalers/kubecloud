@@ -9,11 +9,17 @@
         />
       </div>
 
-      <v-btn text="Home" to="/" />
-      <v-btn text="Features" to="/features" />
-      <v-btn text="Docs" to="/docs" :active="$route.path.startsWith('/docs')" />
-      <v-btn text="Use Cases" to="/use-cases" />
-      <v-btn text="Dashboard" to="/dashboard" :active="$route.path.startsWith('/dashboard')" />
+      <v-btn-group>
+        <v-btn
+          v-for="route in routes"
+          :key="route.path"
+          variant="plain"
+          :text="route.title"
+          :to="route.path"
+          :active="isActive(route.path, $route.path)"
+          class="navbar-link-item opacity-100"
+        />
+      </v-btn-group>
 
       <v-spacer />
 
@@ -30,3 +36,39 @@
     </v-container>
   </v-app-bar>
 </template>
+
+<script setup lang="ts">
+const routes = markRaw([
+  { title: "Home", path: "/" },
+  { title: "Features", path: "/features" },
+  { title: "Docs", path: "/docs" },
+  { title: "Use Cases", path: "/use-cases" },
+  { title: "Dashboard", path: "/dashboard" },
+])
+
+function isActive(path: string, current: string) {
+  if (path === "/" && path === current) {
+    return true
+  }
+
+  return path !== "/" && current.startsWith(path)
+}
+</script>
+
+<style scoped lang="scss">
+.navbar-link-item {
+  transition: color 0.3s ease;
+
+  &.v-btn--active,
+  &:hover {
+    color: rgb(var(--v-theme-primary));
+  }
+}
+/*
+.navbar-link-item {
+  text-transform: none;
+  font-weight: 500;
+  font-size: 14px;
+  color: #fff;
+}*/
+</style>

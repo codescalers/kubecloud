@@ -25,9 +25,4 @@ export default defineNuxtConfig({
   },
   css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles"],
   modules: ["@nuxt/eslint"],
-  // eslint: {
-  //   config: {
-  //     typescript: true,
-  //   },
-  // },
 })
