@@ -9,7 +9,7 @@
         />
       </div>
 
-      <v-btn-group>
+      <div>
         <v-btn
           v-for="route in routes"
           :key="route.path"
@@ -19,11 +19,13 @@
           :active="isActive(route.path, $route.path)"
           class="navbar-link-item opacity-100"
         />
-      </v-btn-group>
+      </div>
 
       <v-spacer />
 
-      <v-menu>
+      <v-btn variant="outlined" class="mr-2" to="/login">Login</v-btn>
+      <v-btn variant="flat" color="primary" to="/register">Register</v-btn>
+      <!-- <v-menu>
         <template #activator="{ props }">
           <v-btn text="Account" v-bind="props" />
         </template>
@@ -32,7 +34,7 @@
           <v-list-item title="Dashboard" to="/dashboard" />
           <v-list-item title="Logout" @click="console.log('logout')" />
         </v-list>
-      </v-menu>
+      </v-menu> -->
     </v-container>
   </v-app-bar>
 </template>
@@ -43,7 +45,7 @@ const routes = markRaw([
   { title: "Features", path: "/features" },
   { title: "Docs", path: "/docs" },
   { title: "Use Cases", path: "/use-cases" },
-  { title: "Dashboard", path: "/dashboard" },
+  // { title: "Dashboard", path: "/dashboard" },
 ])
 
 function isActive(path: string, current: string) {

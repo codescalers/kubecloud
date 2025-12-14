@@ -6,6 +6,11 @@ export default defineNuxtPlugin((nuxtApp) => {
       theme: {
         defaultTheme: "dark",
       },
+      defaults: {
+        VBtn: {
+          style: "text-transform: none;",
+        },
+      },
     })
   )
 })
