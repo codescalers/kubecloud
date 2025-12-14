@@ -34,11 +34,11 @@ type Configuration struct {
 	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
-	Locks                                LocksConfig                   `json:"locks" validate:"required,dive"`
 	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	UsersBalanceCheckIntervalInHours     int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
 	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
+	LockTimeoutInHours                   int                           `json:"lock_timeout_in_hours" validate:"required,gt=0" default:"1"`
 
 	Logger    LoggerConfig    `json:"logger"`
 	Loki      LokiConfig      `json:"loki"`
@@ -133,10 +133,6 @@ type TelemetryConfig struct {
 	OTLPEndpoint string `json:"otlp_endpoint" default:"jaeger:4317"` // gRPC endpoint for OTLP exporter
 }
 
-type LocksConfig struct {
-	LockTimeoutInHours            int `json:"lock_timeout_in_hours" validate:"required,gt=0" default:"24"`
-	LocksReleaseIntervalInMinutes int `json:"locks_release_interval_in_minutes" validate:"required,gt=0" default:"5"`
-}
 type ReservedNodeHealthCheckConfig struct {
 	ReservedNodeHealthCheckIntervalInHours  int `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckTimeoutInMinutes int `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
@@ -395,11 +391,8 @@ func applyDefaultValues(config *Configuration) {
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
 	}
-	if config.Locks.LockTimeoutInHours == 0 {
-		config.Locks.LockTimeoutInHours = 24
-	}
-	if config.Locks.LocksReleaseIntervalInMinutes == 0 {
-		config.Locks.LocksReleaseIntervalInMinutes = 2
+	if config.LockTimeoutInHours == 0 {
+		config.LockTimeoutInHours = 24
 	}
 
 	if config.Telemetry.OTLPEndpoint == "" {

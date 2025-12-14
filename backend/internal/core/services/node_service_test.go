@@ -25,28 +25,17 @@ func (m *MockDistributedLocks) GetLockedNodes(ctx context.Context) ([]uint32, er
 	return args.Get(0).([]uint32), args.Error(1)
 }
 
-func (m *MockDistributedLocks) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) error {
-
+func (m *MockDistributedLocks) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) (map[string]string, error) {
 	args := m.Called(ctx, nodeIDs)
-	return args.Error(0)
-}
-
-func (m *MockDistributedLocks) AcquireWorkflowLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
-	args := m.Called(ctx, nodeIDs, workflowID)
-	return args.Error(0)
-}
-
-func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
-	args := m.Called(ctx, nodeIDs, workflowID)
-	return args.Error(0)
-}
-
-func (m *MockDistributedLocks) GetAllWorkflowsLocks(ctx context.Context) ([]string, error) {
-	args := m.Called(ctx)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).(map[string]string), args.Error(1)
+}
+
+func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, lockedKeys map[string]string) error {
+	args := m.Called(ctx, lockedKeys)
+	return args.Error(0)
 }
 
 // Test 1: NodeService - GetUserNodeByNodeID SUCCESS

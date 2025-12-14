@@ -6,21 +6,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/deployment/kubedeployer"
 )
 
 type DeploymentHandler struct {
-	svc    services.DeploymentService
-	locker distributedlocks.DistributedLocks
+	svc services.DeploymentService
 }
 
-func NewDeploymentHandler(svc services.DeploymentService, locker distributedlocks.DistributedLocks) DeploymentHandler {
+func NewDeploymentHandler(svc services.DeploymentService) DeploymentHandler {
 	return DeploymentHandler{
-		svc:    svc,
-		locker: locker,
+		svc: svc,
 	}
 }
 
@@ -240,21 +237,6 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	nodeIDs := make([]uint32, len(cluster.Nodes))
-	for i, node := range cluster.Nodes {
-		nodeIDs[i] = node.NodeID
-	}
-
-	if err = h.locker.AcquireNodesLocks(c.Request.Context(), nodeIDs); err != nil {
-		reqLog.Error().Err(err).Msg("failed to acquire nodes locks")
-		if errors.Is(err, distributedlocks.ErrNodeLocked) {
-			Conflict(c, err.Error())
-			return
-		}
-		InternalServerError(c)
-		return
-	}
-
 	wfUUID, wfStatus, err := h.svc.AsyncDeployCluster(config, cluster)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start deployment workflow")
@@ -425,15 +407,6 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 			Conflict(c, fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID))
 			return
 		}
-	}
-	if err = h.locker.AcquireNodesLocks(c.Request.Context(), []uint32{cluster.Nodes[0].NodeID}); err != nil {
-		reqLog.Error().Err(err).Msg("failed to acquire nodes locks")
-		if errors.Is(err, distributedlocks.ErrNodeLocked) {
-			Conflict(c, err.Error())
-			return
-		}
-		InternalServerError(c)
-		return
 	}
 
 	wfUUID, wfStatus, err := h.svc.AsyncAddNode(config, cl, cluster.Nodes[0])

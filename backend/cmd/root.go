@@ -210,14 +210,10 @@ func addFlags() error {
 	if err := bindStringFlag(rootCmd, "telemetry.otlp_endpoint", "jaeger:4317", "OpenTelemetry gRPC endpoint"); err != nil {
 		return fmt.Errorf("failed to bind telemetry.otlp_endpoint flag: %w", err)
 	}
-	// === Locks ===
-	if err := bindIntFlag(rootCmd, "locks.lock_timeout_in_hours", 24, "Redis lock timeout (hours)"); err != nil {
-		return fmt.Errorf("failed to bind locks.lock_timeout_in_hours flag: %w", err)
+	// === Lock Timeout In Hours ===
+	if err := bindIntFlag(rootCmd, "lock_timeout_in_hours", 1, "Redis lock timeout (hours)"); err != nil {
+		return fmt.Errorf("failed to bind lock_timeout_in_hours flag: %w", err)
 	}
-	if err := bindIntFlag(rootCmd, "locks.locks_release_interval_in_minutes", 2, "Locks release interval (minutes)"); err != nil {
-		return fmt.Errorf("failed to bind locks.locks_release_interval_in_minutes flag: %w", err)
-	}
-
 	return nil
 }
 

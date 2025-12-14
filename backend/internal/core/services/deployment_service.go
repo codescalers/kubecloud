@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
@@ -235,17 +236,24 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 		return "", "", err
 	}
 
+	var lockedKeys map[string]string
 	if len(nodeIDs) > 0 {
-
-		if err = svc.locker.AcquireWorkflowLock(svc.appCtx, nodeIDs, wf.UUID); err != nil {
+		lockedKeys, err = svc.locker.AcquireNodesLocks(svc.appCtx, nodeIDs)
+		if err != nil {
 			return "", "", err
 		}
+
+		lockedKeysJSON, err := json.Marshal(lockedKeys)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to marshal locked keys: %w", err)
+		}
+		wf.Metadata["locked_keys"] = string(lockedKeysJSON)
 
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
 		if len(nodeIDs) > 0 {
-			if releaseErr := svc.locker.ReleaseLock(svc.appCtx, nodeIDs, wf.UUID); releaseErr != nil {
+			if releaseErr := svc.locker.ReleaseLock(svc.appCtx, lockedKeys); releaseErr != nil {
 				err = fmt.Errorf("%w: failed to release workflow lock: %v", err, releaseErr)
 			}
 		}

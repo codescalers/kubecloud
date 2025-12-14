@@ -169,7 +169,7 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 		return appCore{}, fmt.Errorf("failed to init workflow engine: %w", err)
 	}
 
-	locker := distributedlocks.NewRedisLocker(client, time.Duration(config.Locks.LockTimeoutInHours)*time.Hour)
+	locker := distributedlocks.NewRedisLocker(client, time.Duration(config.LockTimeoutInHours)*time.Hour)
 
 	return appCore{
 		appCtx:         ctx,
@@ -367,8 +367,8 @@ func (app *App) createHandlers() appHandlers {
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
-	nodeHandler := handlers.NewNodeHandler(nodeService, app.core.locker)
-	deploymentHandler := handlers.NewDeploymentHandler(deploymentService, app.core.locker)
+	nodeHandler := handlers.NewNodeHandler(nodeService)
+	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService)
 	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailService)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
@@ -400,9 +400,8 @@ func (app *App) createWorkers() workers.Workers {
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
-		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours, app.config.CheckUserDebtIntervalInHours,
-		app.config.Locks.LocksReleaseIntervalInMinutes,
-		app.core.locker,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours,
+		app.config.CheckUserDebtIntervalInHours,
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)

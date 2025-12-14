@@ -228,7 +228,6 @@ func (app *App) StartBackgroundWorkers() {
 	go app.workers.TrackReservedNodeHealth()
 	go app.workers.CollectGORMMetrics()
 	go app.workers.CollectGoRuntimeMetrics()
-	go app.workers.ReleaseWorkflowLocks()
 }
 
 // Run starts the server

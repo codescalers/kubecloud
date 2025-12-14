@@ -7,7 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+)
+
+const (
+	nodeLockKey = "locked"
 )
 
 type RedisLocker struct {
@@ -24,76 +29,55 @@ func NewRedisLocker(client *redis.Client, lockTimeout time.Duration) *RedisLocke
 }
 
 // AcquireNodesLocks acquires locks for the given node IDs.
-func (l *RedisLocker) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) error {
-	if err := l.acquireKeys(ctx, lockKeys(nodeIDs, nodeLockKey)); err != nil {
-		return err
+func (l *RedisLocker) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) (map[string]string, error) {
+	lockedKeys, err := l.acquireKeys(ctx, nodeLockKeys(nodeIDs))
+	if err != nil {
+		return nil, err
 	}
-
-	return nil
+	return lockedKeys, nil
 }
 
-// AcquireWorkflowLock acquires a lock for the given workflow ID.
-func (l *RedisLocker) AcquireWorkflowLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
-	keys := lockKeys(nodeIDs, func(id uint32) string {
-		return workflowLockKey(id, workflowID)
-	})
-
-	if err := l.acquireKeys(ctx, keys); err != nil {
-		//rollback nodes locks
-		nodeLockKeys := lockKeys(nodeIDs, nodeLockKey)
-		if rollErr := l.rollbackLocks(ctx, nodeLockKeys); rollErr != nil {
-			return rollErr
-		}
-		return err
-	}
-
-	return nil
-}
-
-func nodeLockKey(nodeID uint32) string {
-	return fmt.Sprintf("locked:%d", nodeID)
-}
-
-func workflowLockKey(nodeID uint32, workflowID string) string {
-	return fmt.Sprintf("used:%d:%s", nodeID, workflowID)
-}
-
-func lockKeys(ids []uint32, keyFunc func(uint32) string) []string {
-	keys := make([]string, len(ids))
-	for i, id := range ids {
-		keys[i] = keyFunc(id)
+func nodeLockKeys(nodeIDs []uint32) []string {
+	keys := make([]string, len(nodeIDs))
+	for i, id := range nodeIDs {
+		keys[i] = fmt.Sprintf("%s:%d", nodeLockKey, id)
 	}
 	return keys
 }
 
-func (l *RedisLocker) acquireKeys(ctx context.Context, keys []string) error {
-	locked := make([]string, 0, len(keys))
+func (l *RedisLocker) acquireKeys(ctx context.Context, keys []string) (map[string]string, error) {
+	locked := make(map[string]string, len(keys))
 
 	for _, key := range keys {
-		ok, err := l.client.SetNX(ctx, key, 1, l.lockTimeout).Result()
+		keyValue := uuid.New().String()
+		ok, err := l.client.SetNX(ctx, key, keyValue, l.lockTimeout).Result()
 		if err != nil {
 			if rollErr := l.rollbackLocks(ctx, locked); rollErr != nil {
-				return rollErr
+				return nil, rollErr
 			}
-			return fmt.Errorf("redis error while acquiring lock for key %s: %w", key, err)
+			return nil, fmt.Errorf("redis error while acquiring lock for key %s: %w", key, err)
 		}
 
 		if !ok {
 			if rollErr := l.rollbackLocks(ctx, locked); rollErr != nil {
-				return rollErr
+				return nil, rollErr
 			}
-			return fmt.Errorf("%w: %s", ErrNodeLocked, key)
+			return nil, fmt.Errorf("%w: %s", ErrNodeLocked, key)
 		}
 
-		locked = append(locked, key)
+		locked[key] = keyValue
 	}
 
-	return nil
+	return locked, nil
 }
 
-func (l *RedisLocker) rollbackLocks(ctx context.Context, keys []string) error {
-	if len(keys) == 0 {
+func (l *RedisLocker) rollbackLocks(ctx context.Context, locked map[string]string) error {
+	if len(locked) == 0 {
 		return nil
+	}
+	keys := make([]string, 0, len(locked))
+	for k := range locked {
+		keys = append(keys, k)
 	}
 
 	if err := l.client.Del(ctx, keys...).Err(); err != nil {
@@ -103,18 +87,36 @@ func (l *RedisLocker) rollbackLocks(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (l *RedisLocker) ReleaseLock(ctx context.Context, nodeIDs []uint32, workflowID string) error {
-	lockedKeys := lockKeys(nodeIDs, nodeLockKey)
-	usedKeys := lockKeys(nodeIDs, func(id uint32) string {
-		return workflowLockKey(id, workflowID)
-	})
-	allWorkflowsLocks := append(lockedKeys, usedKeys...)
-	return l.client.Del(ctx, allWorkflowsLocks...).Err()
-}
+func (l *RedisLocker) ReleaseLock(ctx context.Context, lockedKeys map[string]string) error {
+	if len(lockedKeys) == 0 {
+		return nil
+	}
 
-// GetAllWorkflowsLocks gets all workflow locks.
-func (l *RedisLocker) GetAllWorkflowsLocks(ctx context.Context) ([]string, error) {
-	return l.client.Keys(ctx, "used:*").Result()
+	var failedKeys []string
+	for key, expectedValue := range lockedKeys {
+		storedValue, err := l.client.Get(ctx, key).Result()
+		if err == redis.Nil {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("failed to get lock value for key %s: %w", key, err)
+		}
+
+		if storedValue != expectedValue {
+			failedKeys = append(failedKeys, key)
+			continue
+		}
+
+		if err := l.client.Del(ctx, key).Err(); err != nil {
+			return fmt.Errorf("failed to delete lock for key %s: %w", key, err)
+		}
+	}
+
+	if len(failedKeys) > 0 {
+		return fmt.Errorf("lock value mismatch for keys: %v", failedKeys)
+	}
+
+	return nil
 }
 
 func (l *RedisLocker) GetLockedNodes(ctx context.Context) ([]uint32, error) {
