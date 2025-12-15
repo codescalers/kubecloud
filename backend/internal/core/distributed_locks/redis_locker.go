@@ -87,6 +87,7 @@ func (l *RedisLocker) rollbackLocks(ctx context.Context, locked map[string]strin
 	return nil
 }
 
+// ReleaseLock releases the locks for the given keys.
 func (l *RedisLocker) ReleaseLock(ctx context.Context, lockedKeys map[string]string) error {
 	if len(lockedKeys) == 0 {
 		return nil
@@ -119,19 +120,24 @@ func (l *RedisLocker) ReleaseLock(ctx context.Context, lockedKeys map[string]str
 	return nil
 }
 
+// GetLockedNodes returns the list of locked nodes.
 func (l *RedisLocker) GetLockedNodes(ctx context.Context) ([]uint32, error) {
-	keys, err := l.client.Keys(ctx, "locked:*").Result()
-	if err != nil {
-		return nil, err
-	}
-	nodes := make([]uint32, len(keys))
-	for i, key := range keys {
+	iter := l.client.Scan(ctx, 0, "locked:*", 0).Iterator()
+
+	nodes := make([]uint32, 0)
+	for iter.Next(ctx) {
+		key := iter.Val()
 		nodeID := strings.Split(key, ":")[1]
 		value, parseErr := strconv.ParseUint(nodeID, 10, 32)
 		if parseErr != nil {
 			return nil, fmt.Errorf("failed to parse locked node id from %s: %w", key, parseErr)
 		}
-		nodes[i] = uint32(value)
+		nodes = append(nodes, uint32(value))
 	}
+
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
 	return nodes, nil
 }
