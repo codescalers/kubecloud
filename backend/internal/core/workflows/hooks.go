@@ -2,11 +2,13 @@ package workflows
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"time"
 
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/logger"
@@ -238,6 +240,26 @@ func metricsFailureHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationRemoveNode)
 		case WorkflowDeleteAllClusters:
 			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationDeleteAllClusters)
+		}
+	}
+}
+
+func releaseLocksHook(locker distributedlocks.DistributedLocks) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, _ error) {
+		log := logger.ForOperation("workflow", "release_locks").With().Str("workflow_name", wf.Name).Logger()
+		lockedKeys, ok := wf.Metadata["locked_keys"]
+		if !ok {
+			return
+		}
+		var lockedKeysJSON map[string]string
+		err := json.Unmarshal([]byte(lockedKeys), &lockedKeysJSON)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to unmarshal locked keys")
+			return
+		}
+		if err := locker.ReleaseLock(ctx, lockedKeysJSON); err != nil {
+			log.Error().Err(err).Msg("failed to release locks")
+			return
 		}
 	}
 }

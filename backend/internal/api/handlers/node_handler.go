@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"math/rand/v2"
 	"net/url"
@@ -297,6 +298,10 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	wfUUID, err := h.svc.AsyncReserveNode(userID, user.Mnemonic, nodeID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start workflow to reserve node")
+		if errors.Is(err, distributedlocks.ErrNodeLocked) {
+			Conflict(c, "Node is busy serving another request")
+			return
+		}
 		InternalServerError(c)
 		return
 	}

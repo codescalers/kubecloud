@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
@@ -641,7 +642,7 @@ func createAddNodeWorkflowTemplate(notificationDispatcher *notification.Notifica
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration, locker distributedlocks.DistributedLocks) {
 	engine.Register(StepDeployNetwork, DeployNetworkStep())
 	engine.Register(StepDeployLeaderNode, DeployLeaderNodeStep())
 	engine.Register(StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
@@ -670,6 +671,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 	deployWFTemplate.AfterStepHooks = []ewf.AfterStepHook{
 		notifyStepHook(notificationDispatcher),
 	}
+	deployWFTemplate.AfterWorkflowHooks = append(deployWFTemplate.AfterWorkflowHooks, releaseLocksHook(locker))
 	engine.RegisterTemplate(WorkflowDeployCluster, &deployWFTemplate)
 
 	deleteWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
@@ -695,6 +697,7 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 		{Name: StepVerifyNewNodes, RetryPolicy: longExponentialRetryPolicy},
 		{Name: StepStoreDeployment, RetryPolicy: standardRetryPolicy},
 	}
+	addNodeWFTemplate.AfterWorkflowHooks = append(addNodeWFTemplate.AfterWorkflowHooks, releaseLocksHook(locker))
 	engine.RegisterTemplate(WorkflowAddNode, &addNodeWFTemplate)
 
 	removeNodeWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
