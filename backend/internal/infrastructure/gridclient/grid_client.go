@@ -22,8 +22,13 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+const (
+	tftBaseUnits       = 1e7
+	setupSleepDuration = 7 * time.Second
+)
+
 type GridClient interface {
-	// grid-client methods
+	// chain methods
 	FromTFTtoUSDMillicent(amount uint64) (uint64, error)
 	FromUSDMillicentToTFT(amountMillicent uint64) (uint64, error)
 	GetUserBalanceUSDMillicent(userMnemonic string) (uint64, error)
@@ -32,8 +37,6 @@ type GridClient interface {
 	TransferTFTsToSystem(tftBalance uint64, userMnemonic string) error
 	SystemIdentity() (substrate.Identity, error)
 	GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error)
-	GetNodeClient(nodeID uint32) (*client.NodeClient, error)
-	NewCalculator(mnemonic string) (calculator.Calculator, error)
 	GetFreeBalanceTFT(mnemonic string) (uint64, error)
 	GetUserAddress(mnemonic string) (string, error)
 	AcceptTermsAndConditions(mnemonic, docLink, docHash string) error
@@ -41,6 +44,12 @@ type GridClient interface {
 	CreateRentContract(mnemonic string, nodeID uint32) (uint64, error)
 	CancelContract(mnemonic string, contractID uint64) error
 	SetupUserOnTFChain(termsAndConditions config.TermsANDConditions) (mnemonic string, twinID uint32, err error)
+
+	// node methods
+	GetNodeClient(nodeID uint32) (*client.NodeClient, error)
+
+	// calculator methods
+	NewCalculator(mnemonic string) (calculator.Calculator, error)
 
 	// grid-proxy client methods
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
@@ -138,7 +147,7 @@ func (s *gridClient) FromTFTtoUSDMillicent(amount uint64) (uint64, error) {
 		return 0, err
 	}
 
-	usdMillicentBalance := uint64(math.Round((float64(amount) / 1e7) * float64(price)))
+	usdMillicentBalance := uint64(math.Round((float64(amount) / tftBaseUnits) * float64(price)))
 	return usdMillicentBalance, nil
 }
 
@@ -152,7 +161,7 @@ func (s *gridClient) FromUSDMillicentToTFT(amountMillicent uint64) (uint64, erro
 
 	// Convert Millicent to dollars for the calculation
 	amountUSD := FromUSDMilliCentToUSD(amountMillicent)
-	tft := (amountUSD * 1e7) / (float64(price) / 1000)
+	tft := (amountUSD * tftBaseUnits) / (float64(price) / 1000)
 	return uint64(tft), nil
 }
 
@@ -255,9 +264,7 @@ func (s *gridClient) NewCalculator(mnemonic string) (calculator.Calculator, erro
 		return calculator.Calculator{}, err
 	}
 
-	calculatorClient := calculator.NewCalculator(s.gridClient.SubstrateConn, identity)
-
-	return calculatorClient, nil
+	return calculator.NewCalculator(s.gridClient.SubstrateConn, identity), nil
 }
 
 // GetFreeBalance returns free balance from user mnemonic
@@ -299,12 +306,7 @@ func (s *gridClient) AcceptTermsAndConditions(mnemonic, docLink, docHash string)
 		return err
 	}
 
-	err = s.gridClient.SubstrateConn.AcceptTermsAndConditions(identity, docLink, docHash)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.gridClient.SubstrateConn.AcceptTermsAndConditions(identity, docLink, docHash)
 }
 
 // CreateTwin creates a twin given user mnemonic
@@ -314,12 +316,7 @@ func (s *gridClient) CreateTwin(mnemonic string) (uint32, error) {
 		return 0, err
 	}
 
-	twinID, err := s.gridClient.SubstrateConn.CreateTwin(identity, "", []byte{})
-	if err != nil {
-		return 0, err
-	}
-
-	return twinID, nil
+	return s.gridClient.SubstrateConn.CreateTwin(identity, "", []byte{})
 }
 
 // CreateRentContract creates rent contract on a node given its id and user mnemonic
@@ -331,11 +328,7 @@ func (s *gridClient) CreateRentContract(mnemonic string, nodeID uint32) (uint64,
 	}
 
 	// Reserve the node
-	contractID, err := s.gridClient.SubstrateConn.CreateRentContract(identity, nodeID, nil)
-	if err != nil {
-		return 0, err
-	}
-	return contractID, nil
+	return s.gridClient.SubstrateConn.CreateRentContract(identity, nodeID, nil)
 }
 
 // CancelContract cancels a contract given its ID and user mnemonic
@@ -391,7 +384,7 @@ func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDCondit
 	}
 
 	// Wait a few seconds for account activation to complete
-	time.Sleep(7 * time.Second)
+	time.Sleep(setupSleepDuration)
 
 	// Accept terms and conditions
 	err = s.AcceptTermsAndConditions(mnemonic, termsAndConditions.DocumentLink, termsAndConditions.DocumentHash)

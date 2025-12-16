@@ -153,7 +153,7 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepository, config cfg.Configuration) ewf.StepFn {
+func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepository, termsAndConditions cfg.TermsANDConditions) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userConfig, err := getConfig(state)
 		if err != nil {
@@ -174,7 +174,7 @@ func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepo
 			return nil
 		}
 
-		mnemonic, _, err := gridClient.SetupUserOnTFChain(config.TermsANDConditions)
+		mnemonic, _, err := gridClient.SetupUserOnTFChain(termsAndConditions)
 		if err != nil {
 			return err
 		}

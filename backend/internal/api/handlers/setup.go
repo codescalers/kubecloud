@@ -22,11 +22,9 @@ import (
 )
 
 type setup struct {
-	tokenManager auth.TokenManager
-	gridClient   gridclient.GridClient
-	router       *gin.Engine
-	network      string
-
+	tokenManager       auth.TokenManager
+	gridClient         gridclient.GridClient
+	router             *gin.Engine
 	userRepo           models.UserRepository
 	voucherRepo        models.VoucherRepository
 	invoicesRepo       models.InvoiceRepository
@@ -176,11 +174,9 @@ func SetUp(t testing.TB) (setup, error) {
 	})
 
 	return setup{
-		tokenManager: tokenManager,
-		gridClient:   gridClient,
-		router:       router,
-		network:      configuration.SystemAccount.Network,
-
+		tokenManager:       tokenManager,
+		gridClient:         gridClient,
+		router:             router,
 		userRepo:           corepersistence.NewGormUserRepository(db),
 		voucherRepo:        corepersistence.NewGormVoucherRepository(db),
 		invoicesRepo:       corepersistence.NewGormInvoiceRepository(db),
