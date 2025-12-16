@@ -1,6 +1,6 @@
 <template>
-  <div class="h-100 d-flex justify-center align-center">
-    <v-card max-width="700" width="100%">
+  <v-container max-width="700">
+    <v-card width="100%">
       <v-card-text>
         <v-img
           src="https://staging.myceliumcloud.tf/assets/logo-DY_xoQWE.png"
@@ -15,42 +15,52 @@
 
         <p class="mb-10 text-center">Join Mycelium Cloud and start your journey</p>
 
-        <v-form>
+        <v-form v-model="valid" @submit.prevent="handleSubmit">
           <v-row>
-            <v-col>
-              <v-text-field variant="outlined" label="Username" />
+            <v-col cols="6">
+              <v-text-field
+                v-model.trim="username"
+                variant="outlined"
+                prepend-inner-icon="mdi-account"
+                label="Username"
+                placeholder="Enter your username"
+                autofocus
+                :rules="[
+                  (v) => !!v || 'Username is required',
+                  (v) => v.length >= 3 || 'Username must be at least 3 characters',
+                  (v) => v.length <= 12 || 'Username must be less than 12 characters',
+                ]"
+              />
             </v-col>
-            <v-col>
-              <v-text-field variant="outlined" label="Email Address" />
+
+            <v-col cols="6">
+              <v-text-field
+                v-model.trim="email"
+                prepend-inner-icon="mdi-email"
+                variant="outlined"
+                label="Email Address"
+                placeholder="Enter your email address"
+                :rules="[
+                  (v) => !!v || 'Email address is required',
+                  (v) => (v.includes('@') && v.includes('.')) || 'Email address must be valid',
+                ]"
+              />
+            </v-col>
+
+            <v-col cols="12">
+              <PasswordInput v-model="password" />
             </v-col>
           </v-row>
-
-          <v-row>
-            <v-col>
-              <v-text-field variant="outlined" label="Password" type="password" />
-            </v-col>
-            <v-col>
-              <v-text-field variant="outlined" label="Confirm Password" type="password" />
-            </v-col>
-          </v-row>
-
-          <div>
-            <p>Password must contain at least 8 characters, including:</p>
-            <ul :style="{ listStyle: 'square' }" class="ml-6 text-caption">
-              <li>One uppercase letter (A-Z)</li>
-              <li>One lowercase letter (a-z)</li>
-              <li>One number (0-9)</li>
-              <li>One special character (!@#$%^&*)</li>
-            </ul>
-          </div>
 
           <v-btn
             type="submit"
             block
             size="large"
             text="Create Account"
+            prepend-icon="mdi-account-plus"
             variant="outlined"
             class="mt-6"
+            :disabled="!valid"
           />
         </v-form>
         <div class="text-caption d-flex justify-center align-center my-4">
@@ -63,9 +73,23 @@
           <p>Already have an account?</p>
           <v-btn to="/login" text="Login" size="small" variant="text" color="primary" />
         </div>
-
-        <v-btn text="Back to Home" to="/" variant="text" block prepend-icon="mdi-arrow-left" />
       </v-card-text>
     </v-card>
-  </div>
+  </v-container>
 </template>
+
+<script lang="ts" setup>
+const valid = ref(false)
+
+const username = ref("")
+const email = ref("")
+const password = ref("")
+
+function handleSubmit() {
+  console.log({
+    username: username.value,
+    email: email.value,
+    password: password.value,
+  })
+}
+</script>
