@@ -1,9 +1,3 @@
 <template>
   <div>Docs Getting Started</div>
 </template>
-
-<script setup lang="ts">
-definePageMeta({
-  layout: "docs",
-})
-</script>

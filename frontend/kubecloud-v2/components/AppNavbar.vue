@@ -10,25 +10,24 @@
       </div>
 
       <div class="position-relative">
-        <div v-for="r in routes" ref="navbarLinkItems" :key="r.path" class="d-inline-block">
-          <v-btn
-            variant="plain"
-            :text="r.title"
-            :to="r.path"
-            :active="activeRoute == r.path"
-            class="navbar-link-item opacity-100"
-          />
-        </div>
+        <v-btn
+          v-for="r in routes"
+          :key="r.path"
+          ref="navbarLinkItems"
+          variant="plain"
+          :text="r.title"
+          :to="r.path"
+          class="navbar-link-item opacity-100"
+        />
 
         <span
           class="position-absolute bottom-0 left-0 bg-primary"
           :style="{
             height: '2px',
             width: '1px',
-            transition: 'transform 0.5s ease',
+            transition: 'transform 0.25s ease',
             transformOrigin: 'left center',
-
-            transform: `translateX(${activeItem.offset}px) scaleX(${activeItem.width})`,
+            transform: `translateX(${indicatorTransform.offset}px) scaleX(${indicatorTransform.width})`,
           }"
         />
       </div>
@@ -54,6 +53,8 @@
 </template>
 
 <script setup lang="ts">
+import type { VBtn } from "vuetify/components/VBtn"
+
 const route = useRoute()
 const routes = ref([
   { title: "Home", path: "/" },
@@ -61,37 +62,31 @@ const routes = ref([
   { title: "Docs", path: "/docs" },
   { title: "Use Cases", path: "/use-cases" },
 ])
-const activeRoute = computed(() => {
-  const matches = routes.value.filter((current) => route.path.startsWith(current.path))
-  return matches[matches.length - 1]?.path ?? ""
-})
 
-const navbarLinkItems = ref<HTMLDivElement[]>([])
-const activeItem = ref({ offset: 0, width: 0 })
-watch(
-  () => activeRoute.value,
-  (active) => (activeItem.value = getActiveItem(active)),
-  { immediate: true }
-)
+const navbarLinkItems = useTemplateRefsList<VBtn>()
+const indicatorTransform = ref({ offset: 0, width: 1 })
 
-function getActiveItem(active: string) {
-  console.log({ active })
+watchDebounced(() => route.path, animateIndicatorToActive, { immediate: true, debounce: 100 })
+function animateIndicatorToActive() {
+  const { offset: currentOffset } = indicatorTransform.value
 
-  const idx = routes.value.findIndex((r) => r.path.startsWith(active))
-  if (idx === -1) {
-    console.log({ idx })
-
-    return { offset: 0, width: 0 }
+  const item = navbarLinkItems.value.find((item) => item.$el.classList.contains("v-btn--active"))
+  if (!item) {
+    indicatorTransform.value = { offset: currentOffset, width: 0 }
+    return
   }
 
-  const el = navbarLinkItems.value[idx]
-  if (!el) {
-    console.log({ el, idx, navbarLinkItems: [...navbarLinkItems.value] })
+  const offset = item.$el.offsetLeft as number
+  const width = item.$el.clientWidth as number
 
-    return { offset: 0, width: 0 }
+  indicatorTransform.value = {
+    offset: Math.min(offset, currentOffset),
+    width: width + Math.abs(offset - currentOffset),
   }
 
-  return { offset: el.offsetLeft, width: el.clientWidth }
+  setTimeout(() => {
+    indicatorTransform.value = { offset, width }
+  }, 250)
 }
 </script>
 
@@ -104,11 +99,4 @@ function getActiveItem(active: string) {
     color: rgb(var(--v-theme-primary));
   }
 }
-/*
-.navbar-link-item {
-  text-transform: none;
-  font-weight: 500;
-  font-size: 14px;
-  color: #fff;
-}*/
 </style>
