@@ -532,3 +532,49 @@ func (h *AdminHandler) ListAllWorkflowsHandler(c *gin.Context) {
 		"total_pages": (total + limit - 1) / limit,
 	})
 }
+
+// @Summary Retry failed workflow
+// @Description Retries a workflow that is in failed state
+// @Tags admin
+// @ID retry-failed-workflow
+// @Accept json
+// @Produce json
+// @Param workflow_uuid path string true "Workflow UUID"
+// @Success 202 {object} APIResponse "Workflow retry initiated"
+// @Failure 400 {object} APIResponse "Invalid workflow UUID or workflow not failed"
+// @Failure 404 {object} APIResponse "Workflow not found"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /workflows/{workflow_uuid}/retry [post]
+func (h *AdminHandler) RetryFailedWorkflowHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "RetryFailedWorkflowHandler")
+
+	workflowUUID := c.Param("workflow_uuid")
+	if strings.TrimSpace(workflowUUID) == "" {
+		BadRequest(c, "Workflow UUID is required")
+		return
+	}
+
+	err := h.svc.RetryFailedWorkflow(workflowUUID)
+	if err != nil {
+		reqLog.Error().
+			Err(err).
+			Str("workflow_uuid", workflowUUID).
+			Msg("failed to retry workflow")
+
+		if errors.Is(err, services.ErrWorkflowNotFound) {
+			NotFound(c, "Workflow not found")
+			return
+		}
+		if errors.Is(err, services.ErrWorkflowNotFailed) {
+			BadRequest(c, "Only failed workflows can be retried")
+			return
+		}
+		InternalServerError(c)
+		return
+	}
+
+	Accepted(c, "Workflow retry initiated", gin.H{
+		"workflow_uuid": workflowUUID,
+	})
+}

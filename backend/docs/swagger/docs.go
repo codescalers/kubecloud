@@ -3322,6 +3322,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/workflows/{workflow_uuid}/retry": {
+            "post": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Retries a workflow that is in failed state",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "Retry failed workflow",
+                "operationId": "retry-failed-workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow UUID",
+                        "name": "workflow_uuid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Workflow retry initiated",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid workflow UUID or workflow not failed",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Workflow not found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -4153,6 +4209,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "healthy": {
+                    "type": "boolean"
+                },
                 "ip": {
                     "description": "Computed",
                     "type": "string"
@@ -4370,6 +4429,12 @@ const docTemplate = `{
                 },
                 "redeemed": {
                     "type": "boolean"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
                 },
                 "value": {
                     "type": "number"
