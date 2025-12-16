@@ -9,15 +9,27 @@
         />
       </div>
 
-      <div>
-        <v-btn
-          v-for="route in routes"
-          :key="route.path"
-          variant="plain"
-          :text="route.title"
-          :to="route.path"
-          :active="isActive(route.path, $route.path)"
-          class="navbar-link-item opacity-100"
+      <div class="position-relative">
+        <div v-for="r in routes" ref="navbarLinkItems" :key="r.path" class="d-inline-block">
+          <v-btn
+            variant="plain"
+            :text="r.title"
+            :to="r.path"
+            :active="activeRoute == r.path"
+            class="navbar-link-item opacity-100"
+          />
+        </div>
+
+        <span
+          class="position-absolute bottom-0 left-0 bg-primary"
+          :style="{
+            height: '2px',
+            width: '1px',
+            transition: 'transform 0.5s ease',
+            transformOrigin: 'left center',
+
+            transform: `translateX(${activeItem.offset}px) scaleX(${activeItem.width})`,
+          }"
         />
       </div>
 
@@ -27,6 +39,7 @@
       <v-btn variant="flat" color="primary" to="/register">Register</v-btn>
       <!-- <v-menu>
         <template #activator="{ props }">
+
           <v-btn text="Account" v-bind="props" />
         </template>
 
@@ -35,25 +48,50 @@
           <v-list-item title="Logout" @click="console.log('logout')" />
         </v-list>
       </v-menu> -->
+      <!-- {{ console.log(activeItem) }} -->
     </v-container>
   </v-app-bar>
 </template>
 
 <script setup lang="ts">
-const routes = markRaw([
+const route = useRoute()
+const routes = ref([
   { title: "Home", path: "/" },
   { title: "Features", path: "/features" },
   { title: "Docs", path: "/docs" },
   { title: "Use Cases", path: "/use-cases" },
-  // { title: "Dashboard", path: "/dashboard" },
 ])
+const activeRoute = computed(() => {
+  const matches = routes.value.filter((current) => route.path.startsWith(current.path))
+  return matches[matches.length - 1]?.path ?? ""
+})
 
-function isActive(path: string, current: string) {
-  if (path === "/" && path === current) {
-    return true
+const navbarLinkItems = ref<HTMLDivElement[]>([])
+const activeItem = ref({ offset: 0, width: 0 })
+watch(
+  () => activeRoute.value,
+  (active) => (activeItem.value = getActiveItem(active)),
+  { immediate: true }
+)
+
+function getActiveItem(active: string) {
+  console.log({ active })
+
+  const idx = routes.value.findIndex((r) => r.path.startsWith(active))
+  if (idx === -1) {
+    console.log({ idx })
+
+    return { offset: 0, width: 0 }
   }
 
-  return path !== "/" && current.startsWith(path)
+  const el = navbarLinkItems.value[idx]
+  if (!el) {
+    console.log({ el, idx, navbarLinkItems: [...navbarLinkItems.value] })
+
+    return { offset: 0, width: 0 }
+  }
+
+  return { offset: el.offsetLeft, width: el.clientWidth }
 }
 </script>
 
