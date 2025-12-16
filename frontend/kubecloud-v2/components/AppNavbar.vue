@@ -35,15 +35,17 @@
       <v-spacer />
 
       <v-btn variant="outlined" class="mr-2" to="/login">Login</v-btn>
-      <v-btn variant="flat" color="primary" to="/register">Register</v-btn>
+      <v-btn v-if="$route.path !== '/register'" variant="flat" color="primary" to="/register"
+        >Register</v-btn
+      >
       <!-- <v-menu>
         <template #activator="{ props }">
-
           <v-btn text="Account" v-bind="props" />
         </template>
 
         <v-list>
           <v-list-item title="Dashboard" to="/dashboard" />
+          <v-list-item title="Profile" to="/dashboard/profile" />
           <v-list-item title="Logout" @click="console.log('logout')" />
         </v-list>
       </v-menu> -->
