@@ -1,5 +1,5 @@
 <template>
-  <v-app-bar>
+  <v-app-bar name="app-bar">
     <v-container class="d-flex align-center py-0">
       <div class="mr-16">
         <v-img
@@ -64,7 +64,7 @@ const routes = ref([
 ])
 
 const navbarLinkItems = useTemplateRefsList<VBtn>()
-const indicatorTransform = ref({ offset: 0, width: 1 })
+const indicatorTransform = ref({ offset: 0, width: 0 })
 
 watchDebounced(() => route.path, animateIndicatorToActive, { immediate: true, debounce: 100 })
 function animateIndicatorToActive() {
