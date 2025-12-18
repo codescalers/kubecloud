@@ -7,7 +7,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "postinstall": "openapi-generator-cli generate && nuxt prepare",
     "prepare": "npm run audit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "@vueuse/nuxt": "14.1.0",
+    "axios": "^1.13.2",
     "nuxt": "^4.2.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "1.12.1",
+    "@openapitools/openapi-generator-cli": "^2.25.2",
     "@types/node": "^25.0.2",
     "eslint": "^9.0.0",
     "lint-staged": "^16.2.7",

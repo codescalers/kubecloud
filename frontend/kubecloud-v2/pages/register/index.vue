@@ -7,7 +7,7 @@
 
           <p class="mb-10 text-center">Join Mycelium Cloud and start your journey</p>
 
-          <v-form v-model="valid" @submit.prevent="handleSubmit">
+          <v-form v-model="valid" @submit.prevent="register()">
             <v-row>
               <v-col cols="6">
                 <v-text-field
@@ -61,6 +61,9 @@
             <v-btn text="Privacy Policy" variant="text" size="x-small" color="primary" />.
           </div>
 
+          {{ state }}
+          {{ { isLoading } }}
+
           <!-- <div class="d-flex align-center justify-center my-5">
             <p>Already have an account?</p>
             <v-btn to="/login" text="Login" size="small" variant="text" color="primary" />
@@ -76,17 +79,43 @@
 </template>
 
 <script lang="ts" setup>
+const api = useApi()
+const registerationFormData = useRegisterationFormData()
+const router = useRouter()
+
 const valid = ref(false)
 
 const username = ref("")
 const email = ref("")
 const password = ref("")
 
-function handleSubmit() {
-  console.log({
-    username: username.value,
-    email: email.value,
-    password: password.value,
-  })
-}
+const {
+  execute: register,
+  isLoading,
+  state,
+} = useAsyncState(
+  async () => {
+    const { data: d1 } = await api.users.registerUser(
+      {
+        name: username.value,
+        email: email.value,
+        password: password.value,
+        confirm_password: password.value,
+      },
+      { _flags: { unauthenticated: true } }
+    )
+
+    await api.helpers.awaitWorkflowCompletion(d1.data?.workflow_id ?? "", 1_000)
+
+    registerationFormData.value = {
+      username: username.value,
+      email: email.value,
+      password: password.value,
+    }
+
+    router.push("/register/verify")
+  },
+  null,
+  { immediate: false }
+)
 </script>

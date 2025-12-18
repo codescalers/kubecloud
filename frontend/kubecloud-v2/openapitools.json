@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "spaces": 2,
+  "generator-cli": {
+    "version": "7.13.0",
+    "generators": {
+      "frontend": {
+        "generatorName": "typescript-axios",
+        "modelNamePrefix": "",
+        "inputSpec": "../../backend/docs/swagger/swagger.yaml",
+        "output": "generated/api",
+        "packageName": "client",
+        "globalProperty": "apiDocs=false,modelDocs=false,documentation=false",
+        "additionalProperties": {
+          "supportsES6": true
+        },
+        "skipValidateSpec": true
+      }
+    }
+  }
+}
