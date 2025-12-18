@@ -7,7 +7,6 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
@@ -455,14 +454,6 @@ func (svc *AdminService) RetryFailedWorkflow(workflowUUID string) error {
 
 	if wf.Status != ewf.StatusFailed {
 		return ErrWorkflowNotFailed
-	}
-
-	// clean up persisted cluster fields that may cause the retry to skip necessary creation steps
-	if cluster, err := statemanager.GetCluster(wf.State); err == nil {
-		for i := range cluster.Nodes {
-			cluster.Nodes[i].ContractID = 0
-		}
-		statemanager.StoreCluster(wf.State, cluster)
 	}
 
 	// Reset workflow fields
