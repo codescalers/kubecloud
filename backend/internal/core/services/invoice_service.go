@@ -4,9 +4,6 @@ import (
 	"kubecloud/internal/billing"
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/substrate"
-
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 )
 
 type InvoiceService struct {
@@ -17,8 +14,6 @@ type InvoiceService struct {
 
 func NewInvoiceService(
 	invoiceRepo models.InvoiceRepository, userRepo models.UserRepository,
-	firesquidClient graphql.GraphQl,
-	graphql graphql.GraphQl, substrateClient substrate.Substrate,
 	invoiceCompanyData cfg.InvoiceCompanyData,
 ) InvoiceService {
 	return InvoiceService{

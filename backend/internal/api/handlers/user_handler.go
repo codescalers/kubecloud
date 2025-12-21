@@ -7,9 +7,9 @@ import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 	"net/http"
 	"sort"
 	"strconv"
@@ -751,7 +751,7 @@ func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	millicentAmount := substrate.FromUSDToUSDMillicent(voucher.Value)
+	millicentAmount := gridclient.FromUSDToUSDMillicent(voucher.Value)
 	user.CreditedBalance += millicentAmount
 	if err := h.svc.UpdateUserByID(&user); err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {

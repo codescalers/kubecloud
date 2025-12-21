@@ -8,9 +8,9 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/infrastructure/substrate"
 	"slices"
 	"time"
 
@@ -21,11 +21,11 @@ type UserService struct {
 	userRepo    models.UserRepository
 	voucherRepo models.VoucherRepository
 
-	appCtx          context.Context
-	substrateClient substrate.Substrate
-	ewfEngine       *ewf.Engine
-	kycClient       *kyc.KYCClient
-	metrics         *metrics.Metrics
+	appCtx     context.Context
+	gridClient gridclient.GridClient
+	ewfEngine  *ewf.Engine
+	kycClient  *kyc.KYCClient
+	metrics    *metrics.Metrics
 
 	// configs
 	codeTimeoutMin int
@@ -35,7 +35,7 @@ type UserService struct {
 func NewUserService(appCtx context.Context,
 	userRepo models.UserRepository,
 	voucherRepo models.VoucherRepository,
-	substrateClient substrate.Substrate,
+	gridClient gridclient.GridClient,
 	ewfEngine *ewf.Engine,
 	kycClient *kyc.KYCClient,
 	metrics *metrics.Metrics,
@@ -46,11 +46,11 @@ func NewUserService(appCtx context.Context,
 		userRepo:    userRepo,
 		voucherRepo: voucherRepo,
 
-		appCtx:          appCtx,
-		substrateClient: substrateClient,
-		ewfEngine:       ewfEngine,
-		kycClient:       kycClient,
-		metrics:         metrics,
+		appCtx:     appCtx,
+		gridClient: gridClient,
+		ewfEngine:  ewfEngine,
+		kycClient:  kycClient,
+		metrics:    metrics,
 
 		codeTimeoutMin: codeTimeoutMin,
 		systemAdmins:   systemAdmins,
@@ -81,9 +81,9 @@ func (svc *UserService) GetUserWithBalancesInUSD(userID int) (UserWithBalancesIn
 
 	return UserWithBalancesInUSD{
 		User:                   user,
-		CreditedBalanceInUSD:   substrate.FromUSDMilliCentToUSD(user.CreditedBalance),
-		CreditCardBalanceInUSD: substrate.FromUSDMilliCentToUSD(user.CreditCardBalance),
-		DebtInUSD:              substrate.FromUSDMilliCentToUSD(user.Debt),
+		CreditedBalanceInUSD:   gridclient.FromUSDMilliCentToUSD(user.CreditedBalance),
+		CreditCardBalanceInUSD: gridclient.FromUSDMilliCentToUSD(user.CreditCardBalance),
+		DebtInUSD:              gridclient.FromUSDMilliCentToUSD(user.Debt),
 	}, nil
 }
 
@@ -106,7 +106,7 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 }
 
 func (svc *UserService) GetUserBalanceInUSDMillicent(userMnemonic string) (uint64, error) {
-	return svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
+	return svc.gridClient.GetUserBalanceUSDMillicent(userMnemonic)
 }
 
 func (svc *UserService) UpdateUserByID(user *models.User) error {
@@ -215,7 +215,7 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 	wf.State = ewf.State{
 		"stripe_customer_id": userStripeCustomerID,
 		"payment_method_id":  paymentMethodID,
-		"amount":             substrate.FromUSDToUSDMillicent(requestAmount),
+		"amount":             gridclient.FromUSDToUSDMillicent(requestAmount),
 		"username":           username,
 		"config": map[string]interface{}{
 			"user_id":  userID,

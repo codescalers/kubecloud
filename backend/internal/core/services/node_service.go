@@ -8,11 +8,10 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/telemetry"
 	"strconv"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
 	"go.opentelemetry.io/otel/attribute"
@@ -27,26 +26,23 @@ type NodeService struct {
 	contractsRepo models.ContractDataRepository
 	userRepo      models.UserRepository
 
-	appCtx          context.Context
-	ewfEngine       *ewf.Engine
-	gridClient      deployer.TFPluginClient
-	substrateClient substrate.Substrate
-	tracer          *telemetry.ServiceTracer
+	appCtx     context.Context
+	ewfEngine  *ewf.Engine
+	gridClient gridclient.GridClient
+	tracer     *telemetry.ServiceTracer
 }
 
 func NewNodeService(
 	contractsRepo models.ContractDataRepository, userRepo models.UserRepository,
-	appCtx context.Context, ewfEngine *ewf.Engine, gridClient deployer.TFPluginClient,
-	substrateClient substrate.Substrate,
+	appCtx context.Context, ewfEngine *ewf.Engine, gridClient gridclient.GridClient,
 ) NodeService {
 	return NodeService{
-		contractsRepo:   contractsRepo,
-		userRepo:        userRepo,
-		appCtx:          appCtx,
-		ewfEngine:       ewfEngine,
-		gridClient:      gridClient,
-		substrateClient: substrateClient,
-		tracer:          telemetry.NewServiceTracer("node_service"),
+		contractsRepo: contractsRepo,
+		userRepo:      userRepo,
+		appCtx:        appCtx,
+		ewfEngine:     ewfEngine,
+		gridClient:    gridClient,
+		tracer:        telemetry.NewServiceTracer("node_service"),
 	}
 }
 
@@ -67,7 +63,7 @@ func (svc *NodeService) GetNodes(ctx context.Context, filter proxyTypes.NodeFilt
 		attribute.String("limit", fmt.Sprintf("%+v", limit)),
 	)
 
-	nodes, count, err := svc.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
+	nodes, count, err := svc.gridClient.Nodes(ctx, filter, limit)
 	if err != nil {
 		telemetry.RecordError(span, err)
 		return nil, 0, err
@@ -79,7 +75,7 @@ func (svc *NodeService) GetNodes(ctx context.Context, filter proxyTypes.NodeFilt
 
 func (svc *NodeService) GetZos3Nodes(ctx context.Context, filter proxyTypes.NodeFilter, limit proxyTypes.Limit) ([]proxyTypes.Node, int, error) {
 	filter.Features = Zos3NodeFeatures
-	return svc.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
+	return svc.gridClient.Nodes(ctx, filter, limit)
 }
 
 func (svc *NodeService) GetUserByID(userID int) (models.User, error) {
@@ -100,7 +96,7 @@ func (svc *NodeService) CheckUserBalanceForOneHour(ctx context.Context, userMnem
 	)
 
 	// validate user has enough balance for reserving node
-	usdMillicentBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(userMnemonic)
+	usdMillicentBalance, err := svc.gridClient.GetUserBalanceUSDMillicent(userMnemonic)
 	if err != nil {
 		telemetry.RecordError(span, err)
 		return err
@@ -109,7 +105,7 @@ func (svc *NodeService) CheckUserBalanceForOneHour(ctx context.Context, userMnem
 	span.SetAttributes(attribute.Int64("balance_usd_millicent", int64(usdMillicentBalance)))
 
 	//TODO: check price in month constant
-	requiredBalance := substrate.FromUSDToUSDMillicent(nodePriceUsd) / 24 / 30
+	requiredBalance := gridclient.FromUSDToUSDMillicent(nodePriceUsd) / 24 / 30
 	span.SetAttributes(attribute.Int64("required_balance", int64(requiredBalance)))
 
 	if usdMillicentBalance-userDebt < requiredBalance {
@@ -137,38 +133,31 @@ func (svc *NodeService) GetTwinIDFromUserID(ctx context.Context, userID int) (ui
 		return 0, err
 	}
 
-	identity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(user.Mnemonic)
-	if err != nil {
-		telemetry.RecordError(span, err)
-		return 0, err
-	}
-
-	twinID, err := svc.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	twinID, err := svc.gridClient.GetTwinIDFromUserMnemonic(user.Mnemonic)
 	if err != nil {
 		telemetry.RecordError(span, err)
 		return 0, err
 	}
 
 	span.SetAttributes(attribute.Int64("twin_id", int64(twinID)))
-	return uint64(twinID), nil
+	return twinID, nil
 }
 
 func (svc *NodeService) GetTwins(ctx context.Context, filter proxyTypes.TwinFilter, limit proxyTypes.Limit) ([]proxyTypes.Twin, int, error) {
-	return svc.gridClient.GridProxyClient.Twins(ctx, filter, limit)
+	return svc.gridClient.Twins(ctx, filter, limit)
 }
 
-func (h *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
-	ctx, span := h.tracer.StartSpan(ctx, "GetNodePools")
+func (svc *NodeService) GetNodePools(ctx context.Context, nodeID uint32) ([]Pool, error) {
+	ctx, span := svc.tracer.StartSpan(ctx, "GetNodePools")
 	defer span.End()
 
 	span.SetAttributes(attribute.Int64("node_id", int64(nodeID)))
 
-	nc, err := h.gridClient.NcPool.GetNodeClient(h.gridClient.SubstrateConn, nodeID)
+	nc, err := svc.gridClient.GetNodeClient(nodeID)
 	if err != nil {
 		telemetry.RecordError(span, err)
 		return nil, err
 	}
-
 	storagePool, err := nc.Pools(ctx)
 	if err != nil {
 		telemetry.RecordError(span, err)
