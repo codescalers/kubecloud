@@ -34,7 +34,7 @@ func (w Workers) MonthlyInvoicesHandler() {
 		}
 
 		for _, user := range users {
-			if err = w.svc.CreateUserInvoice(w.billingService, user); err != nil {
+			if err = w.svc.CreateUserInvoice(user); err != nil {
 				baseLog.Error().Err(err).Int("user_id", user.ID).Msg("failed to create invoice for user")
 			}
 		}

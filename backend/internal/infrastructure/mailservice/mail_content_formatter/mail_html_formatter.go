@@ -27,6 +27,9 @@ var notifyPaymentRecordsMail []byte
 //go:embed templates/system_announcement.html
 var systemAnnouncementMail []byte
 
+//go:embed templates/insufficient_balance_notification.html
+var insufficientBalanceNotificationMail []byte
+
 type MailHTMLFormatter struct {
 }
 
@@ -93,6 +96,18 @@ func (f MailHTMLFormatter) FormatNotifyAdminsMailContent(recordsNumber int, syst
 	body := string(notifyPaymentRecordsMail)
 
 	body = strings.ReplaceAll(body, "-records-", fmt.Sprint(recordsNumber))
+	body = strings.ReplaceAll(body, "-host-", systemHost)
+
+	return subject, body
+}
+
+func (f MailHTMLFormatter) FormatInsufficientBalanceNotificationMailContent(currentBalance, requiredBalance float64, discount string, systemHost string) (string, string) {
+	subject := "⚠️ System Balance Insufficient for Discount Requirements"
+	body := string(insufficientBalanceNotificationMail)
+
+	body = strings.ReplaceAll(body, "-balance-", fmt.Sprintf("%.2f", currentBalance))
+	body = strings.ReplaceAll(body, "-required-", fmt.Sprintf("%.2f", requiredBalance))
+	body = strings.ReplaceAll(body, "-discount-", discount)
 	body = strings.ReplaceAll(body, "-host-", systemHost)
 
 	return subject, body

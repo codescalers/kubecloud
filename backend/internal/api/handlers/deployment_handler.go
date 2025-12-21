@@ -224,23 +224,6 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 		return
 	}
 
-	user, err := h.svc.GetUserByID(config.UserID)
-	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			NotFound(c, "User not found")
-			return
-		}
-		reqLog.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	if err := h.billingService.FundUserToFulfillDiscount(c.Request.Context(), &user, nil, cluster.Nodes); err != nil {
-		reqLog.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
 	projectName := kubedeployer.GetProjectName(config.UserID, cluster.Name)
 	logWithProject := reqLog.With().Str("project_name", projectName).Logger()
 	reqLog = &logWithProject
@@ -426,23 +409,6 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 			Conflict(c, fmt.Sprintf("node id %d is already assigned to this cluster", node.NodeID))
 			return
 		}
-	}
-
-	user, err := h.svc.GetUserByID(config.UserID)
-	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			NotFound(c, "User not found")
-			return
-		}
-		reqLog.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
-	if err := h.billingService.FundUserToFulfillDiscount(c.Request.Context(), &user, nil, cluster.Nodes); err != nil {
-		reqLog.Error().Err(err).Send()
-		InternalServerError(c)
-		return
 	}
 
 	wfUUID, wfStatus, err := h.svc.AsyncAddNode(config, cl, cluster.Nodes[0])

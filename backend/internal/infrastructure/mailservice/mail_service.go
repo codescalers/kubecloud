@@ -80,6 +80,16 @@ func (m MailService) SendNotifyAdminsEmail(to string, recordsNumber int) error {
 	})
 }
 
+func (m MailService) SendInsufficientBalanceNotificationEmail(to string, currentBalance, requiredBalance float64, discount string) error {
+	subject, body := m.mailContentFormatter.FormatInsufficientBalanceNotificationMailContent(currentBalance, requiredBalance, discount, m.config.Server.Host)
+	return m.mailSender.Send(mailsender.MailRequest{
+		From:    m.config.MailSender.Email,
+		To:      to,
+		Subject: subject,
+		Body:    body,
+	})
+}
+
 func (m MailService) SendEmailNotification(to string, notification models.Notification) error {
 	subject, body, err := m.mailContentFormatter.FormatNotificationMailContent(notification)
 	if err != nil {

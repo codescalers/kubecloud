@@ -51,9 +51,9 @@ type WorkerService struct {
 	gridClient             gridclient.GridClient
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
+	billingService         BillingService
 
 	// configs
-	systemMnemonic                          string
 	invoiceCompanyData                      config.InvoiceCompanyData
 	currency                                string
 	checkUserDebtIntervalInHours            int
@@ -64,7 +64,6 @@ type WorkerService struct {
 	settleTransferRecordsIntervalInMinutes  int
 	notifyAdminsForPendingRecordsInHours    int
 	minimumTFTAmountInWallet                int
-	appliedDiscount                         Discount
 	usersBalanceCheckIntervalInHours        int
 }
 
@@ -73,12 +72,12 @@ func NewWorkersService(
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, transferRecordsRepo models.TransferRecordRepository,
 	mailService mailservice.MailService,
 	gridClient gridclient.GridClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
-	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
-	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
+	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, billingService BillingService,
+	invoiceCompanyData config.InvoiceCompanyData, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
 	settleTransferRecordsIntervalInMinutes, notifyAdminsForPendingRecordsInHours,
-	minimumTFTAmountInWallet int, appliedDiscount Discount,
+	minimumTFTAmountInWallet,
 	usersBalanceCheckIntervalInHours,
 	checkUserDebtIntervalInHours int,
 ) WorkerService {
@@ -96,8 +95,8 @@ func NewWorkersService(
 		graphql:                graphql,
 		firesquidClient:        firesquidClient,
 		gridClient:             gridClient,
+		billingService:         billingService,
 
-		systemMnemonic:     systemMnemonic,
 		invoiceCompanyData: invoiceCompanyData,
 		currency:           currency,
 
@@ -110,7 +109,6 @@ func NewWorkersService(
 		notifyAdminsForPendingRecordsInHours:    notifyAdminsForPendingRecordsInHours,
 
 		minimumTFTAmountInWallet:         minimumTFTAmountInWallet,
-		appliedDiscount:                  appliedDiscount,
 		usersBalanceCheckIntervalInHours: usersBalanceCheckIntervalInHours,
 	}
 }
@@ -168,7 +166,7 @@ func (svc WorkerService) GetUsersBalanceCheckInterval() time.Duration {
 	return time.Duration(svc.usersBalanceCheckIntervalInHours) * time.Hour
 }
 
-func (svc WorkerService) CreateUserInvoice(BillingService BillingService, user models.User) error {
+func (svc WorkerService) CreateUserInvoice(user models.User) error {
 	now := time.Now()
 	timeMonthAgo := now.AddDate(0, -1, 0)
 
@@ -190,7 +188,7 @@ func (svc WorkerService) CreateUserInvoice(BillingService BillingService, user m
 			return err
 		}
 
-		totalAmountBilledInUSDMillicent, err := BillingService.calculateTotalUsageOfReportsInUSDMillicent(billReports.Reports)
+		totalAmountBilledInUSDMillicent, err := svc.billingService.calculateTotalUsageOfReportsInUSDMillicent(billReports.Reports)
 		if err != nil {
 			return err
 		}
@@ -435,7 +433,7 @@ func (svc WorkerService) SettlePendingPayments(records []models.TransferRecord) 
 		var transferFailure string
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(svc.systemMnemonic)
+		systemTFTBalance, err := svc.gridClient.GetSystemTFTBalance()
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
@@ -517,7 +515,6 @@ func (svc *WorkerService) ResetUsersTFTsWithNoUSDBalance(users []models.User) er
 }
 
 func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.TransferRecord) error {
-
 	admins, err := svc.userRepo.ListAdmins()
 	if err != nil {
 		return err
@@ -525,6 +522,61 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.Transfer
 
 	for _, admin := range admins {
 		err = svc.mailService.SendNotifyAdminsEmail(admin.Email, len(records))
+		if err != nil {
+			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (svc WorkerService) NotifyAdminWithInsufficientBalance() error {
+	currentBalance, err := svc.gridClient.GetSystemTFTBalance()
+	if err != nil {
+		return err
+	}
+
+	users, err := svc.userRepo.ListAllUsers()
+	if err != nil {
+		return err
+	}
+
+	var totalUserDailyUsage uint64
+
+	for _, user := range users {
+		dailyUsageInUSDMillicent, err := svc.billingService.calculateResourcesUsageInUSD(svc.ctx, user.ID, user.Mnemonic, nil, nil)
+		if err != nil {
+			return err
+		}
+
+		dailyUsageInTFT, err := svc.gridClient.FromUSDMillicentToTFT(dailyUsageInUSDMillicent)
+		if err != nil {
+			return err
+		}
+
+		totalUserDailyUsage += dailyUsageInTFT
+	}
+
+	requiredBalance, err := svc.billingService.ApplyDiscountOnUsage(totalUserDailyUsage)
+	if err != nil {
+		return err
+	}
+
+	if requiredBalance <= currentBalance {
+		return nil
+	}
+
+	admins, err := svc.userRepo.ListAdmins()
+	if err != nil {
+		return err
+	}
+
+	for _, admin := range admins {
+		err = svc.mailService.SendInsufficientBalanceNotificationEmail(
+			admin.Email, float64(currentBalance)/TFTUnitFactor,
+			float64(requiredBalance)/TFTUnitFactor, fmt.Sprint(svc.billingService.Discount()),
+		)
 		if err != nil {
 			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue

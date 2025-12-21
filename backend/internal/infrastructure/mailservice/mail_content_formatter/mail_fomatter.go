@@ -9,5 +9,6 @@ type MailContentFormatter interface {
 	FormatInvoiceMailContent(invoiceTotal float64, currency string, invoiceID int) (string, string)
 	FormatSystemAnnouncementMailBody(body string) string
 	FormatNotifyAdminsMailContent(recordsNumber int, systemHost string) (string, string)
+	FormatInsufficientBalanceNotificationMailContent(currentBalance, requiredBalance float64, discount string, systemHost string) (string, string)
 	FormatNotificationMailContent(notification models.Notification) (string, string, error)
 }

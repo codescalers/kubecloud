@@ -76,6 +76,16 @@ func (f MailTextFormatter) FormatNotifyAdminsMailContent(recordsNumber int, syst
 	return subject, body
 }
 
+func (f MailTextFormatter) FormatInsufficientBalanceNotificationMailContent(currentBalance, requiredBalance float64, discount string, systemHost string) (string, string) {
+	subject := "Insufficient Balance"
+	body := fmt.Sprintf(
+		"We hope you're well.\n\nYour account balance %f is insufficient for discount %s. Should b	e %f. Please add more funds to your account.\n\nVisit %s to add funds.",
+		currentBalance, discount, requiredBalance, systemHost,
+	)
+
+	return subject, body
+}
+
 func (f MailTextFormatter) FormatNotificationMailContent(notification models.Notification) (string, string, error) {
 	subject := notification.Payload["subject"]
 	if subject == "" {
