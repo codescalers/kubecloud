@@ -6,8 +6,8 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/persistence"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"os"
 	"os/exec"
@@ -22,13 +22,13 @@ import (
 )
 
 type setup struct {
-	tokenManager    auth.TokenManager
-	substrateClient substrate.Substrate
-	router          *gin.Engine
-
-	userRepo     models.UserRepository
-	voucherRepo  models.VoucherRepository
-	invoicesRepo models.InvoiceRepository
+	tokenManager       auth.TokenManager
+	gridClient         gridclient.GridClient
+	router             *gin.Engine
+	userRepo           models.UserRepository
+	voucherRepo        models.VoucherRepository
+	invoicesRepo       models.InvoiceRepository
+	termsAndConditions cfg.TermsANDConditions
 }
 
 func SetUp(t testing.TB) (setup, error) {
@@ -99,6 +99,8 @@ func SetUp(t testing.TB) (setup, error) {
   },
   "graphql_url": "https://graphql.dev.grid.tf/graphql",
   "firesquid_url": "https://firesquid.dev.grid.tf/graphql",
+  "debug": true,
+  "disable_sentry": true,
   "deployer_workers_num": 3,
   "invoice": {
     "name": "Name",
@@ -139,10 +141,17 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	substrateClient, err := substrate.NewTFChainClient(
-		configuration.SystemAccount.Network, configuration.SystemAccount.Mnemonic,
-		configuration.TermsANDConditions.DocumentLink, configuration.TermsANDConditions.DocumentHash,
-	)
+	clientOpts := []gridclient.ClientOpts{
+		gridclient.WithNetwork(configuration.SystemAccount.Network),
+	}
+	if configuration.Debug {
+		clientOpts = append(clientOpts, gridclient.WithDebug())
+	}
+	if configuration.DisableSentry {
+		clientOpts = append(clientOpts, gridclient.WithDisableSentry())
+	}
+
+	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, clientOpts...)
 	if err != nil {
 		return setup{}, err
 	}
@@ -172,17 +181,17 @@ func SetUp(t testing.TB) (setup, error) {
 
 		// Reset viper to avoid config leakage between tests
 		viper.Reset()
-		substrateClient.Close()
+		gridClient.Close()
 	})
 
 	return setup{
-		tokenManager:    tokenManager,
-		substrateClient: substrateClient,
-		router:          router,
-
-		userRepo:     corepersistence.NewGormUserRepository(db),
-		voucherRepo:  corepersistence.NewGormVoucherRepository(db),
-		invoicesRepo: corepersistence.NewGormInvoiceRepository(db),
+		tokenManager:       tokenManager,
+		gridClient:         gridClient,
+		router:             router,
+		userRepo:           corepersistence.NewGormUserRepository(db),
+		voucherRepo:        corepersistence.NewGormVoucherRepository(db),
+		invoicesRepo:       corepersistence.NewGormInvoiceRepository(db),
+		termsAndConditions: configuration.TermsANDConditions,
 	}, nil
 }
 
@@ -199,7 +208,7 @@ func (s setup) CreateTestUser(t *testing.T, email, username string, hashedPasswo
 	if !mnemonicRequired {
 		mnemonic = ""
 	} else {
-		mnemonic, _, err := s.substrateClient.SetupUserOnTFChain()
+		mnemonic, _, err := s.gridClient.SetupUserOnTFChain(s.termsAndConditions)
 		require.NoError(t, err)
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
 		require.NoError(t, err)

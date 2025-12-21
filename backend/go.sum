@@ -363,10 +363,10 @@ github.com/swaggo/gin-swagger v1.6.1 h1:Ri06G4gc9N4t4k8hekMigJ9zKTFSlqj/9paAQCQs
 github.com/swaggo/gin-swagger v1.6.1/go.mod h1:LQ+hJStHakCWRiK/YNYtJOu4mR2FP+pxLnILT/qNiTw=
 github.com/swaggo/swag v1.16.6 h1:qBNcx53ZaX+M5dxVyTrgQ0PJ/ACK+NzhwcbieTt+9yI=
 github.com/swaggo/swag v1.16.6/go.mod h1:ngP2etMK5a0P3QBizic5MEwpRmluJZPHjXcMoj4Xesg=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30 h1:sH/hiHxCEpeIm2gJsmu4GxKskfQVPZMz9PAgDwk1BfY=
-github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20250929084418-b950278ead30/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.6-0.20251209150615-a3bb942f9860 h1:4nX4aoA+OteH7M2pTaWYIpN/qVGoqs/kkVAxSnhJbWU=
-github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.6-0.20251209150615-a3bb942f9860/go.mod h1:I48ny96GOuMDo9o7INEb43UJIhO3l4mVtBLMNi8Si3M=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20251221150744-62c2f0fbdc2e h1:0U8ys+JAlxZyr2A69K8EdB37oQB2sFtCUbUeZBKLgio=
+github.com/threefoldtech/tfchain/clients/tfchain-client-go v0.0.0-20251221150744-62c2f0fbdc2e/go.mod h1:cOL5YgHUmDG5SAXrsZxFjUECRQQuAqOoqvXhZG5sEUw=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.6-0.20251221165053-aa8e353f7446 h1:hjc3PKLQ5uZQpUZqmKOGuae94CnY9haB+LiK8LYPoiw=
+github.com/threefoldtech/tfgrid-sdk-go/grid-client v0.17.6-0.20251221165053-aa8e353f7446/go.mod h1:Z+qUII96KHMN0pXmesfB41OdDOWIeS29uxLk4ZNEKfA=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.6-0.20251209150615-a3bb942f9860 h1:LlHQ2Du7S5IAoG0Q61v1s8OAbx8qqf/uO/5QwMf1zZY=
 github.com/threefoldtech/tfgrid-sdk-go/grid-proxy v0.17.6-0.20251209150615-a3bb942f9860/go.mod h1:J57xHAagUOddwz2nonrkB91/8T9TJ9IKk/6wzKVB5EM=
 github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5 h1:zp5iZOvtvcQrcR7Po3UZBNk2uBYi1i1VxMA/ENIvCZY=

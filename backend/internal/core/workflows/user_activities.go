@@ -8,10 +8,10 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
-	"kubecloud/internal/infrastructure/substrate"
 	"sync"
 
 	"slices"
@@ -153,7 +153,7 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 	}
 }
 
-func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserRepository) ewf.StepFn {
+func SetupTFChainStep(gridClient gridclient.GridClient, userRepo models.UserRepository, termsAndConditions cfg.TermsANDConditions) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userConfig, err := getConfig(state)
 		if err != nil {
@@ -174,7 +174,7 @@ func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserR
 			return nil
 		}
 
-		mnemonic, _, err := substrateClient.SetupUserOnTFChain()
+		mnemonic, _, err := gridClient.SetupUserOnTFChain(termsAndConditions)
 		if err != nil {
 			return err
 		}
@@ -408,7 +408,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 }
 
 // DrainUserBalanceStep transfers a user's balance to the system account
-func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
+func DrainUserBalanceStep(userRepo models.UserRepository, gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		userIDVal, ok := state["target_user_id"]
 		if !ok {
@@ -425,8 +425,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 		}
 
 		state["target_username"] = user.Username
-		// Get user's current balance in TFT from on-chain
-		balanceInTFT, err := substrateClient.GetUserTFTBalance(user.Mnemonic)
+		balanceInTFT, err := gridClient.GetFreeBalanceTFT(user.Mnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to get user balance: %w", err)
 		}
@@ -446,7 +445,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 		transferAmount := balanceInTFT - minBalanceThreshold
 
 		// Perform the transfer from user to system account
-		err = substrateClient.TransferTFTsToSystem(transferAmount, user.Mnemonic)
+		err = gridClient.TransferTFTsToSystem(transferAmount, user.Mnemonic)
 		if err != nil {
 			return fmt.Errorf("failed to transfer balance: %w", err)
 		}

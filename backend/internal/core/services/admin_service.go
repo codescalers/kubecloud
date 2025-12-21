@@ -7,11 +7,11 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 	"time"
 
 	"sync"
@@ -29,7 +29,7 @@ type AdminService struct {
 	ewfRepo             *persistence.GormEWFRepository
 
 	appCtx                 context.Context
-	substrateClient        substrate.Substrate
+	gridClient             gridclient.GridClient
 	ewfEngine              *ewf.Engine
 	mailService            mailservice.MailService
 	notificationDispatcher *notification.NotificationDispatcher
@@ -41,7 +41,7 @@ func NewAdminService(appCtx context.Context,
 	transferRecordsRepo models.TransferRecordRepository,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
-	substrateClient substrate.Substrate,
+	gridClient gridclient.GridClient,
 	ewfEngine *ewf.Engine,
 	mailService mailservice.MailService,
 	notificationDispatcher *notification.NotificationDispatcher,
@@ -56,7 +56,7 @@ func NewAdminService(appCtx context.Context,
 		ewfRepo:             ewfRepo,
 
 		appCtx:                 appCtx,
-		substrateClient:        substrateClient,
+		gridClient:             gridClient,
 		ewfEngine:              ewfEngine,
 		mailService:            mailService,
 		notificationDispatcher: notificationDispatcher,
@@ -107,7 +107,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithTFTBalance
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balanceInTFTUnit, err := svc.substrateClient.GetUserTFTBalance(user.Mnemonic)
+			balanceInTFTUnit, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
 			if err != nil {
 				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
 				mu.Lock()
@@ -192,7 +192,7 @@ func (svc *AdminService) CreditUserBalance(ctx context.Context, transaction mode
 		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	millicentAmount := substrate.FromUSDToUSDMillicent(transaction.Amount)
+	millicentAmount := gridclient.FromUSDToUSDMillicent(transaction.Amount)
 	user.CreditedBalance += millicentAmount
 	if err := svc.userRepo.UpdateUserByID(&models.User{ID: transaction.UserID}); err != nil {
 		return fmt.Errorf("failed to update user: %w", err)

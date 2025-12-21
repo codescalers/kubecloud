@@ -5,15 +5,14 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"time"
 
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -23,13 +22,12 @@ func RegisterEWFWorkflows(
 	config cfg.Configuration,
 	db models.DB,
 	mailService mailservice.MailService,
-	substrate substrate.Substrate,
+	gridClient gridclient.GridClient,
 	kycClient *kyc.KYCClient,
 	sponsorAddress string,
 	sponsorKeyPair subkey.KeyPair,
 	metrics *metrics.Metrics,
 	notificationDispatcher *notification.NotificationDispatcher,
-	proxyClient proxy.Client,
 	stripeClient billing.StripeClient,
 ) {
 	userRepo := persistence.NewGormUserRepository(db)
@@ -39,18 +37,18 @@ func RegisterEWFWorkflows(
 	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mailService, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, userRepo))
 	engine.Register(StepUpdateCode, UpdateCodeStep(userRepo))
-	engine.Register(StepSetupTFChain, SetupTFChainStep(substrate, userRepo))
+	engine.Register(StepSetupTFChain, SetupTFChainStep(gridClient, userRepo, config.TermsANDConditions))
 	engine.Register(StepCreateStripeCustomer, CreateStripeCustomerStep(userRepo, stripeClient))
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mailService, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
-	engine.Register(StepReserveNode, ReserveNodeStep(contractsRepo, substrate))
-	engine.Register(StepUnreserveNode, UnreserveNodeStep(contractsRepo, substrate))
+	engine.Register(StepReserveNode, ReserveNodeStep(contractsRepo, gridClient))
+	engine.Register(StepUnreserveNode, UnreserveNodeStep(contractsRepo, gridClient))
 	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mailService))
-	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(proxyClient))
+	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(gridClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
-	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, substrate, config.SystemAccount.Mnemonic))
+	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, gridClient))
 	engine.Register(StepDrainAllUsersBalance, DrainAllUsersBalanceStep(userRepo, engine, config.MailSender.MaxConcurrentSends))
 	engine.Register(StepCheckClusterNodesHealth, CheckClusterNodesHealthStep(clusterRepo, contractsRepo))
 	engine.Register(StepCheckClusterHealth, CheckClusterHealthStep(config.SSH.PrivateKeyPath))

@@ -6,14 +6,12 @@ import (
 	"kubecloud/internal/billing"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/deployment/kubedeployer"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
-	"kubecloud/internal/infrastructure/substrate"
 	"math"
 	"strconv"
 	"time"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 )
@@ -31,9 +29,8 @@ type BillingService struct {
 	transferRecordsRepo models.TransferRecordRepository
 	clusterRepo         models.ClusterRepository
 
-	substrateClient substrate.Substrate
-	graphql         graphql.GraphQl
-	gridClient      deployer.TFPluginClient
+	gridClient gridclient.GridClient
+	graphql    graphql.GraphQl
 
 	minimumTFTAmountInWallet uint64
 	appliedDiscount          Discount
@@ -41,7 +38,7 @@ type BillingService struct {
 
 func NewBillingService(userRepo models.UserRepository, contractsRepo models.ContractDataRepository,
 	transferRecordsRepo models.TransferRecordRepository, clusterRepo models.ClusterRepository,
-	substrateClient substrate.Substrate, graphql graphql.GraphQl, gridClient deployer.TFPluginClient,
+	graphql graphql.GraphQl, gridClient gridclient.GridClient,
 	minimumTFTAmountInWallet uint64, appliedDiscount Discount,
 ) BillingService {
 	return BillingService{
@@ -50,9 +47,8 @@ func NewBillingService(userRepo models.UserRepository, contractsRepo models.Cont
 		transferRecordsRepo: transferRecordsRepo,
 		clusterRepo:         clusterRepo,
 
-		graphql:         graphql,
-		substrateClient: substrateClient,
-		gridClient:      gridClient,
+		gridClient: gridClient,
+		graphql:    graphql,
 
 		appliedDiscount:          appliedDiscount,
 		minimumTFTAmountInWallet: minimumTFTAmountInWallet,
@@ -81,7 +77,7 @@ func (svc *BillingService) AfterUserGetCredit(ctx context.Context, user *models.
 }
 
 func (svc *BillingService) CreateTransferRecordToChargeUserWithMinTFTAmount(userID int, username, userMnemonic string) error {
-	userTFTBalance, err := svc.substrateClient.GetUserTFTBalance(userMnemonic)
+	userTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(userMnemonic)
 	if err != nil {
 		return err
 	}
@@ -116,7 +112,7 @@ func (svc *BillingService) FundUserToFulfillDiscount(ctx context.Context, user *
 		return err
 	}
 
-	dailyUsageInTFT, err := svc.substrateClient.FromUSDMillicentToTFT(dailyUsageInUSDMillicent)
+	dailyUsageInTFT, err := svc.gridClient.FromUSDMillicentToTFT(dailyUsageInUSDMillicent)
 	if err != nil {
 		return err
 	}
@@ -126,7 +122,7 @@ func (svc *BillingService) FundUserToFulfillDiscount(ctx context.Context, user *
 		return err
 	}
 
-	userTFTBalance, err := svc.substrateClient.GetUserTFTBalance(user.Mnemonic)
+	userTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
 	if err != nil {
 		return err
 	}
@@ -156,12 +152,10 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 	addedSharedNodes []kubedeployer.Node,
 	configuredDiscount Discount,
 ) (uint64, error) {
-	userIdentity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(userMnemonic)
+	calculator, err := svc.gridClient.NewCalculator(userMnemonic)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create identity: %w", err)
+		return 0, fmt.Errorf("failed to create calculator: %w", err)
 	}
-
-	calculator := calculator.NewCalculator(svc.gridClient.SubstrateConn, userIdentity)
 
 	var totalResourcesCostMillicent uint64
 
@@ -188,12 +182,12 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 		}
 
 		// resources cost per month
-		pricingPolicy, err := svc.substrateClient.GetPricingPolicy(defaultPricingPolicyID)
+		pricingPolicy, err := svc.gridClient.GetPricingPolicy(defaultPricingPolicyID)
 		if err != nil {
 			return 0, err
 		}
 		dedicatedDiscountPercentage := float64(pricingPolicy.DedicatedNodesDiscount / 100)
-		totalResourcesCostMillicent += substrate.FromUSDToUSDMillicent(resourcesCost * dedicatedDiscountPercentage)
+		totalResourcesCostMillicent += gridclient.FromUSDToUSDMillicent(resourcesCost * dedicatedDiscountPercentage)
 	}
 
 	sharedNodes, err := svc.getUserNodes(userID)
@@ -206,13 +200,13 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 
 	// Calculate shared nodes
 	for _, node := range sharedNodes {
-		proxyNode, err := svc.gridClient.GridProxyClient.Node(ctx, node.NodeID)
+		proxyNode, err := svc.gridClient.Node(ctx, node.NodeID)
 		if err != nil {
 			return 0, err
 		}
 
 		if proxyNode.Rented {
-			twinID, err := svc.substrateClient.GetTwinByPubKey(userIdentity.PublicKey())
+			twinID, err := svc.gridClient.GetTwin(userMnemonic)
 			if err != nil {
 				return 0, err
 			}
@@ -242,7 +236,7 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 		}
 
 		// resources cost per month
-		totalResourcesCostMillicent += substrate.FromUSDToUSDMillicent(resourcesCost)
+		totalResourcesCostMillicent += gridclient.FromUSDToUSDMillicent(resourcesCost)
 	}
 
 	// Calculate name contracts
@@ -256,7 +250,7 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 		return 0, err
 	}
 
-	totalResourcesCostMillicent += substrate.FromUSDToUSDMillicent(float64(len(nameContracts)) * nameContractMonthlyCostInUSD)
+	totalResourcesCostMillicent += gridclient.FromUSDToUSDMillicent(float64(len(nameContracts)) * nameContractMonthlyCostInUSD)
 
 	discount := getDiscountPackage(configuredDiscount).DurationInMonth
 	if discount == 0 {
@@ -285,7 +279,7 @@ func (svc *BillingService) getUserNodes(userID int) ([]kubedeployer.Node, error)
 }
 
 func (svc *BillingService) calculateUniqueNameMonthlyCost() (float64, error) {
-	pricingPolicy, err := svc.substrateClient.GetPricingPolicy(defaultPricingPolicyID)
+	pricingPolicy, err := svc.gridClient.GetPricingPolicy(defaultPricingPolicyID)
 	if err != nil {
 		return 0, err
 	}
@@ -314,7 +308,7 @@ func (svc *BillingService) getRentedNodesForUser(ctx context.Context, userID int
 
 	limit := types.DefaultLimit()
 
-	nodes, count, err := svc.gridClient.GridProxyClient.Nodes(ctx, filter, limit)
+	nodes, count, err := svc.gridClient.Nodes(ctx, filter, limit)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -328,11 +322,9 @@ func (svc *BillingService) listNameContractsForUser(userID int) ([]graphql.Contr
 		return nil, err
 	}
 
-	contractGetter := graphql.NewContractsGetter(
+	contractGetter := svc.gridClient.NewContractsGetter(
 		uint32(twinID),
 		svc.graphql,
-		svc.gridClient.SubstrateConn,
-		svc.gridClient.NcPool,
 	)
 
 	contractsList, err := contractGetter.ListContractsByTwinID([]string{"Created, GracePeriod"})
@@ -349,12 +341,7 @@ func (svc *BillingService) getTwinIDFromUserID(userID int) (uint64, error) {
 		return 0, err
 	}
 
-	identity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(user.Mnemonic)
-	if err != nil {
-		return 0, err
-	}
-
-	twinID, err := svc.substrateClient.GetTwinByPubKey(identity.PublicKey())
+	twinID, err := svc.gridClient.GetTwin(user.Mnemonic)
 	if err != nil {
 		return 0, err
 	}
@@ -455,13 +442,13 @@ func (svc *BillingService) getBillingRateAt(report billing.Report) (float64, err
 	// Calculate number of blocks since report
 	numberOfBlocks := math.Round(float64(timeBetweenNowAndReport) / float64(block_duration))
 
-	nowBlock, err := svc.substrateClient.GetCurrentHeight()
+	nowBlock, err := svc.gridClient.GetCurrentHeight()
 	if err != nil {
 		return 0, err
 	}
 	reportBlock := nowBlock - uint32(numberOfBlocks)
 
-	tftPrice, err := svc.substrateClient.GetTFTBillingRateAt(uint64(reportBlock))
+	tftPrice, err := svc.gridClient.GetTFTBillingRateAt(uint64(reportBlock))
 	if err != nil {
 		return 0, err
 	}
