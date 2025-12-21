@@ -156,6 +156,8 @@ var DefaultQueueConfig = ewf.QueueMetadata{
 func LoadConfig() (Configuration, error) {
 	var config Configuration
 
+	viper.SetDefault("disable_sentry", true)
+
 	// Use mapstructure to ensure JSON tags are respected
 	decoderConfig := &mapstructure.DecoderConfig{
 		TagName:          "json",
