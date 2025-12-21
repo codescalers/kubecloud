@@ -545,7 +545,7 @@ func (h *AdminHandler) ListAllWorkflowsHandler(c *gin.Context) {
 // @Failure 404 {object} APIResponse "Workflow not found"
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
-// @Router /workflows/{workflow_uuid}/retry [post]
+// @Router /workflows/retry/{workflow_uuid} [post]
 func (h *AdminHandler) RetryFailedWorkflowHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "RetryFailedWorkflowHandler")
 

@@ -449,6 +449,10 @@ func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, s
 func (svc *AdminService) RetryFailedWorkflow(workflowUUID string) error {
 	wf, err := svc.ewfRepo.LoadWorkflowByUUID(svc.appCtx, workflowUUID)
 	if err != nil {
+		logger.GetLogger().Error().Err(err).
+			Str("workflow_uuid", workflowUUID).
+			Msg("failed to get workflow for retry")
+
 		return ErrWorkflowNotFound
 	}
 

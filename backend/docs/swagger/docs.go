@@ -3323,7 +3323,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/workflows/{workflow_uuid}/retry": {
+        "/workflows/retry/{workflow_uuid}": {
             "post": {
                 "security": [
                     {

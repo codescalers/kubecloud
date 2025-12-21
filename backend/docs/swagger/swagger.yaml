@@ -3240,7 +3240,7 @@ paths:
       summary: List all workflows
       tags:
       - admin
-  /workflows/{workflow_uuid}/retry:
+  /workflows/retry/{workflow_uuid}:
     post:
       consumes:
       - application/json
