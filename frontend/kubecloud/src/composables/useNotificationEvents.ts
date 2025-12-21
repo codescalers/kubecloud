@@ -69,7 +69,9 @@ export function useNotificationEvents() {
   function setupTokenRefresh() {
     if (tokenRefreshTimer.value) clearTimeout(tokenRefreshTimer.value)
     
-    const expiry = getTokenExpiry(userStore.token || '')
+    if (!userStore.token) return
+    
+    const expiry = getTokenExpiry(userStore.token)
     if (!expiry) return
 
     const refreshIn = expiry - Date.now() - TOKEN_REFRESH_THRESHOLD
@@ -80,7 +82,10 @@ export function useNotificationEvents() {
           await disconnect()
           connect()
           setupTokenRefresh()
-        } catch {}
+        } catch (error) {
+          console.error('[SSE] Failed to refresh token:', error)
+          await disconnect()
+        }
       }, refreshIn)
     }
   }
