@@ -52,5 +52,8 @@ const (
 	StepSendEmailNotification   = "send-email-notification"
 	StepVerifyNodeState         = "verify-node-state"
 	StepVerifyClusterInDB       = "verify-cluster-in-db"
+	StepCheckClusterNodesHealth = "check-cluster-nodes-health"
+	StepCheckClusterHealth      = "check-cluster-health"
 	StepDrainUserBalance        = "drain-user-balance"
+	StepDrainAllUsersBalance    = "drain-all-users-balance"
 )

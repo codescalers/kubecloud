@@ -8,7 +8,6 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/workers"
 	"kubecloud/internal/core/workflows"
-	"kubecloud/internal/infrastructure/metrics"
 
 	"net"
 	"net/http"
@@ -22,6 +21,7 @@ import (
 	"github.com/stripe/stripe-go/v82"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	// Import the generated docs package
 	_ "kubecloud/docs/swagger"
@@ -43,7 +43,12 @@ type App struct {
 func NewApp(ctx context.Context, config cfg.Configuration) (*App, error) {
 	// Disable gin's default logging since we're using zerolog
 	gin.DisableConsoleColor()
+
 	gin.SetMode(gin.ReleaseMode)
+
+	if config.Debug {
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// Create router without default middleware
 	router := gin.New()
@@ -100,9 +105,7 @@ func (app *App) registerHandlers() {
 
 	app.router.Use(middlewares.CorsMiddleware())
 	app.router.Use(app.core.metrics.Middleware())
-
-	app.core.metrics.StartGORMMetricsCollector(app.core.db, metrics.MetricsCollectorInterval)
-	app.core.metrics.StartGoRuntimeMetricsCollector(metrics.MetricsCollectorInterval)
+	app.router.Use(otelgin.Middleware("kubecloud"))
 
 	v1 := app.router.Group("/api/v1")
 	{
@@ -128,6 +131,7 @@ func (app *App) registerHandlers() {
 			usersGroup.POST("/mail", app.handlers.adminHandler.SendMailToAllUsersHandler)
 			adminGroup.GET("/transfer-records", app.handlers.adminHandler.ListTransferRecordsHandler)
 			adminGroup.GET("/invoices", app.handlers.invoiceHandler.ListAllInvoicesHandler)
+			adminGroup.GET("/workflows", app.handlers.adminHandler.ListAllWorkflowsHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{
@@ -217,10 +221,13 @@ func (app *App) registerHandlers() {
 func (app *App) StartBackgroundWorkers() {
 	go app.workers.MonthlyInvoicesHandler()
 	go app.workers.TrackUserDebt()
+	go app.workers.TrackUsersBalance()
 	go app.workers.MonitorSystemBalanceAndHandleSettlement()
 	go app.workers.TrackClusterHealth()
 	go app.workers.TrackReservedNodeHealth()
 	go app.workers.DeductUSDBalanceBasedOnUsage()
+	go app.workers.CollectGORMMetrics()
+	go app.workers.CollectGoRuntimeMetrics()
 }
 
 // Run starts the server
@@ -269,6 +276,12 @@ func (app *App) Shutdown() error {
 	if app.core.db != nil {
 		if err := app.core.db.Close(); err != nil {
 			logger.GetLogger().Error().Err(err).Msg("Failed to close database connection")
+		}
+	}
+
+	if app.core.tracerProvider != nil {
+		if err := app.core.tracerProvider.Shutdown(context.Background()); err != nil {
+			logger.GetLogger().Error().Err(err).Msg("Failed to shutdown tracer provider")
 		}
 	}
 

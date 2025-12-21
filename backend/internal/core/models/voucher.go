@@ -1,15 +1,18 @@
 package models
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
-var ErrVoucherNotFound = fmt.Errorf("voucher is not found")
+var ErrVoucherNotFound = errors.New("voucher is not found")
+var ErrVoucherRedeemed = errors.New("voucher is already redeemed")
 
 // Voucher struct holds all data for vouchers, voucher used only by one user.db.
 type Voucher struct {
 	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    int       `json:"user_id"`
+	Username  string    `json:"username"`
 	Code      string    `json:"code" gorm:"unique;not null" validate:"required"`
 	Value     float64   `json:"value" gorm:"not null" validate:"required,gt=0"`
 	Redeemed  bool      `json:"redeemed" gorm:"default:false"`

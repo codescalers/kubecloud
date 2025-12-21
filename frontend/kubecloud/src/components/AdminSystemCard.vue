@@ -21,14 +21,23 @@
 
       <v-card-text class=" px-9 pb-0" >
         <p class="text-body-2 mb-0">
-          Enable maintenance mode to temporarily restrict access to the platform.
+          <span v-if="isMaintenanceMode">
+            Maintenance mode is currently <strong>enabled</strong>. User dashboard access is restricted.
+          </span>
+          <span v-else>
+            Enable maintenance mode to temporarily restrict access to the platform.
+          </span>
         </p>
       </v-card-text>
 
       <v-card-actions class="px-9 pb-8">
-        <v-btn color="error" variant="outlined" :loading="isLoading" @click="enableMaintenanceMode"
-          prepend-icon="mdi-wrench">
-          Enable Maintenance Mode
+        <v-btn 
+          :color="isMaintenanceMode ? 'success' : 'error'" 
+          variant="outlined" 
+          :loading="isLoading" 
+          @click="toggleMaintenanceMode"
+          :prepend-icon="isMaintenanceMode ? 'mdi-check-circle' : 'mdi-wrench'">
+          {{ isMaintenanceMode ? 'Disable Maintenance Mode' : 'Enable Maintenance Mode' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -36,22 +45,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { adminService } from '@/utils/adminService'
-import router from '@/router'
 import { useMaintenanceStore } from '@/stores/maintenance'
 
+const maintenanceStore = useMaintenanceStore()
 const isLoading = ref(false)
 
+const isMaintenanceMode = computed(() => maintenanceStore.isMaintenanceMode)
+
+// Check maintenance status on component mount
+onMounted(async () => {
+  await maintenanceStore.checkMaintenanceStatus()
+})
 
 // Methods
-const enableMaintenanceMode = async () => {
+const toggleMaintenanceMode = async () => {
   isLoading.value = true
   try {
-    await adminService.SetMaintenanceModeStatus(true)
-    await useMaintenanceStore().checkMaintenanceStatus()
+    const newStatus = !isMaintenanceMode.value
+    await adminService.SetMaintenanceModeStatus(newStatus)
+    await maintenanceStore.checkMaintenanceStatus()
   } catch (error) {
-    console.error('Failed to enable maintenance mode:', error)
+    console.error('Failed to toggle maintenance mode:', error)
   } finally {
     isLoading.value = false
   }

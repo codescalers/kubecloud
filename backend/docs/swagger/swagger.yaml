@@ -7,6 +7,14 @@ definitions:
       refresh_token:
         type: string
     type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
   gridtypes.Unit:
     enum:
     - 1024
@@ -177,9 +185,11 @@ definitions:
     properties:
       cpu:
         type: integer
-      disk_size:
+      data_disks:
         description: Storage in MB
-        type: integer
+        items:
+          type: integer
+        type: array
       entrypoint:
         type: string
       env_vars:
@@ -404,19 +414,6 @@ definitions:
     - name
     - public_key
     type: object
-  handlers.SendMailResponse:
-    properties:
-      failed_emails:
-        items:
-          type: string
-        type: array
-      failed_emails_count:
-        type: integer
-      successful_emails:
-        type: integer
-      total_users:
-        type: integer
-    type: object
   handlers.TwinResponse:
     properties:
       account_id:
@@ -443,9 +440,15 @@ definitions:
         type: string
       current_step:
         type: integer
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
       name:
         type: string
       status:
+        type: string
+      step_name:
         type: string
       total_steps:
         type: integer
@@ -510,10 +513,12 @@ definitions:
       cpu:
         minimum: 1
         type: integer
-      disk_size:
+      data_disks:
         description: Storage in MB
-        minimum: 10240
-        type: integer
+        items:
+          type: integer
+        minItems: 1
+        type: array
       entrypoint:
         type: string
       env_vars:
@@ -528,6 +533,8 @@ definitions:
         items:
           type: string
         type: array
+      healthy:
+        type: boolean
       ip:
         description: Computed
         type: string
@@ -560,7 +567,7 @@ definitions:
         - leader
     required:
     - cpu
-    - disk_size
+    - data_disks
     - memory
     - name
     - node_id
@@ -640,6 +647,7 @@ definitions:
     - user
     - connected
     - node
+    - admin
     type: string
     x-enum-varnames:
     - NotificationTypeDeployment
@@ -647,10 +655,13 @@ definitions:
     - NotificationTypeUser
     - NotificationTypeConnected
     - NotificationTypeNode
+    - NotificationTypeAdmin
   models.SSHKey:
     properties:
       created_at:
         type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
       id:
         description: Primary key
         type: integer
@@ -692,6 +703,10 @@ definitions:
         type: integer
       redeemed:
         type: boolean
+      user_id:
+        type: integer
+      username:
+        type: string
       value:
         type: number
     required:
@@ -708,6 +723,38 @@ definitions:
     x-enum-varnames:
     - WithdrawOperation
     - DepositOperation
+  services.AdminWorkflow:
+    properties:
+      created_at:
+        type: string
+      current_step:
+        type: integer
+      display_name:
+        type: string
+      error:
+        type: string
+      metadata:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      queue_name:
+        type: string
+      state:
+        additionalProperties: {}
+        type: object
+      status:
+        type: string
+      step_name:
+        type: string
+      total_steps:
+        type: integer
+      user_id:
+        type: integer
+      uuid:
+        type: string
+    type: object
   services.ClusterData:
     properties:
       cluster:
@@ -804,10 +851,6 @@ definitions:
         type: string
       id:
         type: integer
-      password:
-        items:
-          type: integer
-        type: array
       sponsored:
         type: boolean
       ssh_key:
@@ -822,7 +865,6 @@ definitions:
         type: boolean
     required:
     - email
-    - password
     - username
     type: object
   services.UserWithTFTBalance:
@@ -850,10 +892,6 @@ definitions:
         type: string
       id:
         type: integer
-      password:
-        items:
-          type: integer
-        type: array
       sponsored:
         type: boolean
       ssh_key:
@@ -868,7 +906,6 @@ definitions:
         type: boolean
     required:
     - email
-    - password
     - username
     type: object
   types.BIOS:
@@ -2323,7 +2360,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: List nodes from proxy [rented nodes first + randomized shared nodes]
+      description: List nodes from proxy [rented nodes first, then available nodes
+        sorted by uptime]
       operationId: list-nodes
       parameters:
       - description: 'Filter by healthy nodes (default: true)'
@@ -2964,8 +3002,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Allows admin to send a custom email to all users with optional
-        file attachments. Returns detailed statistics about successful and failed
-        email deliveries.
+        file attachments.
       operationId: admin-mail-all-users
       parameters:
       - description: Email subject
@@ -2986,14 +3023,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Email sending results with delivery statistics
+          description: Mail sending started
           schema:
-            allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.SendMailResponse'
-              type: object
+            $ref: '#/definitions/handlers.APIResponse'
         "400":
           description: Invalid request format
           schema:
@@ -3004,7 +3036,7 @@ paths:
             $ref: '#/definitions/handlers.APIResponse'
       security:
       - AdminMiddleware: []
-      summary: Send mail to all users
+      summary: Start sending mail to all users (async)
       tags:
       - admin
   /vouchers:
@@ -3115,4 +3147,44 @@ paths:
       summary: Get workflow status
       tags:
       - workflow
+  /workflows:
+    get:
+      consumes:
+      - application/json
+      description: Returns all workflows in the system with optional filtering by
+        status
+      operationId: list-all-workflows
+      parameters:
+      - description: Filter workflows by status (pending, running, completed, failed)
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Workflows retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/handlers.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/services.AdminWorkflow'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List all workflows
+      tags:
+      - admin
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

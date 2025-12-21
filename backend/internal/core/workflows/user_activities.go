@@ -9,15 +9,17 @@ import (
 	"kubecloud/internal/core/generators"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/kyc"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/substrate"
+	"sync"
 
 	"slices"
 	"strings"
 
 	"kubecloud/internal/infrastructure/logger"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/vedhavyas/go-subkey"
 	"github.com/xmonader/ewf"
 )
@@ -72,6 +74,10 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 			if err = userRepo.RegisterUser(&user); err != nil {
 				return fmt.Errorf("user registration failed: %w", err)
 			}
+			// Store user_id in state for later use (e.g., in hooks/notifications)
+			state["config"] = map[string]interface{}{
+				"user_id": user.ID,
+			}
 			return nil
 		}
 
@@ -79,7 +85,9 @@ func CreateUserStep(config cfg.Configuration, userRepo models.UserRepository) ew
 		if updateErr := userRepo.UpdateUserByID(&user); updateErr != nil {
 			return fmt.Errorf("failed to update user: %w", updateErr)
 		}
-
+		state["config"] = map[string]interface{}{
+			"user_id": user.ID,
+		}
 		return nil
 	}
 }
@@ -105,9 +113,8 @@ func SendVerificationEmailStep(mailService mailservice.MailService, config cfg.C
 		}
 
 		code := generators.GenerateVerificationCode(config.VerificationCodeLength)
-		subject, body := mailService.SignUpMailContent(code, config.MailSender.TimeoutMin, name)
-
-		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
+		err := mailService.SendSignUpMail(email, code, name)
+		if err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 
@@ -148,22 +155,22 @@ func UpdateCodeStep(userRepo models.UserRepository) ewf.StepFn {
 
 func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
 
 		if len(strings.TrimSpace(existingUser.Mnemonic)) > 0 {
-			state["mnemonic"] = existingUser.Mnemonic
+			// Update config with mnemonic
+			state["config"] = map[string]interface{}{
+				"user_id":  userConfig.UserID,
+				"mnemonic": existingUser.Mnemonic,
+			}
 			return nil
 		}
 
@@ -173,29 +180,29 @@ func SetupTFChainStep(substrateClient substrate.Substrate, userRepo models.UserR
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:       userID,
+			ID:       userConfig.UserID,
 			Mnemonic: mnemonic,
 		}); err != nil {
 			return fmt.Errorf("failed to update user mnemonic: %w", err)
 		}
 
-		state["mnemonic"] = mnemonic
+		// Update config with mnemonic
+		state["config"] = map[string]interface{}{
+			"user_id":  userConfig.UserID,
+			"mnemonic": mnemonic,
+		}
 		return nil
 	}
 }
 
 func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billing.StripeClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -228,7 +235,7 @@ func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billi
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:               userID,
+			ID:               userConfig.UserID,
 			StripeCustomerID: customer.ID,
 		}); err != nil {
 			return fmt.Errorf("failed to update user stripe customer: %w", err)
@@ -241,16 +248,12 @@ func CreateStripeCustomerStep(userRepo models.UserRepository, stripeClient billi
 func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, sponsorKeyPair subkey.KeyPair, userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("user_activities", "create_kyc_sponsorship")
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		userConfig, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		existingUser, err := userRepo.GetUserByID(userID)
+		existingUser, err := userRepo.GetUserByID(userConfig.UserID)
 		if err != nil {
 			return fmt.Errorf("failed to check existing user: %w", err)
 		}
@@ -259,14 +262,11 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 			return nil
 		}
 
-		mnemonicVal, ok := state["mnemonic"]
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
+		// Get mnemonic from config
+		if userConfig.Mnemonic == "" {
+			return fmt.Errorf("missing 'mnemonic' in config")
 		}
-		mnemonic, ok := mnemonicVal.(string)
-		if !ok {
-			return fmt.Errorf("'mnemonic' in state is not a string")
-		}
+		mnemonic := userConfig.Mnemonic
 
 		// Set user.AccountAddress from mnemonic
 		sponseeKeyPair, err := auth.KeyPairFromMnemonic(mnemonic)
@@ -286,7 +286,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 		}
 
 		if err := userRepo.UpdateUserByID(&models.User{
-			ID:             userID,
+			ID:             userConfig.UserID,
 			Sponsored:      true,
 			AccountAddress: sponseeAddress,
 		}); err != nil {
@@ -297,7 +297,7 @@ func CreateKYCSponsorship(kycClient *kyc.KYCClient, sponsorAddress string, spons
 	}
 }
 
-func SendWelcomeEmailStep(mailService mailservice.MailService, config cfg.Configuration, metrics *metrics.Metrics) ewf.StepFn {
+func SendWelcomeEmailStep(mailService mailservice.MailService, metrics *metrics.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		metrics.IncrementUserRegistration()
 
@@ -319,8 +319,8 @@ func SendWelcomeEmailStep(mailService mailservice.MailService, config cfg.Config
 			return fmt.Errorf("'name' in state is not a string")
 		}
 
-		subject, body := mailService.WelcomeMailContent(name)
-		if err := mailService.SendMailFromSystem(email, subject, body); err != nil {
+		err := mailService.SendWelcomeEmail(email, name)
+		if err != nil {
 			return fmt.Errorf("send mail failed: %w", err)
 		}
 		return nil
@@ -368,13 +368,9 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeCl
 
 func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		amountVal, ok := state["amount"]
@@ -386,7 +382,7 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := userRepo.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(config.UserID)
 		if err != nil {
 			return fmt.Errorf("user not found: %w", err)
 		}
@@ -396,7 +392,11 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("error updating user: %w", err)
 		}
 
-		state["mnemonic"] = user.Mnemonic
+		// Update config with mnemonic
+		state["config"] = map[string]interface{}{
+			"user_id":  config.UserID,
+			"mnemonic": user.Mnemonic,
+		}
 		netBalance := int64(user.CreditCardBalance) + int64(user.CreditedBalance) - int64(user.Debt)
 		if netBalance < 0 {
 			netBalance = 0
@@ -410,13 +410,13 @@ func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 // DrainUserBalanceStep transfers a user's balance to the system account
 func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substrate.Substrate, systemMnemonic string) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
+		userIDVal, ok := state["target_user_id"]
 		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
+			return fmt.Errorf("missing 'target_user_id' in state")
 		}
 		userID, ok := userIDVal.(int)
 		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+			return fmt.Errorf("'target_user_id' in state is not an int")
 		}
 
 		user, err := userRepo.GetUserByID(userID)
@@ -424,6 +424,7 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 			return fmt.Errorf("failed to get user: %w", err)
 		}
 
+		state["target_username"] = user.Username
 		// Get user's current balance in TFT from on-chain
 		balanceInTFT, err := substrateClient.GetUserTFTBalance(user.Mnemonic)
 		if err != nil {
@@ -461,15 +462,59 @@ func DrainUserBalanceStep(userRepo models.UserRepository, substrateClient substr
 		return nil
 	}
 }
+
+func DrainAllUsersBalanceStep(userRepo models.UserRepository, ewfEngine *ewf.Engine, maxConcurrent int) ewf.StepFn {
+	return func(ctx context.Context, state ewf.State) error {
+		users, err := userRepo.ListAllUsers()
+		if err != nil {
+			return fmt.Errorf("failed to get all users: %w", err)
+		}
+		multiErr := &multierror.Error{}
+		wg := sync.WaitGroup{}
+		mu := sync.Mutex{}
+		sem := make(chan struct{}, maxConcurrent)
+
+		for _, user := range users {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(user models.User) {
+				defer wg.Done()
+				defer func() { <-sem }()
+				drainDisplayName := fmt.Sprintf("Drain %s balance", user.Username)
+				wf, err := ewfEngine.NewWorkflow(WorkflowDrainUser, ewf.WithDisplayName(drainDisplayName))
+				if err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+					return
+				}
+
+				wf.State = map[string]interface{}{
+					"target_user_id":        user.ID,
+					"target_username":       user.Username,
+					"suppress_notification": true,
+				}
+
+				if err = ewfEngine.Run(ctx, wf); err != nil {
+					mu.Lock()
+					multiErr = multierror.Append(multiErr, err)
+					mu.Unlock()
+				}
+			}(user)
+		}
+		wg.Wait()
+		if err := multiErr.ErrorOrNil(); err != nil {
+			return fmt.Errorf("failed to drain all users balance: %w", err)
+		}
+		return nil
+	}
+}
+
 func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-		userID, ok := userIDVal.(int)
-		if !ok {
-			return fmt.Errorf("'user_id' in state is not an int")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		amountVal, ok := state["amount"]
@@ -481,7 +526,7 @@ func UpdateCreditedBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 			return fmt.Errorf("'amount' in state is not a uint64")
 		}
 
-		user, err := userRepo.GetUserByID(userID)
+		user, err := userRepo.GetUserByID(config.UserID)
 		if err != nil {
 			return fmt.Errorf("user is not found: %w", err)
 		}

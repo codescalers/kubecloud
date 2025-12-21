@@ -4,7 +4,6 @@ import (
 	"kubecloud/internal/core/models"
 
 	"net/http"
-	"runtime"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -322,30 +321,4 @@ func (m *Metrics) IncrementEmailSent() {
 // IncrementEmailFailed increments the failed email counter
 func (m *Metrics) IncrementEmailFailed() {
 	m.emailFailed.Inc()
-}
-
-// StartGORMMetricsCollector starts a goroutine that periodically updates GORM metrics
-func (m *Metrics) StartGORMMetricsCollector(db models.DB, interval time.Duration) {
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			m.UpdateGORMMetrics(db)
-		}
-	}()
-}
-
-// StartGoRuntimeMetricsCollector starts a goroutine that periodically collects runtime metrics
-func (m *Metrics) StartGoRuntimeMetricsCollector(interval time.Duration) {
-	var memStats runtime.MemStats
-
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			runtime.ReadMemStats(&memStats)
-		}
-	}()
 }

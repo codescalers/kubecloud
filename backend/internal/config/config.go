@@ -35,12 +35,15 @@ type Configuration struct {
 	ClusterHealthCheckIntervalInHours      int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
 	SettleTransferRecordsIntervalInMinutes int                           `json:"settle_transfer_records_interval_in_minutes" validate:"required,gt=0"`
 	NodeHealthCheck                        ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
+	UsersBalanceCheckIntervalInHours       int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
+	CheckUserDebtIntervalInHours           int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
 
 	AppliedDiscount          string `json:"applied_discount" validate:"required"`
 	MinimumTFTAmountInWallet int    `json:"minimum_tft_amount_in_wallet" default:"10" validate:"required,gt=0"`
 
-	Logger LoggerConfig `json:"logger"`
-	Loki   LokiConfig   `json:"loki"`
+	Logger    LoggerConfig    `json:"logger"`
+	Loki      LokiConfig      `json:"loki"`
+	Telemetry TelemetryConfig `json:"telemetry"`
 }
 
 type SSHConfig struct {
@@ -127,6 +130,10 @@ type LokiLabels struct {
 	Host string `json:"host,omitempty"`
 }
 
+type TelemetryConfig struct {
+	OTLPEndpoint string `json:"otlp_endpoint" default:"jaeger:4317"` // gRPC endpoint for OTLP exporter
+}
+
 type ReservedNodeHealthCheckConfig struct {
 	ReservedNodeHealthCheckIntervalInHours  int `json:"reserved_node_health_check_interval_in_hours" validate:"required,gt=0" default:"1"`
 	ReservedNodeHealthCheckTimeoutInMinutes int `json:"reserved_node_health_check_timeout_in_minutes" validate:"required,gt=0" default:"1"`
@@ -208,6 +215,18 @@ func LoadConfig() (Configuration, error) {
 	config.MailSender.SendGridKey = strings.TrimSpace(config.MailSender.SendGridKey)
 	if !config.DevMode && config.MailSender.SendGridKey == "" {
 		return Configuration{}, fmt.Errorf("sendgrid_key is required when dev_mode is false. Set dev_mode=true to use FakeMailService for development")
+	}
+
+	// custom validation: warn if using SQLite in production mode
+	if !config.DevMode {
+		dsn := strings.TrimSpace(config.Database.DSN)
+		u, err := url.Parse(dsn)
+		if err != nil {
+			return Configuration{}, fmt.Errorf("failed to parse database DSN: %w", err)
+		}
+		if u.Scheme == "sqlite" || u.Scheme == "sqlite3" {
+			return Configuration{}, fmt.Errorf("SQLite not allowed in production. Use PostgreSQL or set dev_mode=true")
+		}
 	}
 
 	return config, nil
@@ -380,5 +399,17 @@ func applyDefaultValues(config *Configuration) {
 
 	if config.AppliedDiscount == "" {
 		config.AppliedDiscount = "gold"
+	}
+
+	if config.Telemetry.OTLPEndpoint == "" {
+		config.Telemetry.OTLPEndpoint = "jaeger:4317"
+	}
+
+	if config.UsersBalanceCheckIntervalInHours == 0 {
+		config.UsersBalanceCheckIntervalInHours = 6
+	}
+
+	if config.CheckUserDebtIntervalInHours == 0 {
+		config.CheckUserDebtIntervalInHours = 48
 	}
 }

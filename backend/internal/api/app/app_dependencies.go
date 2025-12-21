@@ -9,17 +9,23 @@ import (
 	cfg "kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	corepersistence "kubecloud/internal/core/persistence"
+	"kubecloud/internal/core/queuing"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/core/workers"
 	grid "kubecloud/internal/infrastructure/grid"
 	"kubecloud/internal/infrastructure/kyc"
 	"kubecloud/internal/infrastructure/logger"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
+	mailcontentformatter "kubecloud/internal/infrastructure/mailservice/mail_content_formatter"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/metrics"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/persistence"
 	"kubecloud/internal/infrastructure/realtime"
 	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/telemetry"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	"net/url"
 	"os"
@@ -56,10 +62,11 @@ type appDependencies struct {
 
 // appCore contains essential application services
 type appCore struct {
-	appCtx    context.Context
-	db        models.DB
-	metrics   *metrics.Metrics
-	ewfEngine *ewf.Engine
+	appCtx         context.Context
+	db             models.DB
+	metrics        *metrics.Metrics
+	ewfEngine      *ewf.Engine
+	tracerProvider *telemetry.TracerProvider
 }
 
 // appSecurity contains authentication and security related services
@@ -92,7 +99,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appInfrastructure, err := createAppInfrastructure(config)
+	appInfrastructure, err := createAppInfrastructure(config, appCore.tracerProvider.Provider())
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -102,7 +109,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appCommunication, err := createAppCommunication(ctx, config, appCore.db, appCore.ewfEngine, appCore.metrics)
+	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics)
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -117,6 +124,16 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 }
 
 func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, error) {
+	tp, err := telemetry.InitTracerProvider(ctx, telemetry.Config{
+		ServiceName:    "kubecloud",
+		ServiceVersion: "1.0.0", // TODO:
+		Environment:    config.SystemAccount.Network,
+		OTLPEndpoint:   config.Telemetry.OTLPEndpoint,
+	})
+	if err != nil {
+		return appCore{}, fmt.Errorf("failed to initialize tracer provider: %w", err)
+	}
+
 	dbPoolConfig := models.DBPoolConfig{
 		MaxOpenConns:           config.Database.MaxOpenConns,
 		MaxIdleConns:           config.Database.MaxIdleConns,
@@ -142,7 +159,7 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 		return appCore{}, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	qEngine := ewf.NewRedisQueueEngine(client)
+	qEngine := queuing.NewRedisQueueEngine(client)
 
 	// initialize workflow ewfEngine
 	ewfEngine, err := ewf.NewEngine(ewf.WithQueueEngine(qEngine), ewf.WithStore(ewfStore))
@@ -152,10 +169,11 @@ func createAppCore(ctx context.Context, config cfg.Configuration) (appCore, erro
 	}
 
 	return appCore{
-		appCtx:    ctx,
-		db:        db,
-		metrics:   metrics.NewMetrics(),
-		ewfEngine: ewfEngine,
+		appCtx:         ctx,
+		db:             db,
+		metrics:        metrics.NewMetrics(),
+		ewfEngine:      ewfEngine,
+		tracerProvider: tp,
 	}, nil
 }
 
@@ -211,17 +229,20 @@ func createAppSecurity(ctx context.Context, config cfg.Configuration) (appSecuri
 	}, nil
 }
 
-func createAppCommunication(ctx context.Context, config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
-	var mailService mailservice.MailService
+func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+	var mailSender mailsender.MailSender
+	var mailContentFormatter mailcontentformatter.MailContentFormatter
 
 	if config.DevMode {
 		logger.GetLogger().Info().Msg("Dev mode enabled: using FakeMailService for OTP logging")
-		mailService = mailservice.NewFakeMailService(metrics)
-	} else {
-		mailService = mailservice.NewSendGridMailService(config.MailSender, config.Server.Host, metrics)
-	}
 
-	// mailService := shared.NewMailService(config.MailSender, config.Server.Host, metrics)
+		mailSender = mailsender.NewFakeMailSender(metrics)
+		mailContentFormatter = mailcontentformatter.NewMailTextFormatter()
+	} else {
+		mailSender = mailsender.NewSendGridMailSender(config.MailSender.SendGridKey, metrics)
+		mailContentFormatter = mailcontentformatter.NewMailHTMLFormatter()
+	}
+	mailService := mailservice.NewMailService(mailSender, mailContentFormatter, config)
 	sseManager := realtime.NewSSEManager()
 
 	notificationRepo := corepersistence.NewGormNotificationRepository(db)
@@ -233,10 +254,6 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 
 	sseNotifier := notification.NewSSENotifier(sseManager)
 	emailNotifier := notification.NewEmailNotifier(mailService, userRepo)
-	err = emailNotifier.ParseTemplates()
-	if err != nil {
-		return appCommunication{}, fmt.Errorf("failed to init notification templates: %w", err)
-	}
 
 	notificationDispatcher.RegisterNotifier(sseNotifier)
 	notificationDispatcher.RegisterNotifier(emailNotifier)
@@ -251,13 +268,17 @@ func createAppCommunication(ctx context.Context, config cfg.Configuration, db mo
 	}, nil
 }
 
-func createAppInfrastructure(config cfg.Configuration) (appInfrastructure, error) {
+func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvider) (appInfrastructure, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(config.SystemAccount.Network),
 		deployer.WithDisableSentry(),
 	}
 	if config.Debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
+	}
+
+	if tp != nil {
+		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp))
 	}
 
 	gridClient, err := deployer.NewTFPluginClient(
@@ -306,6 +327,7 @@ func (app *App) createHandlers() appHandlers {
 	contractsRepo := corepersistence.NewGormUserContractDataRepository(app.core.db)
 	transactionRepo := corepersistence.NewGormTransactionRepository(app.core.db)
 	settingsRepo := corepersistence.NewGormSettingsRepository(app.core.db)
+	ewfRepo := corepersistence.NewGormEWFRepository(app.core.db)
 
 	// Services
 	billingService := services.NewBillingService(
@@ -345,7 +367,7 @@ func (app *App) createHandlers() appHandlers {
 
 	adminService := services.NewAdminService(
 		app.core.appCtx, userRepo, contractsRepo, transferRecordsRepo, voucherRepo,
-		transactionRepo, app.infra.substrateClient, app.core.ewfEngine,
+		transactionRepo, app.infra.substrateClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher, ewfRepo,
 	)
 
 	settingsService := services.NewSettingsService(settingsRepo)
@@ -360,7 +382,7 @@ func (app *App) createHandlers() appHandlers {
 	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
 	nodeHandler := handlers.NewNodeHandler(nodeService, billingService)
 	deploymentHandler := handlers.NewDeploymentHandler(deploymentService, billingService)
-	invoiceHandler := handlers.NewInvoiceHandler(invoiceService, app.communication.mailService)
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceService)
 	adminHandler := handlers.NewAdminHandler(adminService, billingService, app.communication.notificationDispatcher, app.communication.mailService)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
@@ -397,6 +419,8 @@ func (app *App) createWorkers() workers.Workers {
 		app.config.SettleTransferRecordsIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
 		app.config.MinimumTFTAmountInWallet, services.Discount(app.config.AppliedDiscount),
+		app.config.UsersBalanceCheckIntervalInHours,
+		app.config.CheckUserDebtIntervalInHours,
 	)
 
 	billingService := services.NewBillingService(
@@ -405,5 +429,5 @@ func (app *App) createWorkers() workers.Workers {
 		uint64(app.config.MinimumTFTAmountInWallet), services.Discount(app.config.AppliedDiscount),
 	)
 
-	return workers.NewWorkers(app.core.appCtx, workersService, billingService)
+	return workers.NewWorkers(app.core.appCtx, workersService, billingService, app.core.metrics, app.core.db)
 }

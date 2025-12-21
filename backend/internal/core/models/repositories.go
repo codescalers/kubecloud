@@ -59,7 +59,7 @@ type VoucherRepository interface {
 	CreateVoucher(voucher *Voucher) error
 	ListAllVouchers() ([]Voucher, error)
 	GetVoucherByCode(code string) (Voucher, error)
-	RedeemVoucher(code string) error
+	RedeemVoucher(userID int, username, code string) error
 }
 
 // TransactionRepository defines operations for transaction data persistence

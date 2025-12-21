@@ -223,11 +223,17 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 			}
 		}
 
+		// Calculate total disk size (sum all data disks + root size)
+		totalDiskSize := node.RootSize
+		for _, diskSize := range node.DataDisks {
+			totalDiskSize += diskSize
+		}
+
 		resourcesCost, err := calculator.CalculateCost(
 			uint64(node.CPU),
 			node.Memory,
 			0,
-			node.DiskSize+node.RootSize,
+			totalDiskSize,
 			false,
 			proxyNode.CertificationType == nodeCertified,
 		)

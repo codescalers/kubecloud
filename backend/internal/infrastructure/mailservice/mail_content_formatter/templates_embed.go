@@ -1,4 +1,4 @@
-package mailservice
+package mailcontentformatter
 
 import (
 	_ "embed"
@@ -41,6 +41,6 @@ func init() {
 }
 
 // GetEmailTemplates returns the embedded email templates
-func GetEmailTemplates() *template.Template {
+func GetNotificationEmailTemplates() *template.Template {
 	return emailTemplates
 }

@@ -1,9 +1,9 @@
-import { WorkflowStatus } from '@/types/ewf'
-import { api, createWorkflowStatusChecker, type ApiError } from './api'
+import { api, type ApiError } from './api'
 import type { ApiResponse } from './authService'
 import type { ChargeBalanceResponse } from './stripeService'
 import { useNotificationStore } from '@/stores/notifications'
 import type { NodeFilters } from '@/composables/useNodes'
+import type { NodeStoragePool } from "../types/normalizedNode";
 
 export interface ReserveNodeRequest {
   // Add any required fields if needed
@@ -168,7 +168,7 @@ export class UserService {
 
   // Reserve a node
   async reserveNode(nodeId: number, data: ReserveNodeRequest = {}) {
-    await api.post<ApiResponse<ReserveNodeResponse>>(
+    return api.post<ApiResponse<ReserveNodeResponse>>(
       `/v1/user/nodes/${nodeId}`,
       data,
       { requiresAuth: true, showNotifications: true },
@@ -183,7 +183,7 @@ export class UserService {
 
   // Unreserve a node
   async unreserveNode(contractId: string, nodeId: number) {
-    await api.delete<ApiResponse<UnreserveNodeResponse>>(
+    return api.delete<ApiResponse<UnreserveNodeResponse>>(
       `/v1/user/nodes/unreserve/${contractId}`,
       { requiresAuth: true, showNotifications: true },
     )
@@ -311,6 +311,20 @@ export class UserService {
     return response.data.data.pending_records
   }
 
+  async waitTaskTocomplete(id: string): Promise<boolean> {
+    const res = await api.get<ApiResponse<"completed" | "failed">>(`/v1/workflow/${id}`)
+    if (res.data.data === "failed") {
+      return false
+    }
+
+    if (res.data.data === "completed") {
+      return true
+    }
+
+    await new Promise(res => setTimeout(res, 5000))
+    return this.waitTaskTocomplete(id)
+  }
+  
   // Fetch twin account info
   async getTwinAccount(twinId: number): Promise<TwinResponse> {
     const response = await api.get<ApiResponse<TwinResponse>>(`/v1/twins/${twinId}/account`, {
@@ -329,6 +343,13 @@ export class UserService {
     )
     return res.data.data.workflows || []
   }
+
+  async getStoragePool(nodeId: number) {
+    const nodeStoragePoolResponse: ApiResponse<ApiResponse<NodeStoragePool>> = await api.get(`/v1/nodes/${nodeId}/storage-pool`, {
+      showNotifications: false
+    })
+    return nodeStoragePoolResponse.data.data.pools.filter((pool) => pool.type === "ssd")
+  };
 
   private async trackNodeStatus(nodeId: number, targetStatus: "rented" | "rentable", maxAttempts: number = 20, interval: number = 5000) {
     await new Promise((resolve, reject) => {

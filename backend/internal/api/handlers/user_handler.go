@@ -11,6 +11,7 @@ import (
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -139,12 +140,14 @@ type RedeemVoucherResponse struct {
 
 // UserWorkflow holds the response for listing user workflows
 type UserWorkflow struct {
-	WorkflowID  string    `json:"workflow_id"`
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	CurrentStep int       `json:"current_step"`
-	TotalSteps  int       `json:"total_steps"`
+	WorkflowID  string            `json:"workflow_id"`
+	Name        string            `json:"name"`
+	Status      string            `json:"status"`
+	CreatedAt   time.Time         `json:"created_at"`
+	CurrentStep int               `json:"current_step"`
+	StepName    string            `json:"step_name"`
+	TotalSteps  int               `json:"total_steps"`
+	Metadata    map[string]string `json:"metadata"`
 }
 
 // UserWorkflowsResponse swagger model
@@ -432,8 +435,7 @@ func (h *UserHandler) ForgotPasswordHandler(c *gin.Context) {
 
 	code := h.svc.GenerateRandomCode()
 
-	subject, body := h.mailService.ResetPasswordMailContent(code, h.svc.CodeTimeoutInMinutes(), user.Username)
-	err = h.mailService.SendMailFromSystem(request.Email, subject, body)
+	err = h.mailService.SendResetPasswordMail(request.Email, code, user.Username)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to send verification code")
 		InternalServerError(c)
@@ -644,7 +646,7 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
-	wfUUID, err := h.svc.SyncStripeChargeBalance(userID, user.StripeCustomerID, paymentMethod.ID, user.Mnemonic, user.Username, request.Amount)
+	wfUUID, err := h.svc.AsyncStripeChargeBalance(userID, user.StripeCustomerID, paymentMethod.ID, user.Mnemonic, user.Username, request.Amount)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to create async stripe charge balance workflow")
 		InternalServerError(c)
@@ -983,16 +985,32 @@ func (h *UserHandler) ListUserRemainingWorkflowsHandler(c *gin.Context) {
 
 	var userWorkflowsResponse []UserWorkflow
 	for _, workflow := range workflows {
+		displayName := workflow.DisplayName
+		if displayName == "" {
+			displayName = workflow.Name
+		}
+
+		stepName := ""
+		if workflow.CurrentStep >= 0 && workflow.CurrentStep < len(workflow.Steps) {
+			stepName = workflow.Steps[workflow.CurrentStep].Name
+		}
 
 		userWorkflowsResponse = append(userWorkflowsResponse, UserWorkflow{
 			WorkflowID:  workflow.UUID,
-			Name:        workflow.Name,
+			Name:        displayName,
 			Status:      string(workflow.Status),
 			CreatedAt:   workflow.CreatedAt,
 			CurrentStep: workflow.CurrentStep,
+			StepName:    stepName,
 			TotalSteps:  len(workflow.Steps),
+			Metadata:    workflow.Metadata,
 		})
 	}
+
+	// sort workflows ascending by the creation time
+	sort.Slice(userWorkflowsResponse, func(i, j int) bool {
+		return userWorkflowsResponse[i].CreatedAt.Before(userWorkflowsResponse[j].CreatedAt)
+	})
 
 	OK(c, "User workflows retrieved successfully", gin.H{
 		"workflows": userWorkflowsResponse,

@@ -10,11 +10,14 @@ export class MaintenanceService {
    */
   static async getMaintenanceStatus(): Promise<MaintenanceStatus> {
     try {
-      const response = await api.get<ApiResponse<MaintenanceStatus>>('/v1/system/maintenance/status', {
-        requiresAuth: false,
-        showNotifications: false,
-        timeout: 5000
-      })
+      const response = await api.get<ApiResponse<MaintenanceStatus>>(
+        '/v1/system/maintenance/status',
+        {
+          requiresAuth: false,
+          showNotifications: false,
+          timeout: 5000,
+        },
+      )
       return response.data.data
     } catch (error) {
       console.error('Failed to fetch maintenance status:', error)
@@ -28,13 +31,15 @@ export class MaintenanceService {
    */
   static isRouteAllowedDuringMaintenance(routePath: string): boolean {
     const allowedRoutes = [
-      '/',           // home
-      '/features',   // features
-      '/use-cases',  // usecases
-      '/docs',       // docs
-      '/nodes'       // reserve (public view)
+      '/', // home
+      '/features', // features
+      '/use-cases', // usecases
+      '/docs', // docs
+      '/sign-in', // sign in (allow existing users to authenticate)
+      '/forgot-password', // password recovery
+      '/reset-password', // password reset
     ]
-    
+
     return allowedRoutes.includes(routePath)
   }
 }

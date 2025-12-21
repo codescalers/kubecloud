@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"kubecloud/internal/billing"
-	cfg "kubecloud/internal/config"
+	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 	"kubecloud/internal/infrastructure/substrate"
 
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
+	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
@@ -55,8 +57,9 @@ type WorkerService struct {
 
 	// configs
 	systemMnemonic                          string
-	invoiceCompanyData                      cfg.InvoiceCompanyData
+	invoiceCompanyData                      config.InvoiceCompanyData
 	currency                                string
+	checkUserDebtIntervalInHours            int
 	clusterHealthCheckIntervalInHours       int
 	reservedNodeHealthCheckIntervalInHours  int
 	reservedNodeHealthCheckTimeoutInMinutes int
@@ -65,6 +68,7 @@ type WorkerService struct {
 	notifyAdminsForPendingRecordsInHours    int
 	minimumTFTAmountInWallet                int
 	appliedDiscount                         Discount
+	usersBalanceCheckIntervalInHours        int
 }
 
 func NewWorkersService(
@@ -73,11 +77,13 @@ func NewWorkersService(
 	mailService mailservice.MailService,
 	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
-	invoiceCompanyData cfg.InvoiceCompanyData, systemMnemonic, currency string,
+	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
-	settleTransferRecordsIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
+	settleTransferRecordsIntervalInMinutes, notifyAdminsForPendingRecordsInHours,
 	minimumTFTAmountInWallet int, appliedDiscount Discount,
+	usersBalanceCheckIntervalInHours,
+	checkUserDebtIntervalInHours int,
 ) WorkerService {
 	return WorkerService{
 		ctx:                 ctx,
@@ -99,6 +105,7 @@ func NewWorkersService(
 		invoiceCompanyData: invoiceCompanyData,
 		currency:           currency,
 
+		checkUserDebtIntervalInHours:            checkUserDebtIntervalInHours,
 		clusterHealthCheckIntervalInHours:       clusterHealthCheckIntervalInHours,
 		reservedNodeHealthCheckIntervalInHours:  reservedNodeHealthCheckIntervalInHours,
 		reservedNodeHealthCheckTimeoutInMinutes: reservedNodeHealthCheckTimeoutInMinutes,
@@ -106,8 +113,9 @@ func NewWorkersService(
 		settleTransferRecordsIntervalInMinutes:  settleTransferRecordsIntervalInMinutes,
 		notifyAdminsForPendingRecordsInHours:    notifyAdminsForPendingRecordsInHours,
 
-		minimumTFTAmountInWallet: minimumTFTAmountInWallet,
-		appliedDiscount:          appliedDiscount,
+		minimumTFTAmountInWallet:         minimumTFTAmountInWallet,
+		appliedDiscount:                  appliedDiscount,
+		usersBalanceCheckIntervalInHours: usersBalanceCheckIntervalInHours,
 	}
 }
 
@@ -152,8 +160,16 @@ func (svc WorkerService) GetSettleTransferRecordsInterval() time.Duration {
 	return time.Duration(svc.settleTransferRecordsIntervalInMinutes) * time.Minute
 }
 
+func (svc WorkerService) GetCheckUserDebtInterval() time.Duration {
+	return time.Duration(svc.checkUserDebtIntervalInHours) * time.Hour
+}
+
 func (svc WorkerService) GetNotifyAdminsForPendingRecordsInterval() time.Duration {
 	return time.Duration(svc.notifyAdminsForPendingRecordsInHours) * time.Hour
+}
+
+func (svc WorkerService) GetUsersBalanceCheckInterval() time.Duration {
+	return time.Duration(svc.usersBalanceCheckIntervalInHours) * time.Hour
 }
 
 func (svc WorkerService) CreateUserInvoice(BillingService BillingService, user models.User) error {
@@ -229,11 +245,14 @@ func (svc WorkerService) CreateUserInvoice(BillingService BillingService, user m
 		return err
 	}
 
-	subject, body := svc.mailService.InvoiceMailContent(totalInvoiceCostUSD, svc.currency, invoice.ID)
-	return svc.mailService.SendMailFromSystem(user.Email, subject, body, mailservice.Attachment{
-		FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
-		Data:     invoice.FileData,
-	})
+	attachments := []mailsender.Attachment{
+		{
+			FileName: fmt.Sprintf("invoice-%d-%d.pdf", invoice.UserID, invoice.ID),
+			Data:     invoice.FileData,
+		},
+	}
+
+	return svc.mailService.SendInvoiceMail(user.Email, totalInvoiceCostUSD, svc.currency, invoice.ID, attachments)
 }
 
 func (svc WorkerService) UpdateUserDebt() error {
@@ -249,7 +268,12 @@ func (svc WorkerService) UpdateUserDebt() error {
 			continue
 		}
 
-		userDebt, err := svc.calculateDebt(user.Mnemonic, userContracts)
+		var contractIDs []uint64
+		for _, contract := range userContracts {
+			contractIDs = append(contractIDs, contract.ContractID)
+		}
+
+		userDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs)
 		if err != nil {
 			logger.ForOperation("debt_tracker", "calculate_debt").Error().Err(err).Msg("Failed to calculate user debt")
 			continue
@@ -265,8 +289,8 @@ func (svc WorkerService) UpdateUserDebt() error {
 	return nil
 }
 
-func (svc WorkerService) calculateDebt(userMnemonic string, userContracts []models.UserContractData) (uint64, error) {
-	if len(userContracts) == 0 {
+func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64) (uint64, error) {
+	if len(contractIDs) == 0 {
 		return 0, nil
 	}
 
@@ -278,10 +302,10 @@ func (svc WorkerService) calculateDebt(userMnemonic string, userContracts []mode
 	calculatorClient := calculator.NewCalculator(svc.gridClient.SubstrateConn, identity)
 
 	var totalDebt int64
-	for _, userContract := range userContracts {
+	for _, contractID := range contractIDs {
 		var debt int64
 		if err = backoff.Retry(func() error {
-			debt, err = calculatorClient.CalculateContractOverdue(userContract.ContractID, time.Hour)
+			debt, err = calculatorClient.CalculateContractOverdue(contractID, time.Hour)
 			return err
 		}, backoff.WithMaxRetries(
 			backoff.NewExponentialBackOff(),
@@ -499,7 +523,6 @@ func (svc *WorkerService) ResetUsersTFTsWithNoUSDBalance(users []models.User) er
 }
 
 func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.TransferRecord) error {
-	subject, body := svc.mailService.NotifyAdminsMailContent(len(records))
 
 	admins, err := svc.userRepo.ListAdmins()
 	if err != nil {
@@ -507,7 +530,7 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.Transfer
 	}
 
 	for _, admin := range admins {
-		err = svc.mailService.SendMailFromSystem(admin.Email, subject, body)
+		err = svc.mailService.SendNotifyAdminsEmail(admin.Email, len(records))
 		if err != nil {
 			logger.ForOperation("balance_monitor", "send_admin_mail").Error().Err(err).Msg("Failed to send admin notification email")
 			continue
@@ -518,7 +541,7 @@ func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.Transfer
 }
 
 func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowTrackClusterHealth)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowTrackClusterHealth, ewf.WithDisplayName("Cluster Health Check"))
 	if err != nil {
 		return fmt.Errorf("failed to create health tracking workflow: %w", err)
 	}
@@ -536,6 +559,121 @@ func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
 	}
 
 	return svc.ewfEngine.Run(svc.ctx, wf, ewf.WithAsync())
+}
+
+func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) error {
+	totalDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs)
+	if err != nil {
+		return fmt.Errorf("failed to calculate debt: %w", err)
+	}
+	userBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(user.Mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to get user balance: %w", err)
+	}
+	if userBalance >= totalDebt {
+		return nil
+	}
+	days := int(svc.GetCheckUserDebtInterval() / (24 * time.Hour))
+	if days == 0 {
+		days = 1
+	}
+	totalDebtUSD := substrate.FromUSDMilliCentToUSD(totalDebt)
+	userBalanceUSD := substrate.FromUSDMilliCentToUSD(userBalance)
+
+	message := fmt.Sprintf(
+		"Your balance is not enough to cover the debt for upcoming %d day(s).\nTotal debt: $%.2f\nUser balance: $%.2f",
+		days, totalDebtUSD, userBalanceUSD,
+	)
+	notif := notification.NewNotification(user.ID, models.NotificationTypeBilling).
+		Warning(message).
+		WithSubject("User Balance Not Enough").
+		WithChannels(notification.ChannelEmail, notification.ChannelUI).
+		WithExtra("user_id", fmt.Sprintf("%d", user.ID)).
+		Build()
+	if err := svc.notificationDispatcher.Send(svc.ctx, notif); err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
+	}
+
+	return nil
+}
+
+func (svc WorkerService) CheckUsersBalance() error {
+	userContractIDs, err := svc.getUserContractIDs()
+	if err != nil {
+		return fmt.Errorf("failed to build contract IDs: %w", err)
+	}
+	users, err := svc.userRepo.ListAllUsers()
+	if err != nil {
+		return fmt.Errorf("failed to list users: %w", err)
+	}
+	multiErr := &multierror.Error{}
+	var multiErrMu sync.Mutex
+	var wg sync.WaitGroup
+	balanceCheckLimiter := make(chan struct{}, svc.mailService.GetMailConfig().MaxConcurrentSends)
+	for _, user := range users {
+		if _, ok := userContractIDs[user.ID]; !ok {
+			continue
+		}
+		wg.Add(1)
+		balanceCheckLimiter <- struct{}{}
+
+		go func(user models.User, contractIDs []uint64) {
+			defer wg.Done()
+			defer func() { <-balanceCheckLimiter }()
+			select {
+			case <-svc.ctx.Done():
+				return
+			default:
+			}
+
+			err := svc.checkUserDebt(user, contractIDs)
+			if err == nil {
+				return
+			}
+			multiErrMu.Lock()
+			multiErr = multierror.Append(multiErr, err)
+			multiErrMu.Unlock()
+		}(user, userContractIDs[user.ID])
+	}
+	wg.Wait()
+	if err := multiErr.ErrorOrNil(); err != nil {
+		return fmt.Errorf("failed to check users balance: %w", err)
+	}
+	return nil
+}
+
+func (svc WorkerService) getUserContractIDs() (map[int][]uint64, error) {
+	clusters, err := svc.clusterRepo.ListAllClusters()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list clusters: %w", err)
+	}
+
+	reservedNodes, err := svc.contractsRepo.ListAllReservedNodes()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list reserved nodes: %w", err)
+	}
+
+	userContractIDs := make(map[int][]uint64)
+	for _, cluster := range clusters {
+		clusterResult, err := cluster.GetClusterResult()
+		if err != nil {
+			logger.ForOperation("balance_monitor", "build_contract_ids").
+				Error().Err(err).Int("user_id", cluster.UserID).Msg("failed to get cluster result, skipping cluster")
+			continue
+		}
+		for _, node := range clusterResult.Nodes {
+			if node.ContractID == 0 {
+				continue
+			}
+			userContractIDs[cluster.UserID] = append(userContractIDs[cluster.UserID], node.ContractID)
+		}
+	}
+
+	for _, reservedNode := range reservedNodes {
+		userContractIDs[reservedNode.UserID] = append(userContractIDs[reservedNode.UserID], reservedNode.ContractID)
+	}
+	return userContractIDs, nil
+
 }
 
 func getHoursOfGivenPeriod(startDate, endDate time.Time) int {

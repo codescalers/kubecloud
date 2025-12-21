@@ -3,20 +3,24 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"io"
 	"kubecloud/internal/core/models"
 	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"kubecloud/internal/core/services"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
+	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-multierror"
-	"github.com/rs/zerolog"
 )
 
 type AdminHandler struct {
@@ -62,13 +66,6 @@ type AdminMailInput struct {
 	Subject     string                  `form:"subject" binding:"required"`
 	Body        string                  `form:"body" binding:"required"`
 	Attachments []*multipart.FileHeader `form:"attachments"`
-}
-
-type SendMailResponse struct {
-	TotalUsers        int      `json:"total_users"`
-	SuccessfulEmails  int      `json:"successful_emails"`
-	FailedEmailsCount int      `json:"failed_emails_count"`
-	FailedEmails      []string `json:"failed_emails,omitempty"`
 }
 
 type MaintenanceModeStatus struct {
@@ -335,8 +332,10 @@ func (h *AdminHandler) ListTransferRecordsHandler(c *gin.Context) {
 }
 
 // Only accessible by admins
-// @Summary Send mail to all users
-// @Description Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.
+// @Summary Start sending mail to all users (async)
+// @Description Allows admin to send a custom email to all users with optional file attachments.
+// The endpoint returns immediately, while the actual sending happens in the background.
+// Delivery statistics are later pushed to the admin through notifications/SSE.
 // @Tags admin
 // @ID admin-mail-all-users
 // @Accept multipart/form-data
@@ -344,7 +343,7 @@ func (h *AdminHandler) ListTransferRecordsHandler(c *gin.Context) {
 // @Param subject formData string true "Email subject"
 // @Param body formData string true "Email body content"
 // @Param attachments formData file false "Email attachments (multiple files allowed)"
-// @Success 200 {object} APIResponse{data=SendMailResponse} "Email sending results with delivery statistics"
+// @Success 200 {object} APIResponse "Mail sending started"
 // @Failure 400 {object} APIResponse "Invalid request format"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Security AdminMiddleware
@@ -356,13 +355,14 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		BadRequest(c, "Invalid request format")
 		return
 	}
+	adminID := c.GetInt("user_id")
 
-	var attachments []mailservice.Attachment
+	var attachments []mailsender.Attachment
 	if form, err := c.MultipartForm(); err == nil {
 		if uploaded, ok := form.File["attachments"]; ok {
 			reqLog.Info().Int("attachment_count", len(uploaded)).Msg("parsed email attachments")
 
-			attachments, err = h.parseAttachments(uploaded, reqLog)
+			attachments, err = h.parseAttachments(uploaded)
 			if err != nil {
 				reqLog.Error().Err(err).Msg("failed to parse attachments")
 				InternalServerError(c)
@@ -378,54 +378,13 @@ func (h *AdminHandler) SendMailToAllUsersHandler(c *gin.Context) {
 		return
 	}
 
-	body := h.mailService.SystemAnnouncementMailBody(input.Body)
-	emailConcurrencyLimiter := make(chan struct{}, h.mailService.MaxConcurrentSends())
+	// send in the background to avoid blocking requests
+	go h.svc.SendMailToAllUsers(input.Body, input.Subject, users, adminID, attachments...)
 
-	var (
-		wg           sync.WaitGroup
-		mu           sync.Mutex
-		failedEmails []string
-	)
-
-	reqLog.Info().Int("attachment_count", len(attachments)).Msg("parsed email attachments")
-	for _, user := range users {
-		wg.Add(1)
-		emailConcurrencyLimiter <- struct{}{}
-		go func(user models.User) {
-			defer wg.Done()
-			defer func() { <-emailConcurrencyLimiter }()
-			err := h.mailService.SendMailFromSystem(user.Email, input.Subject, body, attachments...)
-			if err != nil {
-				reqLog.Error().Err(err).Str("user_email", user.Email).Msg("failed to send mail to user")
-				mu.Lock()
-				failedEmails = append(failedEmails, user.Email)
-				mu.Unlock()
-			}
-		}(user)
-	}
-
-	wg.Wait()
-
-	totalUsers := len(users)
-	responseData := SendMailResponse{
-		TotalUsers:        totalUsers,
-		SuccessfulEmails:  totalUsers - len(failedEmails),
-		FailedEmailsCount: len(failedEmails),
-	}
-
-	if responseData.SuccessfulEmails == 0 {
-		reqLog.Error().Msg("failed to send email to all users")
-		InternalServerError(c)
-		return
-	}
-	if responseData.FailedEmailsCount > 0 {
-		OK(c, fmt.Sprintf("Mail sent to %d/%d users successfully", responseData.SuccessfulEmails, responseData.TotalUsers), responseData)
-		return
-	}
-	OK(c, "Mail sent successfully to all users", responseData)
+	OK(c, "Mail sending started", nil)
 }
 
-func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader, reqLogger *zerolog.Logger) ([]mailservice.Attachment, error) {
+func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]mailsender.Attachment, error) {
 	if len(fileHeaders) == 0 {
 		return nil, nil
 	}
@@ -433,7 +392,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader, req
 	var (
 		mu       sync.Mutex
 		multiErr *multierror.Error
-		results  []mailservice.Attachment
+		results  []mailsender.Attachment
 		wg       sync.WaitGroup
 	)
 
@@ -442,9 +401,8 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader, req
 		go func(fh *multipart.FileHeader) {
 			defer wg.Done()
 
-			attachment, err := h.mailService.ParseAttachment(fh)
+			attachment, err := h.parseAttachment(fh)
 			if err != nil {
-				reqLogger.Error().Err(err).Str("filename", fh.Filename).Msg("failed to parse attachment")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, err)
 				mu.Unlock()
@@ -459,6 +417,43 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader, req
 
 	wg.Wait()
 	return results, multiErr.ErrorOrNil()
+}
+
+func (h *AdminHandler) parseAttachment(fh *multipart.FileHeader) (mailsender.Attachment, error) {
+	if !isAttachmentAllowed(fh.Filename) {
+		return mailsender.Attachment{}, fmt.Errorf("file type not allowed for %s", fh.Filename)
+	}
+
+	maxFileSizeBytes := h.mailService.GetMailConfig().MaxAttachmentSizeMB * 1024 * 1024
+
+	if fh.Size > maxFileSizeBytes {
+		return mailsender.Attachment{}, fmt.Errorf("file %s is too large: %d bytes (max %d bytes)", fh.Filename, fh.Size, maxFileSizeBytes)
+	}
+
+	file, err := fh.Open()
+	if err != nil {
+		return mailsender.Attachment{}, fmt.Errorf("failed to open attachment file: %w", err)
+	}
+	defer file.Close()
+
+	fileData, err := io.ReadAll(file)
+	if err != nil {
+		return mailsender.Attachment{}, fmt.Errorf("failed to read attachment file: %w", err)
+	}
+
+	return mailsender.Attachment{
+		FileName: fh.Filename,
+		Data:     fileData,
+	}, nil
+}
+
+func isAttachmentAllowed(filename string) bool {
+	allowedAttachmentTypes := []string{
+		".pdf", ".doc", ".docx", ".txt", ".jpg", ".jpeg", ".png", ".gif", ".zip",
+	}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+	return slices.Contains(allowedAttachmentTypes, ext)
 }
 
 // @Summary Drain user balance
@@ -477,6 +472,7 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader, req
 func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 	userID := c.Param("user_id")
 	reqLog := requestLogger(c, "DrainUserHandler")
+	adminID := c.GetInt("user_id")
 
 	id, err := strconv.Atoi(userID)
 	if err != nil || id == 0 {
@@ -485,7 +481,7 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.AsyncDrainUserUSD(id); err != nil {
+	if err := h.svc.AsyncDrainUserUSD(id, adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain user balance")
 		InternalServerError(c)
 		return
@@ -507,12 +503,61 @@ func (h *AdminHandler) DrainUserHandler(c *gin.Context) {
 // DrainAllUsersHandler drains all users' balances to the system account
 func (h *AdminHandler) DrainAllUsersHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "DrainAllUsersHandler")
+	adminID := c.GetInt("user_id")
 
-	if err := h.svc.AsyncDrainAllUsersUSD(); err != nil {
+	if err := h.svc.AsyncDrainAllUsersUSD(adminID); err != nil {
 		reqLog.Error().Err(err).Msg("failed to drain all users' balances")
 		InternalServerError(c)
 		return
 	}
 
 	Accepted(c, "All users' balance drain initiated, transfers in progress", nil)
+}
+
+// @Summary List all workflows
+// @Description Returns all workflows in the system with optional filtering by status
+// @Tags admin
+// @ID list-all-workflows
+// @Accept json
+// @Produce json
+// @Param status query string false "Filter workflows by status (pending, running, completed, failed)"
+// @Success 200 {object} APIResponse{data=[]services.AdminWorkflow} "Workflows retrieved successfully"
+// @Failure 500 {object} APIResponse
+// @Security AdminMiddleware
+// @Router /workflows [get]
+// ListAllWorkflowsHandler returns all workflows in the system with pagination
+func (h *AdminHandler) ListAllWorkflowsHandler(c *gin.Context) {
+	reqLog := requestLogger(c, "ListAllWorkflowsHandler")
+	status := c.Query("status")
+
+	// Parse pagination parameters
+	page := 1
+	limit := 10
+
+	if p := c.Query("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	if l := c.Query("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 100 {
+			limit = parsed
+		}
+	}
+
+	total, workflows, err := h.svc.ListAllWorkflowsPaginated(status, page, limit)
+	if err != nil {
+		reqLog.Error().Err(err).Msg("failed to list all workflows")
+		InternalServerError(c)
+		return
+	}
+
+	OK(c, "Workflows are retrieved successfully", gin.H{
+		"workflows":   workflows,
+		"total":       total,
+		"page":        page,
+		"limit":       limit,
+		"total_pages": (total + limit - 1) / limit,
+	})
 }

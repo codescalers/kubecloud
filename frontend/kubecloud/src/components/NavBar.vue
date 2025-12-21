@@ -28,7 +28,6 @@
       <div class="navbar-auth">
         <!-- Show notification bell and user menu when logged in -->
         <div v-if="isLoggedIn" class="user-section">
-          <ActionMenu />
           <NotificationBell />
           <div class="user-menu">
             <v-menu>
@@ -120,6 +119,8 @@
       </div>
     </div>
   </nav>
+
+  <ActionMenu v-if="isLoggedIn" />
 </template>
 
 <script setup lang="ts">

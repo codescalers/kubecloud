@@ -169,7 +169,7 @@ export function useNodeManagement() {
 
   // Unreserve a node
   async function unreserveNode(contractId: string, nodeId: number) {
-    await userService.unreserveNode(contractId, nodeId)
+    return userService.unreserveNode(contractId, nodeId)
   }
 
   // Add node to deployment

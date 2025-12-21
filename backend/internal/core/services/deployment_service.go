@@ -10,10 +10,13 @@ import (
 	"kubecloud/internal/core/workflows"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
+	"kubecloud/internal/infrastructure/telemetry"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/xmonader/ewf"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type DeploymentService struct {
@@ -23,6 +26,7 @@ type DeploymentService struct {
 
 	appCtx    context.Context
 	ewfEngine *ewf.Engine
+	tracer    *telemetry.ServiceTracer
 
 	// configs
 	debug             bool
@@ -44,6 +48,7 @@ func NewDeploymentService(appCtx context.Context,
 
 		appCtx:    appCtx,
 		ewfEngine: ewfEngine,
+		tracer:    telemetry.NewServiceTracer("deployment_service"),
 
 		debug:             debug,
 		sshPublicKey:      sshPublicKey,
@@ -78,8 +83,14 @@ func (svc *DeploymentService) GetClusterDataByProjectName(userID int, projectNam
 }
 
 func (svc *DeploymentService) ListUserClustersData(userID int) ([]ClusterData, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "ListUserClustersData")
+	defer span.End()
+
+	span.SetAttributes(attribute.Int("user_id", userID))
+
 	clusters, err := svc.clusterRepo.ListUserClusters(userID)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return nil, err
 	}
 
@@ -87,17 +98,28 @@ func (svc *DeploymentService) ListUserClustersData(userID int) ([]ClusterData, e
 	for _, cluster := range clusters {
 		clusterDataItem, err := svc.GetClusterData(cluster)
 		if err != nil {
+			telemetry.RecordError(span, err)
 			return nil, err
 		}
 		clusterData = append(clusterData, clusterDataItem)
 	}
 
+	span.SetAttributes(attribute.Int("cluster_count", len(clusterData)))
 	return clusterData, nil
 }
 
 func (svc *DeploymentService) GetClusterData(cluster models.Cluster) (ClusterData, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "GetClusterData")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("cluster_id", cluster.ID),
+		attribute.String("project_name", cluster.ProjectName),
+	)
+
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return ClusterData{}, err
 	}
 
@@ -111,27 +133,42 @@ func (svc *DeploymentService) GetClusterData(cluster models.Cluster) (ClusterDat
 }
 
 func (svc *DeploymentService) GetClusterKubeconfig(ctx context.Context, cluster *models.Cluster) (string, error) {
+	ctx, span := svc.tracer.StartSpan(ctx, "GetClusterKubeconfig")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("cluster_id", cluster.ID),
+		attribute.String("project_name", cluster.ProjectName),
+	)
+
 	if cluster.Kubeconfig != "" {
+		span.SetAttributes(attribute.Bool("cached_kubeconfig", true))
 		return cluster.Kubeconfig, nil
 	}
 
+	span.SetAttributes(attribute.Bool("cached_kubeconfig", false))
+
 	clusterResult, err := cluster.GetClusterResult()
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	privateKeyBytes, err := os.ReadFile(svc.sshPrivateKeyPath)
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	kubeconfig, err := clusterResult.GetKubeconfig(ctx, string(privateKeyBytes))
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
 	cluster.Kubeconfig = kubeconfig
 	if err = svc.clusterRepo.UpdateCluster(svc.contractsRepo, cluster); err != nil {
+		telemetry.RecordError(span, err)
 		return "", err
 	}
 
@@ -174,24 +211,40 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
 
-func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State) (string, ewf.WorkflowStatus, error) {
+func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string) (string, ewf.WorkflowStatus, error) {
+	_, span := svc.tracer.StartSpan(context.Background(), "handleDeploymentAction")
+	defer span.End()
+
+	span.SetAttributes(
+		attribute.Int("user_id", userID),
+		attribute.String("workflow_name", workflowName),
+		attribute.String("display_name", displayName),
+	)
+
 	queueName := fmt.Sprintf("%s:user_%d", cfg.DefaultQueueConfig.Name, userID)
 
-	wf, err := svc.ewfEngine.NewWorkflow(workflowName, ewf.WithQueue(queueName))
+	wf, err := svc.ewfEngine.NewWorkflow(workflowName, ewf.WithQueue(queueName), ewf.WithDisplayName(displayName), ewf.WithMetadata(metadata))
 	if err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
 	wf.State = state
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		telemetry.RecordError(span, err)
 		return "", "", err
 	}
 
+	span.SetAttributes(
+		attribute.String("workflow_uuid", wf.UUID),
+		attribute.String("workflow_status", string(wf.Status)),
+	)
 	return wf.UUID, wf.Status, nil
 }
 
@@ -202,7 +255,12 @@ func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfi
 		"cluster": cluster,
 	}
 
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeployCluster, state)
+	displayName := fmt.Sprintf("Deploying cluster %s", cluster.Name)
+	metadata := map[string]string{
+		"cluster_name": cluster.Name,
+		"node_count":   strconv.Itoa(len(cluster.Nodes)),
+	}
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeployCluster, state, displayName, metadata)
 }
 
 func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfig, projectName string) (string, ewf.WorkflowStatus, error) {
@@ -212,7 +270,11 @@ func (svc *DeploymentService) AsyncDeleteCluster(config statemanager.ClientConfi
 		"project_name": projectName,
 	}
 
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteCluster, state)
+	displayName := fmt.Sprintf("Deleting cluster %s", projectName)
+	metadata := map[string]string{
+		"project_name": projectName,
+	}
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteCluster, state, displayName, metadata)
 }
 
 func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientConfig) (string, ewf.WorkflowStatus, error) {
@@ -221,7 +283,8 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 		"config": config,
 	}
 
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state)
+	displayName := "Deleting all user clusters"
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowDeleteAllClusters, state, displayName, nil)
 }
 
 func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, node kubedeployer.Node) (string, ewf.WorkflowStatus, error) {
@@ -231,7 +294,12 @@ func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl 
 		"cluster": cl,
 		"node":    node,
 	}
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state)
+	displayName := fmt.Sprintf("Adding node %s to cluster %s", node.Name, cl.Name)
+	metadata := map[string]string{
+		"cluster_name": cl.Name,
+		"node_name":    node.Name,
+	}
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowAddNode, state, displayName, metadata)
 }
 
 func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, nodeName string) (string, ewf.WorkflowStatus, error) {
@@ -242,5 +310,10 @@ func (svc *DeploymentService) AsyncRemoveNode(config statemanager.ClientConfig, 
 		"node_name": nodeName,
 	}
 
-	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state)
+	displayName := fmt.Sprintf("Removing node %s from cluster %s", nodeName, cl.Name)
+	metadata := map[string]string{
+		"cluster_name": cl.Name,
+		"node_name":    nodeName,
+	}
+	return svc.handleDeploymentAction(config.UserID, workflows.WorkflowRemoveNode, state, displayName, metadata)
 }

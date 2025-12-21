@@ -1895,7 +1895,7 @@ const docTemplate = `{
                         "UserMiddleware": []
                     }
                 ],
-                "description": "List nodes from proxy [rented nodes first + randomized shared nodes]",
+                "description": "List nodes from proxy [rented nodes first, then available nodes sorted by uptime]",
                 "consumes": [
                     "application/json"
                 ],
@@ -2754,7 +2754,7 @@ const docTemplate = `{
                         "AdminMiddleware": []
                     }
                 ],
-                "description": "Allows admin to send a custom email to all users with optional file attachments. Returns detailed statistics about successful and failed email deliveries.",
+                "description": "Allows admin to send a custom email to all users with optional file attachments.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -2764,7 +2764,7 @@ const docTemplate = `{
                 "tags": [
                     "admin"
                 ],
-                "summary": "Send mail to all users",
+                "summary": "Start sending mail to all users (async)",
                 "operationId": "admin-mail-all-users",
                 "parameters": [
                     {
@@ -2790,21 +2790,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Email sending results with delivery statistics",
+                        "description": "Mail sending started",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.SendMailResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/handlers.APIResponse"
                         }
                     },
                     "400": {
@@ -3178,6 +3166,64 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/workflows": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns all workflows in the system with optional filtering by status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List all workflows",
+                "operationId": "list-all-workflows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter workflows by status (pending, running, completed, failed)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Workflows retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/handlers.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/services.AdminWorkflow"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3189,6 +3235,18 @@ const docTemplate = `{
                 },
                 "refresh_token": {
                     "type": "string"
+                }
+            }
+        },
+        "gorm.DeletedAt": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
                 }
             }
         },
@@ -3452,9 +3510,12 @@ const docTemplate = `{
                 "cpu": {
                     "type": "integer"
                 },
-                "disk_size": {
+                "data_disks": {
                     "description": "Storage in MB",
-                    "type": "integer"
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "entrypoint": {
                     "type": "string"
@@ -3780,26 +3841,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.SendMailResponse": {
-            "type": "object",
-            "properties": {
-                "failed_emails": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "failed_emails_count": {
-                    "type": "integer"
-                },
-                "successful_emails": {
-                    "type": "integer"
-                },
-                "total_users": {
-                    "type": "integer"
-                }
-            }
-        },
         "handlers.TwinResponse": {
             "type": "object",
             "properties": {
@@ -3840,10 +3881,19 @@ const docTemplate = `{
                 "current_step": {
                     "type": "integer"
                 },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "step_name": {
                     "type": "string"
                 },
                 "total_steps": {
@@ -3936,7 +3986,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "cpu",
-                "disk_size",
+                "data_disks",
                 "memory",
                 "name",
                 "node_id",
@@ -3951,10 +4001,13 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 1
                 },
-                "disk_size": {
+                "data_disks": {
                     "description": "Storage in MB",
-                    "type": "integer",
-                    "minimum": 10240
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "entrypoint": {
                     "type": "string"
@@ -3975,6 +4028,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "healthy": {
+                    "type": "boolean"
                 },
                 "ip": {
                     "description": "Computed",
@@ -4122,14 +4178,16 @@ const docTemplate = `{
                 "billing",
                 "user",
                 "connected",
-                "node"
+                "node",
+                "admin"
             ],
             "x-enum-varnames": [
                 "NotificationTypeDeployment",
                 "NotificationTypeBilling",
                 "NotificationTypeUser",
                 "NotificationTypeConnected",
-                "NotificationTypeNode"
+                "NotificationTypeNode",
+                "NotificationTypeAdmin"
             ]
         },
         "models.SSHKey": {
@@ -4142,6 +4200,9 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "type": "string"
+                },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
                 },
                 "id": {
                     "description": "Primary key",
@@ -4201,6 +4262,12 @@ const docTemplate = `{
                 "redeemed": {
                     "type": "boolean"
                 },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "number"
                 }
@@ -4216,6 +4283,54 @@ const docTemplate = `{
                 "WithdrawOperation",
                 "DepositOperation"
             ]
+        },
+        "services.AdminWorkflow": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "current_step": {
+                    "type": "integer"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "queue_name": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "status": {
+                    "type": "string"
+                },
+                "step_name": {
+                    "type": "string"
+                },
+                "total_steps": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
         },
         "services.ClusterData": {
             "type": "object",
@@ -4319,7 +4434,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4365,12 +4479,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
                 "sponsored": {
                     "type": "boolean"
                 },
@@ -4395,7 +4503,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "password",
                 "username"
             ],
             "properties": {
@@ -4431,12 +4538,6 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
-                },
-                "password": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
                 },
                 "sponsored": {
                     "type": "boolean"
@@ -4906,6 +5007,13 @@ const docTemplate = `{
                     }
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

@@ -2,10 +2,12 @@ package persistence
 
 import (
 	"context"
+	"strings"
 
 	"kubecloud/internal/core/models"
 
 	"gorm.io/gorm"
+	"gorm.io/plugin/opentelemetry/tracing"
 )
 
 // GormDB struct implements models.DB interface with gorm
@@ -17,6 +19,10 @@ type GormDB struct {
 func NewGormStorage(dialector gorm.Dialector) (*GormDB, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Use(tracing.NewPlugin()); err != nil {
 		return nil, err
 	}
 
@@ -43,6 +49,10 @@ func newGormDB(db *gorm.DB) (*GormDB, error) {
 		return nil, err
 	}
 
+	if err := ensureSoftDeleteIndexes(db); err != nil {
+		return nil, err
+	}
+
 	return &GormDB{db: db}, nil
 }
 
@@ -66,4 +76,27 @@ func (s *GormDB) Ping(ctx context.Context) error {
 		return err
 	}
 	return sqlDB.PingContext(ctx)
+}
+
+func ensureSoftDeleteIndexes(db *gorm.DB) error {
+	statements := []string{
+		`DROP INDEX IF EXISTS idx_user_project`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_project ON clusters (user_id, project_name) WHERE deleted_at IS NULL`,
+		`DROP INDEX IF EXISTS idx_user_node_id`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_node_id ON user_nodes (node_id) WHERE deleted_at IS NULL`,
+		`DROP INDEX IF EXISTS idx_users_email`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE deleted_at IS NULL`,
+		`DROP INDEX IF EXISTS idx_user_name`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_name ON ssh_keys (user_id, name) WHERE deleted_at IS NULL`,
+		`DROP INDEX IF EXISTS idx_user_pubkey`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_pubkey ON ssh_keys (user_id, public_key) WHERE deleted_at IS NULL`,
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		combined := strings.Join(statements, "; ")
+		if !strings.HasSuffix(combined, ";") {
+			combined += ";"
+		}
+		return tx.Exec(combined).Error
+	})
 }

@@ -1,9 +1,13 @@
 package models
 
 import (
+	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // NotificationType represents the type of notification
@@ -15,6 +19,7 @@ const (
 	NotificationTypeUser       NotificationType = "user"
 	NotificationTypeConnected  NotificationType = "connected"
 	NotificationTypeNode       NotificationType = "node"
+	NotificationTypeAdmin      NotificationType = "admin"
 )
 
 // NotificationStatus represents the status of a notification
@@ -46,6 +51,7 @@ type Notification struct {
 	Status    NotificationStatus   `json:"status" gorm:"default:'unread'"`
 	CreatedAt time.Time            `json:"created_at" gorm:"autoCreateTime"`
 	ReadAt    *time.Time           `json:"read_at,omitempty"`
+	DeletedAt gorm.DeletedAt       `json:"-" gorm:"index"`
 
 	// Non-persisted fields
 	Persist bool `json:"-" gorm:"-"`
@@ -107,4 +113,41 @@ func WithPayload(payload map[string]string) NotificationOption {
 	return func(n *Notification) {
 		n.Payload = payload
 	}
+}
+
+func (n Notification) String() string {
+	payloadStr := "{}"
+	if len(n.Payload) > 0 {
+		keys := make([]string, 0, len(n.Payload))
+		for k := range n.Payload {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		parts := make([]string, 0, len(keys))
+		for _, k := range keys {
+			parts = append(parts, fmt.Sprintf("%s=%q", k, n.Payload[k]))
+		}
+		payloadStr = fmt.Sprintf("{%s}", strings.Join(parts, ", "))
+	}
+
+	return fmt.Sprintf(
+		`Notification:
+  id=%s
+  user_id=%d
+  type=%s
+  severity=%s
+  task_id=%s
+  status=%s
+  created_at=%s
+  payload=%s`,
+		n.ID,
+		n.UserID,
+		n.Type,
+		n.Severity,
+		n.TaskID,
+		n.Status,
+		n.CreatedAt.Format("2006-01-02 15:04:05"),
+		payloadStr,
+	)
 }

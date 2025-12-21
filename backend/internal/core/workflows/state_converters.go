@@ -1,21 +1,10 @@
 package workflows
 
-import "fmt"
+import (
+	"fmt"
 
-// toInt safely converts various numeric types to int
-// Handles int, float64, and int64 types commonly found in workflow state after JSON unmarshaling
-func toInt(val interface{}) (int, error) {
-	switch v := val.(type) {
-	case int:
-		return v, nil
-	case float64:
-		return int(v), nil
-	case int64:
-		return int(v), nil
-	default:
-		return 0, fmt.Errorf("cannot convert %T to int", val)
-	}
-}
+	"github.com/xmonader/ewf"
+)
 
 // toUint32 safely converts various numeric types to uint32
 // Handles uint32, float64, int64, and int types commonly found in workflow state
@@ -49,4 +38,21 @@ func toUint64(val interface{}) (uint64, error) {
 	default:
 		return 0, fmt.Errorf("cannot convert %T to uint64", val)
 	}
+}
+
+func getFromStateWithConverter[T any](state ewf.State, key string, converter func(interface{}) (T, error)) (T, error) {
+	val, ok := state[key]
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("missing '%s' in workflow state", key)
+	}
+	return converter(val)
+}
+
+func getUint64FromState(state ewf.State, key string) (uint64, error) {
+	return getFromStateWithConverter(state, key, toUint64)
+}
+
+func getUint32FromState(state ewf.State, key string) (uint32, error) {
+	return getFromStateWithConverter(state, key, toUint32)
 }

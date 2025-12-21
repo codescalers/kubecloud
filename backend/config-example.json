@@ -71,5 +71,8 @@
   },
 	"settle_transfer_records_interval_in_minutes": 5,
   "applied_discount": "gold",
-	"minimum_tft_amount_in_wallet": 10
+	"minimum_tft_amount_in_wallet": 10,
+  "telemetry": {
+    "otlp_endpoint": "jaeger:4317"
+  }
 }

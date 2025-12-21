@@ -100,7 +100,6 @@ func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workf
 		if err := json.Unmarshal(rec.Data, &wf); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal workflow %s: %w", rec.UUID, err)
 		}
-
 		workflows = append(workflows, &wf)
 	}
 	return workflows, nil
@@ -169,7 +168,7 @@ func (svc *UserService) IsSystemAdmin(userEmail string) bool {
 }
 
 func (svc *UserService) AsyncRegisterUser(name, email, password string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserRegistration, ewf.WithDisplayName("Register user"))
 	if err != nil {
 		return "", err
 	}
@@ -185,7 +184,7 @@ func (svc *UserService) AsyncRegisterUser(name, email, password string) (string,
 }
 
 func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, userID int, userEmail, username string) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification)
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowUserVerification, ewf.WithDisplayName("Verify user registration"))
 	if err != nil {
 		return "", err
 	}
@@ -196,35 +195,39 @@ func (svc *UserService) AsyncVerifyUserRegistration(requestCtx context.Context, 
 
 	// Start the user-verification workflow
 	wf.State = ewf.State{
-		"email":   userEmail,
-		"name":    username,
-		"user_id": userID,
+		"email": userEmail,
+		"name":  username,
+		"config": map[string]interface{}{
+			"user_id": userID,
+		},
 	}
 
 	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 
-func (svc *UserService) SyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance)
+func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerID, paymentMethodID, userMnemonic, username string, requestAmount float64) (string, error) {
+	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowChargeBalance, ewf.WithDisplayName("Charge balance"))
 	if err != nil {
 		return "", err
 	}
 
 	wf.State = ewf.State{
-		"user_id":            userID,
 		"stripe_customer_id": userStripeCustomerID,
 		"payment_method_id":  paymentMethodID,
 		"amount":             substrate.FromUSDToUSDMillicent(requestAmount),
-		"mnemonic":           userMnemonic,
 		"username":           username,
+		"config": map[string]interface{}{
+			"user_id":  userID,
+			"mnemonic": userMnemonic,
+		},
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 
-	err = svc.ewfEngine.Run(svc.appCtx, wf)
+	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 	return wf.UUID, err
 }
 

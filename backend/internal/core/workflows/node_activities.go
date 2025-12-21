@@ -20,14 +20,9 @@ const (
 
 func ReserveNodeStep(contractsRepo models.ContractDataRepository, substrateClient substrate.Substrate) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
-		userIDVal, ok := state["user_id"]
-		if !ok {
-			return fmt.Errorf("missing 'user_id' in state")
-		}
-
-		userID, err := toInt(userIDVal)
+		config, err := getConfig(state)
 		if err != nil {
-			return fmt.Errorf("invalid 'user_id' in state: %w", err)
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
 		nodeIDVal, ok := state["node_id"]
@@ -40,30 +35,21 @@ func ReserveNodeStep(contractsRepo models.ContractDataRepository, substrateClien
 			return fmt.Errorf("invalid 'node_id' in state: %w", err)
 		}
 
-		mnemonicVal, ok := state["mnemonic"]
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
-		}
-		mnemonic, ok := mnemonicVal.(string)
-		if !ok {
-			return fmt.Errorf("'mnemonic' in state is not a string")
-		}
-
 		// Reserve the node
-		contractID, err := substrateClient.CreateRentContract(mnemonic, nodeID, nil)
+		contractID, err := substrateClient.CreateRentContract(config.Mnemonic, nodeID, nil)
 		if err != nil {
-			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, userID, err)
+			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, config.UserID, err)
 		}
 
 		err = contractsRepo.CreateUserContractData(&models.UserContractData{
-			UserID:     userID,
+			UserID:     config.UserID,
 			ContractID: contractID,
 			NodeID:     nodeID,
 			Type:       models.ContractTypeRented,
 			CreatedAt:  time.Now(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create user node record for node_id=%d (user_id=%d): %w", nodeID, userID, err)
+			return fmt.Errorf("failed to create user node record for node_id=%d (user_id=%d): %w", nodeID, config.UserID, err)
 		}
 
 		state["contract_id"] = contractID
@@ -83,12 +69,12 @@ func UnreserveNodeStep(contractsRepo models.ContractDataRepository, substrateCli
 			return fmt.Errorf("invalid 'contract_id' in state: %w", err)
 		}
 
-		mnemonic, ok := state["mnemonic"].(string)
-		if !ok {
-			return fmt.Errorf("missing 'mnemonic' in state")
+		config, err := getConfig(state)
+		if err != nil {
+			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		err = substrateClient.CancelContract(mnemonic, contractID)
+		err = substrateClient.CancelContract(config.Mnemonic, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}

@@ -24,38 +24,25 @@ const (
 func hookWorkflowStarted(n *notification.NotificationDispatcher) ewf.BeforeWorkflowHook {
 	return func(ctx context.Context, w *ewf.Workflow) {
 		log := logger.GetLogger().With().Str("workflow_name", w.Name).Logger()
-		var userID int
-
-		cfg, err := getConfig(w.State)
-		if err == nil {
-			userID = cfg.UserID
-			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
+		suppressNotification, _ := getFromState[bool](w.State, "suppress_notification")
+		if suppressNotification {
+			log.Info().Msg("Suppressing notification for workflow")
+			return
 		}
 
+		config, err := getConfig(w.State)
 		if err != nil {
-			log.Warn().Err(err).Msg("failed to get user ID from config in workflow state, attempting to retrieve from state directly")
-			userIDVal, ok := w.State["user_id"]
-			if !ok {
-				log.Error().Msg("user ID is missing in workflow state")
-				return
-			}
-
-			var convErr error
-			userID, convErr = toInt(userIDVal)
-			if convErr != nil {
-				log.Error().Err(convErr).Msg("failed to convert user_id to int")
-				return
-			}
-			log.Debug().Int("user_id", userID).Msg("Hook workflow started")
+			log.Error().Err(err).Msg("failed to get config from state")
+			return
 		}
 
-		workflowDesc := getWorkflowDescription(w.Name)
 		notificationType := workflowToNotificationType(w.Name)
-		notif := notification.NewNotification(userID, notificationType).
-			Info(workflowDesc+" has been started").
-			WithSubject(workflowDesc+" Started").
+		displayName := getWorkflowDisplayName(w)
+		notif := notification.NewNotification(config.UserID, notificationType).
+			Info(displayName+" has been started").
+			WithSubject(displayName+" Started").
 			WithStatus("started").
-			WithExtra("workflow_name", workflowDesc).
+			WithExtra("workflow_name", displayName).
 			NoPersist().
 			Build()
 		if err = n.Send(ctx, notif); err != nil {
@@ -121,9 +108,8 @@ func hookClusterHealthCheck(notificationService *notification.NotificationDispat
 		if err == nil {
 			return
 		}
-
-		if errors.Is(err, ewf.ErrFailWorkflowNow) {
-			log.Warn().Msg("cluster not found in database")
+		if !errors.Is(err, ErrClusterNotHealthy) {
+			log.Warn().Err(err).Msg("could not check cluster health")
 			return
 		}
 
@@ -145,6 +131,7 @@ func hookClusterHealthCheck(notificationService *notification.NotificationDispat
 			Failure(message, err).
 			WithSubject("Cluster health check failed").
 			WithChannels(notification.ChannelEmail).
+			WithExtra("workflow_name", getWorkflowDisplayName(wf)).
 			Build()
 
 		if err := notificationService.Send(ctx, notif); err != nil {
@@ -186,7 +173,7 @@ func addNodeFailureHook(engine *ewf.Engine, metrics *metricsLib.Metrics) ewf.Aft
 			return
 		}
 
-		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode)
+		rollbackWf, rollbackErr := engine.NewWorkflow(WorkflowRollbackFailedAddNode, ewf.WithDisplayName(fmt.Sprintf("Rollback failed node %s", node.Name)))
 		if rollbackErr != nil {
 			log.Error().
 				Err(rollbackErr).
