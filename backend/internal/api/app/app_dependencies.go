@@ -392,26 +392,26 @@ func (app *App) createWorkers() workers.Workers {
 	invoiceRepo := corepersistence.NewGormInvoiceRepository(app.core.db)
 	contractsRepo := corepersistence.NewGormUserContractDataRepository(app.core.db)
 
+	billingService := services.NewBillingService(
+		userRepo, contractsRepo, transferRecordsRepo, clusterRepo,
+		app.infra.graphql, app.infra.gridClient,
+		uint64(app.config.MinimumTFTAmountInWallet), services.Discount(app.config.AppliedDiscount),
+	)
+
 	workersService := services.NewWorkersService(
 		app.core.appCtx, userRepo, contractsRepo, invoiceRepo, clusterRepo, transferRecordsRepo,
 		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
-		app.config.Invoice, app.config.SystemAccount.Mnemonic,
+		billingService, app.config.Invoice,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes,
 		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
 		app.config.SettleTransferRecordsIntervalInMinutes,
 		app.config.NotifyAdminsForPendingRecordsInHours,
-		app.config.MinimumTFTAmountInWallet, services.Discount(app.config.AppliedDiscount),
+		app.config.MinimumTFTAmountInWallet,
 		app.config.UsersBalanceCheckIntervalInHours,
 		app.config.CheckUserDebtIntervalInHours,
-	)
-
-	billingService := services.NewBillingService(
-		userRepo, contractsRepo, transferRecordsRepo, clusterRepo,
-		app.infra.graphql, app.infra.gridClient,
-		uint64(app.config.MinimumTFTAmountInWallet), services.Discount(app.config.AppliedDiscount),
 	)
 
 	return workers.NewWorkers(app.core.appCtx, workersService, billingService, app.core.metrics, app.core.db)

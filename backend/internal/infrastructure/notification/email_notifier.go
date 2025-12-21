@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/logger"
-	mailservice "kubecloud/internal/infrastructure/mailservice"
+	"kubecloud/internal/infrastructure/mailservice"
 
 	"github.com/xmonader/ewf"
 )

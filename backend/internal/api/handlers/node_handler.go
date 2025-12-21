@@ -292,12 +292,6 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 		return
 	}
 
-	if err := h.billingService.FundUserToFulfillDiscount(c.Request.Context(), &user, nil, nil); err != nil {
-		reqLog.Error().Err(err).Send()
-		InternalServerError(c)
-		return
-	}
-
 	wfUUID, err := h.svc.AsyncReserveNode(userID, user.Mnemonic, nodeID)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start workflow to reserve node")

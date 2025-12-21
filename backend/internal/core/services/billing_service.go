@@ -55,6 +55,10 @@ func NewBillingService(userRepo models.UserRepository, contractsRepo models.Cont
 	}
 }
 
+func (svc *BillingService) Discount() Discount {
+	return svc.appliedDiscount
+}
+
 func (svc *BillingService) SettleUserUsage(user *models.User) error {
 	usageInUSDMillicent, err := svc.getUserLatestUsageInUSD(user.ID)
 	if err != nil {
@@ -65,15 +69,39 @@ func (svc *BillingService) SettleUserUsage(user *models.User) error {
 }
 
 func (svc *BillingService) AfterUserGetCredit(ctx context.Context, user *models.User) error {
-	if err := svc.CreateTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
+	if err := svc.FundUserWithTFTs(ctx, user); err != nil {
 		return err
 	}
 
-	if err := svc.SettleUserUsage(user); err != nil {
+	return svc.SettleUserUsage(user)
+}
+
+func (svc *BillingService) FundUserWithTFTs(ctx context.Context, user *models.User) error {
+	userGridAccountTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
+	if err != nil {
 		return err
 	}
 
-	return svc.FundUserToFulfillDiscount(ctx, user, nil, nil)
+	totalPendingTFTAmount, err := svc.transferRecordsRepo.CalculateTotalPendingTFTAmountPerUser(user.ID)
+	if err != nil {
+		return err
+	}
+
+	userBalanceInTFT, err := svc.gridClient.FromUSDMillicentToTFT(user.CreditedBalance + user.CreditCardBalance)
+	if err != nil {
+		return err
+	}
+
+	if userGridAccountTFTBalance+totalPendingTFTAmount >= userBalanceInTFT {
+		return nil
+	}
+
+	return svc.transferRecordsRepo.CreateTransferRecord(&models.TransferRecord{
+		UserID:    user.ID,
+		Username:  user.Username,
+		TFTAmount: (userBalanceInTFT - (userGridAccountTFTBalance + totalPendingTFTAmount)) * TFTUnitFactor,
+		Operation: models.DepositOperation,
+	})
 }
 
 func (svc *BillingService) CreateTransferRecordToChargeUserWithMinTFTAmount(userID int, username, userMnemonic string) error {
@@ -99,58 +127,12 @@ func (svc *BillingService) CreateTransferRecordToChargeUserWithMinTFTAmount(user
 	})
 }
 
-func (svc *BillingService) FundUserToFulfillDiscount(ctx context.Context, user *models.User, addedRentedNodes []types.Node, addedSharedNodes []kubedeployer.Node) error {
-	if user.CreditCardBalance+user.CreditedBalance-user.Debt <= 0 {
-		// user has no USD balance, skip
-		return nil
-	}
-
-	// calculate resources usage in USD applying discount
-	// I took the cluster nodes since only the new node is in cluster.Nodes
-	dailyUsageInUSDMillicent, err := svc.calculateResourcesUsageInUSDApplyingDiscount(ctx, user.ID, user.Mnemonic, addedRentedNodes, addedSharedNodes, svc.appliedDiscount)
-	if err != nil {
-		return err
-	}
-
-	dailyUsageInTFT, err := svc.gridClient.FromUSDMillicentToTFT(dailyUsageInUSDMillicent)
-	if err != nil {
-		return err
-	}
-
-	totalPendingTFTAmount, err := svc.transferRecordsRepo.CalculateTotalPendingTFTAmountPerUser(user.ID)
-	if err != nil {
-		return err
-	}
-
-	userTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
-	if err != nil {
-		return err
-	}
-
-	// fund user to fulfill discount
-	// make sure no old payments will fund more than needed
-	if totalPendingTFTAmount+userTFTBalance < dailyUsageInTFT &&
-		dailyUsageInTFT > 0 {
-		if err := svc.transferRecordsRepo.CreateTransferRecord(&models.TransferRecord{
-			UserID:    user.ID,
-			Username:  user.Username,
-			TFTAmount: dailyUsageInTFT - userTFTBalance - totalPendingTFTAmount,
-			Operation: models.DepositOperation,
-		}); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
+func (svc *BillingService) calculateResourcesUsageInUSD(
 	ctx context.Context,
 	userID int,
 	userMnemonic string,
 	addedRentedNodes []types.Node,
 	addedSharedNodes []kubedeployer.Node,
-	configuredDiscount Discount,
 ) (uint64, error) {
 	calculator, err := svc.gridClient.NewCalculator(userMnemonic)
 	if err != nil {
@@ -251,8 +233,11 @@ func (svc *BillingService) calculateResourcesUsageInUSDApplyingDiscount(
 	}
 
 	totalResourcesCostMillicent += gridclient.FromUSDToUSDMillicent(float64(len(nameContracts)) * nameContractMonthlyCostInUSD)
+	return totalResourcesCostMillicent, nil
+}
 
-	discount := getDiscountPackage(configuredDiscount).DurationInMonth
+func (svc *BillingService) ApplyDiscountOnUsage(totalResourcesCostMillicent uint64) (uint64, error) {
+	discount := getDiscountPackage(svc.appliedDiscount).DurationInMonth
 	if discount == 0 {
 		return totalResourcesCostMillicent, nil
 	}

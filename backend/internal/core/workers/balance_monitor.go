@@ -11,12 +11,10 @@ func (w Workers) MonitorSystemBalanceAndHandleSettlement() {
 	adminNotifyTicker := time.NewTicker(w.svc.GetNotifyAdminsForPendingRecordsInterval())
 	zeroUSDBalanceTicker := time.NewTicker(time.Minute)
 	zeroTFTBalanceTicker := time.NewTicker(time.Minute)
-	fundUserTFTBalanceTicker := time.NewTicker(24 * time.Hour)
 	defer settleTransfersTicker.Stop()
 	defer adminNotifyTicker.Stop()
 	defer zeroUSDBalanceTicker.Stop()
 	defer zeroTFTBalanceTicker.Stop()
-	defer fundUserTFTBalanceTicker.Stop()
 
 	for {
 		select {
@@ -85,19 +83,6 @@ func (w Workers) MonitorSystemBalanceAndHandleSettlement() {
 
 				if err := w.billingService.CreateTransferRecordToChargeUserWithMinTFTAmount(user.ID, user.Username, user.Mnemonic); err != nil {
 					logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
-				}
-			}
-
-		case <-fundUserTFTBalanceTicker.C:
-			users, err := w.svc.ListAllUsers()
-			if err != nil {
-				logger.GetLogger().Error().Err(err).Msg("Failed to list users")
-				continue
-			}
-
-			for _, user := range users {
-				if err := w.billingService.FundUserToFulfillDiscount(w.ctx, &user, nil, nil); err != nil {
-					logger.GetLogger().Error().Err(err).Msgf("Failed to fund user %d to claim discount", user.ID)
 				}
 			}
 		}

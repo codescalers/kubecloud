@@ -40,6 +40,7 @@ type GridClient interface {
 	GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error)
 	GetTwin(mnemonic string) (uint32, error)
 	GetFreeBalanceTFT(mnemonic string) (uint64, error)
+	GetSystemTFTBalance() (uint64, error)
 	GetUserAddress(mnemonic string) (string, error)
 	AcceptTermsAndConditions(mnemonic, docLink, docHash string) error
 	CreateTwin(mnemonic string) (uint32, error)
@@ -49,6 +50,8 @@ type GridClient interface {
 	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
 	GetTFTBillingRateAt(block uint64) (float64, error)
 	GetCurrentHeight() (uint32, error)
+	BondTwinAccount(twinID uint32) error
+	GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error)
 
 	// node methods
 	GetNodeClient(nodeID uint32) (*client.NodeClient, error)
@@ -314,6 +317,10 @@ func (s *gridClient) GetFreeBalanceTFT(mnemonic string) (uint64, error) {
 	return balance.Free.Uint64(), nil
 }
 
+func (s *gridClient) GetSystemTFTBalance() (uint64, error) {
+	return s.GetFreeBalanceTFT(s.systemMnemonic)
+}
+
 // GetUserAddress gets user address from user mnemonic
 func (s *gridClient) GetUserAddress(mnemonic string) (string, error) {
 	identity, err := s.getIdentity(mnemonic)
@@ -449,6 +456,19 @@ func (s *gridClient) GetTFTBillingRateAt(block uint64) (float64, error) {
 
 func (s *gridClient) GetCurrentHeight() (uint32, error) {
 	return s.gridClient.SubstrateConn.GetCurrentHeight()
+}
+
+func (s *gridClient) BondTwinAccount(twinID uint32) error {
+	stashIdentity, err := s.gridClient.SubstrateConn.NewIdentityFromSr25519Phrase(s.systemMnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to create stash identity: %w", err)
+	}
+
+	return s.gridClient.SubstrateConn.BondTwinAccount(stashIdentity, twinID)
+}
+
+func (s *gridClient) GetTwinBondedAccount(twinID uint32) (*substrate.AccountID, error) {
+	return s.gridClient.SubstrateConn.GetTwinBondedAccount(twinID)
 }
 
 func (s *gridClient) Close() {
