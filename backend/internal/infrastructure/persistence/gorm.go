@@ -83,7 +83,7 @@ func ensureSoftDeleteIndexes(db *gorm.DB) error {
 		`DROP INDEX IF EXISTS idx_user_project`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_project ON clusters (user_id, project_name) WHERE deleted_at IS NULL`,
 		`DROP INDEX IF EXISTS idx_user_node_id`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_node_id ON user_nodes (node_id) WHERE deleted_at IS NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_node_id ON user_contract_data (node_id) WHERE deleted_at IS NULL`,
 		`DROP INDEX IF EXISTS idx_users_email`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE deleted_at IS NULL`,
 		`DROP INDEX IF EXISTS idx_user_name`,
