@@ -2,7 +2,6 @@ package workflows
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -247,19 +246,18 @@ func metricsFailureHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 func releaseLocksHook(locker distributedlocks.DistributedLocks) ewf.AfterWorkflowHook {
 	return func(ctx context.Context, wf *ewf.Workflow, _ error) {
 		log := logger.ForOperation("workflow", "release_locks").With().Str("workflow_name", wf.Name).Logger()
-		lockedKeys, ok := wf.Metadata["locked_keys"]
-		if !ok {
-			return
-		}
-		var lockedKeysJSON map[string]string
-		err := json.Unmarshal([]byte(lockedKeys), &lockedKeysJSON)
+		lockedKeys, err := getFromState[map[string]string](wf.State, "locked_keys")
 		if err != nil {
-			log.Error().Err(err).Msg("failed to unmarshal locked keys")
+			log.Error().Err(err).Msg("failed to get locks from state")
 			return
 		}
-		if err := locker.ReleaseLock(ctx, lockedKeysJSON); err != nil {
+		if len(lockedKeys) == 0 {
+			return
+		}
+		if err := locker.ReleaseLocks(ctx, lockedKeys); err != nil {
 			log.Error().Err(err).Msg("failed to release locks")
 			return
 		}
+		log.Info().Int("lock_count", len(lockedKeys)).Msg("successfully released locks")
 	}
 }

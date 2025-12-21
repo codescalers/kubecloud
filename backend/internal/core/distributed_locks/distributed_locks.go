@@ -5,11 +5,14 @@ import (
 	"errors"
 )
 
-var ErrNodeLocked = errors.New("node is currently locked by another request")
+var ErrResourceLocked = errors.New("resource is currently locked by another request")
 
-// DistributedLocks is an interface that defines the methods for distributed locks.
+const (
+	NodeLockPrefix = "node:"
+)
+
 type DistributedLocks interface {
-	AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) (map[string]string, error)
-	ReleaseLock(ctx context.Context, lockedKeys map[string]string) error
-	GetLockedNodes(ctx context.Context) ([]uint32, error)
+	AcquireLocks(ctx context.Context, resourceKeys []string) (map[string]string, error)
+	ReleaseLocks(ctx context.Context, lockedKeys map[string]string) error
+	GetLockedResources(ctx context.Context, keyPattern string) ([]string, error)
 }

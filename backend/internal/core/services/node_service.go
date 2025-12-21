@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
@@ -13,6 +12,7 @@ import (
 	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/telemetry"
 	"strconv"
+	"strings"
 
 	proxyTypes "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	"github.com/xmonader/ewf"
@@ -31,7 +31,7 @@ type NodeService struct {
 	appCtx     context.Context
 	ewfEngine  *ewf.Engine
 	gridClient gridclient.GridClient
-	locker          distributedlocks.DistributedLocks
+	locker     distributedlocks.DistributedLocks
 	tracer     *telemetry.ServiceTracer
 }
 
@@ -46,7 +46,7 @@ func NewNodeService(
 		appCtx:     appCtx,
 		ewfEngine:  ewfEngine,
 		gridClient: gridClient,
-		locker:          locker,
+		locker:     locker,
 		tracer:     telemetry.NewServiceTracer("node_service"),
 	}
 }
@@ -229,6 +229,11 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 	if err != nil {
 		return "", err
 	}
+	resourceKeys := []string{fmt.Sprintf("%s%d", distributedlocks.NodeLockPrefix, nodeID)}
+	lockedKeys, err := svc.locker.AcquireLocks(svc.appCtx, resourceKeys)
+	if err != nil {
+		return "", err
+	}
 
 	wf.State = map[string]interface{}{
 		"node_id":       nodeID,
@@ -237,24 +242,15 @@ func (svc *NodeService) AsyncReserveNode(userID int, userMnemonic string, nodeID
 			"user_id":  userID,
 			"mnemonic": userMnemonic,
 		},
+		"locked_keys": lockedKeys,
 	}
 
 	if err = persistence.SetStateUserID(&wf, userID); err != nil {
 		return "", err
 	}
 
-	lockedKeys, err := svc.locker.AcquireNodesLocks(svc.appCtx, []uint32{nodeID})
-	if err != nil {
-		return "", err
-	}
-	lockedKeysJSON, err := json.Marshal(lockedKeys)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal locked keys: %w", err)
-	}
-	wf.Metadata["locked_keys"] = string(lockedKeysJSON)
-
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
-		if releaseErr := svc.locker.ReleaseLock(svc.appCtx, lockedKeys); releaseErr != nil {
+		if releaseErr := svc.locker.ReleaseLocks(svc.appCtx, lockedKeys); releaseErr != nil {
 			err = fmt.Errorf("%w: failed to release workflow lock: %v", err, releaseErr)
 		}
 		return "", err
@@ -315,14 +311,25 @@ func (svc *NodeService) runWithQueue(queueName string, wf *ewf.Workflow) error {
 }
 
 func (svc *NodeService) FilterLockedNodes(ctx context.Context, nodes []proxyTypes.Node) ([]proxyTypes.Node, error) {
-	lockedNodes, err := svc.locker.GetLockedNodes(ctx)
+	lockedResources, err := svc.locker.GetLockedResources(ctx, fmt.Sprintf("%s*", distributedlocks.NodeLockPrefix))
 	if err != nil {
 		return nil, err
 	}
-	lockedSet := make(map[uint32]bool, len(lockedNodes))
-	for _, id := range lockedNodes {
-		lockedSet[id] = true
+
+	// Convert locked resources to node IDs
+	lockedSet := make(map[uint32]bool)
+	for _, resource := range lockedResources {
+		nodeIDStr := strings.TrimPrefix(resource, distributedlocks.NodeLockPrefix)
+		if nodeIDStr == resource {
+			continue
+		}
+		nodeID, err := strconv.ParseUint(nodeIDStr, 10, 32)
+		if err != nil {
+			continue
+		}
+		lockedSet[uint32(nodeID)] = true
 	}
+
 	unlockedNodes := make([]proxyTypes.Node, 0, len(nodes))
 	for _, node := range nodes {
 		if lockedSet[uint32(node.NodeID)] {

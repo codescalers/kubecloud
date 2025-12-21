@@ -17,23 +17,23 @@ type MockDistributedLocks struct {
 	mock.Mock
 }
 
-func (m *MockDistributedLocks) GetLockedNodes(ctx context.Context) ([]uint32, error) {
-	args := m.Called(ctx)
+func (m *MockDistributedLocks) GetLockedResources(ctx context.Context, keyPattern string) ([]string, error) {
+	args := m.Called(ctx, keyPattern)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]uint32), args.Error(1)
+	return args.Get(0).([]string), args.Error(1)
 }
 
-func (m *MockDistributedLocks) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) (map[string]string, error) {
-	args := m.Called(ctx, nodeIDs)
+func (m *MockDistributedLocks) AcquireLocks(ctx context.Context, resourceKeys []string) (map[string]string, error) {
+	args := m.Called(ctx, resourceKeys)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(map[string]string), args.Error(1)
 }
 
-func (m *MockDistributedLocks) ReleaseLock(ctx context.Context, lockedKeys map[string]string) error {
+func (m *MockDistributedLocks) ReleaseLocks(ctx context.Context, lockedKeys map[string]string) error {
 	args := m.Called(ctx, lockedKeys)
 	return args.Error(0)
 }
@@ -178,7 +178,7 @@ func TestNodeService_FilterLockedNodes_Success(t *testing.T) {
 		{NodeID: 102},
 	}
 
-	mockLocker.On("GetLockedNodes", context.Background()).Return([]uint32{101}, nil)
+	mockLocker.On("GetLockedResources", context.Background(), "node:*").Return([]string{"node:101"}, nil)
 
 	service := NodeService{
 		locker:    mockLocker,
@@ -198,7 +198,7 @@ func TestNodeService_FilterLockedNodes_Error(t *testing.T) {
 	mockNodesRepo := new(mockUserNodesRepo)
 	mockUserRepo := new(mockUserRepo)
 
-	mockLocker.On("GetLockedNodes", context.Background()).Return(nil, fmt.Errorf("locked nodes error"))
+	mockLocker.On("GetLockedResources", context.Background(), "node:*").Return(nil, fmt.Errorf("locked nodes error"))
 
 	nodes := []proxyTypes.Node{
 		{NodeID: 100},

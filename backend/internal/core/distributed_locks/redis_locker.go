@@ -3,16 +3,10 @@ package distributedlocks
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-)
-
-const (
-	nodeLockKey = "locked"
 )
 
 type RedisLocker struct {
@@ -28,116 +22,128 @@ func NewRedisLocker(client *redis.Client, lockTimeout time.Duration) *RedisLocke
 	}
 }
 
-// AcquireNodesLocks acquires locks for the given node IDs.
-func (l *RedisLocker) AcquireNodesLocks(ctx context.Context, nodeIDs []uint32) (map[string]string, error) {
-	lockedKeys, err := l.acquireKeys(ctx, nodeLockKeys(nodeIDs))
+func (l *RedisLocker) AcquireLocks(ctx context.Context, resourceKeys []string) (map[string]string, error) {
+	if len(resourceKeys) == 0 {
+		return nil, fmt.Errorf("no resource keys provided")
+	}
+
+	expiry := int64(l.lockTimeout / time.Millisecond)
+
+	values := make([]string, len(resourceKeys))
+	argv := make([]interface{}, 0, len(resourceKeys)+1)
+	//expiry of locks
+	argv = append(argv, expiry)
+
+	// uuid values for each key
+	for i := range resourceKeys {
+		val := uuid.New().String()
+		values[i] = val
+		argv = append(argv, val)
+	}
+
+	lua := redis.NewScript(`
+local expiry = tonumber(ARGV[1])
+local locked = {}
+
+for i = 1, #KEYS do
+    local ok = redis.call("SET", KEYS[i], ARGV[i+1], "PX", expiry, "NX")
+    if not ok then
+        for j = 1, #locked do
+            redis.call("DEL", KEYS[j])
+        end
+        return {"LOCKED", KEYS[i]}
+    end
+    table.insert(locked, KEYS[i])
+end
+
+return {"OK"}
+`)
+
+	res, err := lua.Run(ctx, l.client, resourceKeys, argv...).Result()
 	if err != nil {
 		return nil, err
 	}
-	return lockedKeys, nil
-}
 
-func nodeLockKeys(nodeIDs []uint32) []string {
-	keys := make([]string, len(nodeIDs))
-	for i, id := range nodeIDs {
-		keys[i] = fmt.Sprintf("%s:%d", nodeLockKey, id)
+	out, ok := res.([]interface{})
+	if !ok || len(out) == 0 {
+		return nil, fmt.Errorf("unexpected script output: %v", res)
 	}
-	return keys
-}
 
-func (l *RedisLocker) acquireKeys(ctx context.Context, keys []string) (map[string]string, error) {
-	locked := make(map[string]string, len(keys))
+	status, _ := out[0].(string)
+	if status == "LOCKED" {
+		conflict := out[1].(string)
+		return nil, fmt.Errorf("%w: %s", ErrResourceLocked, conflict)
+	}
 
-	for _, key := range keys {
-		keyValue := uuid.New().String()
-		ok, err := l.client.SetNX(ctx, key, keyValue, l.lockTimeout).Result()
-		if err != nil {
-			if rollErr := l.rollbackLocks(ctx, locked); rollErr != nil {
-				return nil, rollErr
-			}
-			return nil, fmt.Errorf("redis error while acquiring lock for key %s: %w", key, err)
-		}
-
-		if !ok {
-			if rollErr := l.rollbackLocks(ctx, locked); rollErr != nil {
-				return nil, rollErr
-			}
-			return nil, fmt.Errorf("%w: %s", ErrNodeLocked, key)
-		}
-
-		locked[key] = keyValue
+	locked := map[string]string{}
+	for i, k := range resourceKeys {
+		locked[k] = values[i]
 	}
 
 	return locked, nil
 }
 
-func (l *RedisLocker) rollbackLocks(ctx context.Context, locked map[string]string) error {
-	if len(locked) == 0 {
-		return nil
-	}
-	keys := make([]string, 0, len(locked))
-	for k := range locked {
-		keys = append(keys, k)
-	}
-
-	if err := l.client.Del(ctx, keys...).Err(); err != nil {
-		return fmt.Errorf("redis error while rolling back locks: %w", err)
-	}
-
-	return nil
-}
-
-// ReleaseLock releases the locks for the given keys.
-func (l *RedisLocker) ReleaseLock(ctx context.Context, lockedKeys map[string]string) error {
+// ReleaseLocks releases the locks for the given keys.
+func (l *RedisLocker) ReleaseLocks(ctx context.Context, lockedKeys map[string]string) error {
 	if len(lockedKeys) == 0 {
 		return nil
 	}
+	keys := make([]string, 0, len(lockedKeys))
+	values := make([]interface{}, 0, len(lockedKeys))
 
-	var failedKeys []string
-	for key, expectedValue := range lockedKeys {
-		storedValue, err := l.client.Get(ctx, key).Result()
-		if err == redis.Nil {
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("failed to get lock value for key %s: %w", key, err)
-		}
-
-		if storedValue != expectedValue {
-			failedKeys = append(failedKeys, key)
-			continue
-		}
-
-		if err := l.client.Del(ctx, key).Err(); err != nil {
-			return fmt.Errorf("failed to delete lock for key %s: %w", key, err)
-		}
+	for k, v := range lockedKeys {
+		keys = append(keys, k)
+		values = append(values, v)
 	}
 
+	luaScript := redis.NewScript(`
+local failed = {}
+for i = 1, #KEYS do
+    local key = KEYS[i]
+    local expected = ARGV[i]
+    local actual = redis.call("GET", key)
+
+    if actual ~= false then
+        if actual ~= expected then
+            table.insert(failed, key)
+        else
+            redis.call("DEL", key)
+        end
+    end
+end
+return failed
+`)
+
+	// Run the script
+	res, err := luaScript.Run(ctx, l.client, keys, values...).Result()
+	if err != nil {
+		return err
+	}
+
+	failedKeys, _ := res.([]interface{})
 	if len(failedKeys) > 0 {
-		return fmt.Errorf("lock value mismatch for keys: %v", failedKeys)
+		mismatches := make([]string, len(failedKeys))
+		for i, v := range failedKeys {
+			mismatches[i] = v.(string)
+		}
+		return fmt.Errorf("lock value mismatch for keys: %v", mismatches)
 	}
 
 	return nil
 }
 
-// GetLockedNodes returns the list of locked nodes.
-func (l *RedisLocker) GetLockedNodes(ctx context.Context) ([]uint32, error) {
-	iter := l.client.Scan(ctx, 0, "locked:*", 0).Iterator()
-
-	nodes := make([]uint32, 0)
-	for iter.Next(ctx) {
-		key := iter.Val()
-		nodeID := strings.Split(key, ":")[1]
-		value, parseErr := strconv.ParseUint(nodeID, 10, 32)
-		if parseErr != nil {
-			return nil, fmt.Errorf("failed to parse locked node id from %s: %w", key, parseErr)
-		}
-		nodes = append(nodes, uint32(value))
+// GetLockedResources returns all currently locked resource keys matching the given pattern.
+func (l *RedisLocker) GetLockedResources(ctx context.Context, keyPattern string) ([]string, error) {
+	if keyPattern == "" {
+		keyPattern = "*"
 	}
-
+	iter := l.client.Scan(ctx, 0, keyPattern, 0).Iterator()
+	resources := make([]string, 0)
+	for iter.Next(ctx) {
+		resources = append(resources, iter.Val())
+	}
 	if err := iter.Err(); err != nil {
 		return nil, err
 	}
-
-	return nodes, nil
+	return resources, nil
 }
