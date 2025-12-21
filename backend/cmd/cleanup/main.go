@@ -65,7 +65,10 @@ func main() {
 	}
 	defer db.Close()
 
-	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic, config.Debug, config.DisableSentry, gridclient.WithNetwork(config.SystemAccount.Network))
+	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic,
+		gridclient.WithDebug(config.Debug),
+		gridclient.WithDisableSentry(config.DisableSentry),
+		gridclient.WithNetwork(config.SystemAccount.Network))
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create grid client")
 		return

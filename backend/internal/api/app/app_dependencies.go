@@ -269,7 +269,8 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 
 func createAppInfrastructure(config cfg.Configuration, tp *sdktrace.TracerProvider) (appInfrastructure, error) {
 	gridClient, err := gridclient.NewGridClient(config.SystemAccount.Mnemonic,
-		config.Debug, config.DisableSentry,
+		gridclient.WithDebug(config.Debug),
+		gridclient.WithDisableSentry(config.DisableSentry),
 		gridclient.WithNetwork(config.SystemAccount.Network),
 		gridclient.WithTracerProvider(tp),
 	)

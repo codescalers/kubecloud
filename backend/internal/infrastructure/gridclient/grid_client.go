@@ -71,11 +71,25 @@ type ClientOpts func(*clientCfg)
 type clientCfg struct {
 	network       string
 	traceProvider *sdktrace.TracerProvider
+	debug         bool
+	disableSentry bool
 }
 
 func WithNetwork(network string) ClientOpts {
 	return func(c *clientCfg) {
 		c.network = network
+	}
+}
+
+func WithDebug(debug bool) ClientOpts {
+	return func(c *clientCfg) {
+		c.debug = debug
+	}
+}
+
+func WithDisableSentry(disableSentry bool) ClientOpts {
+	return func(c *clientCfg) {
+		c.disableSentry = disableSentry
 	}
 }
 
@@ -85,7 +99,7 @@ func WithTracerProvider(tp *sdktrace.TracerProvider) ClientOpts {
 	}
 }
 
-func NewGridClient(systemMnemonic string, debug bool, disableSentry bool, opts ...ClientOpts) (GridClient, error) {
+func NewGridClient(systemMnemonic string, opts ...ClientOpts) (GridClient, error) {
 	cfg := &clientCfg{}
 
 	for _, o := range opts {
@@ -96,10 +110,10 @@ func NewGridClient(systemMnemonic string, debug bool, disableSentry bool, opts .
 		deployer.WithDisableSentry(),
 	}
 
-	if debug {
+	if cfg.debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
 	}
-	if disableSentry {
+	if cfg.disableSentry {
 		pluginOpts = append(pluginOpts, deployer.WithDisableSentry())
 	}
 	if cfg.network != "" {

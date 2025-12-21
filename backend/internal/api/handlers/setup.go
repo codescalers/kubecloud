@@ -99,6 +99,8 @@ func SetUp(t testing.TB) (setup, error) {
   },
   "graphql_url": "https://graphql.dev.grid.tf/graphql",
   "firesquid_url": "https://firesquid.dev.grid.tf/graphql",
+  "debug": true,
+  "disable_sentry": true,
   "deployer_workers_num": 3,
   "invoice": {
     "name": "Name",
@@ -140,7 +142,7 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, configuration.Debug, configuration.DisableSentry, gridclient.WithNetwork(configuration.SystemAccount.Network))
+	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, gridclient.WithDebug(configuration.Debug), gridclient.WithDisableSentry(configuration.DisableSentry), gridclient.WithNetwork(configuration.SystemAccount.Network))
 	if err != nil {
 		return setup{}, err
 	}
