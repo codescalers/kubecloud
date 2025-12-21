@@ -1,75 +1,15 @@
 <template>
   <v-row no-gutters class="h-100">
     <v-col cols="6">
-      <v-card width="100%" height="100%" class="h-100 d-flex align-center">
-        <v-card-text class="px-10">
-          <h3 class="text-h4 text-center mb-4">Create Account</h3>
+      <v-tabs-window :model-value="activeTab" class="h-100">
+        <v-tabs-window-item class="h-100">
+          <RegisterForm v-model="registerBody" />
+        </v-tabs-window-item>
 
-          <p class="mb-10 text-center">Join Mycelium Cloud and start your journey</p>
-
-          <v-form v-model="valid" @submit.prevent="register()">
-            <v-row>
-              <v-col cols="6">
-                <v-text-field
-                  v-model.trim="username"
-                  variant="outlined"
-                  prepend-inner-icon="mdi-account"
-                  label="Username"
-                  placeholder="Enter your username"
-                  autofocus
-                  :rules="[
-                    (v) => !!v || 'Username is required',
-                    (v) => v.length >= 3 || 'Username must be at least 3 characters',
-                    (v) => v.length <= 12 || 'Username must be less than 12 characters',
-                  ]"
-                />
-              </v-col>
-
-              <v-col cols="6">
-                <v-text-field
-                  v-model.trim="email"
-                  prepend-inner-icon="mdi-email"
-                  variant="outlined"
-                  label="Email Address"
-                  placeholder="Enter your email address"
-                  :rules="[
-                    (v) => !!v || 'Email address is required',
-                    (v) => (v.includes('@') && v.includes('.')) || 'Email address must be valid',
-                  ]"
-                />
-              </v-col>
-
-              <v-col cols="12">
-                <PasswordInput v-model="password" />
-              </v-col>
-            </v-row>
-
-            <v-btn
-              type="submit"
-              block
-              size="large"
-              text="Create Account"
-              prepend-icon="mdi-account-plus"
-              variant="outlined"
-              class="mt-6"
-              :disabled="!valid"
-            />
-          </v-form>
-          <div class="text-caption d-flex justify-center align-center my-4">
-            By creating an account you agree to our
-            <v-btn text="Terms & Conditions" variant="text" size="x-small" color="primary" /> and
-            <v-btn text="Privacy Policy" variant="text" size="x-small" color="primary" />.
-          </div>
-
-          {{ state }}
-          {{ { isLoading } }}
-
-          <!-- <div class="d-flex align-center justify-center my-5">
-            <p>Already have an account?</p>
-            <v-btn to="/login" text="Login" size="small" variant="text" color="primary" />
-          </div> -->
-        </v-card-text>
-      </v-card>
+        <v-tabs-window-item class="h-100">
+          <VerifyForm v-model="registerBody" />
+        </v-tabs-window-item>
+      </v-tabs-window>
     </v-col>
 
     <v-col cols="6">
@@ -78,44 +18,9 @@
   </v-row>
 </template>
 
-<script lang="ts" setup>
-const api = useApi()
-const registerationFormData = useRegisterationFormData()
-const router = useRouter()
+<script setup lang="ts">
+import type { HandlersRegisterInput } from "../../generated/api"
 
-const valid = ref(false)
-
-const username = ref("")
-const email = ref("")
-const password = ref("")
-
-const {
-  execute: register,
-  isLoading,
-  state,
-} = useAsyncState(
-  async () => {
-    const { data: d1 } = await api.users.registerUser(
-      {
-        name: username.value,
-        email: email.value,
-        password: password.value,
-        confirm_password: password.value,
-      },
-      { _flags: { unauthenticated: true } }
-    )
-
-    await api.helpers.awaitWorkflowCompletion(d1.data?.workflow_id ?? "", 1_000)
-
-    registerationFormData.value = {
-      username: username.value,
-      email: email.value,
-      password: password.value,
-    }
-
-    router.push("/register/verify")
-  },
-  null,
-  { immediate: false }
-)
+const registerBody = ref<HandlersRegisterInput | null>(null)
+const activeTab = computed(() => (registerBody.value ? 1 : 0))
 </script>

@@ -10,54 +10,19 @@ import {
   WorkflowApi,
 } from "../generated/api"
 
-class ApiHelpers {
-  constructor(
-    private readonly admin: AdminApi,
-    private readonly deployments: DeploymentsApi,
-    private readonly invoices: InvoicesApi,
-    private readonly nodes: NodesApi,
-    private readonly notifications: NotificationsApi,
-    private readonly twins: TwinsApi,
-    private readonly users: UsersApi,
-    private readonly workflow: WorkflowApi
-  ) {}
-
-  public async awaitWorkflowCompletion(
-    workflowId: string,
-    deplay: number = 5_000
-  ): Promise<boolean> {
-    const { data } = await this.workflow.getWorkflowStatus(workflowId, {
-      _flags: { unauthenticated: true },
-    })
-
-    console.log("state", data.data)
-
-    if (data.data === "failed") {
-      return false
-    }
-
-    if (data.data === "completed") {
-      return true
-    }
-
-    await new Promise((res) => setTimeout(res, deplay))
-    return this.awaitWorkflowCompletion(workflowId, deplay)
-  }
-}
-
 export const useApi = createGlobalState(() => {
   const config = useRuntimeConfig()
   const { apiBasePath } = config.public
 
-  const accessToken = useLocalStorage<string>("accessToken", "")
-  // const refreshToken = useLocalStorage<string>("refreshToken", "")
+  const accessToken = useLocalStorage<string>("accessToken", "", { writeDefaults: false })
+  // const refreshToken = useLocalStorage<string>("refreshToken", "", { writeDefaults: false })
 
   const instance = axios.create({
     baseURL: apiBasePath,
   })
 
   instance.interceptors.request.use((config) => {
-    if (config._flags?.unauthenticated) {
+    if (config.unauthenticated) {
       return config
     }
 
@@ -66,6 +31,36 @@ export const useApi = createGlobalState(() => {
 
     return config
   })
+
+  class ApiHelpers {
+    constructor(
+      private readonly admin: AdminApi,
+      private readonly deployments: DeploymentsApi,
+      private readonly invoices: InvoicesApi,
+      private readonly nodes: NodesApi,
+      private readonly notifications: NotificationsApi,
+      private readonly twins: TwinsApi,
+      private readonly users: UsersApi,
+      private readonly workflow: WorkflowApi
+    ) {}
+
+    public async awaitWorkflowCompletion(workflowId: string): Promise<boolean> {
+      const { data } = await this.workflow.getWorkflowStatus(workflowId, {
+        unauthenticated: true,
+      })
+
+      if (data.data === "failed") {
+        return false
+      }
+
+      if (data.data === "completed") {
+        return true
+      }
+
+      await new Promise((res) => setTimeout(res, 2_000))
+      return this.awaitWorkflowCompletion(workflowId)
+    }
+  }
 
   /*
   instance.interceptors.response.use(
