@@ -6,8 +6,8 @@ import (
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"slices"
 
@@ -200,8 +200,8 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		return notificationDispatcher.Send(ctx, notif)
 	}
 
-	amountUSD := substrate.FromUSDMilliCentToUSD(amount)
-	newBalanceUSD := substrate.FromUSDMilliCentToUSD(newBalance)
+	amountUSD := gridclient.FromUSDMilliCentToUSD(amount)
+	newBalanceUSD := gridclient.FromUSDMilliCentToUSD(newBalance)
 	var status, subject, message string
 	if err == nil {
 		status = "funds_succeeded"
@@ -262,7 +262,7 @@ func sendAdminCreditBalanceWorkflowNotification(ctx context.Context, notificatio
 		return notificationDispatcher.Send(ctx, notif)
 	}
 
-	amountUSD := substrate.FromUSDMilliCentToUSD(amount)
+	amountUSD := gridclient.FromUSDMilliCentToUSD(amount)
 
 	// Admin notification
 	adminNotif := notification.BillingNotification(adminID).

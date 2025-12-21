@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"kubecloud/internal/core/models"
-	"kubecloud/internal/infrastructure/substrate"
+	"kubecloud/internal/infrastructure/gridclient"
 	"time"
 
-	proxy "github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/client"
 	"github.com/xmonader/ewf"
 )
 
@@ -18,7 +17,7 @@ const (
 	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
+func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -35,8 +34,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient s
 			return fmt.Errorf("invalid 'node_id' in state: %w", err)
 		}
 
-		// Reserve the node
-		contractID, err := substrateClient.CreateRentContract(config.Mnemonic, nodeID, nil)
+		contractID, err := gridClient.CreateRentContract(config.Mnemonic, nodeID)
 		if err != nil {
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, config.UserID, err)
 		}
@@ -56,7 +54,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient s
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient substrate.Substrate) ewf.StepFn {
+func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractIDVal, ok := state["contract_id"]
 		if !ok {
@@ -73,7 +71,7 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient
 			return fmt.Errorf("failed to get config from state: %w", err)
 		}
 
-		err = substrateClient.CancelContract(config.Mnemonic, contractID)
+		err = gridClient.CancelContract(config.Mnemonic, contractID)
 		if err != nil {
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
@@ -88,7 +86,7 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, substrateClient
 }
 
 // VerifyNodeStateStep checks if node has reached the desired state
-func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
+func VerifyNodeStateStep(gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		targetStatus, ok := state["target_status"].(string)
 		if !ok {
@@ -105,7 +103,7 @@ func VerifyNodeStateStep(proxyClient proxy.Client) ewf.StepFn {
 			return fmt.Errorf("invalid 'node_id' in state: %w", err)
 		}
 
-		node, err := proxyClient.Node(ctx, nodeID)
+		node, err := gridClient.Node(ctx, nodeID)
 		if err != nil {
 			return fmt.Errorf("failed to get node: %w", err)
 		}

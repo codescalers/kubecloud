@@ -63,7 +63,7 @@ func ensureClient(state ewf.State) {
 	log.Debug().Msg("kubeclient ensured and ready for use")
 }
 
-func DeployNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
+func DeployNetworkStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -112,7 +112,7 @@ func DeployNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	}
 }
 
-func UpdateNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
+func UpdateNetworkStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -151,7 +151,7 @@ func UpdateNetworkStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	}
 }
 
-func AddNodeStep(metrics *metricsLib.Metrics) ewf.StepFn {
+func AddNodeStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -194,7 +194,7 @@ func AddNodeStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	}
 }
 
-func DeployLeaderNodeStep(metrics *metricsLib.Metrics) ewf.StepFn {
+func DeployLeaderNodeStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "deploy_leader_node")
 		ensureClient(state)
@@ -304,7 +304,7 @@ func BatchDeployAllNodesStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
+func StoreDeploymentStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "store_deployment")
 		cluster, err := statemanager.GetCluster(state)
@@ -350,7 +350,7 @@ func StoreDeploymentStep(clusterRepo models.ClusterRepository, metrics *metricsL
 	}
 }
 
-func CancelDeploymentStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
+func CancelDeploymentStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		ensureClient(state)
 
@@ -642,14 +642,14 @@ func createAddNodeWorkflowTemplate(notificationDispatcher *notification.Notifica
 }
 
 func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
-	engine.Register(StepDeployNetwork, DeployNetworkStep(metrics))
-	engine.Register(StepDeployLeaderNode, DeployLeaderNodeStep(metrics))
+	engine.Register(StepDeployNetwork, DeployNetworkStep())
+	engine.Register(StepDeployLeaderNode, DeployLeaderNodeStep())
 	engine.Register(StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
-	engine.Register(StepRemoveCluster, CancelDeploymentStep(clusterRepo, metrics))
-	engine.Register(StepAddNode, AddNodeStep(metrics))
-	engine.Register(StepUpdateNetwork, UpdateNetworkStep(metrics))
+	engine.Register(StepRemoveCluster, CancelDeploymentStep(clusterRepo))
+	engine.Register(StepAddNode, AddNodeStep())
+	engine.Register(StepUpdateNetwork, UpdateNetworkStep())
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(StepStoreDeployment, StoreDeploymentStep(clusterRepo, metrics))
+	engine.Register(StepStoreDeployment, StoreDeploymentStep(clusterRepo))
 	engine.Register(StepFetchKubeconfig, FetchKubeconfigStep(clusterRepo, config.SSH.PrivateKeyPath))
 	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(StepVerifyNewNodes, VerifyAddedNodeStep(clusterRepo, config.SSH.PrivateKeyPath))

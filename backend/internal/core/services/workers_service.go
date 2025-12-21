@@ -8,18 +8,16 @@ import (
 	"kubecloud/internal/config"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/workflows"
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
-	"kubecloud/internal/infrastructure/substrate"
 
 	"sync"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/xmonader/ewf"
 )
@@ -36,8 +34,7 @@ type WorkerService struct {
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
 	firesquidClient        graphql.GraphQl
-	substrateClient        substrate.Substrate
-	gridClient             deployer.TFPluginClient
+	gridClient             gridclient.GridClient
 	ewfEngine              *ewf.Engine
 	notificationDispatcher *notification.NotificationDispatcher
 
@@ -59,8 +56,8 @@ func NewWorkersService(
 	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
 	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
 	mailService mailservice.MailService,
-	gridClient deployer.TFPluginClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
-	graphql graphql.GraphQl, firesquidClient graphql.GraphQl, substrateClient substrate.Substrate,
+	gridClient gridclient.GridClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
+	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
@@ -81,7 +78,6 @@ func NewWorkersService(
 		ewfEngine:              ewfEngine,
 		graphql:                graphql,
 		firesquidClient:        firesquidClient,
-		substrateClient:        substrateClient,
 		gridClient:             gridClient,
 
 		systemMnemonic:     systemMnemonic,
@@ -169,7 +165,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(totalAmountTFT)
+		totalAmountUSDMillicent, err := svc.gridClient.FromTFTtoUSDMillicent(totalAmountTFT)
 		if err != nil {
 			return err
 		}
@@ -189,7 +185,7 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := substrate.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := gridclient.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
 			NodeID:        record.NodeID,
@@ -263,12 +259,12 @@ func (svc WorkerService) UpdateUserDebt() error {
 }
 
 func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64, debtPeriod time.Duration) (uint64, error) {
-	identity, err := svc.substrateClient.NewIdentityFromSr25519Phrase(userMnemonic)
+
+	calculatorClient, err := svc.gridClient.NewCalculator(userMnemonic)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create identity: %w", err)
+		return 0, fmt.Errorf("failed to create new calculator: %w", err)
 	}
 
-	calculatorClient := calculator.NewCalculator(svc.gridClient.SubstrateConn, identity)
 	var totalDebt int64
 	for _, contractID := range contractIDs {
 		debt, err := calculatorClient.CalculateContractOverdue(contractID, debtPeriod)
@@ -279,7 +275,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64
 		totalDebt += debt
 	}
 
-	totalDebtUSDMillicent, err := svc.substrateClient.FromTFTtoUSDMillicent(uint64(totalDebt))
+	totalDebtUSDMillicent, err := svc.gridClient.FromTFTtoUSDMillicent(uint64(totalDebt))
 	if err != nil {
 		return 0, fmt.Errorf("failed to convert debt to USD millicent: %w", err)
 	}
@@ -364,7 +360,7 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 
 	for userNode := range jobs {
 
-		node, err := svc.gridClient.GridProxyClient.Node(ctx, userNode.NodeID)
+		node, err := svc.gridClient.Node(ctx, userNode.NodeID)
 		if err != nil {
 			log.Error().Err(err).Uint32("node_id", userNode.NodeID).Msg("failed to get node for health check")
 			continue
@@ -395,7 +391,7 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 		}
 
 		// getting balance every time to ensure we have the latest balance
-		systemTFTBalance, err := svc.substrateClient.GetUserTFTBalance(svc.systemMnemonic)
+		systemTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(svc.systemMnemonic)
 		if err != nil {
 			log.Error().Err(err).Int("record_id", record.ID).Msg("Failed to get system TFT balance for pending record")
 			continue
@@ -424,7 +420,7 @@ func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransf
 		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
 	}
 
-	err = svc.substrateClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
+	err = svc.gridClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
 	}
@@ -481,7 +477,7 @@ func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) e
 	if err != nil {
 		return fmt.Errorf("failed to calculate debt: %w", err)
 	}
-	userBalance, err := svc.substrateClient.GetUserBalanceUSDMillicent(user.Mnemonic)
+	userBalance, err := svc.gridClient.GetUserBalanceUSDMillicent(user.Mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed to get user balance: %w", err)
 	}
@@ -492,8 +488,8 @@ func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) e
 	if days == 0 {
 		days = 1
 	}
-	totalDebtUSD := substrate.FromUSDMilliCentToUSD(totalDebt)
-	userBalanceUSD := substrate.FromUSDMilliCentToUSD(userBalance)
+	totalDebtUSD := gridclient.FromUSDMilliCentToUSD(totalDebt)
+	userBalanceUSD := gridclient.FromUSDMilliCentToUSD(userBalance)
 
 	message := fmt.Sprintf(
 		"Your balance is not enough to cover the debt for upcoming %d day(s).\nTotal debt: $%.2f\nUser balance: $%.2f",

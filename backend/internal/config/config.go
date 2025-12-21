@@ -30,6 +30,7 @@ type Configuration struct {
 	SSH                                  SSHConfig                     `json:"ssh" validate:"required,dive"`
 	Redis                                RedisConfig                   `json:"redis" validate:"dive"`
 	Debug                                bool                          `json:"debug"`
+	DisableSentry                        bool                          `json:"disable_sentry" default:"true"`
 	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
 	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
 	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
@@ -154,6 +155,8 @@ var DefaultQueueConfig = ewf.QueueMetadata{
 // LoadConfig load configurations
 func LoadConfig() (Configuration, error) {
 	var config Configuration
+
+	viper.SetDefault("disable_sentry", true)
 
 	// Use mapstructure to ensure JSON tags are respected
 	decoderConfig := &mapstructure.DecoderConfig{
