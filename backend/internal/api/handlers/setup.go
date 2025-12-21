@@ -142,7 +142,17 @@ func SetUp(t testing.TB) (setup, error) {
 		return setup{}, err
 	}
 
-	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, gridclient.WithDebug(configuration.Debug), gridclient.WithDisableSentry(configuration.DisableSentry), gridclient.WithNetwork(configuration.SystemAccount.Network))
+	clientOpts := []gridclient.ClientOpts{
+		gridclient.WithNetwork(configuration.SystemAccount.Network),
+	}
+	if configuration.Debug {
+		clientOpts = append(clientOpts, gridclient.WithDebug())
+	}
+	if configuration.DisableSentry {
+		clientOpts = append(clientOpts, gridclient.WithDisableSentry())
+	}
+
+	gridClient, err := gridclient.NewGridClient(configuration.SystemAccount.Mnemonic, clientOpts...)
 	if err != nil {
 		return setup{}, err
 	}

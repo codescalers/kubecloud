@@ -81,15 +81,15 @@ func WithNetwork(network string) ClientOpts {
 	}
 }
 
-func WithDebug(debug bool) ClientOpts {
+func WithDebug() ClientOpts {
 	return func(c *clientCfg) {
-		c.debug = debug
+		c.debug = true
 	}
 }
 
-func WithDisableSentry(disableSentry bool) ClientOpts {
+func WithDisableSentry() ClientOpts {
 	return func(c *clientCfg) {
-		c.disableSentry = disableSentry
+		c.disableSentry = true
 	}
 }
 
@@ -106,9 +106,7 @@ func NewGridClient(systemMnemonic string, opts ...ClientOpts) (GridClient, error
 		o(cfg)
 	}
 
-	pluginOpts := []deployer.PluginOpt{
-		deployer.WithDisableSentry(),
-	}
+	pluginOpts := []deployer.PluginOpt{}
 
 	if cfg.debug {
 		pluginOpts = append(pluginOpts, deployer.WithLogs())
