@@ -1,4 +1,5 @@
-import axios from "axios"
+import { Lock as MutexLock } from "async-await-mutex-lock"
+import axios, { AxiosError } from "axios"
 import {
   AdminApi,
   DeploymentsApi,
@@ -11,101 +12,17 @@ import {
 } from "../generated/api"
 
 export const useApi = createGlobalState(() => {
-  const config = useRuntimeConfig()
-  const { apiBasePath } = config.public
-
-  const accessToken = useLocalStorage<string>("accessToken", "", { writeDefaults: false })
-  // const refreshToken = useLocalStorage<string>("refreshToken", "", { writeDefaults: false })
-
-  const instance = axios.create({
-    baseURL: apiBasePath,
-  })
-
-  instance.interceptors.request.use((config) => {
-    if (config.unauthenticated) {
-      return config
-    }
-
-    // await lock to get access to accessToken
-    config.headers.Authorization = `Bearer ${accessToken.value}`
-
-    return config
-  })
-
-  class ApiHelpers {
-    constructor(
-      private readonly admin: AdminApi,
-      private readonly deployments: DeploymentsApi,
-      private readonly invoices: InvoicesApi,
-      private readonly nodes: NodesApi,
-      private readonly notifications: NotificationsApi,
-      private readonly twins: TwinsApi,
-      private readonly users: UsersApi,
-      private readonly workflow: WorkflowApi
-    ) {}
-
-    public async awaitWorkflowCompletion(workflowId: string): Promise<boolean> {
-      const { data } = await this.workflow.getWorkflowStatus(workflowId, {
-        unauthenticated: true,
-      })
-
-      if (data.data === "failed") {
-        return false
-      }
-
-      if (data.data === "completed") {
-        return true
-      }
-
-      await new Promise((res) => setTimeout(res, 2_000))
-      return this.awaitWorkflowCompletion(workflowId)
+  const mu = new MutexLock()
+  async function awaitLock() {
+    if (mu.isAcquired()) {
+      await mu.acquire()
+      mu.release()
     }
   }
 
-  /*
-  instance.interceptors.response.use(
-    (response) => response,
-    (error: AxiosError) => {
-      if (error.response?.status === 401) {
-        // local access token expired, clear it
-        // request new access token
-        // update tokens
-        // unlock access to accessToken
-        // retry request
-      }
-
-      // if (error.response?.status === 401) {
-      //   // await lock to get access to refreshToken
-      //   const newAccessToken = await refreshToken.value
-      //   if (newAccessToken) {
-      //     accessToken.value = newAccessToken
-      //   }
-      // }
-
-      return Promise.reject(error)
-    }
-  ) */
-
-  // instance.interceptors.request.use((config) => {
-  //   console.log("[request] _internalFlags", config._internalFlags)
-  //   return config
-  // })
-
-  // instance.interceptors.response.use(
-  //   (response) => {
-  //     console.log("[response] _internalFlags", response.config._internalFlags)
-  //     return response
-  //   },
-  //   (error: AxiosError) => {
-  //     console.log(error.config?._internalFlags)
-  //     console.log("[response] error", error)
-  //     return Promise.reject(error)
-  //   }
-  // )
-
-  // const config = new Configuration({
-  //   basePath: "https://staging.myceliumcloud.tf/api/v1",
-  // })
+  const instance = axios.create({
+    baseURL: useRuntimeConfig().public.apiBasePath,
+  })
 
   const admin = new AdminApi(undefined, undefined, instance)
   const deployments = new DeploymentsApi(undefined, undefined, instance)
@@ -115,6 +32,51 @@ export const useApi = createGlobalState(() => {
   const twins = new TwinsApi(undefined, undefined, instance)
   const users = new UsersApi(undefined, undefined, instance)
   const workflow = new WorkflowApi(undefined, undefined, instance)
+
+  const accessToken = useLocalStorage<string>("accessToken", "", { writeDefaults: false })
+  const refreshToken = useLocalStorage<string>("refreshToken", "", { writeDefaults: false })
+
+  instance.interceptors.request.use(async (config) => {
+    if (config.unauthenticated) {
+      return config
+    }
+
+    // await lock to get access to accessToken
+    await awaitLock()
+    config.headers.Authorization = `Bearer ${accessToken.value}`
+
+    return config
+  })
+
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      if (
+        error instanceof AxiosError &&
+        error.response &&
+        error.response.status === 401 &&
+        error.config &&
+        "Authorization" in error.config.headers
+      ) {
+        if (!mu.isAcquired()) {
+          await mu.acquire()
+          const { data } = await users.refreshToken(
+            { refresh_token: refreshToken.value },
+            { unauthenticated: true }
+          )
+
+          accessToken.value = data.data?.access_token ?? ""
+          mu.release()
+        } else {
+          await awaitLock()
+        }
+
+        return instance(error.config)
+      }
+
+      return Promise.reject(error)
+    }
+  )
 
   return {
     admin,
@@ -137,3 +99,33 @@ export const useApi = createGlobalState(() => {
     ),
   }
 })
+
+class ApiHelpers {
+  constructor(
+    private readonly admin: AdminApi,
+    private readonly deployments: DeploymentsApi,
+    private readonly invoices: InvoicesApi,
+    private readonly nodes: NodesApi,
+    private readonly notifications: NotificationsApi,
+    private readonly twins: TwinsApi,
+    private readonly users: UsersApi,
+    private readonly workflow: WorkflowApi
+  ) {}
+
+  public async awaitWorkflowCompletion(workflowId: string): Promise<boolean> {
+    const { data } = await this.workflow.getWorkflowStatus(workflowId, {
+      unauthenticated: true,
+    })
+
+    if (data.data === "failed") {
+      return false
+    }
+
+    if (data.data === "completed") {
+      return true
+    }
+
+    await new Promise((res) => setTimeout(res, 2_000))
+    return this.awaitWorkflowCompletion(workflowId)
+  }
+}

@@ -2074,7 +2074,7 @@ paths:
       summary: Get account ID by twin ID
       tags:
       - twins
-  /user:
+  /user/:
     get:
       description: Retrieves all data of the user
       operationId: get-user
