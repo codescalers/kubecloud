@@ -105,7 +105,7 @@ func GetKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 
 	ip := node.MyceliumIP
 	if ip == "" {
-		err := fmt.Errorf("no mycelium IP address found for node %s", node.Name)
+		err := fmt.Errorf("no mycelium IP address found for node %s (node_id: %d)", node.Name, node.NodeID)
 		telemetry.RecordError(span, err)
 		return "", err
 	}
@@ -127,11 +127,11 @@ func GetKubeconfigViaSSH(ctx context.Context, privateKey string, node *Node) (st
 			Str("node", node.Name).
 			Msg("Failed to execute SSH command")
 		telemetry.RecordError(span, err)
-		return "", fmt.Errorf("failed to execute SSH command on node %s (%s): %w", node.Name, ip, err)
+		return "", fmt.Errorf("failed to execute SSH command on node %s (node_id: %d, ip: %s): %w", node.Name, node.NodeID, ip, err)
 	}
 
 	if !isValidKubeconfig(kubeconfig) {
-		err := fmt.Errorf("invalid kubeconfig content retrieved from node %s (%s): missing required fields", node.Name, ip)
+		err := fmt.Errorf("invalid kubeconfig content retrieved from node %s (node_id: %d, ip: %s): missing required fields", node.Name, node.NodeID, ip)
 		telemetry.RecordError(span, err)
 		return "", err
 	}
