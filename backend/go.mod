@@ -5,6 +5,7 @@ go 1.25
 require (
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/gin-gonic/gin v1.11.0
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-retryablehttp v0.7.8

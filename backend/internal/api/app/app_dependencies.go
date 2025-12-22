@@ -108,7 +108,7 @@ func createAppDependencies(ctx context.Context, config cfg.Configuration) (appDe
 		return appDependencies{}, err
 	}
 
-	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics)
+	appCommunication, err := createAppCommunication(config, appCore.db, appCore.ewfEngine, appCore.metrics, appSecurity.tokenManager)
 	if err != nil {
 		return appDependencies{}, err
 	}
@@ -228,7 +228,7 @@ func createAppSecurity(ctx context.Context, config cfg.Configuration) (appSecuri
 	}, nil
 }
 
-func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics) (appCommunication, error) {
+func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *ewf.Engine, metrics *metrics.Metrics, tokenManager auth.TokenManager) (appCommunication, error) {
 	var mailSender mailsender.MailSender
 	var mailContentFormatter mailcontentformatter.MailContentFormatter
 
@@ -242,7 +242,7 @@ func createAppCommunication(config cfg.Configuration, db models.DB, ewfEngine *e
 		mailContentFormatter = mailcontentformatter.NewMailHTMLFormatter()
 	}
 	mailService := mailservice.NewMailService(mailSender, mailContentFormatter, config)
-	sseManager := realtime.NewSSEManager()
+	sseManager := realtime.NewSSEManager(tokenManager)
 
 	notificationRepo := corepersistence.NewGormNotificationRepository(db)
 	userRepo := corepersistence.NewGormUserRepository(db)

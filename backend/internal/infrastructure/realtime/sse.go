@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"kubecloud/internal/auth"
 	"kubecloud/internal/core/models"
+	"kubecloud/internal/infrastructure/logger"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
-
-	"kubecloud/internal/infrastructure/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,10 +24,11 @@ const (
 
 // SSEManager handles Server-Sent Events for real-time notifications
 type SSEManager struct {
-	clients map[int][]chan SSEMessage // userID -> client channels
-	mu      sync.RWMutex
-	ctx     context.Context
-	cancel  context.CancelFunc
+	clients      map[int][]chan SSEMessage // userID -> client channels
+	mu           sync.RWMutex
+	ctx          context.Context
+	cancel       context.CancelFunc
+	tokenManager auth.TokenManager
 }
 
 // SSEMessage represents a server-sent event message
@@ -40,12 +42,13 @@ type SSEMessage struct {
 }
 
 // NewSSEManager creates a new SSE manager
-func NewSSEManager() *SSEManager {
+func NewSSEManager(tokenManager auth.TokenManager) *SSEManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	manager := &SSEManager{
-		clients: make(map[int][]chan SSEMessage),
-		ctx:     ctx,
-		cancel:  cancel,
+		clients:      make(map[int][]chan SSEMessage),
+		ctx:          ctx,
+		cancel:       cancel,
+		tokenManager: tokenManager,
 	}
 
 	return manager
@@ -69,7 +72,7 @@ func (s *SSEManager) Stop() {
 }
 
 // AddClient adds a new client channel for a user
-func (s *SSEManager) AddClient(userID int) chan SSEMessage {
+func (s *SSEManager) addClient(userID int) chan SSEMessage {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -80,7 +83,7 @@ func (s *SSEManager) AddClient(userID int) chan SSEMessage {
 }
 
 // RemoveClient removes a client channel for a user
-func (s *SSEManager) RemoveClient(userID int, clientChan chan SSEMessage) {
+func (s *SSEManager) removeClient(userID int, clientChan chan SSEMessage) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -124,12 +127,21 @@ func (s *SSEManager) Notify(userID int, msgType string, severity models.Notifica
 			// Message sent successfully
 		case <-time.After(2 * time.Second):
 			// Client not responding, remove it
-			go s.RemoveClient(userID, ch)
+			go s.removeClient(userID, ch)
 		case <-s.ctx.Done():
 			return
 		}
 	}
 
+}
+
+// setupExpiryTimer creates a timer that fires when the token expires
+func (s *SSEManager) setupExpiryTimer(claims *auth.TokenClaims) *time.Timer {
+	if claims == nil || claims.ExpiresAt == nil {
+		return nil
+	}
+
+	return time.NewTimer(time.Until(claims.ExpiresAt.Time))
 }
 
 // HandleSSE handles SSE HTTP connections
@@ -140,19 +152,47 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 		return
 	}
 
+	// Extract token from query or Authorization header
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	claims, err := s.tokenManager.VerifyToken(tokenStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
+	// Setup token expiry enforcement timer using claims
+	expiryTimer := s.setupExpiryTimer(claims)
+	if expiryTimer != nil {
+		defer expiryTimer.Stop()
+	}
+
 	// Set SSE headers
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
 	// Add client and get channel
-	clientChan := s.AddClient(userID)
-	defer s.RemoveClient(userID, clientChan)
+	clientChan := s.addClient(userID)
+	defer s.removeClient(userID, clientChan)
 
 	log := logger.ForOperation("sse", "handle_connection").With().Int("user_id", userID).Logger()
 
 	// Send initial connection message
 	s.Notify(userID, "connected", models.NotificationSeverityInfo, map[string]string{"status": "connected"}, "")
+
+	var expiryC <-chan time.Time
+	if expiryTimer != nil {
+		expiryC = expiryTimer.C
+	}
 
 	// Stream messages to client
 	c.Stream(func(w io.Writer) bool {
@@ -170,6 +210,10 @@ func (s *SSEManager) HandleSSE(c *gin.Context) {
 
 			c.SSEvent("message", string(data))
 			return true
+
+		case <-expiryC:
+			// Token expired (nil channel never fires)
+			return false
 
 		case <-c.Request.Context().Done():
 			log.Debug().Msg("Client disconnected")
