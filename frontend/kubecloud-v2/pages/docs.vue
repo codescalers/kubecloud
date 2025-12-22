@@ -1,14 +1,12 @@
 <template>
-  <v-container>
-    <v-layout>
-      <v-list>
-        <v-list-item link exact title="Getting Started" to="/docs" />
-        <v-list-item link exact title="Tutorials" to="/docs/tutorials" />
-      </v-list>
+  <StickySidebarLayout :cols="9">
+    <template #items>
+      <v-list-item link exact title="Getting Started" to="/docs" />
+      <v-list-item link exact title="Tutorials" to="/docs/tutorials" />
+    </template>
 
-      <v-main>
-        <NuxtPage />
-      </v-main>
-    </v-layout>
-  </v-container>
+    <NuxtPage />
+    <div :style="{ height: '2000px' }" />
+    <NuxtPage />
+  </StickySidebarLayout>
 </template>

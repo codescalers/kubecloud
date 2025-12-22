@@ -8,13 +8,6 @@
       <v-text-field v-model="email" variant="outlined" label="Email Address" />
       <v-text-field v-model="password" variant="outlined" label="Password" type="password" />
 
-      <!-- <v-btn
-        type="button"
-        text="Forgot Password?"
-        variant="text"
-        size="small"
-        @click="$emit('forgot-password')"
-      /> -->
       <a href="#!" class="text-link text-caption" @click.prevent="$emit('forgot-password')">
         Forgot Password?
       </a>

@@ -1,12 +1,10 @@
 <template>
   <v-app>
-    <v-layout>
-      <app-navbar />
+    <app-navbar />
 
-      <v-main>
-        <slot />
-      </v-main>
-      <app-footer />
-    </v-layout>
+    <v-main>
+      <slot />
+    </v-main>
+    <app-footer />
   </v-app>
 </template>

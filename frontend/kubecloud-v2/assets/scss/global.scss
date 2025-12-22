@@ -18,3 +18,9 @@
     border-bottom-color: currentColor;
   }
 }
+
+.sticky-top {
+  position: sticky !important;
+  top: 80px;
+  max-height: calc(100vh - 225px);
+}
