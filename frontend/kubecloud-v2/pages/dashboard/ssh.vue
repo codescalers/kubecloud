@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div :style="{ width: '50%' }">
     <h1>Dashboard SSH {{ isLoading }}</h1>
 
     <pre>
-      {{ state }}
+    {{ state }}
     </pre>
   </div>
 </template>

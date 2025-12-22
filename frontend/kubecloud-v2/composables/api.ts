@@ -9,7 +9,7 @@ import {
   TwinsApi,
   UsersApi,
   WorkflowApi,
-} from "../generated/api"
+} from "~/generated/api"
 
 export const useApi = createGlobalState(() => {
   const mu = new MutexLock()
@@ -33,8 +33,7 @@ export const useApi = createGlobalState(() => {
   const users = new UsersApi(undefined, undefined, instance)
   const workflow = new WorkflowApi(undefined, undefined, instance)
 
-  const accessToken = useLocalStorage<string>("accessToken", "", { writeDefaults: false })
-  const refreshToken = useLocalStorage<string>("refreshToken", "", { writeDefaults: false })
+  const { accessToken, refreshToken } = useTokens()
 
   instance.interceptors.request.use(async (config) => {
     if (config.unauthenticated) {

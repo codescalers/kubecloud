@@ -23,7 +23,7 @@ export default defineNuxtConfig({
       },
     },
   },
-  css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles"],
+  css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles", "~/assets/scss/global.scss"],
   modules: ["@nuxt/eslint", "@vueuse/nuxt"],
   runtimeConfig: {
     public: {

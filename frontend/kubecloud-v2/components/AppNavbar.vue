@@ -34,22 +34,42 @@
 
       <v-spacer />
 
-      <v-btn variant="outlined" class="mr-2" to="/login">Login</v-btn>
-      <v-btn v-if="$route.path !== '/register'" variant="flat" color="primary" to="/register"
-        >Register</v-btn
-      >
-      <!-- <v-menu>
+      <template v-if="!authenticated">
+        <v-btn
+          v-if="$route.path !== '/login'"
+          variant="outlined"
+          class="mr-2"
+          to="/login"
+          text="Login"
+        />
+
+        <v-btn
+          v-if="$route.path !== '/register'"
+          variant="flat"
+          color="primary"
+          to="/register"
+          text="Register"
+        />
+      </template>
+
+      <v-menu v-else>
         <template #activator="{ props }">
-          <v-btn text="Account" v-bind="props" />
+          <v-btn text="Account" v-bind="props" append-icon="mdi-chevron-down" />
         </template>
 
         <v-list>
-          <v-list-item title="Dashboard" to="/dashboard" />
-          <v-list-item title="Profile" to="/dashboard/profile" />
-          <v-list-item title="Logout" @click="console.log('logout')" />
+          <v-list-item link title="Dashboard" prepend-icon="mdi-view-dashboard" to="/dashboard" />
+          <v-list-item link title="Profile" prepend-icon="mdi-account" to="/profile" />
+          <v-divider />
+          <v-list-item
+            link
+            title="Logout"
+            prepend-icon="mdi-logout"
+            class="text-error"
+            @click="logout()"
+          />
         </v-list>
-      </v-menu> -->
-      <!-- {{ console.log(activeItem) }} -->
+      </v-menu>
     </v-container>
   </v-app-bar>
 </template>
@@ -89,6 +109,15 @@ function animateIndicatorToActive() {
   setTimeout(() => {
     indicatorTransform.value = { offset, width }
   }, 250)
+}
+
+const router = useRouter()
+const { accessToken, refreshToken } = useTokens()
+const authenticated = computed(() => !!accessToken.value)
+function logout() {
+  accessToken.value = ""
+  refreshToken.value = ""
+  router.push("/")
 }
 </script>
 

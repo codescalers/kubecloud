@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import type { HandlersRegisterInput } from "../generated/api"
+import type { HandlersRegisterInput } from "~/generated/api"
 
 const props = defineProps<{ modelValue: HandlersRegisterInput | null }>()
 defineEmits<{ (e: "update:model-value", value: HandlersRegisterInput | null): void }>()
@@ -54,8 +54,7 @@ const router = useRouter()
 const api = useApi()
 const otp = ref("")
 
-const accessToken = useLocalStorage<string>("accessToken", "", { writeDefaults: false })
-const refreshToken = useLocalStorage<string>("refreshToken", "", { writeDefaults: false })
+const { accessToken, refreshToken } = useTokens()
 
 const { execute: verifyCode, isLoading } = useAsyncState(
   async () => {
@@ -82,6 +81,7 @@ const { execute: verifyCode, isLoading } = useAsyncState(
 
     accessToken.value = loginData.data?.access_token ?? ""
     refreshToken.value = loginData.data?.refresh_token ?? ""
+    await nextTick() // make sure the tokens are updated
 
     router.push("/dashboard")
   },
