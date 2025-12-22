@@ -1,6 +1,6 @@
 <template>
   <v-row>
-    <v-col cols="6">
+    <v-col :cols="block ? 12 : 6">
       <v-text-field
         v-model.trim="password"
         variant="outlined"
@@ -24,7 +24,7 @@
       </v-text-field>
     </v-col>
 
-    <v-col cols="12" order="last">
+    <v-col cols="12" :order="block ? undefined : 'last'">
       <p class="text-body-2 opacity-70 mb-2">
         Password must contain at least 8 characters, including:
       </p>
@@ -43,7 +43,7 @@
       </v-list-item>
     </v-col>
 
-    <v-col cols="6">
+    <v-col :cols="block ? 12 : 6">
       <v-text-field
         ref="confirmPasswordRef"
         v-model.trim="confirmPassword"
@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import type { VTextField } from "vuetify/components/VTextField"
 
-defineProps<{ modelValue: string }>()
+defineProps<{ modelValue: string; block?: boolean }>()
 const emit = defineEmits<{ (e: "update:model-value", value: string): void }>()
 
 const confirmPasswordRef = ref<VTextField>()
