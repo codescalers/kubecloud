@@ -113,18 +113,36 @@ func main() {
 		map[string]any{
 			"id":    id + 26,
 			"type":  "logs",
-			"title": "Application Logs",
+			"title": "KubeCloud Application Logs",
 			"targets": []map[string]any{
 				{
 					"expr":       `{job="app-logs"}`,
 					"refId":      "A",
-					"datasource": "Loki",
+					"datasource": "Loki - KubeCloud",
 				},
 			},
 			"gridPos": map[string]int{
 				"h": 8,
-				"w": 24,
+				"w": 12,
 				"x": 0,
+				"y": y + 76,
+			},
+		},
+		map[string]any{
+			"id":    id + 27,
+			"type":  "logs",
+			"title": "VMs Logs",
+			"targets": []map[string]any{
+				{
+					"expr":       `{job="tailstream"}`,
+					"refId":      "A",
+					"datasource": "Loki - VMs",
+				},
+			},
+			"gridPos": map[string]int{
+				"h": 8,
+				"w": 12,
+				"x": 12,
 				"y": y + 76,
 			},
 		},
