@@ -40,6 +40,7 @@ func deploymentFromNode(
 	masterSSH string,
 	mnemonic string,
 	gridNet string,
+	zlogOutputURL string,
 ) (workloads.Deployment, error) {
 	ipSeed, err := workloads.RandomMyceliumIPSeed()
 	if err != nil {
@@ -82,6 +83,13 @@ func deploymentFromNode(
 		node.EnvVars = make(map[string]string)
 	}
 
+	zlogs := []workloads.Zlog{
+		{
+			Zmachine: node.Name,
+			Output:   zlogOutputURL,
+		},
+	}
+
 	vm := workloads.VM{
 		Name:           node.Name,
 		NodeID:         node.NodeID,
@@ -96,6 +104,7 @@ func deploymentFromNode(
 		MyceliumIPSeed: ipSeed,
 		Mounts:         mounts,
 		GPUs:           gpus,
+		Zlogs:          zlogs,
 	}
 
 	vm.EnvVars["K3S_NODE_NAME"] = node.Name

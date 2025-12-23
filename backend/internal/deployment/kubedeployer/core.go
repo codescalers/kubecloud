@@ -111,6 +111,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		masterPubKey,
 		c.mnemonic,
 		c.GridClient.Network,
+		c.zlogOutputURL,
 	)
 	if err != nil {
 		telemetry.RecordError(span, err)
@@ -243,6 +244,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 			masterPubKey,
 			c.mnemonic,
 			c.GridClient.Network,
+			c.zlogOutputURL,
 		)
 		if err != nil {
 			telemetry.RecordError(span, err)

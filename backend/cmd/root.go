@@ -211,6 +211,10 @@ func addFlags() error {
 		return fmt.Errorf("failed to bind telemetry.otlp_endpoint flag: %w", err)
 	}
 
+	// === Zlog Output URL ===
+	if err := bindStringFlag(rootCmd, "zlog_output_url", "", "Zlog output URL for VM log streaming"); err != nil {
+		return fmt.Errorf("failed to bind zlog_output_url flag: %w", err)
+	}
 	return nil
 }
 
