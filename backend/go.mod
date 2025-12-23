@@ -41,7 +41,7 @@ require (
 	golang.org/x/crypto v0.45.0
 	golang.org/x/sync v0.19.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
-	google.golang.org/grpc v1.77.0
+	google.golang.org/grpc v1.78.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
