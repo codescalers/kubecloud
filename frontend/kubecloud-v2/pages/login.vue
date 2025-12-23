@@ -28,6 +28,8 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({ middleware: "non-auth" })
+
 const activeTab = ref(0)
 const email = ref("")
 </script>
