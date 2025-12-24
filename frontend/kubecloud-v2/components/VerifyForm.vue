@@ -1,35 +1,65 @@
 <template>
   <div>
-    <h3 class="text-h5 text-center mb-4">Please check your email</h3>
-    <p class="text-body-2 text-center mb-4">
-      We've sent a code to
-      <span class="font-weight-bold">{{ modelValue?.email }}</span>
+    <h3 class="text-h4 font-weight-bold mb-3">Verify Your email</h3>
+
+    <p class="text-subtitle-2 mb-9">
+      <span class="opacity-70">
+        Please check your email for the verification code. We've sent a code to </span
+      >&nbsp; <span class="font-weight-bold opacity-90">em***@example.com</span>.
+      <span class="opacity-70">Please enter the 4-6 digits code.</span>
     </p>
 
     <v-form @submit.prevent="verifyCode()">
-      <v-otp-input v-model="otp" length="4" variant="outlined" autofocus :disabled="isLoading" />
+      <v-text-field
+        v-model.trim="otp"
+        variant="outlined"
+        autofocus
+        max-width="150"
+        placeholder="123456"
+        class="mx-auto code-input"
+        maxlength="6"
+        :rules="[(v) => v.length > 3]"
+      />
+
+      <p class="mb-2 text-caption">
+        <span class="opacity-70 d-inline-block mb-1">Didn't receive the code?</span>&nbsp;
+        <span v-if="isActive" class="font-weight-bold opacity-50">
+          00:{{ remaining < 10 ? "0" : "" }}{{ remaining }}
+        </span>
+        <v-btn
+          v-else
+          type="button"
+          class="font-weight-bold"
+          text="Resend"
+          variant="text"
+          size="x-small"
+          :disabled="isActive"
+          @click="start(60)"
+        />
+      </p>
 
       <v-btn
         type="submit"
         block
         size="x-large"
         class="btn-form"
-        text="Verify"
-        prepend-icon="mdi-check-circle-outline"
+        text="Confirm Email"
+        prepend-icon="mdi-check-decagram-outline"
         variant="outlined"
-        :disabled="otp.length !== 4"
+        :disabled="otp.length < 4"
         :loading="isLoading"
       />
     </v-form>
 
-    <div class="d-flex justify-center align-center mt-4">
-      <p>
-        Didn't receive the code?
-        <v-btn text="Resend Code" variant="outlined" size="small" />
-      </p>
+    <div class="d-flex justify-center align-center">
+      <v-btn
+        class="mt-4 text-caption font-weight-bold"
+        prepend-icon="mdi-arrow-left-thin"
+        text="Back To Register"
+        variant="plain"
+        @click="$emit('update:model-value', null)"
+      />
     </div>
-
-    <v-btn text="Another Account?" variant="text" @click="$emit('update:model-value', null)" />
   </div>
 </template>
 
@@ -44,6 +74,8 @@ const api = useApi()
 const otp = ref("")
 
 const { accessToken, refreshToken } = useTokens()
+
+const { isActive, remaining, start } = useCountdown(60, { immediate: true })
 
 const { execute: verifyCode, isLoading } = useAsyncState(
   async () => {
@@ -78,3 +110,11 @@ const { execute: verifyCode, isLoading } = useAsyncState(
   { immediate: false }
 )
 </script>
+
+<style lang="scss">
+.code-input {
+  input {
+    text-align: center !important;
+  }
+}
+</style>
