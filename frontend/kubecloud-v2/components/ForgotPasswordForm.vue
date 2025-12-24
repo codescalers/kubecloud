@@ -1,8 +1,10 @@
 <template>
   <div>
-    <h3 class="text-h4 text-center mb-4">Forgot Password</h3>
+    <h1 class="text-h4 font-weight-bold text-center">Forgot Password</h1>
 
-    <p class="mb-10 text-center">Enter your email to receive a reset code.</p>
+    <p class="text-subtitle-2 opacity-70 text-center mt-2 mb-8">
+      Enter your email to receive a reset code
+    </p>
 
     <v-form v-model="valid" @submit.prevent="forgotPassword()">
       <v-text-field
@@ -12,6 +14,7 @@
         label="Email Address"
         placeholder="Enter your email address"
         autofocus
+        hide-details
         :rules="[
           (v) => !!v || 'Email address is required',
           (v) => (v.includes('@') && v.includes('.')) || 'Email address must be valid',
@@ -21,23 +24,15 @@
       <v-btn
         type="submit"
         block
-        size="large"
+        size="x-large"
+        class="btn-form mt-5"
         text="Reset Password"
+        prepend-icon="mdi-lock-reset"
         variant="outlined"
-        class="mt-6"
         :disabled="!valid"
         :loading="isLoading"
       />
     </v-form>
-
-    <div class="d-flex justify-center align-center mt-4">
-      <v-btn
-        prepend-icon="mdi-keyboard-backspace"
-        flat
-        text="Back To Login"
-        @click="$emit('back-to-login')"
-      />
-    </div>
   </div>
 </template>
 

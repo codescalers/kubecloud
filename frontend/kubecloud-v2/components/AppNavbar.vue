@@ -39,12 +39,23 @@
       <v-spacer />
 
       <template v-if="!authenticated">
+        <span v-if="$route.path === '/sign-in'" class="text-caption opacity-70 mr-2">
+          Don't have an account?
+        </span>
+
+        <span v-if="$route.path === '/sign-up'" class="text-caption opacity-70 mr-2">
+          Already have an account?
+        </span>
+
+        <v-btn v-if="$route.path !== '/sign-up'" variant="outlined" to="/sign-up" text="Sign up" />
+
         <v-btn
-          v-if="$route.path !== '/login'"
-          variant="outlined"
-          class="mr-2"
-          to="/login"
+          v-if="$route.path !== '/sign-in'"
+          variant="tonal"
+          color="primary"
+          to="/sign-in"
           text="Sign in"
+          class="ml-2"
         />
 
         <!-- <v-btn

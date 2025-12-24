@@ -1,11 +1,12 @@
 <template>
-  <div>
+  <div class="text-center">
     <h3 class="text-h4 font-weight-bold mb-3">Verify Your email</h3>
 
     <p class="text-subtitle-2 mb-9">
       <span class="opacity-70">
-        Please check your email for the verification code. We've sent a code to </span
-      >&nbsp; <span class="font-weight-bold opacity-90">em***@example.com</span>.
+        Please check your email for the verification code. We've sent a code to
+      </span>
+      &nbsp; <span class="font-weight-bold opacity-90" v-text="email" />.
       <span class="opacity-70">Please enter the 4-6 digits code.</span>
     </p>
 
@@ -43,7 +44,7 @@
         block
         size="x-large"
         class="btn-form"
-        text="Confirm Email"
+        text="Verify Email"
         prepend-icon="mdi-check-decagram-outline"
         variant="outlined"
         :disabled="otp.length < 4"
@@ -71,6 +72,20 @@ defineEmits<{ (e: "update:model-value", value: HandlersRegisterInput | null): vo
 
 const router = useRouter()
 const api = useApi()
+const email = computed(() => {
+  const e = props.modelValue?.email
+  if (!e) {
+    return ""
+  }
+
+  const parts = e.split("@")
+  if (parts.length !== 2) {
+    return e
+  }
+
+  return `${parts[0]!.slice(0, 2)}***@${parts[1]}`
+})
+
 const otp = ref("")
 
 const { accessToken, refreshToken } = useTokens()

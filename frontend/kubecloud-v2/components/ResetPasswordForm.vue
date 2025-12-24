@@ -1,7 +1,8 @@
 <template>
   <div>
-    <h3 class="text-h5 text-center mb-4">Reset Password</h3>
-    <p class="text-body-2 text-center mb-4">Enter your new password below.</p>
+    <h1 class="text-h4 font-weight-bold text-center">Reset Password</h1>
+
+    <p class="text-subtitle-2 opacity-70 text-center mt-2 mb-10">Enter your new password below</p>
 
     <v-form v-model="valid" @submit.prevent="resetPassword()">
       <PasswordInput v-model="password" block />
@@ -9,11 +10,11 @@
       <v-btn
         type="submit"
         block
-        size="large"
-        text="Verify"
+        size="x-large"
+        class="btn-form mt-5"
+        text="Update Password"
+        prepend-icon="mdi-lock-reset"
         variant="outlined"
-        class="mt-4"
-        prepend-icon="mdi-check-circle"
         :disabled="!valid"
         :loading="isLoading"
       />

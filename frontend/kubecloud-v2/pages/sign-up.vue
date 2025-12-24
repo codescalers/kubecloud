@@ -1,25 +1,21 @@
 <template>
-  <AuthLayout :cols="6">
+  <AuthLayout
+    title="Join Mycelium Cloud"
+    quote="Start your journey into decentralized cloud infrastructure."
+    subtitle="Create your account to access secure compute, scalable resources, and a next-generation cloud built without central points of failure."
+  >
     <v-tabs-window :model-value="activeTab" class="w-100 h-100">
       <v-tabs-window-item class="h-100">
-        <div class="pa-10 d-flex justify-center align-center h-100 w-100">
-          <v-card
-            max-width="668"
-            class="mx-auto px-10 py-8 border w-100"
-            :style="{ borderRadius: '18px' }"
-          >
+        <div class="form-container">
+          <v-card max-width="668">
             <RegisterForm v-model="registerBody" />
           </v-card>
         </div>
       </v-tabs-window-item>
 
       <v-tabs-window-item class="h-100">
-        <div class="pa-10 d-flex justify-center align-center h-100 w-100">
-          <v-card
-            max-width="668"
-            class="mx-auto px-10 py-8 border w-100"
-            :style="{ borderRadius: '18px' }"
-          >
+        <div class="form-container">
+          <v-card max-width="668">
             <VerifyForm v-model="registerBody" />
           </v-card>
         </div>

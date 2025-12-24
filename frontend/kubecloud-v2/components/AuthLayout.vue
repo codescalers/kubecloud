@@ -13,7 +13,7 @@
           background: `url(${reversed ? myceliumBg2 : myceliumBg1}) no-repeat  ${reversed ? '-250px 170px' : 'bottom right'}/70%, linear-gradient(180deg, #182F66 0%, #0F172A 100%)`,
         }"
       >
-        <div :style="{ maxWidth: '560px' }">
+        <div :style="{ maxWidth: '600px' }">
           <h2 class="text-h4 font-weight-bold" v-text="title" />
           <div class="text-h6">
             <p class="mt-3 mb-8" v-text="quote" />

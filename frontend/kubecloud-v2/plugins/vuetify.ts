@@ -30,6 +30,12 @@ export default defineNuxtPlugin((nuxtApp) => {
           autocomplete: "off",
           spellcheck: false,
         },
+        VCard: {
+          class: "px-10 py-8 border",
+          style: {
+            borderRadius: "18px",
+          },
+        },
       },
     })
   )

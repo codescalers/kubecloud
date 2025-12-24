@@ -5,6 +5,6 @@ export default defineNuxtRouteMiddleware((to) => {
 
   const { accessToken } = useTokens()
   if (!accessToken.value) {
-    return navigateTo("/login")
+    return navigateTo("/sign-in")
   }
 })
