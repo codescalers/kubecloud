@@ -11,18 +11,18 @@ datasources:
   - name: Loki - KubeCloud
     type: loki
     access: proxy
-    url: http://loki:3100
+    url: http://mycelium:3100
     isDefault: false
     jsonData:
       httpHeaderName1: "X-Scope-OrgID"
     secureJsonData:
       httpHeaderValue1: "kubecloud"
 
-  # Cluster VMs logs  
+  # Cluster VMs logs
   - name: Loki - VMs
     type: loki
     access: proxy
-    url: http://loki:3100
+    url: http://mycelium:3100
     isDefault: false
     jsonData:
       httpHeaderName1: "X-Scope-OrgID"

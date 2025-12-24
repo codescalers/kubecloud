@@ -67,6 +67,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
+	github.com/threefoldtech/zosbase v1.0.7-0.20251223152017-727e292afc8a // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
@@ -172,7 +173,6 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/threefoldtech/tfgrid-sdk-go/rmb-sdk-go v0.17.5 // indirect
-	github.com/threefoldtech/zosbase v1.0.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	github.com/vedhavyas/go-subkey/v2 v2.0.0 // indirect
