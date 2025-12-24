@@ -10,3 +10,7 @@
     <NuxtPage />
   </StickySidebarLayout>
 </template>
+
+<script setup lang="ts">
+definePageMeta({ middleware: "public" })
+</script>

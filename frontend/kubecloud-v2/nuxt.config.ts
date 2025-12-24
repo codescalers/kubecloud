@@ -24,10 +24,16 @@ export default defineNuxtConfig({
     },
   },
   css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles", "~/assets/scss/global.scss"],
-  modules: ["@nuxt/eslint", "@vueuse/nuxt"],
+  modules: ["@nuxt/eslint", "@vueuse/nuxt", "@nuxtjs/google-fonts"],
   runtimeConfig: {
     public: {
       apiBasePath: process.env.API_BASE_PATH,
     },
+  },
+  googleFonts: {
+    families: {
+      Inter: [300, 400, 500, 600, 700],
+    },
+    display: "swap",
   },
 })

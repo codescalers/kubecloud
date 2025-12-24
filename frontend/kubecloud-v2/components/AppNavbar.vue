@@ -1,12 +1,14 @@
 <template>
-  <v-app-bar name="app-bar">
+  <v-app-bar
+    height="73"
+    class="border-b bg-background"
+    :style="{ boxShadow: '0px 2px 4px 0px #3B82F60D' }"
+  >
     <v-container class="d-flex align-center py-0">
       <div class="mr-16">
-        <v-img
-          src="https://staging.myceliumcloud.tf/assets/logo-DY_xoQWE.png"
-          width="150"
-          height="40"
-        />
+        <NuxtLink to="/">
+          <v-img src="~/assets/images/logo.png" width="124" height="33" />
+        </NuxtLink>
       </div>
 
       <div class="position-relative">
@@ -14,16 +16,18 @@
           v-for="r in routes"
           :key="r.path"
           ref="navbarLinkItems"
+          size="small"
           variant="plain"
           :text="r.title"
           :to="r.path"
-          class="navbar-link-item opacity-100"
+          class="navbar-link-item opacity-70"
         />
 
         <span
-          class="position-absolute bottom-0 left-0 bg-primary"
+          class="position-absolute left-0 bg-white"
           :style="{
-            height: '2px',
+            bottom: '-20px',
+            height: '1px',
             width: '1px',
             transition: 'transform 0.25s ease',
             transformOrigin: 'left center',
@@ -40,16 +44,16 @@
           variant="outlined"
           class="mr-2"
           to="/login"
-          text="Login"
+          text="Sign in"
         />
 
-        <v-btn
+        <!-- <v-btn
           v-if="$route.path !== '/register'"
           variant="flat"
           color="primary"
           to="/register"
           text="Register"
-        />
+        /> -->
       </template>
 
       <v-menu v-else>
@@ -123,11 +127,11 @@ function logout() {
 
 <style scoped lang="scss">
 .navbar-link-item {
-  transition: color 0.3s ease;
+  transition: opacity 0.3s ease;
 
   &.v-btn--active,
   &:hover {
-    color: rgb(var(--v-theme-primary));
+    opacity: 1 !important;
   }
 }
 </style>

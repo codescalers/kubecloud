@@ -1,3 +1,12 @@
+body {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
 .text-link {
   position: relative;
   text-decoration: none;
@@ -23,4 +32,24 @@
   position: sticky !important;
   top: 80px;
   max-height: calc(100vh - 225px);
+}
+
+.button-style {
+  text-transform: none !important;
+  font-size: 12px !important;
+
+  &.v-btn--size-default {
+    --v-btn-height: 38px;
+    padding: 0 17.5px;
+  }
+
+  &.v-btn--variant-outlined {
+    border-radius: 8px !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    transition: border-color 0.3s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 1) !important;
+    }
+  }
 }

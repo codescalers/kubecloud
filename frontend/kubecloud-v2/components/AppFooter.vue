@@ -1,6 +1,6 @@
 <template>
-  <v-footer app name="footer">
-    <v-container>
+  <v-footer app class="bg-background border-t py-0">
+    <v-container class="py-9">
       <v-row align="center">
         <v-col>
           <v-img
@@ -13,21 +13,29 @@
         <v-spacer />
 
         <v-col cols="auto">
-          <v-btn text="Documentation" to="/docs" variant="plain" />
+          <v-btn size="small" text="Documentation" to="/docs" variant="plain" />
           <v-btn
+            size="small"
             text="Github"
             target="_blank"
             href="https://github.com/codescalers/kubecloud"
             variant="plain"
           />
-          <v-btn text="Terms & Conditions" to="/terms-and-conditions" variant="plain" />
-          <v-btn text="Privacy Policy" to="/privacy-policy" variant="plain" />
+          <v-btn
+            size="small"
+            text="Terms & Conditions"
+            to="/terms-and-conditions"
+            variant="plain"
+          />
+          <v-btn size="small" text="Privacy Policy" to="/privacy-policy" variant="plain" />
         </v-col>
       </v-row>
 
-      <v-divider class="my-4" />
+      <v-divider class="my-6" />
 
-      <p class="text-primary text-center">© 2025 Mycelium Cloud. All rights reserved.</p>
+      <p class="text-primary text-center" :style="{ fontSize: '12px', color: '#60A5FA' }">
+        © 2025 Mycelium Cloud. All rights reserved.
+      </p>
     </v-container>
   </v-footer>
 </template>

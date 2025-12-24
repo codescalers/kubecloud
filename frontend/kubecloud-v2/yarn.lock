@@ -1086,7 +1086,7 @@
     unctx "^2.4.1"
     untyped "^2.0.0"
 
-"@nuxt/kit@^3.15.4":
+"@nuxt/kit@^3.10.3", "@nuxt/kit@^3.15.4":
   version "3.20.2"
   resolved "https://registry.yarnpkg.com/@nuxt/kit/-/kit-3.20.2.tgz#6af1b227f15ee9518337b1306829872d17a6e341"
   integrity sha512-laqfmMcWWNV1FsVmm1+RQUoGY8NIJvCRl0z0K8ikqPukoEry0LXMqlQ+xaf8xJRvoH2/78OhZmsEEsUBTXipcw==
@@ -1216,6 +1216,15 @@
     vite-node "^5.2.0"
     vite-plugin-checker "^0.12.0"
     vue-bundle-renderer "^2.2.0"
+
+"@nuxtjs/google-fonts@^3.2.0":
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/@nuxtjs/google-fonts/-/google-fonts-3.2.0.tgz#03e3284dc980e6bcaa0c67c3080aecda76574b1c"
+  integrity sha512-cGAjDJoeQ2jm6VJCo4AtSmKO6KjsbO9RSLj8q261fD0lMVNMZCxkCxBkg8L0/2Vfgp+5QBHWVXL71p1tiybJFw==
+  dependencies:
+    "@nuxt/kit" "^3.10.3"
+    google-fonts-helper "^3.5.0"
+    pathe "^1.1.2"
 
 "@nuxtjs/opencollective@0.3.2":
   version "0.3.2"
@@ -3185,7 +3194,7 @@ deep-is@^0.1.3:
   resolved "https://registry.yarnpkg.com/deep-is/-/deep-is-0.1.4.tgz#a6f2dce612fadd2ef1f519b73551f17e85199831"
   integrity sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==
 
-deepmerge@^4.2.2:
+deepmerge@^4.2.2, deepmerge@^4.3.1:
   version "4.3.1"
   resolved "https://registry.yarnpkg.com/deepmerge/-/deepmerge-4.3.1.tgz#44b5f2147cd3b00d4b56137685966f26fd25dd4a"
   integrity sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==
@@ -4157,6 +4166,16 @@ globby@^15.0.0:
     path-type "^6.0.0"
     slash "^5.1.0"
     unicorn-magic "^0.3.0"
+
+google-fonts-helper@^3.5.0:
+  version "3.7.3"
+  resolved "https://registry.yarnpkg.com/google-fonts-helper/-/google-fonts-helper-3.7.3.tgz#ea78e60a129c45f69fe09ffa84e28be9e3bb7ed0"
+  integrity sha512-dENZeK6RMvkCOFoKbLbS+pyoDgpmk4U6BYmfXnztMar2d8SjEG6valxql/Lkyi7bu5F+3FTdE+gAEYSYZ5zzMA==
+  dependencies:
+    deepmerge "^4.3.1"
+    hookable "^5.5.3"
+    ofetch "^1.4.1"
+    ufo "^1.5.4"
 
 gopd@^1.2.0:
   version "1.2.0"
