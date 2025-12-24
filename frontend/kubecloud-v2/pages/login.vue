@@ -30,6 +30,6 @@
 <script setup lang="ts">
 definePageMeta({ middleware: "non-auth" })
 
-const activeTab = ref(0)
+const activeTab = ref(3)
 const email = ref("")
 </script>

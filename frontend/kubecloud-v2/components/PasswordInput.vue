@@ -1,22 +1,22 @@
 <template>
   <v-row>
-    <v-col :cols="block ? 12 : 6">
+    <v-col cols="12" sm="6" md="12" lg="6">
       <v-text-field
         v-model.trim="password"
         variant="outlined"
         label="Password"
         placeholder="Enter your password"
-        prepend-inner-icon="mdi-lock"
+        prepend-inner-icon="mdi-lock-outline"
         :rules="[
-          (v) =>
-            passwordRules.every((rule) => rule.rule(v)) || 'Please meet all password requirements',
+          (v) => passwordRules.slice(0, passwordRules.length - 1).every((rule) => rule.rule(v)),
         ]"
         :type="showPassword ? 'text' : 'password'"
+        hide-details
         @input="confirmPassword && confirmPasswordRef?.validate()"
       >
         <template #append-inner>
           <v-icon
-            :icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+            :icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
             tabindex="-1"
             @click="showPassword = !showPassword"
           />
@@ -24,42 +24,47 @@
       </v-text-field>
     </v-col>
 
-    <v-col cols="12" :order="block ? undefined : 'last'">
-      <p class="text-body-2 opacity-70 mb-2">
-        Password must contain at least 8 characters, including:
-      </p>
+    <v-col cols="12" order-sm="last" order-md="0" order-lg="last">
+      <v-card flat class="bg-2 border pa-4" :style="{ borderRadius: '8px' }">
+        <p class="mb-2" :style="{ fontSize: '12px' }">
+          Password must contain at least 8 characters, including:
+        </p>
 
-      <v-list-item v-for="{ label, rule } in passwordRules" :key="label" density="compact">
-        <template #prepend>
-          <v-avatar :color="rule(password) ? 'success' : 'error'" variant="tonal" size="20">
-            <v-icon v-if="rule(password)" icon="mdi-check" size="14" />
-            <v-icon v-else icon="mdi-close" size="14" />
-          </v-avatar>
-        </template>
+        <v-list-item
+          v-for="{ label, rule } in passwordRules"
+          :key="label"
+          class="pl-0"
+          density="compact"
+        >
+          <template #prepend>
+            <v-avatar color="transparent" size="20" :style="{ marginRight: '-6px' }">
+              <v-icon v-if="rule(password)" size="small" icon="mdi-check" color="success" />
+              <v-icon v-else icon="mdi-close" size="small" color="error" />
+            </v-avatar>
+          </template>
 
-        <v-list-item-title class="text-body-2 opacity-60">
-          {{ label }}
-        </v-list-item-title>
-      </v-list-item>
+          <v-list-item-title class="opacity-50 text-caption">
+            {{ label }}
+          </v-list-item-title>
+        </v-list-item>
+      </v-card>
     </v-col>
 
-    <v-col :cols="block ? 12 : 6">
+    <v-col cols="12" sm="6" md="12" lg="6">
       <v-text-field
         ref="confirmPasswordRef"
         v-model.trim="confirmPassword"
         variant="outlined"
         label="Confirm Password"
-        prepend-inner-icon="mdi-lock-check"
+        prepend-inner-icon="mdi-lock-check-outline"
         placeholder="Confirm your password"
-        :rules="[
-          (v) => !!v || 'Confirm password is required',
-          (v) => v === password || 'Passwords do not match',
-        ]"
+        :rules="[(v) => !!v, (v) => v === password]"
         :type="showConfirmPassword ? 'text' : 'password'"
+        hide-details
       >
         <template #append-inner>
           <v-icon
-            :icon="showConfirmPassword ? 'mdi-eye' : 'mdi-eye-off'"
+            :icon="showConfirmPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
             tabindex="-1"
             @click="showConfirmPassword = !showConfirmPassword"
           />
@@ -91,5 +96,6 @@ const passwordRules = markRaw([
   { label: "One number (0-9)", rule: (v: string) => v.match(/[0-9]/) !== null },
   { label: "One special character (!@#$%^&*)", rule: (v: string) => v.match(/[!@#$%^&*]/) !== null },
   { label: "At least 8 characters", rule: (v: string) => v.length >= 8 },
+  { label: "Passwords should match", rule: (v: string) => !!v && v === confirmPassword.value },
 ])
 </script>

@@ -6,20 +6,19 @@
       <span class="font-weight-bold">{{ modelValue?.email }}</span>
     </p>
 
-    <v-form @submit.prevent>
+    <v-form @submit.prevent="verifyCode()">
       <v-otp-input v-model="otp" length="4" variant="outlined" autofocus :disabled="isLoading" />
 
       <v-btn
         type="submit"
         block
-        size="large"
+        size="x-large"
+        class="btn-form"
         text="Verify"
+        prepend-icon="mdi-check-circle-outline"
         variant="outlined"
-        class="mt-4"
-        prepend-icon="mdi-check-circle"
         :disabled="otp.length !== 4"
         :loading="isLoading"
-        @click="verifyCode()"
       />
     </v-form>
 
