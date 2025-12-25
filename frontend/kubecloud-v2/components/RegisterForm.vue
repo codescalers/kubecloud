@@ -2,7 +2,7 @@
   <div>
     <h1 class="text-h4 font-weight-bold mb-9">Create Account</h1>
 
-    <v-form v-model="valid" @submit.prevent="register()">
+    <v-form v-model="valid" :disabled="isLoading" @submit.prevent="register()">
       <v-row>
         <v-col cols="12" sm="6" md="12" lg="6">
           <v-text-field
@@ -22,6 +22,7 @@
 
         <v-col cols="12" sm="6" md="12" lg="6">
           <v-text-field
+            ref="emailRef"
             v-model.trim="email"
             prepend-inner-icon="mdi-email-outline"
             variant="outlined"
@@ -29,8 +30,11 @@
             placeholder="Enter your email address"
             :rules="[
               (v) => !!v || 'Email address is required',
-              (v) => (v.includes('@') && v.includes('.')) || 'Email address must be valid',
+              (v) => isEmail(v) || 'Email address must be valid',
             ]"
+            :error="emailInUse || undefined"
+            :error-messages="emailInUse ? ['Email already in use'] : undefined"
+            @input="emailInUse && (emailInUse = false)"
           />
         </v-col>
 
@@ -69,6 +73,8 @@
 </template>
 
 <script lang="ts" setup>
+import { AxiosError } from "axios"
+import { isEmail } from "validator"
 import type { HandlersRegisterInput } from "~/generated/api"
 
 const props = defineProps<{ modelValue: HandlersRegisterInput | null }>()
@@ -77,6 +83,7 @@ const emit = defineEmits<{ (e: "update:model-value", value: HandlersRegisterInpu
 const api = useApi()
 
 const valid = ref(false)
+const emailInUse = ref(false)
 
 const username = ref("")
 const email = ref("")
@@ -96,17 +103,23 @@ const { execute: register, isLoading } = useAsyncState(
       confirm_password: password.value,
     }
 
-    const { data: d1 } = await api.users.registerUser(registerBody, {
-      unauthenticated: true,
-    })
+    const { data: d1 } = await api.users.registerUser(registerBody, { unauthenticated: true })
     const completed = await api.helpers.awaitWorkflowCompletion(d1.data?.workflow_id ?? "")
 
-    console.log({ d1, completed })
     if (completed) {
       emit("update:model-value", registerBody)
     }
   },
   null,
-  { immediate: false }
+  {
+    immediate: false,
+    onError(err: unknown) {
+      if (err instanceof AxiosError) {
+        if (err.response?.status === 409) {
+          emailInUse.value = true
+        }
+      }
+    },
+  }
 )
 </script>

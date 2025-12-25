@@ -6,11 +6,14 @@
       <span class="opacity-70">
         Please check your email for the verification code. We've sent a code to
       </span>
-      &nbsp; <span class="font-weight-bold opacity-90" v-text="email" />.
+      <span
+        class="font-weight-bold opacity-90"
+        v-text="email ? email.slice(0, 2) + '***@' + email.split('@')[1] : 'Your Email Address'"
+      />.
       <span class="opacity-70">Please enter the 4-6 digits code.</span>
     </p>
 
-    <v-form @submit.prevent="verifyCode()">
+    <v-form :disabled="verifying || sending" @submit.prevent="$emit('verify', otp)">
       <v-text-field
         v-model.trim="otp"
         variant="outlined"
@@ -24,7 +27,11 @@
 
       <p class="mb-2 text-caption">
         <span class="opacity-70 d-inline-block mb-1">Didn't receive the code?</span>&nbsp;
-        <span v-if="isActive" class="font-weight-bold opacity-50">
+        <span
+          v-if="isActive && !sending"
+          class="font-weight-bold opacity-50 text-left d-inline-block pl-4"
+          :style="{ width: '67px' }"
+        >
           00:{{ remaining < 10 ? "0" : "" }}{{ remaining }}
         </span>
         <v-btn
@@ -34,8 +41,12 @@
           text="Resend"
           variant="text"
           size="x-small"
-          :disabled="isActive"
-          @click="start(60)"
+          :loading="sending || verifying"
+          @click="
+            // prettier-ignore
+            $emit('resend');
+            start(30)
+          "
         />
       </p>
 
@@ -48,7 +59,7 @@
         prepend-icon="mdi-check-decagram-outline"
         variant="outlined"
         :disabled="otp.length < 4"
-        :loading="isLoading"
+        :loading="verifying"
       />
     </v-form>
 
@@ -56,73 +67,41 @@
       <v-btn
         class="mt-4 text-caption font-weight-bold"
         prepend-icon="mdi-arrow-left-thin"
-        text="Back To Register"
+        :text="backLabel"
         variant="plain"
-        @click="$emit('update:model-value', null)"
+        :disabled="verifying || sending"
+        @click="$emit('back')"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { HandlersRegisterInput } from "~/generated/api"
+const props = defineProps<{
+  email: string | undefined
+  active: boolean
+  backLabel: string
+  sending: boolean
+  verifying: boolean
+}>()
 
-const props = defineProps<{ modelValue: HandlersRegisterInput | null }>()
-defineEmits<{ (e: "update:model-value", value: HandlersRegisterInput | null): void }>()
-
-const router = useRouter()
-const api = useApi()
-const email = computed(() => {
-  const e = props.modelValue?.email
-  if (!e) {
-    return ""
-  }
-
-  const parts = e.split("@")
-  if (parts.length !== 2) {
-    return e
-  }
-
-  return `${parts[0]!.slice(0, 2)}***@${parts[1]}`
-})
+defineEmits<{
+  (e: "verify", otp: string): void
+  (e: "resend" | "back"): void
+}>()
 
 const otp = ref("")
 
-const { accessToken, refreshToken } = useTokens()
-
-const { isActive, remaining, start } = useCountdown(60, { immediate: true })
-
-const { execute: verifyCode, isLoading } = useAsyncState(
-  async () => {
-    const { data } = await api.users.verifyRegisterCode(
-      {
-        code: +otp.value,
-        email: props.modelValue?.email ?? "",
-      },
-      { unauthenticated: true }
-    )
-
-    const completed = await api.helpers.awaitWorkflowCompletion(data.data?.workflow_id ?? "")
-    if (!completed) {
-      return console.log("failed")
+const { isActive, remaining, start } = useCountdown(30)
+watch(
+  () => props.active,
+  (v) => {
+    if (v) {
+      start(30)
+      otp.value = ""
     }
-
-    const { data: loginData } = await api.users.loginUser(
-      {
-        email: props.modelValue?.email ?? "",
-        password: props.modelValue?.password ?? "",
-      },
-      { unauthenticated: true }
-    )
-
-    accessToken.value = loginData.data?.access_token ?? ""
-    refreshToken.value = loginData.data?.refresh_token ?? ""
-    await nextTick() // make sure the tokens are updated
-
-    router.push("/dashboard")
   },
-  null,
-  { immediate: false }
+  { immediate: true }
 )
 </script>
 
