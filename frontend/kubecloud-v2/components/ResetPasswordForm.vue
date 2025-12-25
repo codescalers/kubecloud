@@ -23,12 +23,18 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ email: string }>()
+import { AxiosError } from "axios"
+
+const props = defineProps<{ email: string; accessToken: string; refreshToken: string }>()
 
 const password = ref("")
 const valid = ref(false)
 const router = useRouter()
 const api = useApi()
+
+const tokens = useTokens()
+
+const toast = useToast()
 const { execute: resetPassword, isLoading } = useAsyncState(
   async () => {
     const { data } = await api.users.changePassword(
@@ -37,14 +43,27 @@ const { execute: resetPassword, isLoading } = useAsyncState(
         password: password.value,
         confirm_password: password.value,
       },
-      { notify: true }
+      { unauthenticated: true, headers: { Authorization: `Bearer ${props.accessToken}` } }
     )
 
     if (data.status === 200) {
+      tokens.accessToken.value = props.accessToken
+      tokens.refreshToken.value = props.refreshToken
+
+      await nextTick()
+
+      toast.success({ message: "Password updated successfully" })
       router.push("/dashboard")
     }
   },
   null,
-  { immediate: false }
+  {
+    immediate: false,
+    onError(e: unknown) {
+      if (e instanceof AxiosError) {
+        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
+      }
+    },
+  }
 )
 </script>

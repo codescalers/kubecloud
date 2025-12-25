@@ -13,8 +13,8 @@
               @back-to-login="activeTab = 0"
               @reset-password="
                 /* prettier-ignore */
-                activeTab = 1;
-                email = $event
+                email = $event;
+                activeTab = 1
               "
             />
           </v-card>
@@ -24,8 +24,20 @@
       <v-tabs-window-item class="h-100">
         <div class="form-container">
           <v-card max-width="668" class="w-100">
-            <VerifyForm />
-            <!-- <VerifyResetPassword :email="email" @verify="activeTab = 2" /> -->
+            <!-- <VerifyForm /> -->
+            <VerifyForm
+              :email="email"
+              :active="activeTab === 1"
+              back-label="Back To Forgot Password"
+              :sending="isLoading"
+              :verify-fn="verifyCode"
+              @resend="sendVerificationCode()"
+              @back="
+                // prettier-ignore
+                email = '';
+                activeTab = 0
+              "
+            />
           </v-card>
         </div>
       </v-tabs-window-item>
@@ -33,7 +45,11 @@
       <v-tabs-window-item class="h-100">
         <div class="form-container">
           <v-card max-width="668" class="w-100">
-            <ResetPasswordForm :email="email" />
+            <ResetPasswordForm
+              :email="email"
+              :access-token="accessToken"
+              :refresh-token="refreshToken"
+            />
           </v-card>
         </div>
       </v-tabs-window-item>
@@ -44,6 +60,26 @@
 <script setup lang="ts">
 definePageMeta({ middleware: "non-auth" })
 
-const activeTab = ref(2)
+const activeTab = ref(0)
 const email = ref("")
+const accessToken = ref("")
+const refreshToken = ref("")
+
+const api = useApi()
+const { execute: sendVerificationCode, isLoading } = useAsyncState(
+  () => api.users.forgotPassword({ email: email.value }, { unauthenticated: true }),
+  null
+)
+
+async function verifyCode(otp: string) {
+  const { data } = await api.users.verifyForgotPasswordCode(
+    { code: +otp, email: email.value },
+    { unauthenticated: true }
+  )
+
+  accessToken.value = data.data?.access_token ?? ""
+  refreshToken.value = data.data?.refresh_token ?? ""
+  await nextTick() // make sure the tokens are updated
+  activeTab.value = 2
+}
 </script>

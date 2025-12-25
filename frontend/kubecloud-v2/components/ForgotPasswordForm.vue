@@ -19,6 +19,8 @@
           (v) => !!v || 'Email address is required',
           (v) => (v.includes('@') && v.includes('.')) || 'Email address must be valid',
         ]"
+        :error="error || undefined"
+        @input="error && (error = false)"
       />
 
       <v-btn
@@ -37,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import { AxiosError } from "axios"
+
 const emit = defineEmits<{
   (e: "back-to-login"): void
   (e: "reset-password", email: string): void
@@ -45,12 +49,14 @@ const emit = defineEmits<{
 const api = useApi()
 const valid = ref(false)
 const email = ref("")
+const error = ref(false)
 
+const toast = useToast()
 const { execute: forgotPassword, isLoading } = useAsyncState(
   async () => {
     const { data } = await api.users.forgotPassword(
       { email: email.value },
-      { unauthenticated: true, notify: true }
+      { unauthenticated: true }
     )
 
     if (data.status === 200) {
@@ -58,6 +64,14 @@ const { execute: forgotPassword, isLoading } = useAsyncState(
     }
   },
   null,
-  { immediate: false }
+  {
+    immediate: false,
+    onError(e: unknown) {
+      if (e instanceof AxiosError) {
+        error.value = true
+        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
+      }
+    },
+  }
 )
 </script>
