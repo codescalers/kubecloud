@@ -54,7 +54,7 @@
 
 <script setup lang="ts">
 import { AxiosError } from "axios"
-import { isEmail } from "validator"
+import isEmail from "validator/es/lib/isEmail"
 
 defineEmits<{ (e: "forgot-password"): void }>()
 

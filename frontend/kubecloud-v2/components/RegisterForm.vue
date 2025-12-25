@@ -74,7 +74,7 @@
 
 <script lang="ts" setup>
 import { AxiosError } from "axios"
-import { isEmail } from "validator"
+import isEmail from "validator/es/lib/isEmail"
 import type { HandlersRegisterInput } from "~/generated/api"
 
 const props = defineProps<{ modelValue: HandlersRegisterInput | null }>()
