@@ -12,7 +12,7 @@
         prepend-inner-icon="mdi-email-outline"
         variant="outlined"
         label="Email Address"
-        :rules="[(v) => !!v, (v) => v.includes('@') && v.includes('.')]"
+        :rules="[(v) => !!v, (v) => isEmail(v)]"
       />
 
       <v-text-field
@@ -53,6 +53,9 @@
 </template>
 
 <script setup lang="ts">
+import { AxiosError } from "axios"
+import { isEmail } from "validator"
+
 defineEmits<{ (e: "forgot-password"): void }>()
 
 const valid = ref(false)
@@ -62,22 +65,31 @@ const password = ref("")
 
 const { accessToken, refreshToken } = useTokens()
 const router = useRouter()
+const toast = useToast()
 
 const api = useApi()
 const { isLoading, execute: login } = useAsyncState(
   async () => {
-    const { data } = await api.users.loginUser({
-      email: email.value,
-      password: password.value,
-    })
+    const { data } = await api.users.loginUser(
+      { email: email.value, password: password.value },
+      { unauthenticated: true }
+    )
 
     accessToken.value = data.data?.access_token ?? ""
     refreshToken.value = data.data?.refresh_token ?? ""
 
     await nextTick()
+    toast.success({ message: "You’ve logged in successfully" })
     router.push("/dashboard")
   },
   null,
-  { immediate: false }
+  {
+    immediate: false,
+    onError(e) {
+      if (e instanceof AxiosError) {
+        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
+      }
+    },
+  }
 )
 </script>

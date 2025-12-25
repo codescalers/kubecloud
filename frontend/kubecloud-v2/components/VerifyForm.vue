@@ -13,7 +13,7 @@
       <span class="opacity-70">Please enter the 4-6 digits code.</span>
     </p>
 
-    <v-form :disabled="verifying || sending" @submit.prevent="$emit('verify', otp)">
+    <v-form :disabled="verifying || sending" @submit.prevent="verify()">
       <v-text-field
         v-model.trim="otp"
         variant="outlined"
@@ -23,6 +23,8 @@
         class="mx-auto code-input"
         maxlength="6"
         :rules="[(v) => v.length > 3]"
+        :error="error || undefined"
+        @input="error && (error = false)"
       />
 
       <p class="mb-2 text-caption">
@@ -41,7 +43,8 @@
           text="Resend"
           variant="text"
           size="x-small"
-          :loading="sending || verifying"
+          :loading="sending"
+          :disabled="verifying"
           @click="
             // prettier-ignore
             $emit('resend');
@@ -77,20 +80,20 @@
 </template>
 
 <script setup lang="ts">
+import { AxiosError } from "axios"
+
 const props = defineProps<{
   email: string | undefined
   active: boolean
   backLabel: string
   sending: boolean
-  verifying: boolean
+  verifyFn: (otp: string) => Promise<void>
 }>()
 
-defineEmits<{
-  (e: "verify", otp: string): void
-  (e: "resend" | "back"): void
-}>()
+defineEmits<{ (e: "resend" | "back"): void }>()
 
 const otp = ref("")
+const error = ref(false)
 
 const { isActive, remaining, start } = useCountdown(30)
 watch(
@@ -102,6 +105,21 @@ watch(
     }
   },
   { immediate: true }
+)
+
+const toast = useToast()
+const { execute: verify, isLoading: verifying } = useAsyncState(
+  () => props.verifyFn(otp.value),
+  null,
+  {
+    immediate: false,
+    onError(e: unknown) {
+      if (e instanceof AxiosError) {
+        error.value = true
+        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
+      }
+    },
+  }
 )
 </script>
 

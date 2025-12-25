@@ -24,7 +24,7 @@ export default defineNuxtConfig({
     },
   },
   css: ["@mdi/font/css/materialdesignicons.css", "vuetify/styles", "~/assets/scss/global.scss"],
-  modules: ["@nuxt/eslint", "@vueuse/nuxt", "@nuxtjs/google-fonts"],
+  modules: ["@nuxt/eslint", "@vueuse/nuxt", "@nuxtjs/google-fonts", "nuxt-toast"],
   runtimeConfig: {
     public: {
       apiBasePath: process.env.API_BASE_PATH,

@@ -21,10 +21,9 @@
               :active="activeTab === 1"
               back-label="Back To Register"
               :sending="isLoading"
-              :verifying="isVerifying"
+              :verify-fn="verifyCode"
               @resend="sendVerificationCode()"
               @back="registerBody = null"
-              @verify="verifyCode(undefined, $event)"
             />
           </v-card>
         </div>
@@ -54,35 +53,33 @@ const { execute: sendVerificationCode, isLoading } = useAsyncState(
 const router = useRouter()
 const { accessToken, refreshToken } = useTokens()
 
-const { execute: verifyCode, isLoading: isVerifying } = useAsyncState(
-  async (otp: string) => {
-    const body = registerBody.value!
+const toast = useToast()
+async function verifyCode(otp: string) {
+  const body = registerBody.value!
 
-    const { data } = await api.users.verifyRegisterCode(
-      { code: +otp, email: body.email },
-      { unauthenticated: true }
-    )
+  const { data } = await api.users.verifyRegisterCode(
+    { code: +otp, email: body.email },
+    { unauthenticated: true }
+  )
 
-    const completed = await api.helpers.awaitWorkflowCompletion(data.data?.workflow_id ?? "")
-    if (!completed) {
-      return console.log("failed")
-    }
+  const completed = await api.helpers.awaitWorkflowCompletion(data.data?.workflow_id ?? "")
+  if (!completed) {
+    return toast.error({ message: "Failed to verify email" })
+  }
 
-    const { data: loginData } = await api.users.loginUser(
-      {
-        email: body.email,
-        password: body.password,
-      },
-      { unauthenticated: true }
-    )
+  const { data: loginData } = await api.users.loginUser(
+    {
+      email: body.email,
+      password: body.password,
+    },
+    { unauthenticated: true }
+  )
 
-    accessToken.value = loginData.data?.access_token ?? ""
-    refreshToken.value = loginData.data?.refresh_token ?? ""
-    await nextTick() // make sure the tokens are updated
+  accessToken.value = loginData.data?.access_token ?? ""
+  refreshToken.value = loginData.data?.refresh_token ?? ""
+  await nextTick() // make sure the tokens are updated
 
-    router.push("/dashboard")
-  },
-  null,
-  { immediate: false }
-)
+  toast.success({ message: "You’ve registered successfully" })
+  router.push("/dashboard")
+}
 </script>
