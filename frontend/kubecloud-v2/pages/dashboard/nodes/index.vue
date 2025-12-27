@@ -1,9 +1,10 @@
 <template>
   <div>
     <h1>Dashboard Nodes {{ isLoading }}</h1>
+    <v-btn to="/dashboard/nodes/explorer">Explorer</v-btn>
 
     <pre>
-      {{ state }}
+      {{ state?.data }}
     </pre>
   </div>
 </template>
@@ -12,7 +13,7 @@
 const api = useApi()
 
 const { state, isLoading } = useAsyncState(async () => {
-  const { data } = await api.nodes.listReservedNodes()
+  const { data } = await api.nodes.listRentableNodes()
   return data
 }, null)
 </script>

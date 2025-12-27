@@ -1,19 +1,34 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col :cols="12 - cols">
-        <v-list class="sticky-top">
-          <slot name="items" />
-        </v-list>
-      </v-col>
+    <div class="d-flex justify-start">
+      <div
+        class="sticky-top overflow-hidden"
+        :style="{
+          willChange: 'width',
+          transition: 'width 250ms ease-in-out',
+          width: isOpen ? '224px' : '0px',
+        }"
+      >
+        <div class="pr-6">
+          <v-list class="overflow-hidden w-100">
+            <slot name="items" />
+          </v-list>
+        </div>
+      </div>
 
-      <v-col :cols="cols">
+      <div
+        :style="{
+          willChange: 'width',
+          transition: 'width 250ms ease-in-out',
+          width: `calc(100% - ${isOpen ? 224 : 0}px)`,
+        }"
+      >
         <slot />
-      </v-col>
-    </v-row>
+      </div>
+    </div>
   </v-container>
 </template>
 
 <script setup lang="ts">
-defineProps<{ cols: number }>()
+defineProps<{ cols: number; isOpen: boolean }>()
 </script>

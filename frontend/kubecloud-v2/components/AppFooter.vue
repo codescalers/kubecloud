@@ -1,5 +1,5 @@
 <template>
-  <v-footer app class="bg-background border-t py-0">
+  <v-footer class="bg-background border-t py-0">
     <v-container class="py-9">
       <v-row align="center">
         <v-col>
@@ -11,7 +11,6 @@
         </v-col>
 
         <v-spacer />
-
         <v-col cols="auto">
           <v-btn size="small" text="Documentation" to="/docs" variant="plain" />
           <v-btn
