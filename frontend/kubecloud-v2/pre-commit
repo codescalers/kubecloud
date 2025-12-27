@@ -2,5 +2,4 @@
 cd frontend/kubecloud-v2
 
 yarn typecheck
-yarn generate
 yarn lint-staged

@@ -30,5 +30,8 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ cols: number; isOpen: boolean }>()
+defineProps({
+  cols: { type: Number, required: true },
+  isOpen: { type: Boolean, default: true },
+})
 </script>
