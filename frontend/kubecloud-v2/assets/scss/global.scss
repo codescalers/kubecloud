@@ -32,7 +32,8 @@ body {
 .sticky-top {
   position: sticky !important;
   top: 90px;
-  max-height: calc(100vh - 225px);
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
 .button-style {

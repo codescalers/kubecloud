@@ -1,18 +1,16 @@
 <template>
-  <v-container>
+  <v-container :fluid="isFluid" :style="{ transition: 'max-width 250ms ease-in-out' }">
     <div class="d-flex justify-start">
       <div
-        class="sticky-top overflow-hidden"
+        class="sticky-top"
         :style="{
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
-          width: isOpen ? '224px' : '0px',
+          width: isOpen ? sidebarWidth + 24 + 'px' : 0,
         }"
       >
         <div class="pr-6">
-          <v-list class="overflow-hidden w-100">
-            <slot name="items" />
-          </v-list>
+          <slot name="sidebar" />
         </div>
       </div>
 
@@ -20,7 +18,7 @@
         :style="{
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
-          width: `calc(100% - ${isOpen ? 224 : 0}px)`,
+          width: `calc(100% - ${isOpen ? sidebarWidth : 0}px)`,
         }"
       >
         <slot />
@@ -31,7 +29,8 @@
 
 <script setup lang="ts">
 defineProps({
-  cols: { type: Number, required: true },
+  sidebarWidth: { type: Number, default: 200 },
   isOpen: { type: Boolean, default: true },
+  isFluid: { type: Boolean, default: false },
 })
 </script>
