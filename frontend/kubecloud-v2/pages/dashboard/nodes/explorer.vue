@@ -13,141 +13,36 @@
       </div>
 
       <p class="text-body-1 mt-2 text-center opacity-70">
-        Choose and reserve your dedicated Kubernetes node from our global network.
+        Choose and reserve your dedicated Kubernetes node from our global network
       </p>
     </v-container>
 
     <StickySidebarLayout :sidebar-width="450" :page-offset="300" is-fluid>
       <template #sidebar>
-        <v-card class="h-100" :style="{ padding: '0 !important' }">
-          <div class="d-flex justify-space-between align-center px-10 py-8 border-b">
+        <v-card
+          class="h-100 elevation-0 bg-transparent"
+          :style="{ padding: '0 !important', border: 'none !important' }"
+        >
+          <div
+            class="d-flex justify-space-between align-center px-10 py-8 border"
+            :style="{ borderRadius: 'var(--v-rounded-1) var(--v-rounded-1) 0 0' }"
+          >
             <div class="d-flex align-center ga-2">
               <v-icon icon="mdi-tune" size="small" color="primary" />
               <span class="text-h6 font-weight-bold">Filter Nodes</span>
             </div>
 
-            <v-btn variant="plain" class="border" text="Reset" />
+            <v-btn variant="plain" class="border" text="Reset" @click="reloadNodes()" />
           </div>
 
-          <v-card-text class="overflow-auto px-0 py-8" :style="{ maxHeight: 'calc(100% - 103px)' }">
-            <div class="px-10">
-              <div class="d-flex justify-space-between align-center mb-3">
-                <p class="text-subtitle-1 font-weight-bold">CPU</p>
-                <v-chip
-                  color="primary"
-                  size="small"
-                  class="rounded-lg border border-primary font-weight-bold"
-                  :style="{ '--v-border-opacity': 0.5 }"
-                  :text="`${cpu.join(' - ')} vCores`"
-                />
-              </div>
-              <v-range-slider
-                v-model="cpu"
-                thumb-size="13"
-                thumb-color="white"
-                track-size="1"
-                hide-details
-                color="primary"
-                min="0"
-                max="120"
-                step="1"
-              />
-              <div class="d-flex justify-space-between align-center text-body-2 opacity-70 px-2">
-                <p>0</p>
-                <p>120</p>
-              </div>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <div class="px-10">
-              <div class="d-flex justify-space-between align-center mb-3">
-                <p class="text-subtitle-1 font-weight-bold">RAM</p>
-                <v-chip
-                  color="primary"
-                  size="small"
-                  class="rounded-lg border border-primary font-weight-bold"
-                  :style="{ '--v-border-opacity': 0.5 }"
-                  :text="`${ram.join(' - ')} MB`"
-                />
-              </div>
-              <v-range-slider
-                v-model="ram"
-                thumb-size="13"
-                thumb-color="white"
-                track-size="1"
-                hide-details
-                color="primary"
-                min="200"
-                max="4800"
-                step="1"
-              />
-              <div class="d-flex justify-space-between align-center text-body-2 opacity-70 px-2">
-                <p>0</p>
-                <p>120</p>
-              </div>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <div class="d-flex justify-space-between align-center px-10">
-              <div>
-                <p class="text-subtitle-1 font-weight-bold">GPU Required</p>
-                <p class="text-caption opacity-70">Dedicated graphics card</p>
-              </div>
-
-              <div>
-                <v-switch color="primary" inset hide-details />
-              </div>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <div class="px-10">
-              <div class="d-flex justify-space-between align-center mb-3">
-                <p class="text-subtitle-1 font-weight-bold">Price / mo</p>
-                <v-chip
-                  color="secondary"
-                  size="small"
-                  class="rounded-lg border border-secondary font-weight-bold"
-                  :style="{ '--v-border-opacity': 0.5 }"
-                  :text="`${price.join(' - ')} USD`"
-                />
-              </div>
-              <v-range-slider
-                v-model="price"
-                thumb-size="13"
-                thumb-color="white"
-                track-size="1"
-                hide-details
-                color="secondary"
-                min="15.1"
-                max="799.9"
-                step="0.1"
-              />
-              <div class="d-flex justify-space-between align-center text-body-2 opacity-70 px-2">
-                <p>15.1</p>
-                <p>799.9</p>
-              </div>
-            </div>
-
-            <v-divider class="my-6" />
-
-            <div class="px-10">
-              <p class="text-subtitle-1 font-weight-bold mb-3">Location</p>
-              <!-- <v-select
-                :items="[]"
-                placeholder="Select Location"
-              /> -->
-              <v-select
-                clearable
-                placeholder="Pick a location"
-                :items="['Egypt', 'Kenya', 'Nigeria']"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </div>
+          <v-card-text
+            class="overflow-auto px-0 py-8 border border-t-0"
+            :style="{
+              maxHeight: 'calc(100% - 104px)',
+              borderRadius: '0 0 var(--v-rounded-1) var(--v-rounded-1)',
+            }"
+          >
+            <NodeFilterPanel v-model="filters" :nodes="nodes" />
           </v-card-text>
         </v-card>
       </template>
@@ -164,24 +59,19 @@
 </template>
 
 <script setup lang="ts">
-const api = useApi()
+import type { NodeFilters } from "~/components/NodeFilterPanel.vue"
 
-const cpu = ref<[number, number]>([0, 120])
-const ram = ref<[number, number]>([200, 4800])
-const price = ref<[number, number]>([15.1, 799.9])
+const filters = ref<NodeFilters>()
+const api = useApi()
 
 const {
   state: nodes,
   isLoading,
-  // execute: reloadNodes,
-} = useAsyncState(
-  async () => {
-    const { data } = await api.nodes.listRentableNodes()
-    return data.data?.nodes ?? []
-  },
-  [],
-  { resetOnExecute: false }
-)
+  execute: reloadNodes,
+} = useAsyncState(async () => {
+  const { data } = await api.nodes.listRentableNodes()
+  return data.data?.nodes ?? []
+}, [])
 
 const { drawer, container } = inject(DashboardLayoutCtxKey)!
 
