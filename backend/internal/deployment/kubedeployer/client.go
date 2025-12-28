@@ -1,6 +1,7 @@
 package kubedeployer
 
 import (
+	"fmt"
 	"kubecloud/internal/infrastructure/gridclient"
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -12,10 +13,11 @@ type Client struct {
 
 // NewClient creates a new Client instance
 func NewClient(mnemonic, gridNet string, debug bool, tp *sdktrace.TracerProvider) (*Client, error) {
-	var opts []gridclient.ClientOpts
-	if gridNet != "" {
-		opts = append(opts, gridclient.WithNetwork(gridNet))
+	if gridNet == "" {
+		return nil, fmt.Errorf("gridNet is required and cannot be empty")
 	}
+	var opts []gridclient.ClientOpts
+	opts = append(opts, gridclient.WithNetwork(gridNet))
 	if debug {
 		opts = append(opts, gridclient.WithDebug())
 	}

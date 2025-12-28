@@ -65,6 +65,7 @@ func ensureClient(state ewf.State) {
 
 func DeployNetworkStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("deployer_activities", "deploy_network")
 		ensureClient(state)
 
 		config, err := getConfig(state)
@@ -91,7 +92,9 @@ func DeployNetworkStep() ewf.StepFn {
 		statemanager.StoreCluster(state, cluster)
 		err = kubeClient.DeployNetwork(ctx, &cluster)
 		// Save GridClient state after network deployment
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after network deployment")
+		}
 		statemanager.StoreCluster(state, cluster)
 		if err != nil {
 			nodeIDs := make([]uint32, 0, len(cluster.Nodes))
@@ -114,6 +117,7 @@ func DeployNetworkStep() ewf.StepFn {
 
 func UpdateNetworkStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("deployer_activities", "update_network")
 		ensureClient(state)
 
 		config, err := getConfig(state)
@@ -144,7 +148,9 @@ func UpdateNetworkStep() ewf.StepFn {
 		}
 
 		// Save GridClient state after network update
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after network update")
+		}
 		statemanager.StoreCluster(state, cluster)
 		state["node"] = node
 		return nil
@@ -153,6 +159,7 @@ func UpdateNetworkStep() ewf.StepFn {
 
 func AddNodeStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("deployer_activities", "add_node")
 		ensureClient(state)
 
 		config, err := getConfig(state)
@@ -184,7 +191,9 @@ func AddNodeStep() ewf.StepFn {
 		}
 
 		// Save GridClient state after node deployment
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after node deployment")
+		}
 		statemanager.StoreCluster(state, cluster)
 
 		// Store the deployed node in state for verification step
@@ -239,7 +248,9 @@ func DeployLeaderNodeStep() ewf.StepFn {
 
 		log.Debug().Str("node_name", leaderNode.Name).Msg("Leader node deployed successfully")
 
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after leader node deployment")
+		}
 		statemanager.StoreCluster(state, cluster)
 		return nil
 	}
@@ -291,7 +302,9 @@ func BatchDeployAllNodesStep(metrics *metricsLib.Metrics) ewf.StepFn {
 
 		batchErr := kubeClient.BatchDeployNodes(ctx, &cluster, nodesToDeploy, config.SSHPublicKey)
 
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after batch node deployment")
+		}
 		statemanager.StoreCluster(state, cluster)
 
 		if batchErr != nil {
@@ -524,6 +537,7 @@ func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *me
 
 func RemoveDeploymentNodeStep() ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
+		log := logger.ForOperation("deployer_activities", "remove_deployment_node")
 		ensureClient(state)
 
 		config, err := getConfig(state)
@@ -553,7 +567,10 @@ func RemoveDeploymentNodeStep() ewf.StepFn {
 		}
 
 		// Save GridClient state after node removal
-		statemanager.SaveGridClientState(state, kubeClient)
+		if err := statemanager.SaveGridClientState(state, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state after node removal")
+		}
+
 		statemanager.StoreCluster(state, existingCluster)
 		return nil
 	}
@@ -563,7 +580,9 @@ func closeClient(ctx context.Context, wf *ewf.Workflow, err error) {
 	log := logger.ForOperation("deployer_activities", "close_client").With().Str("workflow_name", wf.Name).Logger()
 	if kubeClient, ok := wf.State["kubeclient"].(*kubedeployer.Client); ok {
 		// Save final GridClient state before closing
-		statemanager.SaveGridClientState(wf.State, kubeClient)
+		if err := statemanager.SaveGridClientState(wf.State, kubeClient); err != nil {
+			log.Warn().Err(err).Msg("failed to save GridClient state before closing client")
+		}
 
 		kubeClient.Close()
 		delete(wf.State, "kubeclient")

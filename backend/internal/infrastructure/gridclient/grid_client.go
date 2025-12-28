@@ -11,6 +11,7 @@ import (
 	"kubecloud/internal/infrastructure/logger"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/cosmos/go-bip39"
@@ -79,6 +80,7 @@ type GridClient interface {
 type gridClient struct {
 	gridClient     *deployer.TFPluginClient
 	systemMnemonic string
+	mu             sync.RWMutex
 }
 
 var _ GridClient = (*gridClient)(nil)

@@ -15,6 +15,7 @@ type gridClientState struct {
 
 // GetState returns the current GridClient state as JSON bytes
 func (s *gridClient) GetState() ([]byte, error) {
+
 	if s.gridClient.State == nil {
 		return nil, fmt.Errorf("gridclient state is nil")
 	}
@@ -24,6 +25,7 @@ func (s *gridClient) GetState() ([]byte, error) {
 		NetworkSubnets:         make(map[string]map[uint32]string),
 	}
 
+	s.mu.RLock()
 	// Save CurrentNodeDeployments
 	for nodeID, contractIDs := range s.gridClient.State.CurrentNodeDeployments {
 		gridState.CurrentNodeDeployments[nodeID] = []uint64(contractIDs)
@@ -34,15 +36,13 @@ func (s *gridClient) GetState() ([]byte, error) {
 		gridState.NetworkSubnets[networkName] = network.Subnets
 	}
 
+	s.mu.RUnlock()
+
 	return json.Marshal(gridState)
 }
 
 // RestoreState restores the GridClient state from JSON bytes
 func (s *gridClient) RestoreState(stateData []byte) error {
-	if s.gridClient.State == nil {
-		return fmt.Errorf("gridclient state is nil")
-	}
-
 	if len(stateData) == 0 {
 		return nil // Nothing to restore
 	}
@@ -52,6 +52,11 @@ func (s *gridClient) RestoreState(stateData []byte) error {
 		return fmt.Errorf("failed to unmarshal state: %w", err)
 	}
 
+	if s.gridClient.State == nil {
+		return fmt.Errorf("gridclient state is nil")
+	}
+
+	s.mu.Lock()
 	// Restore CurrentNodeDeployments
 	s.gridClient.State.CurrentNodeDeployments = make(map[uint32]state.ContractIDs)
 	for nodeID, contractIDs := range savedState.CurrentNodeDeployments {
@@ -65,6 +70,7 @@ func (s *gridClient) RestoreState(stateData []byte) error {
 			Subnets: subnets,
 		}
 	}
+	s.mu.Unlock()
 
 	return nil
 }

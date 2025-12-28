@@ -85,7 +85,9 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 
 	// Store the new client in state for reuse
 	state["kubeclient"] = kubeClient
-	SaveGridClientState(state, kubeClient)
+	if err := SaveGridClientState(state, kubeClient); err != nil {
+		log.Warn().Err(err).Msg("failed to save GridClient state after creating kubeclient")
+	}
 
 	log.Debug().Msg("Created and stored fresh kubeclient")
 	return kubeClient, nil
@@ -114,7 +116,9 @@ func CloseClient(state ewf.State, kubeClient *kubedeployer.Client) error {
 		return nil
 	}
 
-	SaveGridClientState(state, kubeClient)
+	if err := SaveGridClientState(state, kubeClient); err != nil {
+		log.Warn().Err(err).Msg("failed to save GridClient state before closing client")
+	}
 	kubeClient.Close()
 	delete(state, "kubeclient")
 
