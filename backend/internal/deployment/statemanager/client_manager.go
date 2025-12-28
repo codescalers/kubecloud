@@ -9,6 +9,7 @@ import (
 
 	"github.com/xmonader/ewf"
 	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -65,8 +66,14 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 		log.Warn().Msg("Tracer provider is no-op, tracing will not work")
 	}
 
+	// Extract SDK trace provider if available
+	var tp *sdktrace.TracerProvider
+	if globalTp != nil {
+		tp, _ = globalTp.(*sdktrace.TracerProvider)
+	}
+
 	// Create new client
-	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, globalTp)
+	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, tp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient: %w", err)
 	}
