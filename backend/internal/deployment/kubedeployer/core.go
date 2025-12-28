@@ -94,7 +94,18 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 			return fmt.Errorf("failed to get leader node IP: %v", err)
 		}
 
-		leaderIP = leaderNode.IP
+		if leaderNode.Healthy {
+			leaderIP = leaderNode.IP
+		} else {
+			// fallback to a healthy master if the leader is not healthy
+			for _, n := range cluster.Nodes {
+				if n.Type == NodeTypeMaster && n.Healthy {
+					leaderIP = n.IP
+					log.Debug().Str("node_name", n.Name).Str("node_ip", n.IP).Msg("Using alternative healthy master")
+					break
+				}
+			}
+		}
 	}
 
 	if cluster.Token == "" {
