@@ -899,6 +899,10 @@ func VerifyClusterReadyStep() ewf.StepFn {
 			return fmt.Errorf("failed to get nodes of cluster %s: %w", cluster.Name, err)
 		}
 
+		if len(nodes) != len(cluster.Nodes) {
+			return fmt.Errorf("not all nodes joined cluster %s yet: %d/%d nodes joined", cluster.Name, len(nodes), len(cluster.Nodes))
+		}
+
 		// Create map of k8s node health by node name (lowercase for matching)
 		k8sNodeHealth := make(map[string]bool)
 		for _, n := range nodes {
