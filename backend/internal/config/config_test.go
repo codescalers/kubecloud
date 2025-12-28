@@ -92,7 +92,8 @@ func TestLoadConfig(t *testing.T) {
 			"url": "http://localhost:3100/loki/api/v1/push",
 			"flush_interval_second": 5
 		},
-		"notification_config_path": "` + notificationConfigPath + `"
+		"notification_config_path": "` + notificationConfigPath + `",
+		"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 	}`
 
 	// Write the config files
@@ -203,7 +204,8 @@ func TestDefaultTagsInConfig(t *testing.T) {
 		},
 		"loki": {
 			"url": "http://loki:3100/loki/api/v1/push"
-		}
+		},
+		"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 	}`
 
 	// Write the config file
@@ -288,7 +290,8 @@ func TestLoadConfig_InvalidConfig(t *testing.T) {
 					"reserved_node_health_check_interval_in_hours": 1,
 					"reserved_node_health_check_timeout_in_minutes": 1,
 					"reserved_node_health_check_workers_num": 10
-				}
+				},
+				"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 			}`,
 			expectedErr: "validation error on field 'Configuration.Database.DSN': dsn",
 		},
@@ -321,7 +324,8 @@ func TestLoadConfig_InvalidConfig(t *testing.T) {
 					"reserved_node_health_check_interval_in_hours": 1,
 					"reserved_node_health_check_timeout_in_minutes": 1,
 					"reserved_node_health_check_workers_num": 10
-				}
+				},
+				"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 			}`,
 			expectedErr: "validation error on field 'Configuration.Database.MaxIdleConns': lteMaxOpenConns",
 		},
@@ -349,7 +353,8 @@ func TestLoadConfig_InvalidConfig(t *testing.T) {
 					"reserved_node_health_check_interval_in_hours": 1,
 					"reserved_node_health_check_timeout_in_minutes": 1,
 					"reserved_node_health_check_workers_num": 10
-				}
+				},
+				"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 			}`,
 			expectedErr: "validation error on field 'Configuration.JwtToken.Secret': required",
 		},
@@ -379,7 +384,8 @@ func TestLoadConfig_InvalidConfig(t *testing.T) {
 					"reserved_node_health_check_interval_in_hours": 1,
 					"reserved_node_health_check_timeout_in_minutes": 1,
 					"reserved_node_health_check_workers_num": 10
-				}
+				},
+				"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 			}`,
 			expectedErr: "validation error on field 'Configuration.Admins': required",
 		},
@@ -445,7 +451,8 @@ func TestSQLiteProductionCheck(t *testing.T) {
 				"ssh": {"private_key_path": "` + privateKeyPath + `", "public_key_path": "` + publicKeyPath + `"},
 				"monitor_balance_interval_in_minutes": 1,
 				"notify_admins_for_pending_records_in_hours": 1,
-				"node_health_check": {"reserved_node_health_check_interval_in_hours": 1, "reserved_node_health_check_timeout_in_minutes": 1, "reserved_node_health_check_workers_num": 1}
+				"node_health_check": {"reserved_node_health_check_interval_in_hours": 1, "reserved_node_health_check_timeout_in_minutes": 1, "reserved_node_health_check_workers_num": 1},
+				"zlog_output_url": "http://[::1]:3100/loki/api/v1/push?tenant_id=zlog-vms"
 			}`
 			err := os.WriteFile(configPath, []byte(configJSON), 0644)
 			require.NoError(t, err, "Failed to write test config file")

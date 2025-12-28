@@ -8,11 +8,12 @@ import (
 )
 
 type Client struct {
-	GridClient deployer.TFPluginClient
-	mnemonic   string
+	GridClient    deployer.TFPluginClient
+	mnemonic      string
+	zlogOutputURL string
 }
 
-func NewClient(mnemonic, gridNet string, debug bool, tp trace.TracerProvider) (*Client, error) {
+func NewClient(mnemonic, gridNet string, debug bool, tp trace.TracerProvider, zlogOutputURL string) (*Client, error) {
 	pluginOpts := []deployer.PluginOpt{
 		deployer.WithNetwork(gridNet),
 		deployer.WithDisableSentry(),
@@ -34,8 +35,9 @@ func NewClient(mnemonic, gridNet string, debug bool, tp trace.TracerProvider) (*
 	}
 
 	return &Client{
-		GridClient: tfplugin,
-		mnemonic:   mnemonic,
+		GridClient:    tfplugin,
+		mnemonic:      mnemonic,
+		zlogOutputURL: zlogOutputURL,
 	}, nil
 }
 

@@ -14,11 +14,12 @@ import (
 
 // ClientConfig represents the configuration needed to create a kubeclient
 type ClientConfig struct {
-	SSHPublicKey string `json:"ssh_public_key"`
-	Mnemonic     string `json:"mnemonic"`
-	UserID       int    `json:"user_id"`
-	Network      string `json:"network"`
-	Debug        bool   `json:"debug"`
+	SSHPublicKey  string `json:"ssh_public_key"`
+	Mnemonic      string `json:"mnemonic"`
+	UserID        int    `json:"user_id"`
+	Network       string `json:"network"`
+	Debug         bool   `json:"debug"`
+	ZlogOutputURL string `json:"zlog_output_url"`
 }
 
 // ValidateConfig validates the client configuration
@@ -66,7 +67,7 @@ func GetKubeClient(state ewf.State, config ClientConfig) (*kubedeployer.Client, 
 	}
 
 	// Create new client
-	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, globalTp)
+	kubeClient, err := kubedeployer.NewClient(config.Mnemonic, config.Network, config.Debug, globalTp, config.ZlogOutputURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubeclient: %w", err)
 	}

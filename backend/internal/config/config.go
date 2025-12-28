@@ -39,9 +39,10 @@ type Configuration struct {
 	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
 
-	Logger    LoggerConfig    `json:"logger"`
-	Loki      LokiConfig      `json:"loki"`
-	Telemetry TelemetryConfig `json:"telemetry"`
+	Logger        LoggerConfig    `json:"logger"`
+	Loki          LokiConfig      `json:"loki"`
+	Telemetry     TelemetryConfig `json:"telemetry"`
+	ZlogOutputURL string          `json:"zlog_output_url" validate:"required,url"`
 }
 
 type SSHConfig struct {

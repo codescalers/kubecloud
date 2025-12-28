@@ -71,7 +71,5 @@
       "host": ""
     }
   },
-  "telemetry": {
-    "otlp_endpoint": "jaeger:4317"
-  }
+  "zlog_output_url": "http://loki-address?tenant_id=zlog-vms"
 }

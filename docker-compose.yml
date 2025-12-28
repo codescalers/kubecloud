@@ -11,6 +11,7 @@ services:
       - /dev/net/tun:/dev/net/tun
     ports:
       - "8080:8080" # exposes the backend API
+      - "3100:3100" # exposes Loki
     networks:
       - app-network # connect to redis with network
     volumes:
@@ -112,14 +113,12 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
-    ports:
-      - "3100:3100"
     command: -config.file=/etc/loki/loki-config.yaml -target=all
     volumes:
       - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
       - loki-data:/loki
-    networks:
-      - app-network
+    network_mode: "service:mycelium"
+
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
@@ -138,8 +137,8 @@ services:
     container_name: jaeger
     ports:
       - "16686:16686" # Jaeger UI
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       - SPAN_STORAGE_TYPE=badger

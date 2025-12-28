@@ -343,6 +343,7 @@ func (app *App) createHandlers() appHandlers {
 	deploymentService := services.NewDeploymentService(
 		app.core.appCtx, clusterRepo, userRepo, userNodesRepo, app.core.ewfEngine,
 		app.config.Debug, app.security.sshPublicKey, app.config.SSH.PrivateKeyPath, app.config.SystemAccount.Network,
+		app.config.ZlogOutputURL,
 	)
 
 	adminService := services.NewAdminService(
