@@ -32,8 +32,6 @@ body {
 .sticky-top {
   position: sticky !important;
   top: 90px;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
 }
 
 .button-style {
@@ -117,4 +115,8 @@ body {
   justify-content: center;
   align-items: center;
   height: 100% !important;
+}
+
+.rounded-1 {
+  border-radius: var(--v-rounded-1);
 }

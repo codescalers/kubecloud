@@ -10,6 +10,7 @@ export default defineNuxtPlugin((nuxtApp) => {
             variables: {
               "bg-2": "30, 41, 59",
               "bg-2-opacity": "0.5",
+              "rounded-1": "18px",
             },
             colors: {
               background: "#0A192F",

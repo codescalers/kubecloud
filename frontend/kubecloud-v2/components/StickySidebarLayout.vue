@@ -4,12 +4,13 @@
       <div
         class="sticky-top"
         :style="{
+          maxHeight: `calc(100vh - 100px)`,
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
           width: isOpen ? sidebarWidth + 24 + 'px' : 0,
         }"
       >
-        <div class="pr-6">
+        <div class="pr-6 h-100">
           <slot name="sidebar" />
         </div>
       </div>
@@ -32,5 +33,6 @@ defineProps({
   sidebarWidth: { type: Number, default: 200 },
   isOpen: { type: Boolean, default: true },
   isFluid: { type: Boolean, default: false },
+  pageOffset: { type: Number, default: 100 },
 })
 </script>

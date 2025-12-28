@@ -100,6 +100,8 @@ export const useApi = createGlobalState(() => {
 })
 
 class ApiHelpers {
+  private readonly twinToAccountId: { [twinId: number]: string }
+
   constructor(
     private readonly admin: AdminApi,
     private readonly deployments: DeploymentsApi,
@@ -109,7 +111,9 @@ class ApiHelpers {
     private readonly twins: TwinsApi,
     private readonly users: UsersApi,
     private readonly workflow: WorkflowApi
-  ) {}
+  ) {
+    this.twinToAccountId = {}
+  }
 
   public async awaitWorkflowCompletion(workflowId: string): Promise<boolean> {
     const { data } = await this.workflow.getWorkflowStatus(workflowId, {
@@ -126,5 +130,17 @@ class ApiHelpers {
 
     await new Promise((res) => setTimeout(res, 2_000))
     return this.awaitWorkflowCompletion(workflowId)
+  }
+
+  public async getAccountId(twinId: number): Promise<string> {
+    if (twinId in this.twinToAccountId) {
+      return this.twinToAccountId[twinId]!
+    }
+
+    // TODO: handle error
+    const { data } = await this.twins.twinsTwinIdAccountGet(twinId)
+    const accountId = data.data?.account_id ?? ""
+    this.twinToAccountId[twinId] = accountId
+    return accountId
   }
 }
