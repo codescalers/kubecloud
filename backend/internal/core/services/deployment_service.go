@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/core/workflows"
@@ -27,6 +28,8 @@ type DeploymentService struct {
 	ewfEngine *ewf.Engine
 	tracer    *telemetry.ServiceTracer
 
+	locker distributedlocks.DistributedLocks
+
 	// configs
 	debug             bool
 	sshPublicKey      string
@@ -37,6 +40,7 @@ type DeploymentService struct {
 func NewDeploymentService(appCtx context.Context,
 	clusterRepo models.ClusterRepository, userRepo models.UserRepository,
 	userNodesRepo models.UserNodesRepository, ewfEngine *ewf.Engine,
+	locker distributedlocks.DistributedLocks,
 	debug bool, sshPublicKey, sshPrivateKeyPath, systemNetwork string,
 ) DeploymentService {
 	return DeploymentService{
@@ -46,6 +50,8 @@ func NewDeploymentService(appCtx context.Context,
 		appCtx:    appCtx,
 		ewfEngine: ewfEngine,
 		tracer:    telemetry.NewServiceTracer("deployment_service"),
+
+		locker: locker,
 
 		debug:             debug,
 		sshPublicKey:      sshPublicKey,
@@ -204,7 +210,7 @@ func (svc *DeploymentService) runWithQueue(queueName string, wf *ewf.Workflow) e
 	return svc.ewfEngine.Run(svc.appCtx, *wf)
 }
 
-func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string) (string, ewf.WorkflowStatus, error) {
+func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName string, state ewf.State, displayName string, metadata map[string]string) (workflowID string, status ewf.WorkflowStatus, err error) {
 	_, span := svc.tracer.StartSpan(context.Background(), "handleDeploymentAction")
 	defer span.End()
 
@@ -230,6 +236,19 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 	}
 
 	if err = svc.runWithQueue(queueName, &wf); err != nil {
+		lockedKeysValue, ok := wf.State["locked_keys"]
+		if !ok {
+			telemetry.RecordError(span, err)
+			return "", "", err
+		}
+		lockedKeys, ok := lockedKeysValue.(map[string]string)
+		if !ok || len(lockedKeys) == 0 {
+			telemetry.RecordError(span, err)
+			return "", "", err
+		}
+		if releaseErr := svc.locker.ReleaseLocks(svc.appCtx, lockedKeys); releaseErr != nil {
+			err = fmt.Errorf("%w: failed to release workflow lock: %v", err, releaseErr)
+		}
 		telemetry.RecordError(span, err)
 		return "", "", err
 	}
@@ -242,10 +261,18 @@ func (svc *DeploymentService) handleDeploymentAction(userID int, workflowName st
 }
 
 func (svc *DeploymentService) AsyncDeployCluster(config statemanager.ClientConfig, cluster kubedeployer.Cluster) (string, ewf.WorkflowStatus, error) {
-
+	resourceKeys := make([]string, 0, len(cluster.Nodes))
+	for _, node := range cluster.Nodes {
+		resourceKeys = append(resourceKeys, fmt.Sprintf("%s%d", distributedlocks.NodeLockPrefix, node.NodeID))
+	}
+	lockedKeys, err := svc.locker.AcquireLocks(svc.appCtx, resourceKeys)
+	if err != nil {
+		return "", "", err
+	}
 	state := ewf.State{
-		"config":  config,
-		"cluster": cluster,
+		"config":      config,
+		"cluster":     cluster,
+		"locked_keys": lockedKeys,
 	}
 
 	displayName := fmt.Sprintf("Deploying cluster %s", cluster.Name)
@@ -281,11 +308,17 @@ func (svc *DeploymentService) AsyncDeleteAllClusters(config statemanager.ClientC
 }
 
 func (svc *DeploymentService) AsyncAddNode(config statemanager.ClientConfig, cl kubedeployer.Cluster, node kubedeployer.Node) (string, ewf.WorkflowStatus, error) {
+	resourceKeys := []string{fmt.Sprintf("%s%d", distributedlocks.NodeLockPrefix, node.NodeID)}
+	lockedKeys, err := svc.locker.AcquireLocks(svc.appCtx, resourceKeys)
+	if err != nil {
+		return "", "", err
+	}
 
 	state := ewf.State{
-		"config":  config,
-		"cluster": cl,
-		"node":    node,
+		"config":      config,
+		"cluster":     cl,
+		"node":        node,
+		"locked_keys": lockedKeys,
 	}
 	displayName := fmt.Sprintf("Adding node %s to cluster %s", node.Name, cl.Name)
 	metadata := map[string]string{

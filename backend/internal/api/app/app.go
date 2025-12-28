@@ -95,6 +95,7 @@ func (app *App) registerEWFWorkflows() {
 		app.core.metrics,
 		app.communication.notificationDispatcher,
 		stripeClient,
+		app.core.locker,
 	)
 }
 

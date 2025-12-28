@@ -7,6 +7,7 @@ import (
 
 	"time"
 
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/deployment/kubedeployer"
 	"kubecloud/internal/deployment/statemanager"
 	"kubecloud/internal/infrastructure/logger"
@@ -239,5 +240,24 @@ func metricsFailureHook(metrics *metricsLib.Metrics) ewf.AfterWorkflowHook {
 		case WorkflowDeleteAllClusters:
 			metrics.IncrementClusterOperationFailure(metricsLib.ClusterOperationDeleteAllClusters)
 		}
+	}
+}
+
+func releaseLocksHook(locker distributedlocks.DistributedLocks) ewf.AfterWorkflowHook {
+	return func(ctx context.Context, wf *ewf.Workflow, _ error) {
+		log := logger.ForOperation("workflow", "release_locks").With().Str("workflow_name", wf.Name).Logger()
+		lockedKeys, err := getFromState[map[string]string](wf.State, "locked_keys")
+		if err != nil {
+			log.Error().Err(err).Msg("failed to get locks from state")
+			return
+		}
+		if len(lockedKeys) == 0 {
+			return
+		}
+		if err := locker.ReleaseLocks(ctx, lockedKeys); err != nil {
+			log.Error().Err(err).Msg("failed to release locks")
+			return
+		}
+		log.Info().Int("lock_count", len(lockedKeys)).Msg("successfully released locks")
 	}
 }

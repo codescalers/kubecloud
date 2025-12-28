@@ -38,6 +38,7 @@ type Configuration struct {
 	UsersBalanceCheckIntervalInHours     int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
 	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
 	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
+	LockTimeoutInHours                   int                           `json:"lock_timeout_in_hours" validate:"required,gt=0" default:"1"`
 
 	Logger    LoggerConfig    `json:"logger"`
 	Loki      LokiConfig      `json:"loki"`
@@ -389,6 +390,9 @@ func applyDefaultValues(config *Configuration) {
 	}
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
+	if config.LockTimeoutInHours == 0 {
+		config.LockTimeoutInHours = 24
 	}
 
 	if config.Telemetry.OTLPEndpoint == "" {

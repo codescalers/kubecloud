@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/services"
 	"kubecloud/internal/deployment/kubedeployer"
@@ -240,6 +241,10 @@ func (h *DeploymentHandler) HandleDeployCluster(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncDeployCluster(config, cluster)
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start deployment workflow")
+		if errors.Is(err, distributedlocks.ErrResourceLocked) {
+			Conflict(c, "Node is busy serving another request")
+			return
+		}
 		InternalServerError(c)
 		return
 	}
@@ -412,6 +417,10 @@ func (h *DeploymentHandler) HandleAddNode(c *gin.Context) {
 	wfUUID, wfStatus, err := h.svc.AsyncAddNode(config, cl, cluster.Nodes[0])
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to start add node workflow")
+		if errors.Is(err, distributedlocks.ErrResourceLocked) {
+			Conflict(c, "Node is busy serving another request")
+			return
+		}
 		InternalServerError(c)
 		return
 	}

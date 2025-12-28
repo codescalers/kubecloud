@@ -3,6 +3,7 @@ package workflows
 import (
 	"kubecloud/internal/billing"
 	cfg "kubecloud/internal/config"
+	distributedlocks "kubecloud/internal/core/distributed_locks"
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/gridclient"
@@ -29,6 +30,7 @@ func RegisterEWFWorkflows(
 	metrics *metrics.Metrics,
 	notificationDispatcher *notification.NotificationDispatcher,
 	stripeClient billing.StripeClient,
+	locker distributedlocks.DistributedLocks,
 ) {
 	userRepo := persistence.NewGormUserRepository(db)
 	clusterRepo := persistence.NewGormClusterRepository(db)
@@ -125,6 +127,7 @@ func RegisterEWFWorkflows(
 		{Name: StepReserveNode, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepVerifyNodeState, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 5, BackOff: ewf.ExponentialBackoff(10*time.Second, 2*time.Minute, 2.0)}},
 	}
+	reserveNodeTemplate.AfterWorkflowHooks = append(reserveNodeTemplate.AfterWorkflowHooks, releaseLocksHook(locker))
 	engine.RegisterTemplate(WorkflowReserveNode, &reserveNodeTemplate)
 
 	unreserveNodeTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -144,7 +147,7 @@ func RegisterEWFWorkflows(
 	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, clusterRepo, notificationDispatcher, config)
+	registerDeploymentActivities(engine, metrics, clusterRepo, notificationDispatcher, config, locker)
 
 	// Email-only workflow for guaranteed email delivery with retries
 	emailNotificationTemplate := ewf.WorkflowTemplate{

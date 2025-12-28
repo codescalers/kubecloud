@@ -49,7 +49,8 @@ type WorkerService struct {
 	reservedNodeHealthCheckWorkersNum       int
 	monitorBalanceIntervalInMinutes         int
 	notifyAdminsForPendingRecordsInHours    int
-	usersBalanceCheckIntervalInHours        int
+
+	usersBalanceCheckIntervalInHours int
 }
 
 func NewWorkersService(
