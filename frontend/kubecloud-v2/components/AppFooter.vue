@@ -1,5 +1,5 @@
 <template>
-  <v-footer class="bg-background border-t py-0">
+  <v-footer class="bg-background border-t py-0" app absolute>
     <v-container class="py-9">
       <v-row align="center">
         <v-col>

@@ -73,6 +73,7 @@
         </template>
 
         <v-list>
+          <v-list-item link title="Admin Panel" prepend-icon="mdi-shield-crown" to="/admin" />
           <v-list-item link title="Dashboard" prepend-icon="mdi-view-dashboard" to="/dashboard" />
           <v-list-item link title="Profile" prepend-icon="mdi-account" to="/profile" />
           <v-divider />
