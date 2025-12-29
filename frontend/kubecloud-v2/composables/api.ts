@@ -53,7 +53,7 @@ export const useApi = createGlobalState(() => {
       if (
         error instanceof AxiosError &&
         error.response &&
-        error.response.status === 401 &&
+        [401, 403].includes(error.response.status) &&
         error.config &&
         "Authorization" in error.config.headers
       ) {

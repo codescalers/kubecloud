@@ -17,17 +17,17 @@ definitions:
     type: object
   gridtypes.Unit:
     enum:
-    - 1024
-    - 1048576
-    - 1073741824
-    - 1099511627776
+      - 1024
+      - 1048576
+      - 1073741824
+      - 1099511627776
     format: int64
     type: integer
     x-enum-varnames:
-    - Kilobyte
-    - Megabyte
-    - Gigabyte
-    - Terabyte
+      - Kilobyte
+      - Megabyte
+      - Gigabyte
+      - Terabyte
   handlers.APIResponse:
     properties:
       data: {}
@@ -47,9 +47,9 @@ definitions:
         minLength: 8
         type: string
     required:
-    - confirm_password
-    - email
-    - password
+      - confirm_password
+      - email
+      - password
     type: object
   handlers.ChargeBalanceInput:
     properties:
@@ -60,9 +60,9 @@ definitions:
       payment_method_id:
         type: string
     required:
-    - amount
-    - card_type
-    - payment_method_id
+      - amount
+      - card_type
+      - payment_method_id
     type: object
   handlers.ChargeBalanceResponse:
     properties:
@@ -77,13 +77,13 @@ definitions:
         type: string
       nodes:
         items:
-          $ref: '#/definitions/handlers.NodeInput'
+          $ref: "#/definitions/handlers.NodeInput"
         type: array
       token:
         type: string
     required:
-    - name
-    - nodes
+      - name
+      - nodes
     type: object
   handlers.CreditRequestInput:
     properties:
@@ -94,8 +94,8 @@ definitions:
         minLength: 3
         type: string
     required:
-    - amount
-    - memo
+      - amount
+      - memo
     type: object
   handlers.CreditUserResponse:
     properties:
@@ -112,7 +112,7 @@ definitions:
         type: integer
       deployments:
         items:
-          $ref: '#/definitions/services.ClusterData'
+          $ref: "#/definitions/services.ClusterData"
         type: array
     type: object
   handlers.DeploymentWorkflowResponse:
@@ -127,7 +127,7 @@ definitions:
       email:
         type: string
     required:
-    - email
+      - email
     type: object
   handlers.GenerateVouchersInput:
     properties:
@@ -138,9 +138,9 @@ definitions:
       value:
         type: number
     required:
-    - count
-    - expire_after_days
-    - value
+      - count
+      - expire_after_days
+      - value
     type: object
   handlers.KubeconfigResponse:
     properties:
@@ -151,7 +151,7 @@ definitions:
     properties:
       nodes:
         items:
-          $ref: '#/definitions/types.Node'
+          $ref: "#/definitions/types.Node"
         type: array
       total:
         type: integer
@@ -160,7 +160,7 @@ definitions:
     properties:
       nodes:
         items:
-          $ref: '#/definitions/handlers.NodesWithDiscount'
+          $ref: "#/definitions/handlers.NodesWithDiscount"
         type: array
       total:
         type: integer
@@ -174,8 +174,8 @@ definitions:
         minLength: 3
         type: string
     required:
-    - email
-    - password
+      - email
+      - password
     type: object
   handlers.MaintenanceModeStatus:
     properties:
@@ -217,23 +217,23 @@ definitions:
         type: integer
       type:
         enum:
-        - worker
-        - master
-        - leader
+          - worker
+          - master
+          - leader
         type: string
     required:
-    - cpu
-    - memory
-    - name
-    - node_id
-    - root_size
-    - type
+      - cpu
+      - memory
+      - name
+      - node_id
+      - root_size
+      - type
     type: object
   handlers.NodeStoragePoolResponse:
     properties:
       pools:
         items:
-          $ref: '#/definitions/services.Pool'
+          $ref: "#/definitions/services.Pool"
         type: array
     type: object
   handlers.NodesWithDiscount:
@@ -245,7 +245,7 @@ definitions:
       country:
         type: string
       cpu_benchmark:
-        $ref: '#/definitions/types.CpuBenchmark'
+        $ref: "#/definitions/types.CpuBenchmark"
       created:
         type: integer
       dedicated:
@@ -253,7 +253,7 @@ definitions:
       discount_price:
         type: number
       dmi:
-        $ref: '#/definitions/types.Dmi'
+        $ref: "#/definitions/types.Dmi"
       extraFee:
         type: integer
       farm_free_ips:
@@ -270,7 +270,7 @@ definitions:
         type: array
       gpus:
         items:
-          $ref: '#/definitions/types.NodeGPU'
+          $ref: "#/definitions/types.NodeGPU"
         type: array
       gridVersion:
         type: integer
@@ -281,17 +281,17 @@ definitions:
       inDedicatedFarm:
         type: boolean
       location:
-        $ref: '#/definitions/types.Location'
+        $ref: "#/definitions/types.Location"
       nodeId:
         type: integer
       num_gpu:
         type: integer
       power:
-        $ref: '#/definitions/types.NodePower'
+        $ref: "#/definitions/types.NodePower"
       price_usd:
         type: number
       publicConfig:
-        $ref: '#/definitions/types.PublicConfig'
+        $ref: "#/definitions/types.PublicConfig"
       rentContractId:
         type: integer
       rentable:
@@ -303,11 +303,11 @@ definitions:
       serialNumber:
         type: string
       speed:
-        $ref: '#/definitions/types.Speed'
+        $ref: "#/definitions/types.Speed"
       status:
         type: string
       total_resources:
-        $ref: '#/definitions/types.Capacity'
+        $ref: "#/definitions/types.Capacity"
       twinId:
         type: integer
       updatedAt:
@@ -315,7 +315,7 @@ definitions:
       uptime:
         type: integer
       used_resources:
-        $ref: '#/definitions/types.Capacity'
+        $ref: "#/definitions/types.Capacity"
     type: object
   handlers.NotificationResponse:
     description: A notification response
@@ -331,19 +331,19 @@ definitions:
       read_at:
         type: string
       severity:
-        $ref: '#/definitions/models.NotificationSeverity'
+        $ref: "#/definitions/models.NotificationSeverity"
       status:
-        $ref: '#/definitions/models.NotificationStatus'
+        $ref: "#/definitions/models.NotificationStatus"
       task_id:
         type: string
       type:
-        $ref: '#/definitions/models.NotificationType'
+        $ref: "#/definitions/models.NotificationType"
     type: object
   handlers.PendingRecordsResponse:
     properties:
       pending_records:
         items:
-          $ref: '#/definitions/services.PendingRecordsWithUSDAmounts'
+          $ref: "#/definitions/services.PendingRecordsWithUSDAmounts"
         type: array
     type: object
   handlers.RedeemVoucherResponse:
@@ -362,7 +362,7 @@ definitions:
       refresh_token:
         type: string
     required:
-    - refresh_token
+      - refresh_token
     type: object
   handlers.RefreshTokenResponse:
     properties:
@@ -384,10 +384,10 @@ definitions:
         minLength: 8
         type: string
     required:
-    - confirm_password
-    - email
-    - name
-    - password
+      - confirm_password
+      - email
+      - name
+      - password
     type: object
   handlers.RegisterResponse:
     properties:
@@ -419,8 +419,8 @@ definitions:
       public_key:
         type: string
     required:
-    - name
-    - public_key
+      - name
+      - public_key
     type: object
   handlers.TwinResponse:
     properties:
@@ -476,7 +476,7 @@ definitions:
     properties:
       workflows:
         items:
-          $ref: '#/definitions/handlers.UserWorkflow'
+          $ref: "#/definitions/handlers.UserWorkflow"
         type: array
     type: object
   handlers.VerifyCodeInput:
@@ -486,8 +486,8 @@ definitions:
       email:
         type: string
     required:
-    - code
-    - email
+      - code
+      - email
     type: object
   handlers.VerifyRegisterUserResponse:
     properties:
@@ -508,11 +508,11 @@ definitions:
         type: string
       network:
         allOf:
-        - $ref: '#/definitions/workloads.ZNet'
+          - $ref: "#/definitions/workloads.ZNet"
         description: Computed
       nodes:
         items:
-          $ref: '#/definitions/kubedeployer.Node'
+          $ref: "#/definitions/kubedeployer.Node"
         minItems: 1
         type: array
       project_name:
@@ -520,8 +520,8 @@ definitions:
       token:
         type: string
     required:
-    - name
-    - nodes
+      - name
+      - nodes
     type: object
   kubedeployer.Node:
     properties:
@@ -575,30 +575,30 @@ definitions:
         type: integer
       type:
         allOf:
-        - $ref: '#/definitions/kubedeployer.NodeType'
+          - $ref: "#/definitions/kubedeployer.NodeType"
         enum:
-        - worker
-        - master
-        - leader
+          - worker
+          - master
+          - leader
     required:
-    - cpu
-    - data_disks
-    - memory
-    - name
-    - node_id
-    - root_size
-    - type
+      - cpu
+      - data_disks
+      - memory
+      - name
+      - node_id
+      - root_size
+      - type
     type: object
   kubedeployer.NodeType:
     enum:
-    - worker
-    - master
-    - leader
+      - worker
+      - master
+      - leader
     type: string
     x-enum-varnames:
-    - NodeTypeWorker
-    - NodeTypeMaster
-    - NodeTypeLeader
+      - NodeTypeWorker
+      - NodeTypeMaster
+      - NodeTypeLeader
   models.Invoice:
     properties:
       created_at:
@@ -607,17 +607,17 @@ definitions:
         type: integer
       nodes:
         items:
-          $ref: '#/definitions/models.NodeItem'
+          $ref: "#/definitions/models.NodeItem"
         type: array
       tax:
-        description: 'TODO:'
+        description: "TODO:"
         type: number
       total:
         type: number
       user_id:
         type: integer
     required:
-    - user_id
+      - user_id
     type: object
   models.NodeItem:
     properties:
@@ -638,46 +638,46 @@ definitions:
     type: object
   models.NotificationSeverity:
     enum:
-    - info
-    - error
-    - warning
-    - success
+      - info
+      - error
+      - warning
+      - success
     type: string
     x-enum-varnames:
-    - NotificationSeverityInfo
-    - NotificationSeverityError
-    - NotificationSeverityWarning
-    - NotificationSeveritySuccess
+      - NotificationSeverityInfo
+      - NotificationSeverityError
+      - NotificationSeverityWarning
+      - NotificationSeveritySuccess
   models.NotificationStatus:
     enum:
-    - unread
-    - read
+      - unread
+      - read
     type: string
     x-enum-varnames:
-    - NotificationStatusUnread
-    - NotificationStatusRead
+      - NotificationStatusUnread
+      - NotificationStatusRead
   models.NotificationType:
     enum:
-    - deployment
-    - billing
-    - user
-    - connected
-    - node
-    - admin
+      - deployment
+      - billing
+      - user
+      - connected
+      - node
+      - admin
     type: string
     x-enum-varnames:
-    - NotificationTypeDeployment
-    - NotificationTypeBilling
-    - NotificationTypeUser
-    - NotificationTypeConnected
-    - NotificationTypeNode
-    - NotificationTypeAdmin
+      - NotificationTypeDeployment
+      - NotificationTypeBilling
+      - NotificationTypeUser
+      - NotificationTypeConnected
+      - NotificationTypeNode
+      - NotificationTypeAdmin
   models.SSHKey:
     properties:
       created_at:
         type: string
       deleted_at:
-        $ref: '#/definitions/gorm.DeletedAt'
+        $ref: "#/definitions/gorm.DeletedAt"
       id:
         description: Primary key
         type: integer
@@ -693,9 +693,9 @@ definitions:
         description: User owner
         type: integer
     required:
-    - name
-    - public_key
-    - userID
+      - name
+      - public_key
+      - userID
     type: object
   models.Voucher:
     properties:
@@ -712,10 +712,10 @@ definitions:
       value:
         type: number
     required:
-    - code
-    - created_at
-    - expires_at
-    - value
+      - code
+      - created_at
+      - expires_at
+      - value
     type: object
   services.AdminWorkflow:
     properties:
@@ -752,7 +752,7 @@ definitions:
   services.ClusterData:
     properties:
       cluster:
-        $ref: '#/definitions/kubedeployer.Cluster'
+        $ref: "#/definitions/kubedeployer.Cluster"
       created_at:
         type: string
       id:
@@ -852,8 +852,8 @@ definitions:
       verified:
         type: boolean
     required:
-    - email
-    - username
+      - email
+      - username
     type: object
   services.UserWithUSDBalance:
     properties:
@@ -894,8 +894,8 @@ definitions:
       verified:
         type: boolean
     required:
-    - email
-    - username
+      - email
+      - username
     type: object
   types.BIOS:
     properties:
@@ -916,11 +916,11 @@ definitions:
       cru:
         type: integer
       hru:
-        $ref: '#/definitions/gridtypes.Unit'
+        $ref: "#/definitions/gridtypes.Unit"
       mru:
-        $ref: '#/definitions/gridtypes.Unit'
+        $ref: "#/definitions/gridtypes.Unit"
       sru:
-        $ref: '#/definitions/gridtypes.Unit'
+        $ref: "#/definitions/gridtypes.Unit"
     type: object
   types.CpuBenchmark:
     properties:
@@ -940,18 +940,18 @@ definitions:
   types.Dmi:
     properties:
       baseboard:
-        $ref: '#/definitions/types.Baseboard'
+        $ref: "#/definitions/types.Baseboard"
       bios:
-        $ref: '#/definitions/types.BIOS'
+        $ref: "#/definitions/types.BIOS"
       memory:
         items:
-          $ref: '#/definitions/types.Memory'
+          $ref: "#/definitions/types.Memory"
         type: array
       node_twin_id:
         type: integer
       processor:
         items:
-          $ref: '#/definitions/types.Processor'
+          $ref: "#/definitions/types.Processor"
         type: array
       updated_at:
         type: integer
@@ -985,13 +985,13 @@ definitions:
       country:
         type: string
       cpu_benchmark:
-        $ref: '#/definitions/types.CpuBenchmark'
+        $ref: "#/definitions/types.CpuBenchmark"
       created:
         type: integer
       dedicated:
         type: boolean
       dmi:
-        $ref: '#/definitions/types.Dmi'
+        $ref: "#/definitions/types.Dmi"
       extraFee:
         type: integer
       farm_free_ips:
@@ -1008,7 +1008,7 @@ definitions:
         type: array
       gpus:
         items:
-          $ref: '#/definitions/types.NodeGPU'
+          $ref: "#/definitions/types.NodeGPU"
         type: array
       gridVersion:
         type: integer
@@ -1019,17 +1019,17 @@ definitions:
       inDedicatedFarm:
         type: boolean
       location:
-        $ref: '#/definitions/types.Location'
+        $ref: "#/definitions/types.Location"
       nodeId:
         type: integer
       num_gpu:
         type: integer
       power:
-        $ref: '#/definitions/types.NodePower'
+        $ref: "#/definitions/types.NodePower"
       price_usd:
         type: number
       publicConfig:
-        $ref: '#/definitions/types.PublicConfig'
+        $ref: "#/definitions/types.PublicConfig"
       rentContractId:
         type: integer
       rentable:
@@ -1041,11 +1041,11 @@ definitions:
       serialNumber:
         type: string
       speed:
-        $ref: '#/definitions/types.Speed'
+        $ref: "#/definitions/types.Speed"
       status:
         type: string
       total_resources:
-        $ref: '#/definitions/types.Capacity'
+        $ref: "#/definitions/types.Capacity"
       twinId:
         type: integer
       updatedAt:
@@ -1053,7 +1053,7 @@ definitions:
       uptime:
         type: integer
       used_resources:
-        $ref: '#/definitions/types.Capacity'
+        $ref: "#/definitions/types.Capacity"
     type: object
   types.NodeGPU:
     properties:
@@ -1140,14 +1140,14 @@ definitions:
       description:
         type: string
       externalIP:
-        $ref: '#/definitions/zos.IPNet'
+        $ref: "#/definitions/zos.IPNet"
       externalSK:
         items:
           format: int32
           type: integer
         type: array
       iprange:
-        $ref: '#/definitions/zos.IPNet'
+        $ref: "#/definitions/zos.IPNet"
       keys:
         additionalProperties:
           items:
@@ -1176,7 +1176,7 @@ definitions:
         type: array
       nodesIPRange:
         additionalProperties:
-          $ref: '#/definitions/zos.IPNet'
+          $ref: "#/definitions/zos.IPNet"
         type: object
       publicNodeID:
         format: int32
@@ -1211,1117 +1211,1120 @@ info:
 paths:
   /deployments:
     delete:
-      description: Deletes all deployments and their resources for the authenticated
+      description:
+        Deletes all deployments and their resources for the authenticated
         user
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Delete all deployments workflow started successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentWorkflowResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentWorkflowResponse"
+                type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Delete all deployments
       tags:
-      - deployments
+        - deployments
     get:
-      description: Retrieves a list of all deployments (clusters) for the authenticated
+      description:
+        Retrieves a list of all deployments (clusters) for the authenticated
         user
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Deployments retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentListResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentListResponse"
+                type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: List deployments
       tags:
-      - deployments
+        - deployments
     post:
       consumes:
-      - application/json
+        - application/json
       description: Creates and deploys a new Kubernetes cluster
       parameters:
-      - description: Cluster configuration
-        in: body
-        name: cluster
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ClusterInput'
+        - description: Cluster configuration
+          in: body
+          name: cluster
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.ClusterInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Deployment workflow started successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentWorkflowResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentWorkflowResponse"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Deploy cluster
       tags:
-      - deployments
+        - deployments
   /deployments/{name}:
     delete:
       description: Deletes a specific deployment and all its resources
       parameters:
-      - description: Deployment name
-        in: path
-        name: name
-        required: true
-        type: string
+        - description: Deployment name
+          in: path
+          name: name
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Deployment deletion workflow started successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentWorkflowResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentWorkflowResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Deployment not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Delete deployment
       tags:
-      - deployments
+        - deployments
     get:
       description: Retrieves details of a specific deployment by name
       parameters:
-      - description: Deployment name
-        in: path
-        name: name
-        required: true
-        type: string
+        - description: Deployment name
+          in: path
+          name: name
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Deployment details retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/services.ClusterData'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/services.ClusterData"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Deployment not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Get deployment
       tags:
-      - deployments
+        - deployments
   /deployments/{name}/kubeconfig:
     get:
       description: Retrieves the kubeconfig file for a specific deployment
       parameters:
-      - description: Deployment name
-        in: path
-        name: name
-        required: true
-        type: string
+        - description: Deployment name
+          in: path
+          name: name
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Kubeconfig retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.KubeconfigResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.KubeconfigResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Deployment not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Get kubeconfig
       tags:
-      - deployments
+        - deployments
   /deployments/{name}/nodes:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Adds a new node to an existing deployment
       parameters:
-      - description: Cluster configuration with new node
-        in: body
-        name: cluster
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ClusterInput'
+        - description: Cluster configuration with new node
+          in: body
+          name: cluster
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.ClusterInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Node addition workflow started successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentWorkflowResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentWorkflowResponse"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Deployment not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Add node to deployment
       tags:
-      - deployments
+        - deployments
   /deployments/{name}/nodes/{node_name}:
     delete:
       description: Removes a specific node from an existing deployment
       parameters:
-      - description: Deployment name
-        in: path
-        name: name
-        required: true
-        type: string
-      - description: Node name to remove
-        in: path
-        name: node_name
-        required: true
-        type: string
+        - description: Deployment name
+          in: path
+          name: name
+          required: true
+          type: string
+        - description: Node name to remove
+          in: path
+          name: node_name
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Node removal workflow started successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.DeploymentWorkflowResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.DeploymentWorkflowResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Deployment not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Remove node from deployment
       tags:
-      - deployments
+        - deployments
   /invoices:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns a list of all invoices
       operationId: get-all-invoices
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Invoice'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    items:
+                      $ref: "#/definitions/models.Invoice"
+                    type: array
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Get all invoices
       tags:
-      - admin
+        - admin
   /nodes:
     get:
       consumes:
-      - application/json
+        - application/json
       description: List all nodes from the grid proxy (no user-specific filtering)
       operationId: list-all-grid-nodes
       parameters:
-      - description: 'Filter by healthy nodes (default: false)'
-        in: query
-        name: healthy
-        type: boolean
-      - description: 'Limit the number of nodes returned (default: 50)'
-        in: query
-        name: size
-        type: integer
-      - description: 'page number (default: 1)'
-        in: query
-        name: page
-        type: integer
+        - description: "Filter by healthy nodes (default: false)"
+          in: query
+          name: healthy
+          type: boolean
+        - description: "Limit the number of nodes returned (default: 50)"
+          in: query
+          name: size
+          type: integer
+        - description: "page number (default: 1)"
+          in: query
+          name: page
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: All grid nodes retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.ListNodesResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.ListNodesResponse"
+                type: object
         "400":
           description: Invalid filter parameters
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: List all grid nodes
       tags:
-      - nodes
+        - nodes
   /nodes/{node_id}/storage-pool:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns node storage pool
       operationId: get-node-storage-pool
       parameters:
-      - description: Node ID
-        in: path
-        name: node_id
-        required: true
-        type: string
+        - description: Node ID
+          in: path
+          name: node_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Node storage pool is retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.NodeStoragePoolResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.NodeStoragePoolResponse"
+                type: object
         "400":
           description: Bad Request or Invalid params
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Node not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get node storage pool
       tags:
-      - nodes
+        - nodes
   /notifications:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Deletes all notifications for a user
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: All notifications deleted successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                type: object
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to delete notifications
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Delete all notifications
       tags:
-      - notifications
+        - notifications
     get:
       consumes:
-      - application/json
+        - application/json
       description: Retrieves all user notifications with pagination
       parameters:
-      - description: 'Maximum number of notifications to return (default: 20, max:
-          100)'
-        in: query
-        name: limit
-        type: integer
-      - description: 'Number of notifications to skip (default: 0)'
-        in: query
-        name: offset
-        type: integer
+        - description:
+            "Maximum number of notifications to return (default: 20, max:
+            100)"
+          in: query
+          name: limit
+          type: integer
+        - description: "Number of notifications to skip (default: 0)"
+          in: query
+          name: offset
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Notifications retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  properties:
-                    count:
-                      type: integer
-                    limit:
-                      type: integer
-                    notifications:
-                      items:
-                        $ref: '#/definitions/handlers.NotificationResponse'
-                      type: array
-                    offset:
-                      type: integer
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    properties:
+                      count:
+                        type: integer
+                      limit:
+                        type: integer
+                      notifications:
+                        items:
+                          $ref: "#/definitions/handlers.NotificationResponse"
+                        type: array
+                      offset:
+                        type: integer
+                    type: object
+                type: object
         "400":
           description: Invalid pagination parameters
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to retrieve notifications
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get all notifications
       tags:
-      - notifications
+        - notifications
   /notifications/{notification_id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Deletes a specific notification for a user
       parameters:
-      - description: Notification ID
-        in: path
-        name: notification_id
-        required: true
-        type: string
+        - description: Notification ID
+          in: path
+          name: notification_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Notification deleted successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                type: object
         "400":
           description: Invalid notification ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Notification not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to delete notification
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Delete a specific notification
       tags:
-      - notifications
+        - notifications
   /notifications/{notification_id}/read:
     patch:
       consumes:
-      - application/json
+        - application/json
       description: Marks a specific notification as read for a user
       parameters:
-      - description: Notification ID
-        in: path
-        name: notification_id
-        required: true
-        type: string
+        - description: Notification ID
+          in: path
+          name: notification_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Notification marked as read successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                type: object
         "400":
           description: Invalid notification ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Notification not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to mark notification as read
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Mark a specific notification as read
       tags:
-      - notifications
+        - notifications
   /notifications/{notification_id}/unread:
     patch:
       consumes:
-      - application/json
+        - application/json
       description: Marks a specific notification as unread for a user
       parameters:
-      - description: Notification ID
-        in: path
-        name: notification_id
-        required: true
-        type: string
+        - description: Notification ID
+          in: path
+          name: notification_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Notification marked as unread successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                type: object
         "400":
           description: Invalid notification ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Notification not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to mark notification as unread
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Mark a specific notification as unread
       tags:
-      - notifications
+        - notifications
   /notifications/read-all:
     patch:
       consumes:
-      - application/json
+        - application/json
       description: Marks all notifications as read for a user
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: All notifications marked as read successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                type: object
         "400":
           description: Invalid notification ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Authentication required
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to mark notifications as read
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Mark all notifications as read
       tags:
-      - notifications
+        - notifications
   /notifications/unread:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Retrieves only unread notifications for a user
       parameters:
-      - description: Limit
-        in: query
-        name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
+        - description: Limit
+          in: query
+          name: limit
+          type: integer
+        - description: Offset
+          in: query
+          name: offset
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Unread notifications retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  properties:
-                    count:
-                      type: integer
-                    limit:
-                      type: integer
-                    notifications:
-                      items:
-                        $ref: '#/definitions/handlers.NotificationResponse'
-                      type: array
-                    offset:
-                      type: integer
-                  type: object
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    properties:
+                      count:
+                        type: integer
+                      limit:
+                        type: integer
+                      notifications:
+                        items:
+                          $ref: "#/definitions/handlers.NotificationResponse"
+                        type: array
+                      offset:
+                        type: integer
+                    type: object
+                type: object
         "400":
           description: Invalid pagination parameters
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Failed to retrieve unread notifications
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get unread notifications
       tags:
-      - notifications
+        - notifications
   /pending-records:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns all pending records in the system
       operationId: list-pending-records
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Pending records are retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/services.PendingRecordsWithUSDAmounts'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/services.PendingRecordsWithUSDAmounts"
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: List pending records
       tags:
-      - admin
+        - admin
   /stats:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Retrieves comprehensive system statistics.
       operationId: get-stats
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: System statistics retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/services.Stats'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/services.Stats"
+                type: object
         "500":
           description: Internal Server Error - Failed to retrieve statistics
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Get system statistics
       tags:
-      - admin
+        - admin
   /system/maintenance/status:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Gets maintenance mode for the system
       operationId: get-maintenance-mode
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.MaintenanceModeStatus'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.MaintenanceModeStatus"
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Get maintenance mode
       tags:
-      - admin
+        - admin
     put:
       consumes:
-      - application/json
+        - application/json
       description: Sets maintenance mode for the system
       operationId: set-maintenance-mode
       parameters:
-      - description: Maintenance Mode Status
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.MaintenanceModeStatus'
+        - description: Maintenance Mode Status
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.MaintenanceModeStatus"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Set maintenance mode
       tags:
-      - admin
+        - admin
   /twins/{twin_id}/account:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Retrieve the account ID associated with a specific twin ID
       parameters:
-      - description: Twin ID
-        in: path
-        name: twin_id
-        required: true
-        type: integer
-      - description: Pagination limit
-        in: query
-        name: limit
-        type: integer
-      - description: Pagination offset
-        in: query
-        name: offset
-        type: integer
-      - description: Other optional filter params
-        in: query
-        name: filterParam
-        type: string
+        - description: Twin ID
+          in: path
+          name: twin_id
+          required: true
+          type: integer
+        - description: Pagination limit
+          in: query
+          name: limit
+          type: integer
+        - description: Pagination offset
+          in: query
+          name: offset
+          type: integer
+        - description: Other optional filter params
+          in: query
+          name: filterParam
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Account ID is retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.TwinResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.TwinResponse"
+                type: object
         "400":
           description: Bad Request or Invalid params
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Twin ID not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get account ID by twin ID
       tags:
-      - twins
+        - twins
   /user/:
     get:
       description: Retrieves all data of the user
       operationId: get-user
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: User is retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/services.UserWithPendingBalance'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/services.UserWithPendingBalance"
+                type: object
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get user details
       tags:
-      - users
+        - users
   /user/balance:
     get:
       description: Retrieves the user's balance in USD
       operationId: get-user-balance
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Balance fetched successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.UserBalanceResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.UserBalanceResponse"
+                type: object
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get user balance
       tags:
-      - users
+        - users
   /user/balance/charge:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Charges the user's balance using a payment method
       operationId: charge-balance
       parameters:
-      - description: Charge Balance Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ChargeBalanceInput'
+        - description: Charge Balance Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.ChargeBalanceInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
-          description: 'workflow_id: string, email: string'
+          description: "workflow_id: string, email: string"
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.ChargeBalanceResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.ChargeBalanceResponse"
+                type: object
         "400":
           description: Invalid request format or amount
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Charge user balance
       tags:
-      - users
+        - users
   /user/change_password:
     put:
       consumes:
-      - application/json
+        - application/json
       description: Changes the user's password
       operationId: change-password
       parameters:
-      - description: Change Password Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.ChangePasswordInput'
+        - description: Change Password Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.ChangePasswordInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Password updated successfully
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid request format or password mismatch
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Change password
       tags:
-      - users
+        - users
   /user/forgot_password:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Sends a verification code to the user's email for password reset
       operationId: forgot-password
       parameters:
-      - description: Email Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.EmailInput'
+        - description: Email Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.EmailInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Verification code sent successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.RegisterResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.RegisterResponse"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Forgot password
       tags:
-      - users
+        - users
   /user/forgot_password/verify:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Verifies the code sent to the user's email for password reset
       operationId: verify-forgot-password-code
       parameters:
-      - description: Verify Code Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.VerifyCodeInput'
+        - description: Verify Code Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.VerifyCodeInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Verification successful
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/auth.TokenPair'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/auth.TokenPair"
+                type: object
         "400":
           description: Invalid request format or verification failed
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Verify forgot password code
       tags:
-      - users
+        - users
   /user/invoice:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns a list of invoices for a user
       operationId: get-invoices
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Invoice'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    items:
+                      $ref: "#/definitions/models.Invoice"
+                    type: array
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: Get invoices
       tags:
-      - invoices
+        - invoices
   /user/invoice/{invoice_id}:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Downloads an invoice by ID
       operationId: download-invoice
       parameters:
-      - description: Invoice ID
-        in: path
-        name: invoice_id
-        required: true
-        type: string
+        - description: Invoice ID
+          in: path
+          name: invoice_id
+          required: true
+          type: string
       produces:
-      - application/octet-stream
+        - application/octet-stream
       responses:
         "200":
           description: OK
@@ -2330,910 +2333,929 @@ paths:
         "404":
           description: Invoice is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: Download invoice
       tags:
-      - invoices
+        - invoices
   /user/login:
     post:
       consumes:
-      - application/json
-      description: Logs a user in. Checks KYC verification status and updates user
+        - application/json
+      description:
+        Logs a user in. Checks KYC verification status and updates user
         sponsorship status if needed. Login is not blocked by KYC errors.
       operationId: login-user
       parameters:
-      - description: Login Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.LoginInput'
+        - description: Login Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.LoginInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: token pair generated
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/auth.TokenPair'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/auth.TokenPair"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Login failed
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Login user (KYC verification checked)
       tags:
-      - users
+        - users
   /user/nodes:
     get:
       consumes:
-      - application/json
-      description: List nodes from proxy [rented nodes first, then available nodes
+        - application/json
+      description:
+        List nodes from proxy [rented nodes first, then available nodes
         sorted by uptime]
       operationId: list-nodes
       parameters:
-      - description: 'Filter by healthy nodes (default: true)'
-        in: query
-        name: healthy
-        type: boolean
-      - description: 'Filter by rentable nodes (default: true)'
-        in: query
-        name: rentable
-        type: boolean
-      - description: 'Limit the number of nodes returned (default: 50)'
-        in: query
-        name: limit
-        type: integer
-      - description: 'Offset for pagination (default: 0)'
-        in: query
-        name: offset
-        type: integer
+        - description: "Filter by healthy nodes (default: true)"
+          in: query
+          name: healthy
+          type: boolean
+        - description: "Filter by rentable nodes (default: true)"
+          in: query
+          name: rentable
+          type: boolean
+        - description: "Limit the number of nodes returned (default: 50)"
+          in: query
+          name: limit
+          type: integer
+        - description: "Offset for pagination (default: 0)"
+          in: query
+          name: offset
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Nodes are retrieved successfully
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid filter parameters
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: List nodes
       tags:
-      - nodes
+        - nodes
   /user/nodes/{node_id}:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Reserves a node for a user
       operationId: reserve-node
       parameters:
-      - description: Node ID
-        in: path
-        name: node_id
-        required: true
-        type: string
+        - description: Node ID
+          in: path
+          name: node_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Node reservation in progress
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.ReserveNodeResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.ReserveNodeResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: No nodes are available for rent.
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: Reserve node
       tags:
-      - nodes
+        - nodes
   /user/nodes/rentable:
     get:
       consumes:
-      - application/json
-      description: Retrieves a list of rentable nodes from the grid proxy. These are
+        - application/json
+      description:
+        Retrieves a list of rentable nodes from the grid proxy. These are
         healthy nodes that are available for rent.
       operationId: list-rentable-nodes
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Rentable nodes retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.ListNodesWithDiscountResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.ListNodesWithDiscountResponse"
+                type: object
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: List rentable nodes
       tags:
-      - nodes
+        - nodes
   /user/nodes/rented:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns a list of reserved nodes for a user
       operationId: list-reserved-nodes
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.ListNodesWithDiscountResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.ListNodesWithDiscountResponse"
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: List reserved nodes
       tags:
-      - nodes
+        - nodes
   /user/nodes/unreserve/{contract_id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Unreserve a node for a user
       operationId: unreserve-node
       parameters:
-      - description: Contract ID
-        in: path
-        name: contract_id
-        required: true
-        type: string
+        - description: Contract ID
+          in: path
+          name: contract_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Accepted
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.UnreserveNodeResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.UnreserveNodeResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: User is not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - UserMiddleware: []
+        - UserMiddleware: []
       summary: Unreserve node
       tags:
-      - nodes
+        - nodes
   /user/pending-records:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns user pending records in the system
       operationId: list-user-pending-records
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Pending records returned successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.PendingRecordsResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.PendingRecordsResponse"
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: List user pending records
       tags:
-      - users
+        - users
   /user/redeem/{voucher_code}:
     put:
       description: Redeems a voucher for the user
       operationId: redeem-voucher
       parameters:
-      - description: Voucher Code
-        in: path
-        name: voucher_code
-        required: true
-        type: string
+        - description: Voucher Code
+          in: path
+          name: voucher_code
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
-          description: 'workflow_id: string, voucher_code: string, amount: float64,
-            email: string'
+          description:
+            "workflow_id: string, voucher_code: string, amount: float64,
+            email: string"
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.RedeemVoucherResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.RedeemVoucherResponse"
+                type: object
         "400":
           description: Invalid voucher code, already redeemed, or expired
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: User or voucher are not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Redeem voucher
       tags:
-      - users
+        - users
   /user/refresh:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Refreshes the access token using a valid refresh token
       operationId: refresh-token
       parameters:
-      - description: Refresh Token Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.RefreshTokenInput'
+        - description: Refresh Token Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.RefreshTokenInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: access token refreshed successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.RefreshTokenResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.RefreshTokenResponse"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Invalid or expired refresh token
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Refresh access token
       tags:
-      - users
+        - users
   /user/register:
     post:
       consumes:
-      - application/json
-      description: Registers a new user, sets up blockchain account, and creates KYC
+        - application/json
+      description:
+        Registers a new user, sets up blockchain account, and creates KYC
         sponsorship. Sends verification code to email.
       operationId: register-user
       parameters:
-      - description: Register Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.RegisterInput'
+        - description: Register Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.RegisterInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
-          description: 'workflow_id: string, email: string'
+          description: "workflow_id: string, email: string"
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.RegisterUserResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.RegisterUserResponse"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "409":
           description: User is already registered
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Register user (with KYC sponsorship)
       tags:
-      - users
+        - users
   /user/register/verify:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Verifies the email using the registration code
       operationId: verify-register-code
       parameters:
-      - description: Verification details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.VerifyCodeInput'
+        - description: Verification details
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.VerifyCodeInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
-          description: 'workflow_id: string, email: string, token_pair: object'
+          description: "workflow_id: string, email: string, token_pair: object"
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.VerifyRegisterUserResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.VerifyRegisterUserResponse"
+                type: object
         "400":
           description: Invalid request
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "409":
           description: User is already registered
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Verify registration code
       tags:
-      - users
+        - users
   /user/ssh-keys:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Lists all SSH keys for the authenticated user
       operationId: list-ssh-keys
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.SSHKey'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    items:
+                      $ref: "#/definitions/models.SSHKey"
+                    type: array
+                type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: List user SSH keys
       tags:
-      - users
+        - users
     post:
       consumes:
-      - application/json
+        - application/json
       description: Adds a new SSH key for the authenticated user
       operationId: add-ssh-key
       parameters:
-      - description: SSH Key Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.SSHKeyInput'
+        - description: SSH Key Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.SSHKeyInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/models.SSHKey'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/models.SSHKey"
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Add SSH key
       tags:
-      - users
+        - users
   /user/ssh-keys/{ssh_key_id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Deletes an SSH key for the authenticated user
       operationId: delete-ssh-key
       parameters:
-      - description: SSH Key ID
-        in: path
-        name: ssh_key_id
-        required: true
-        type: integer
+        - description: SSH Key ID
+          in: path
+          name: ssh_key_id
+          required: true
+          type: integer
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid SSH key ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: SSH key not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: Delete SSH key
       tags:
-      - users
+        - users
   /user/workflows:
     get:
       consumes:
-      - application/json
-      description: Returns all pending/running workflows belonging to the authenticated
+        - application/json
+      description:
+        Returns all pending/running workflows belonging to the authenticated
         user.
       operationId: list-user-workflows
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: User workflows retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.UserWorkflowsResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.UserWorkflowsResponse"
+                type: object
         "401":
           description: Unauthorized user
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - BearerAuth: []
+        - BearerAuth: []
       summary: List remaining user workflows
       tags:
-      - workflow
+        - workflow
   /users:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns a list of all users
       operationId: get-all-users
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             items:
-              $ref: '#/definitions/services.UserWithUSDBalance'
+              $ref: "#/definitions/services.UserWithUSDBalance"
             type: array
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Get all users
       tags:
-      - admin
+        - admin
   /users/{user_id}:
     delete:
       consumes:
-      - application/json
+        - application/json
       description: Deletes a user from the system
       operationId: delete-user
       parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: string
+        - description: User ID
+          in: path
+          name: user_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid user ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "403":
           description: Admins cannot delete their own account
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Delete a user
       tags:
-      - admin
+        - admin
   /users/{user_id}/credit:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Credits a specific user's balance
       operationId: credit-user
       parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: string
-      - description: Credit Request Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CreditRequestInput'
+        - description: User ID
+          in: path
+          name: user_id
+          required: true
+          type: string
+        - description: Credit Request Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.CreditRequestInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Accepted
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.CreditUserResponse'
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    $ref: "#/definitions/handlers.CreditUserResponse"
+                type: object
         "400":
           description: Invalid request format or user ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Credit user balance
       tags:
-      - admin
+        - admin
   /users/{user_id}/drain:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Drains a specific user's balance to the system account
       operationId: drain-user
       parameters:
-      - description: User ID
-        in: path
-        name: user_id
-        required: true
-        type: string
+        - description: User ID
+          in: path
+          name: user_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: User balance drain initiated
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid user ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Drain user balance
       tags:
-      - admin
+        - admin
   /users/drain-all:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Drains all users' balances to the system account
       operationId: drain-all-users
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: All users' balance drain initiated
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Drain all users' balances
       tags:
-      - admin
+        - admin
   /users/mail:
     post:
       consumes:
-      - multipart/form-data
-      description: Allows admin to send a custom email to all users with optional
+        - multipart/form-data
+      description:
+        Allows admin to send a custom email to all users with optional
         file attachments.
       operationId: admin-mail-all-users
       parameters:
-      - description: Email subject
-        in: formData
-        name: subject
-        required: true
-        type: string
-      - description: Email body content
-        in: formData
-        name: body
-        required: true
-        type: string
-      - description: Email attachments (multiple files allowed)
-        in: formData
-        name: attachments
-        type: file
+        - description: Email subject
+          in: formData
+          name: subject
+          required: true
+          type: string
+        - description: Email body content
+          in: formData
+          name: body
+          required: true
+          type: string
+        - description: Email attachments (multiple files allowed)
+          in: formData
+          name: attachments
+          type: file
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Mail sending started
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Start sending mail to all users (async)
       tags:
-      - admin
+        - admin
   /vouchers:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns all vouchers in the system
       operationId: list-vouchers
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Voucher'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    items:
+                      $ref: "#/definitions/models.Voucher"
+                    type: array
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: List vouchers
       tags:
-      - admin
+        - admin
   /vouchers/generate:
     post:
       consumes:
-      - application/json
+        - application/json
       description: Generates a bulk of vouchers
       operationId: generate-vouchers
       parameters:
-      - description: Generate Vouchers Input
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.GenerateVouchersInput'
+        - description: Generate Vouchers Input
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.GenerateVouchersInput"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/models.Voucher'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    items:
+                      $ref: "#/definitions/models.Voucher"
+                    type: array
+                type: object
         "400":
           description: Invalid request format
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: Generate vouchers
       tags:
-      - admin
+        - admin
   /workflow/{workflow_id}:
     get:
       consumes:
-      - application/json
+        - application/json
       description: Returns the status of a workflow by its ID.
       operationId: get-workflow-status
       parameters:
-      - description: Workflow ID
-        in: path
-        name: workflow_id
-        required: true
-        type: string
+        - description: Workflow ID
+          in: path
+          name: workflow_id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Workflow status returned successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  type: string
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: string
+                type: object
         "400":
           description: Invalid request or missing workflow ID
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "404":
           description: Workflow not found
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       summary: Get workflow status
       tags:
-      - workflow
+        - workflow
   /workflows:
     get:
       consumes:
-      - application/json
-      description: Returns all workflows in the system with optional filtering by
+        - application/json
+      description:
+        Returns all workflows in the system with optional filtering by
         status
       operationId: list-all-workflows
       parameters:
-      - description: Filter workflows by status (pending, running, completed, failed)
-        in: query
-        name: status
-        type: string
+        - description: Filter workflows by status (pending, running, completed, failed)
+          in: query
+          name: status
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: Workflows retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/services.AdminWorkflow'
-                  type: array
-              type: object
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    properties:
+                      limit:
+                        type: number
+                      page:
+                        type: number
+                      total:
+                        type: number
+                      total_pages:
+                        type: number
+                      workflows:
+                        items:
+                          $ref: "#/definitions/services.AdminWorkflow"
+                        type: array
+                    type: object
+                type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/handlers.APIResponse'
+            $ref: "#/definitions/handlers.APIResponse"
       security:
-      - AdminMiddleware: []
+        - AdminMiddleware: []
       summary: List all workflows
       tags:
-      - admin
+        - admin
 securityDefinitions:
   BearerAuth:
     in: header

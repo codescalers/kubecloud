@@ -17,6 +17,7 @@ export default defineNuxtPlugin((nuxtApp) => {
               background: "#0A192F",
               primary: "#60A5FA",
               surface: "rgba(24, 33, 52, 0.55)",
+              success: "#30c392",
             },
           },
         },
@@ -37,6 +38,12 @@ export default defineNuxtPlugin((nuxtApp) => {
           style: {
             borderRadius: "18px",
           },
+        },
+        VDataTableServer: {
+          class: "kc-table",
+        },
+        VContainer: {
+          maxWidth: "1400px",
         },
       },
     })
