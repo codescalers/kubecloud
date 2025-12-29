@@ -1,16 +1,16 @@
 <template>
   <v-container :fluid="isFluid" :style="{ transition: 'max-width 250ms ease-in-out' }">
-    <div class="d-flex justify-start">
+    <div :class="{ 'd-flex justify-start': !mobile }">
       <div
-        class="sticky-top"
+        :class="{ 'sticky-top': !mobile }"
         :style="{
-          maxHeight: `calc(100vh - 100px)`,
+          maxHeight: mobile ? undefined : `calc(100vh - 100px)`,
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
-          width: isOpen ? sidebarWidth + 24 + 'px' : 0,
+          width: mobile ? '100%' : isOpen ? sidebarWidth + 24 + 'px' : 0,
         }"
       >
-        <div class="pr-6 h-100">
+        <div :class="{ 'pr-6 h-100': !mobile }">
           <slot name="sidebar" />
         </div>
       </div>
@@ -19,7 +19,7 @@
         :style="{
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
-          width: `calc(100% - ${isOpen ? sidebarWidth : 0}px)`,
+          width: `calc(100% - ${isOpen && !mobile ? sidebarWidth : 0}px)`,
         }"
       >
         <slot />
@@ -34,5 +34,6 @@ defineProps({
   isOpen: { type: Boolean, default: true },
   isFluid: { type: Boolean, default: false },
   pageOffset: { type: Number, default: 100 },
+  mobile: { type: Boolean, default: false },
 })
 </script>

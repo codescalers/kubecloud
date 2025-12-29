@@ -5,65 +5,93 @@
         class="px-4 py-2 bg-primary text-uppercase text-caption font-weight-bold"
         :style="{ borderRadius: '0 18px' }"
       >
-        <span class="text-background">50% OFF</span>
+        <span class="text-background"
+          >{{ Math.round((node.discount_price! / node.price_usd!) * 100 * 100) / 100 }}% OFF</span
+        >
       </p>
     </div>
 
     <div>
       <h4 class="text-h6 font-weight-bold" v-text="'Node ' + node.nodeId" />
-      <p class="d-flex align-end ga-1">
-        <v-icon icon="mdi-map-marker-outline" size="small" color="primary" />
-        <span
-          class="opacity-70 text-uppercase text-subtitle-2"
-          :style="{ lineHeight: 1.3 }"
-          v-text="node.location?.country"
-        />
-      </p>
-    </div>
+      <div
+        class="d-flex justify-space-between align-end"
+        :style="{ marginTop: node.num_gpu ? '-6px' : '0' }"
+      >
+        <p class="d-flex align-end ga-1">
+          <v-icon icon="mdi-map-marker-outline" size="small" color="primary" />
+          <span
+            class="opacity-70 text-uppercase text-subtitle-2"
+            :style="{ lineHeight: 1.3 }"
+            v-text="node.location?.country"
+          />
+        </p>
 
-    <div class="my-8 d-flex align-center rounded-1 overflow-hidden border bg-2">
-      <div class="flex-grow-1 pa-4 d-flex flex-column align-center">
-        <v-icon icon="mdi-cpu-64-bit" color="primary" />
-        <span class="text-caption font-weight-bold opacity-50 mt-2 mb-0">CPU</span>
-        <span class="text-subtitle-2 font-weight-bold opacity-90">32 vCores</span>
-      </div>
-      <v-divider vertical />
-      <div class="flex-grow-1 pa-4 d-flex flex-column align-center">
-        <v-icon icon="mdi-memory" color="success" />
-        <span class="text-caption font-weight-bold opacity-50 mt-2 mb-0">RAM</span>
-        <span class="text-subtitle-2 font-weight-bold opacity-90">32 GB</span>
-      </div>
-      <v-divider vertical />
-      <div class="flex-grow-1 pa-4 d-flex flex-column align-center">
-        <v-icon icon="mdi-server" color="secondary" />
-        <span class="text-caption font-weight-bold opacity-50 mt-2 mb-0">SSD</span>
-        <span class="text-subtitle-2 font-weight-bold opacity-90">1.2 TB</span>
+        <v-chip
+          v-if="node.num_gpu"
+          color="primary"
+          size="small"
+          class="rounded-lg border border-primary font-weight-bold"
+          :style="{ '--v-border-opacity': 0.5 }"
+        >
+          {{ node.num_gpu! }} GPU
+        </v-chip>
       </div>
     </div>
 
-    <div class="d-flex justify-space-between align-end">
+    <div
+      class="bg-2 border rounded-1 my-8 d-flex justify-space-around align-center rounded-1 overflow-hidden flex-wrap"
+    >
+      <NodeCardResource
+        icon="mdi-cpu-64-bit"
+        color="primary"
+        title="CPU"
+        :value="node.total_resources!.cru!"
+        unit="vCores"
+      />
+      <NodeCardResource
+        icon="mdi-memory"
+        color="success"
+        title="RAM"
+        :value="Math.round((node.total_resources!.mru! / 1024 ** 3) * 100) / 100"
+        unit="GB"
+      />
+      <NodeCardResource
+        icon="mdi-server"
+        color="secondary"
+        title="SSD"
+        :value="Math.round((node.total_resources!.sru! / 1024 ** 4) * 100) / 100"
+        unit="TB"
+      />
+    </div>
+
+    <div class="d-flex justify-space-between align-end flex-wrap">
       <div>
         <h6 class="opacity-70 text-uppercase text-caption font-weight-bold">Monthly Price</h6>
         <p class="text-h5">
-          <span class="font-weight-bold">$45.45</span>&nbsp;
+          <span class="font-weight-bold">${{ Math.round(node.discount_price! * 100) / 100 }}</span
+          >&nbsp;
           <span class="text-caption opacity-50">/mo</span>
         </p>
       </div>
 
       <div class="d-flex flex-column align-end">
         <p
-          class="text-caption text-decoration-line-through opacity-50"
-          :style="{ textDecorationColor: 'rgb(var(--v-theme-error)) !important' }"
+          class="text-caption text-decoration-line-through"
+          :style="{
+            textDecorationColor: 'rgb(var(--v-theme-error)) !important',
+            color: 'rgb(255, 255, 255, 0.5)',
+          }"
         >
-          &nbsp;{{ "$90.90" }}&nbsp;
+          &nbsp;&nbsp;{{ node.price_usd }} USD&nbsp;&nbsp;
         </p>
         <v-chip
           color="primary"
           size="small"
           class="rounded-lg border border-primary font-weight-bold"
           :style="{ '--v-border-opacity': 0.5 }"
-          >$0.21/hr</v-chip
         >
+          ${{ Math.round((node.discount_price! / 30) * 100) / 100 }} /hr
+        </v-chip>
       </div>
     </div>
 
@@ -85,12 +113,15 @@
         text="Reserve Node"
         append-icon="mdi-arrow-right"
         variant="outlined"
+        :loading="isLoading"
+        @click="reserveNode()"
       />
     </div>
   </v-card>
 </template>
 
 <script setup lang="ts">
+import { AxiosError } from "axios"
 import type { HandlersNodesWithDiscount } from "../generated/api"
 
 const props = defineProps<{ node: HandlersNodesWithDiscount }>()
@@ -111,4 +142,21 @@ const monitoringUrl = computedAsync(async () => {
 
   return `https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics?${params.toString()}`
 })
+
+const toast = useToast()
+const { isLoading, execute: reserveNode } = useAsyncState(
+  async () => {
+    const { data } = await api.nodes.reserveNode(props.node.nodeId!.toString())
+    console.log(data)
+  },
+  null,
+  {
+    immediate: false,
+    onError(e: unknown) {
+      if (e instanceof AxiosError) {
+        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
+      }
+    },
+  }
+)
 </script>
