@@ -19,6 +19,7 @@ export default defineNuxtPlugin((nuxtApp) => {
               surface: "rgba(24, 33, 52, 0.55)",
               success: "#30c392",
               error: "#EA2831",
+              warning: "#f59e0b",
             },
           },
         },

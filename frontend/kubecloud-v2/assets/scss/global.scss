@@ -1,4 +1,4 @@
-*,
+*:not([class*="ql-"]),
 body {
   font-family:
     Inter,

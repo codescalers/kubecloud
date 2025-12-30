@@ -109,5 +109,5 @@ export const useStats = (options?: UseStatsOptions) => {
     return resources
   })
 
-  return { isLoading, stats }
+  return { isLoading, stats, data: state }
 }
