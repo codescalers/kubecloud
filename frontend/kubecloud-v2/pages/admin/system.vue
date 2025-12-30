@@ -55,9 +55,34 @@
         prepend-icon="mdi-wrench"
         :text="isEnabled ? 'Disable Maintenance Mode' : 'Enable Maintenance Mode'"
         :loading="isLoading || isLoadingEnabled"
-        @click="toggleMaintenanceMode()"
+        @click="confirmToggleMaintenanceMode()"
       />
     </v-card>
+
+    <v-dialog :model-value="isRevealed" max-width="500" scrollable @update:model-value="cancel()">
+      <v-card :style="{ padding: '0 !important' }">
+        <v-card-title class="px-6 py-4">
+          <div class="d-flex align-center justify-space-between">
+            <h3 class="text-h5 font-weight-bold">Enable Maintenance Mode</h3>
+          </div>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text>
+          <p class="text-body-1 opacity-70">
+            Enabling maintenance mode will temporarily restrict access to the platform. Are you sure
+            you want to continue?
+          </p>
+        </v-card-text>
+        <v-divider />
+
+        <v-card-actions class="px-6 py-4 flex-row-reverse justify-start">
+          <v-btn variant="text" color="error" @click="confirm()">Enable</v-btn>
+          <v-btn variant="plain" @click="cancel()">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -77,4 +102,16 @@ const { execute: toggleMaintenanceMode, isLoading } = useAsyncState(
   null,
   { immediate: false }
 )
+
+const { isRevealed, reveal, cancel, confirm } = useDialog()
+async function confirmToggleMaintenanceMode() {
+  if (!isEnabled.value) {
+    const { isCanceled } = await reveal()
+    if (isCanceled) {
+      return
+    }
+  }
+
+  await toggleMaintenanceMode()
+}
 </script>
