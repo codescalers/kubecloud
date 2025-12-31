@@ -26,10 +26,14 @@
       </div>
     </td>
 
-    <td class="text-subtitle-2 opacity-50 text-center">{{ workflow.step_name }}</td>
-    <td class="text-subtitle-2 opacity-50 text-center">{{ workflow.user_id || "-" }}</td>
-    <td class="text-subtitle-2 opacity-50 text-center">
-      {{ createdAt }}
+    <td class="text-subtitle-2 text-center">
+      <span class="opacity-50">{{ workflow.step_name }}</span>
+    </td>
+    <td class="text-subtitle-2 text-center">
+      <span class="opacity-50">{{ workflow.user_id || "-" }}</span>
+    </td>
+    <td class="text-subtitle-2 text-center">
+      <span class="opacity-50">{{ createdAt }}</span>
     </td>
     <td>
       <v-btn

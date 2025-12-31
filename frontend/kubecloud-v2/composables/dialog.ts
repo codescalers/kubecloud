@@ -1,8 +1,11 @@
-export const useDialog = <T>() => {
-  const data = ref<T>()
-  const { onReveal, ...reset } = useConfirmDialog()
+// import type { UseConfirmDialogRevealResult } from "@vueuse/core"
 
-  onReveal((d) => (data.value = d))
+export const useDialog = <A = undefined, B = undefined, C = undefined>() => {
+  const data = ref<A>()
+  const { onReveal, ...reset } = useConfirmDialog<A, B, C>()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onReveal(((d: A) => (data.value = d)) as any)
 
   return {
     data,

@@ -131,6 +131,14 @@ body {
     font-size: 12px !important;
     opacity: 0.5 !important;
   }
+
+  tbody {
+    > tr {
+      td {
+        --v-border-opacity: 0.08;
+      }
+    }
+  }
 }
 
 .v-container--fluid {

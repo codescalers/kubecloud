@@ -2913,9 +2913,17 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: "#/definitions/services.UserWithUSDBalance"
-            type: array
+            allOf:
+              - $ref: "#/definitions/handlers.APIResponse"
+              - properties:
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        items:
+                          $ref: "#/definitions/services.UserWithUSDBalance"
+                        type: array
+                type: object
         "500":
           description: Internal Server Error
           schema:
