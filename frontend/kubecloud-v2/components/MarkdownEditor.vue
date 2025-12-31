@@ -87,7 +87,7 @@
     </v-card>
 
     <v-dialog :model-value="isRevealed" max-width="500" scrollable @update:model-value="cancel()">
-      <v-form @submit.prevent="confirm($event.target)">
+      <v-form @submit.prevent="confirm($event.target as HTMLFormElement)">
         <v-card :style="{ padding: '0 !important' }">
           <v-card-title class="px-6 py-4">
             <div class="d-flex align-center justify-space-between">
@@ -132,7 +132,7 @@ const text = ref("")
 
 let quill: Quill | null = null
 
-const { isRevealed, reveal, cancel, confirm } = useDialog<HTMLFormElement>()
+const { isRevealed, reveal, cancel, confirm } = useDialog<undefined, HTMLFormElement>()
 const formats = markRaw([
   { format: "bold", icon: "format-bold" },
   { format: "italic", icon: "format-italic" },
