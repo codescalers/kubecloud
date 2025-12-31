@@ -21,7 +21,7 @@
       :loading="isLoading"
     >
       <template #item="{ item }">
-        <UserRow :user="item" />
+        <UserRow :user="item" @remove="onRemoveUser(item.id!)" />
       </template>
     </v-data-table-server>
 
@@ -50,6 +50,19 @@
         @cancel="drain.cancel()"
       />
     </v-dialog>
+
+    <v-dialog
+      :model-value="remove.isRevealed.value"
+      max-width="600"
+      scrollable
+      @update:model-value="remove.cancel()"
+    >
+      <UserRemoveDialogCard
+        :user="remove.data!.value"
+        @confirm="remove.confirm($event)"
+        @cancel="remove.cancel()"
+      />
+    </v-dialog>
   </div>
 </template>
 
@@ -61,28 +74,26 @@ const api = useApi()
 const limit = ref(10)
 const page = ref(1)
 
-const { state: users, isLoading } = useAsyncState(async () => {
-  const { data } = await api.admin.getAllUsers()
-  return data.data?.users ?? []
-}, [])
+const { state: users, isLoading } = useAsyncState(
+  async () => {
+    const { data } = await api.admin.getAllUsers()
+    return data.data?.users ?? []
+  },
+  [],
+  { resetOnExecute: false }
+)
 
 const credit = useDialog<ServicesUserWithUSDBalance, { amount: number; memo: string }>()
 const drain = useDialog<ServicesUserWithUSDBalance>()
-// const remove = useDialog<ServicesUserWithUSDBalance>()
+const remove = useDialog<ServicesUserWithUSDBalance>()
 
 provide(UserDialogCtxKey, {
-  async credit(user: ServicesUserWithUSDBalance) {
-    const { data } = await credit.reveal(user)
-    return data
-  },
-
-  async drain(user) {
-    const { isCanceled } = await drain.reveal(user)
-    return !isCanceled
-  },
-
-  async remove() {
-    return true
-  },
+  credit: (u) => credit.reveal(u).then((d) => d.data),
+  drain: (u) => drain.reveal(u).then((d) => !d.isCanceled),
+  remove: (u) => remove.reveal(u).then((d) => !d.isCanceled),
 })
+
+function onRemoveUser(id: number) {
+  users.value = users.value.filter((u) => u.id !== id)
+}
 </script>

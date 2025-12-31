@@ -51,6 +51,8 @@
           color="error"
           size="small"
           text="Remove"
+          :loading="isRemoveLoading"
+          @click="onRemove()"
         />
       </div>
     </td>
@@ -61,6 +63,7 @@
 import type { HandlersCreditRequestInput, ServicesUserWithUSDBalance } from "../generated/api"
 
 const props = defineProps<{ user: ServicesUserWithUSDBalance }>()
+const emit = defineEmits<{ (e: "remove"): void }>()
 
 const createdAt = useDateFormat(() => props.user.created_at, "DD/MM/YYYY, HH:mm")
 
@@ -68,6 +71,7 @@ const ctx = inject(UserDialogCtxKey)!
 const api = useApi()
 const toast = useToast()
 
+// credit
 const { execute: handleCredit, isLoading: isCreditLoading } = useAsyncState(
   async (body: HandlersCreditRequestInput) => {
     const { data } = await api.admin.creditUser(props.user.id!.toString(), body)
@@ -84,6 +88,7 @@ async function onCredit() {
   }
 }
 
+// drain
 const { execute: handleDrain, isLoading: isDrainLoading } = useAsyncState(
   async () => {
     const { data } = await api.admin.drainUser(props.user.id!.toString())
@@ -100,27 +105,21 @@ async function onDrain() {
   }
 }
 
-// async function onRemove() {
-//   const result = await emit("remove")
-//   console.log({ result })
-// }
-
-/*
-const { execute: onCredit } = useAsyncState(
-  async (user: ServicesUserWithUSDBalance) => {
-    console.log("credit", user)
+// remove
+const { execute: handleRemove, isLoading: isRemoveLoading } = useAsyncState(
+  async () => {
+    const { data } = await api.admin.deleteUser(props.user.id!.toString())
+    toast.success({ message: data.message })
+    emit("remove")
   },
   null,
   { immediate: false }
 )
 
-
-
-const { execute: onRemove } = useAsyncState(
-  async (user: ServicesUserWithUSDBalance) => {
-    console.log("remove", user)
-  },
-  null,
-  { immediate: false }
-) */
+async function onRemove() {
+  const result = await ctx.remove(props.user)
+  if (result) {
+    await handleRemove()
+  }
+}
 </script>
