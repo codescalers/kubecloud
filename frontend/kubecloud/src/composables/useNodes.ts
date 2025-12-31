@@ -20,6 +20,7 @@ export interface NodeFilters {
   grid_version?: number
   region?: string
 }
+const accountIdCache = new Map<number, string>()
 
 export function useNodes() {
   const nodes = ref<RawNode[]>([])
@@ -128,8 +129,14 @@ export function useNodes() {
   // Fetch account id for a twin id
   async function fetchAccountId(twinId: number): Promise<string> {
     try {
+      if(accountIdCache.has(twinId)){        
+        return accountIdCache.get(twinId)!
+      }
+
       const response = await userService.getTwinAccount(twinId)
-      return response.account_id
+      const accountId = response.account_id
+      accountIdCache.set(twinId, accountId)      
+      return accountId
     } catch (err: any) {
       console.error('Failed to fetch account id:', err)
       return ''
