@@ -1,5 +1,5 @@
 <template>
-  <DialogCardLayout title="Credit Balance" icon="mdi-cash-plus">
+  <DialogCardLayout title="Credit Balance" icon="mdi-cash-plus" @cancel="$emit('cancel')">
     <template #description>
       <div>
         <span class="text-subtitle-2 opacity-50">Apply credits to user:</span>&nbsp;
@@ -90,11 +90,14 @@ import type { VForm } from "vuetify/components/VForm"
 import type { ServicesUserWithUSDBalance } from "../generated/api"
 
 defineProps<{ user?: ServicesUserWithUSDBalance }>()
-const emit = defineEmits<{ (e: "submit", event: { amount: number; memo: string }): void }>()
+const emit = defineEmits<{
+  (e: "confirm", event: { amount: number; memo: string }): void
+  (e: "cancel"): void
+}>()
 
 const form = ref<VForm>()
 function submit() {
   const f = new FormData(form.value!.$el as HTMLFormElement)
-  emit("submit", { amount: parseFloat(f.get("amount") as string), memo: f.get("memo") as string })
+  emit("confirm", { amount: parseFloat(f.get("amount") as string), memo: f.get("memo") as string })
 }
 </script>

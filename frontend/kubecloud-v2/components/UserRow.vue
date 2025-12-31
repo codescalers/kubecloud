@@ -40,6 +40,8 @@
           prepend-icon="mdi-water-remove"
           size="small"
           text="Drain"
+          :loading="isDrainLoading"
+          @click="onDrain()"
         />
 
         <v-btn
@@ -82,6 +84,22 @@ async function onCredit() {
   }
 }
 
+const { execute: handleDrain, isLoading: isDrainLoading } = useAsyncState(
+  async () => {
+    const { data } = await api.admin.drainUser(props.user.id!.toString())
+    toast.success({ message: data.message })
+  },
+  null,
+  { immediate: false }
+)
+
+async function onDrain() {
+  const result = await ctx.drain(props.user)
+  if (result) {
+    await handleDrain()
+  }
+}
+
 // async function onRemove() {
 //   const result = await emit("remove")
 //   console.log({ result })
@@ -96,13 +114,7 @@ const { execute: onCredit } = useAsyncState(
   { immediate: false }
 )
 
-const { execute: onDrain } = useAsyncState(
-  async (user: ServicesUserWithUSDBalance) => {
-    console.log("drain", user)
-  },
-  null,
-  { immediate: false }
-)
+
 
 const { execute: onRemove } = useAsyncState(
   async (user: ServicesUserWithUSDBalance) => {

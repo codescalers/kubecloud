@@ -33,8 +33,21 @@
     >
       <UserCreditDialogCard
         :user="credit.data!.value"
-        @submit="credit.confirm($event)"
+        @confirm="credit.confirm($event)"
         @cancel="credit.cancel()"
+      />
+    </v-dialog>
+
+    <v-dialog
+      :model-value="drain.isRevealed.value"
+      max-width="600"
+      scrollable
+      @update:model-value="drain.cancel()"
+    >
+      <UserDrainDialogCard
+        :user="drain.data!.value"
+        @confirm="drain.confirm($event)"
+        @cancel="drain.cancel()"
       />
     </v-dialog>
   </div>
@@ -54,7 +67,7 @@ const { state: users, isLoading } = useAsyncState(async () => {
 }, [])
 
 const credit = useDialog<ServicesUserWithUSDBalance, { amount: number; memo: string }>()
-// const drain = useDialog<ServicesUserWithUSDBalance>()
+const drain = useDialog<ServicesUserWithUSDBalance>()
 // const remove = useDialog<ServicesUserWithUSDBalance>()
 
 provide(UserDialogCtxKey, {
@@ -63,8 +76,9 @@ provide(UserDialogCtxKey, {
     return data
   },
 
-  async drain() {
-    return false
+  async drain(user) {
+    const { isCanceled } = await drain.reveal(user)
+    return !isCanceled
   },
 
   async remove() {

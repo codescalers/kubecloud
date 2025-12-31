@@ -3,7 +3,7 @@
     <v-card-title class="pa-8 d-flex align-center justify-space-between border-b">
       <div>
         <div class="d-flex ga-2 align-baseline">
-          <v-icon v-if="icon" :icon="icon" size="small" color="success" />
+          <v-icon v-if="icon" :icon="icon" size="small" :color="iconColor ?? 'success'" />
           <slot v-else name="icon" />
 
           <span v-if="title" class="text-h5 font-weight-bold" v-text="title" />
@@ -27,10 +27,18 @@
     <v-card-text>
       <slot />
     </v-card-text>
+
+    <template v-if="$slots.actions">
+      <v-divider />
+
+      <v-card-actions class="px-6 py-4 flex-row-reverse justify-start">
+        <slot name="actions" />
+      </v-card-actions>
+    </template>
   </v-card>
 </template>
 
 <script setup lang="ts">
-defineProps<{ title?: string; description?: string; icon?: string }>()
+defineProps<{ title?: string; description?: string; icon?: string; iconColor?: string }>()
 defineEmits<{ (e: "cancel"): void }>()
 </script>
