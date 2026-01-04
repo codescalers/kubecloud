@@ -2,43 +2,41 @@ package kubedeployer
 
 import (
 	"fmt"
+	"kubecloud/internal/infrastructure/gridclient"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
-	"go.opentelemetry.io/otel/trace"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type Client struct {
-	GridClient deployer.TFPluginClient
-	mnemonic   string
+	GridClient gridclient.GridClient
 }
 
-func NewClient(mnemonic, gridNet string, debug bool, tp trace.TracerProvider) (*Client, error) {
-	pluginOpts := []deployer.PluginOpt{
-		deployer.WithNetwork(gridNet),
-		deployer.WithDisableSentry(),
+// NewClient creates a new Client instance
+func NewClient(mnemonic, gridNet string, debug bool, tp *sdktrace.TracerProvider) (*Client, error) {
+	if gridNet == "" {
+		return nil, fmt.Errorf("gridNet is required and cannot be empty")
 	}
+	var opts []gridclient.ClientOpts
+	opts = append(opts, gridclient.WithNetwork(gridNet))
 	if debug {
-		pluginOpts = append(pluginOpts, deployer.WithLogs())
+		opts = append(opts, gridclient.WithDebug())
 	}
-
 	if tp != nil {
-		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(tp))
+		opts = append(opts, gridclient.WithTracerProvider(tp))
 	}
+	opts = append(opts, gridclient.WithDisableSentry())
 
-	tfplugin, err := deployer.NewTFPluginClient(
-		mnemonic,
-		pluginOpts...,
-	)
+	gridCl, err := gridclient.NewGridClient(mnemonic, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create TFPluginClient: %v", err)
+		return nil, err
 	}
 
 	return &Client{
-		GridClient: tfplugin,
-		mnemonic:   mnemonic,
+		GridClient: gridCl,
 	}, nil
 }
 
+// Close closes the underlying GridClient
 func (c *Client) Close() {
 	c.GridClient.Close()
 }

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
+	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/telemetry"
 
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -24,7 +24,7 @@ func (c *Cluster) GetLeaderNode() (Node, error) {
 	return c.Nodes[0], nil
 }
 
-func (n *Node) AssignNodeIP(ctx context.Context, gridClient deployer.TFPluginClient, networkName string) error {
+func (n *Node) AssignNodeIP(ctx context.Context, gridClient gridclient.GridClient, networkName string) error {
 	ctx, span := getTracer().Start(ctx, "Node.AssignNodeIP",
 		trace.WithAttributes(
 			attribute.String("node.name", n.Name),
@@ -109,8 +109,8 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		leaderIP,
 		cluster.Token,
 		masterPubKey,
-		c.mnemonic,
-		c.GridClient.Network,
+		c.GridClient.GetMnemonic(),
+		c.GridClient.GetGridNetwork(),
 	)
 	if err != nil {
 		telemetry.RecordError(span, err)
@@ -128,7 +128,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		Str("deployment_name", depl.Name).
 		Msg("Deploying to grid")
 
-	if err := c.GridClient.DeploymentDeployer.Deploy(ctx, &depl); err != nil {
+	if err := c.GridClient.Deploy(ctx, &depl); err != nil {
 		log.Error().
 			Err(err).
 			Str("node_name", node.Name).
@@ -144,7 +144,7 @@ func (c *Client) DeployNode(ctx context.Context, cluster *Cluster, node Node, ma
 		Uint32("node_id", node.NodeID).
 		Msg("Loading deployment result from grid")
 
-	result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
+	result, err := c.GridClient.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
 	if err != nil {
 		telemetry.RecordError(span, err)
 		return fmt.Errorf("failed to load deployment for node %s: %v", node.Name, err)
@@ -241,8 +241,8 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 			leaderIP,
 			cluster.Token,
 			masterPubKey,
-			c.mnemonic,
-			c.GridClient.Network,
+			c.GridClient.GetMnemonic(),
+			c.GridClient.GetGridNetwork(),
 		)
 		if err != nil {
 			telemetry.RecordError(span, err)
@@ -259,7 +259,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 	log.Debug().
 		Int("deployment_count", len(deployments)).
 		Msg("Starting batch deployment to grid")
-	batchErr := c.GridClient.DeploymentDeployer.BatchDeploy(ctx, deployments)
+	batchErr := c.GridClient.BatchDeploy(ctx, deployments)
 
 	var successCount int
 	var failedNodes []string
@@ -278,7 +278,7 @@ func (c *Client) BatchDeployNodes(ctx context.Context, cluster *Cluster, nodes [
 			),
 		)
 
-		result, err := c.GridClient.State.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
+		result, err := c.GridClient.LoadDeploymentFromGrid(ctx, node.NodeID, node.Name)
 		if err != nil {
 			log.Warn().Err(err).Str("node_name", node.Name).Msg("Failed to load deployment for node")
 			failedNodes = append(failedNodes, node.Name)
@@ -418,7 +418,7 @@ func (c *Client) DeployNetwork(ctx context.Context, cluster *Cluster) error {
 		Msg("Deploying network")
 
 	span.AddEvent("Deploying network")
-	err = c.GridClient.NetworkDeployer.Deploy(ctx, &net)
+	err = c.GridClient.DeployNetwork(ctx, &net)
 	cluster.Network = net
 	if err != nil {
 		telemetry.RecordError(span, err)

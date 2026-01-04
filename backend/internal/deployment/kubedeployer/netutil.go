@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"net"
 
+	"kubecloud/internal/infrastructure/gridclient"
+
 	"github.com/pkg/errors"
-	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/zos"
 )
 
-func getIpForVm(ctx context.Context, tfPluginClient deployer.TFPluginClient, networkName string, nodeID uint32) (string, error) {
-	network := tfPluginClient.State.Networks.GetNetwork(networkName)
-	ipRange := network.GetNodeSubnet(nodeID)
+func getIpForVm(ctx context.Context, tfPluginClient gridclient.GridClient, networkName string, nodeID uint32) (string, error) {
+	ipRange := tfPluginClient.GetNodeSubnet(networkName, nodeID)
 
 	ip, ipRangeCIDR, err := net.ParseCIDR(ipRange)
 	if err != nil {
@@ -46,8 +46,8 @@ func getIpForVm(ctx context.Context, tfPluginClient deployer.TFPluginClient, net
 	return "", fmt.Errorf("all IPs are exhausted for network %s on node %d", networkName, nodeID)
 }
 
-func getUsedHostIDsFromGrid(ctx context.Context, tfPluginClient deployer.TFPluginClient, nodeID uint32, networkName string, ipRangeCIDR *net.IPNet) ([]byte, error) {
-	nodeClient, err := tfPluginClient.NcPool.GetNodeClient(tfPluginClient.SubstrateConn, nodeID)
+func getUsedHostIDsFromGrid(ctx context.Context, tfPluginClient gridclient.GridClient, nodeID uint32, networkName string, ipRangeCIDR *net.IPNet) ([]byte, error) {
+	nodeClient, err := tfPluginClient.GetNodeClient(nodeID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get node client for node %d", nodeID)
 	}

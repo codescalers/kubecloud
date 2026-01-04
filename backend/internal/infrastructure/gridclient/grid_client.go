@@ -11,6 +11,7 @@ import (
 	"kubecloud/internal/infrastructure/logger"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/cosmos/go-bip39"
@@ -18,6 +19,7 @@ import (
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/workloads"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -57,12 +59,28 @@ type GridClient interface {
 	Twins(ctx context.Context, filter types.TwinFilter, limit types.Limit) (res []types.Twin, totalCount int, err error)
 	Stats(ctx context.Context, filter types.StatsFilter) (res types.Stats, err error)
 
+	// deployment methods
+	Deploy(ctx context.Context, dl *workloads.Deployment) error
+	BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error
+	LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name string) (workloads.Deployment, error)
+	DeployNetwork(ctx context.Context, net *workloads.ZNet) error
+	GetContract(contractID uint64) (uint64, error)
+	BatchCancelContract(contracts []uint64) error
+	GetGridNetwork() string
+	GetNodeSubnet(networkName string, nodeID uint32) string
+	GetMnemonic() string
+
+	// state management methods
+	GetState() ([]byte, error)
+	RestoreState(stateData []byte) error
+
 	Close()
 }
 
 type gridClient struct {
 	gridClient     *deployer.TFPluginClient
 	systemMnemonic string
+	mu             sync.RWMutex
 }
 
 var _ GridClient = (*gridClient)(nil)
@@ -116,6 +134,9 @@ func NewGridClient(systemMnemonic string, opts ...ClientOpts) (GridClient, error
 	}
 	if cfg.network != "" {
 		pluginOpts = append(pluginOpts, deployer.WithNetwork(cfg.network))
+	}
+	if cfg.traceProvider != nil {
+		pluginOpts = append(pluginOpts, deployer.WithTraceProvider(cfg.traceProvider))
 	}
 
 	gridCl, err := deployer.NewTFPluginClient(
@@ -420,6 +441,56 @@ func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDCondit
 
 func (s *gridClient) Close() {
 	s.gridClient.Close()
+}
+
+// Deploy deploys a deployment to the grid
+func (s *gridClient) Deploy(ctx context.Context, dl *workloads.Deployment) error {
+	return s.gridClient.DeploymentDeployer.Deploy(ctx, dl)
+}
+
+// BatchDeploy batch deploys multiple deployments to the grid
+func (s *gridClient) BatchDeploy(ctx context.Context, dls []*workloads.Deployment) error {
+	return s.gridClient.DeploymentDeployer.BatchDeploy(ctx, dls)
+}
+
+// LoadDeploymentFromGrid loads a deployment from the grid by nodeID and deployment name
+func (s *gridClient) LoadDeploymentFromGrid(ctx context.Context, nodeID uint32, name string) (workloads.Deployment, error) {
+	return s.gridClient.State.LoadDeploymentFromGrid(ctx, nodeID, name)
+}
+
+// DeployNetwork deploys a network to the grid
+func (s *gridClient) DeployNetwork(ctx context.Context, net *workloads.ZNet) error {
+	return s.gridClient.NetworkDeployer.Deploy(ctx, net)
+}
+
+// GetContract gets a contract by its ID
+func (s *gridClient) GetContract(contractID uint64) (uint64, error) {
+	contract, err := s.gridClient.SubstrateConn.GetContract(contractID)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(contract.ContractID), nil
+}
+
+// BatchCancelContract cancels multiple contracts
+func (s *gridClient) BatchCancelContract(contracts []uint64) error {
+	return s.gridClient.BatchCancelContract(contracts)
+}
+
+// GetNetwork returns the network of the grid client
+func (s *gridClient) GetGridNetwork() string {
+	return s.gridClient.Network
+}
+
+// GetNodeSubnet returns the node subnet for a given network and node ID
+func (s *gridClient) GetNodeSubnet(networkName string, nodeID uint32) string {
+	network := s.gridClient.State.Networks.GetNetwork(networkName)
+	return network.GetNodeSubnet(nodeID)
+}
+
+// GetMnemonic returns the system mnemonic
+func (s *gridClient) GetMnemonic() string {
+	return s.systemMnemonic
 }
 
 // GenerateMnemonic generate mnemonic

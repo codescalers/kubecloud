@@ -127,7 +127,7 @@ func (c *Client) isContractActive(ctx context.Context, contractID uint64) bool {
 
 	log := logger.ForOperation("kubedeployer", "check_contract_active")
 	log.Debug().Uint64("contract_id", contractID).Msg("Checking if contract is active")
-	_, err := c.GridClient.SubstrateConn.GetContract(contractID)
+	_, err := c.GridClient.GetContract(contractID)
 	isActive := err == nil
 
 	span.SetAttributes(attribute.Bool("contract.is_active", isActive))
