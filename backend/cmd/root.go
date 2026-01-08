@@ -154,18 +154,28 @@ func addFlags() error {
 	}
 
 	// === Monitor Balance Interval In Hours ===
-	if err := bindIntFlag(rootCmd, "monitor_balance_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
-		return fmt.Errorf("failed to bind monitor_balance_interval_in_minutes flag: %w", err)
+	if err := bindIntFlag(rootCmd, "settle_transfer_records_interval_in_minutes", 1, "Number of minutes to monitor balance"); err != nil {
+		return fmt.Errorf("failed to bind settle_transfer_records_interval_in_minutes flag: %w", err)
 	}
 
 	if err := bindIntFlag(rootCmd, "notify_admins_for_pending_records_in_hours", 1, "Number of hours to notify admins about pending records"); err != nil {
 		return fmt.Errorf("failed to bind notify_admins_for_pending_records_in_hours flag: %w", err)
 	}
 
+	// === Applied Discount ===
+	if err := bindStringFlag(rootCmd, "applied_discount", "", "Applied discount to fund users"); err != nil {
+		return fmt.Errorf("failed to bind applied_discount flag: %w", err)
+	}
+
+	if err := bindIntFlag(rootCmd, "minimum_tft_amount_in_wallet", 10, "Minimum TFT amount in wallet"); err != nil {
+		return fmt.Errorf("failed to bind minimum_tft_amount_in_wallet flag: %w", err)
+	}
+
 	// === Users Balance Check Interval In Hours ===
 	if err := bindIntFlag(rootCmd, "users_balance_check_interval_in_hours", 6, "Number of hours to check users balance"); err != nil {
 		return fmt.Errorf("failed to bind users_balance_check_interval_in_hours flag: %w", err)
 	}
+
 	if err := bindIntFlag(rootCmd, "check_user_debt_interval_in_hours", 48, "Number of upcoming hours to check user debt"); err != nil {
 		return fmt.Errorf("failed to bind check_user_debt_interval_in_hours flag: %w", err)
 	}

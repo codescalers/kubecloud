@@ -304,7 +304,7 @@ func BatchDeployAllNodesStep(metrics *metricsLib.Metrics) ewf.StepFn {
 	}
 }
 
-func StoreDeploymentStep(clusterRepo models.ClusterRepository) ewf.StepFn {
+func StoreDeploymentStep(clusterRepo models.ClusterRepository, contractsRepo models.ContractDataRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		log := logger.ForOperation("deployer_activities", "store_deployment")
 		cluster, err := statemanager.GetCluster(state)
@@ -341,7 +341,7 @@ func StoreDeploymentStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 		} else { // cluster exists, update it
 			existingCluster.Result = dbCluster.Result
 			existingCluster.Kubeconfig = dbCluster.Kubeconfig
-			if err := clusterRepo.UpdateCluster(&existingCluster); err != nil {
+			if err := clusterRepo.UpdateCluster(contractsRepo, &existingCluster); err != nil {
 				return fmt.Errorf("failed to update cluster %s in database (user_id=%d): %w", cluster.Name, config.UserID, err)
 			}
 		}
@@ -498,7 +498,7 @@ func BatchCancelContractsStep() ewf.StepFn {
 	}
 }
 
-func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *metricsLib.Metrics) ewf.StepFn {
+func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, contractsRepo models.ContractDataRepository, metrics *metricsLib.Metrics) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -511,7 +511,7 @@ func DeleteAllUserClustersStep(clusterRepo models.ClusterRepository, metrics *me
 		}
 		clusterCount := len(clusters)
 
-		if err := clusterRepo.DeleteAllUserClusters(config.UserID); err != nil {
+		if err := clusterRepo.DeleteAllUserClusters(contractsRepo, config.UserID); err != nil {
 			return fmt.Errorf("failed to delete all user clusters from database (user_id=%d): %w", config.UserID, err)
 		}
 
@@ -641,7 +641,7 @@ func createAddNodeWorkflowTemplate(notificationDispatcher *notification.Notifica
 	return template
 }
 
-func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
+func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metrics, clusterRepo models.ClusterRepository, contractsRepo models.ContractDataRepository, notificationDispatcher *notification.NotificationDispatcher, config cfg.Configuration) {
 	engine.Register(StepDeployNetwork, DeployNetworkStep())
 	engine.Register(StepDeployLeaderNode, DeployLeaderNodeStep())
 	engine.Register(StepBatchDeployAllNodes, BatchDeployAllNodesStep(metrics))
@@ -649,14 +649,14 @@ func registerDeploymentActivities(engine *ewf.Engine, metrics *metricsLib.Metric
 	engine.Register(StepAddNode, AddNodeStep())
 	engine.Register(StepUpdateNetwork, UpdateNetworkStep())
 	engine.Register(StepRemoveNode, RemoveDeploymentNodeStep())
-	engine.Register(StepStoreDeployment, StoreDeploymentStep(clusterRepo))
+	engine.Register(StepStoreDeployment, StoreDeploymentStep(clusterRepo, contractsRepo))
 	engine.Register(StepFetchKubeconfig, FetchKubeconfigStep(clusterRepo, config.SSH.PrivateKeyPath))
 	engine.Register(StepVerifyClusterReady, VerifyClusterReadyStep())
 	engine.Register(StepVerifyNewNodes, VerifyAddedNodeStep(clusterRepo, config.SSH.PrivateKeyPath))
 	engine.Register(StepRemoveClusterFromDB, RemoveClusterFromDBStep(clusterRepo, metrics))
 	engine.Register(StepGatherAllContractIDs, GatherAllContractIDsStep(clusterRepo))
 	engine.Register(StepBatchCancelContracts, BatchCancelContractsStep())
-	engine.Register(StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo, metrics))
+	engine.Register(StepDeleteAllUserClusters, DeleteAllUserClustersStep(clusterRepo, contractsRepo, metrics))
 
 	deployWFTemplate := createDeployerWorkflowTemplate(notificationDispatcher, engine, metrics)
 	deployWFTemplate.Steps = []ewf.Step{
@@ -972,7 +972,7 @@ func VerifyClusterInDBStep(clusterRepo models.ClusterRepository) ewf.StepFn {
 	}
 }
 
-func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepFn {
+func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository, contractsRepo models.ContractDataRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -1024,7 +1024,7 @@ func CheckClusterNodesHealthStep(clusterRepo models.ClusterRepository) ewf.StepF
 		if err := dbCluster.SetClusterResult(cluster); err != nil {
 			return fmt.Errorf("failed to set cluster result for cluster %s: %w", cluster.Name, err)
 		}
-		if err := clusterRepo.UpdateCluster(&dbCluster); err != nil {
+		if err := clusterRepo.UpdateCluster(contractsRepo, &dbCluster); err != nil {
 			return fmt.Errorf("failed to update cluster %s in database: %w", cluster.Name, err)
 		}
 		return nil

@@ -17,6 +17,7 @@ import (
 	substrate "github.com/threefoldtech/tfchain/clients/tfchain-client-go"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/calculator"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/deployer"
+	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	client "github.com/threefoldtech/tfgrid-sdk-go/grid-client/node"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-proxy/pkg/types"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -37,6 +38,7 @@ type GridClient interface {
 	TransferTFTsToSystem(tftBalance uint64, userMnemonic string) error
 	SystemIdentity() (substrate.Identity, error)
 	GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error)
+	GetTwin(mnemonic string) (uint32, error)
 	GetFreeBalanceTFT(mnemonic string) (uint64, error)
 	GetUserAddress(mnemonic string) (string, error)
 	AcceptTermsAndConditions(mnemonic, docLink, docHash string) error
@@ -44,12 +46,18 @@ type GridClient interface {
 	CreateRentContract(mnemonic string, nodeID uint32) (uint64, error)
 	CancelContract(mnemonic string, contractID uint64) error
 	SetupUserOnTFChain(termsAndConditions config.TermsANDConditions) (mnemonic string, twinID uint32, err error)
+	GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error)
+	GetTFTBillingRateAt(block uint64) (float64, error)
+	GetCurrentHeight() (uint32, error)
 
 	// node methods
 	GetNodeClient(nodeID uint32) (*client.NodeClient, error)
 
 	// calculator methods
 	NewCalculator(mnemonic string) (calculator.Calculator, error)
+
+	// contracts getter methods
+	NewContractsGetter(twinID uint32, graphqlClient graphql.GraphQl) graphql.ContractsGetter
 
 	// grid-proxy client methods
 	Node(ctx context.Context, nodeID uint32) (res types.NodeWithNestedCapacity, err error)
@@ -264,6 +272,15 @@ func (s *gridClient) GetTwinIDFromUserMnemonic(mnemonic string) (uint64, error) 
 	return uint64(twinID), nil
 }
 
+func (s *gridClient) GetTwin(mnemonic string) (uint32, error) {
+	identity, err := s.getIdentity(mnemonic)
+	if err != nil {
+		return 0, err
+	}
+
+	return s.gridClient.SubstrateConn.GetTwinByPubKey(identity.PublicKey())
+}
+
 // GetNodeClient gents the node client given nodeID
 func (s *gridClient) GetNodeClient(nodeID uint32) (*client.NodeClient, error) {
 	return s.gridClient.NcPool.GetNodeClient(s.gridClient.SubstrateConn, nodeID)
@@ -277,6 +294,10 @@ func (s *gridClient) NewCalculator(mnemonic string) (calculator.Calculator, erro
 	}
 
 	return calculator.NewCalculator(s.gridClient.SubstrateConn, identity), nil
+}
+
+func (s *gridClient) NewContractsGetter(twinID uint32, graphqlClient graphql.GraphQl) graphql.ContractsGetter {
+	return graphql.NewContractsGetter(twinID, graphqlClient, s.gridClient.SubstrateConn, s.gridClient.NcPool)
 }
 
 // GetFreeBalance returns free balance from user mnemonic
@@ -416,6 +437,18 @@ func (s *gridClient) SetupUserOnTFChain(termsAndConditions config.TermsANDCondit
 		Str("address", address).
 		Msg("Twin created successfully")
 	return mnemonic, twinID, nil
+}
+
+func (s *gridClient) GetPricingPolicy(policyID uint32) (pricingPolicy substrate.PricingPolicy, err error) {
+	return s.gridClient.SubstrateConn.GetPricingPolicy(policyID)
+}
+
+func (s *gridClient) GetTFTBillingRateAt(block uint64) (float64, error) {
+	return s.gridClient.SubstrateConn.GetTFTBillingRateAt(block)
+}
+
+func (s *gridClient) GetCurrentHeight() (uint32, error) {
+	return s.gridClient.SubstrateConn.GetCurrentHeight()
 }
 
 func (s *gridClient) Close() {

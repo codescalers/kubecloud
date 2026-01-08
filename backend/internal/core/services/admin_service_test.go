@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"kubecloud/internal/core/models"
 	"kubecloud/internal/infrastructure/gridclient"
@@ -14,52 +15,80 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockUserNodesRepo struct {
-	mock.Mock
-}
+// We're using the mock implementations from user_service_test.go
+// Adding only the missing methods needed for DeductUserBalance
 
-func (m *mockUserNodesRepo) CreateUserNode(userNode *models.UserNodes) error {
-	args := m.Called(userNode)
+func (m *mockUserRepo) DeductUserBalance(user *models.User, amount uint64) error {
+	args := m.Called(user, amount)
 	return args.Error(0)
 }
 
-func (m *mockUserNodesRepo) DeleteUserNode(contractID uint64) error {
+func (m *mockUserRepo) GetUserLastCalcTime(userID int) (time.Time, error) {
+	args := m.Called(userID)
+	return args.Get(0).(time.Time), args.Error(1)
+}
+
+func (m *mockUserRepo) UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error {
+	args := m.Called(userID, lastCalcTime)
+	return args.Error(0)
+}
+
+// Contract data repository mock
+type mockContractDataRepo struct {
+	mock.Mock
+}
+
+func (m *mockContractDataRepo) CreateUserContractData(contractData *models.UserContractData) error {
+	args := m.Called(contractData)
+	return args.Error(0)
+}
+
+func (m *mockContractDataRepo) DeleteUserContract(contractID uint64) error {
 	args := m.Called(contractID)
 	return args.Error(0)
 }
 
-func (m *mockUserNodesRepo) ListUserNodes(userID int) ([]models.UserNodes, error) {
+func (m *mockContractDataRepo) ListUserRentedNodes(userID int) ([]models.UserContractData, error) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]models.UserNodes), args.Error(1)
+	return args.Get(0).([]models.UserContractData), args.Error(1)
 }
 
-func (m *mockUserNodesRepo) GetUserNodeByNodeID(nodeID uint64) (models.UserNodes, error) {
+func (m *mockContractDataRepo) GetUserNodeByNodeID(nodeID uint64) (models.UserContractData, error) {
 	args := m.Called(nodeID)
 	if args.Get(0) == nil {
-		return models.UserNodes{}, args.Error(1)
+		return models.UserContractData{}, args.Error(1)
 	}
-	return args.Get(0).(models.UserNodes), args.Error(1)
+	return args.Get(0).(models.UserContractData), args.Error(1)
 }
 
-func (m *mockUserNodesRepo) GetUserNodeByContractID(contractID uint64) (models.UserNodes, error) {
+func (m *mockContractDataRepo) GetUserNodeByContractID(contractID uint64) (models.UserContractData, error) {
 	args := m.Called(contractID)
 	if args.Get(0) == nil {
-		return models.UserNodes{}, args.Error(1)
+		return models.UserContractData{}, args.Error(1)
 	}
-	return args.Get(0).(models.UserNodes), args.Error(1)
+	return args.Get(0).(models.UserContractData), args.Error(1)
 }
 
-func (m *mockUserNodesRepo) ListAllReservedNodes() ([]models.UserNodes, error) {
+func (m *mockContractDataRepo) ListAllReservedNodes() ([]models.UserContractData, error) {
 	args := m.Called()
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).([]models.UserNodes), args.Error(1)
+	return args.Get(0).([]models.UserContractData), args.Error(1)
 }
 
+func (m *mockContractDataRepo) ListAllContractsInPeriod(userID int, start, end time.Time) ([]models.UserContractData, error) {
+	args := m.Called(userID, start, end)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.UserContractData), args.Error(1)
+}
+
+// Transaction repository mock
 type mockTransactionRepo struct {
 	mock.Mock
 }
@@ -69,13 +98,65 @@ func (m *mockTransactionRepo) CreateTransaction(transaction *models.Transaction)
 	return args.Error(0)
 }
 
+// Transfer record repository mock
+type mockTransferRecordRepo struct {
+	mock.Mock
+}
+
+func (m *mockTransferRecordRepo) CreateTransferRecord(record *models.TransferRecord) error {
+	args := m.Called(record)
+	return args.Error(0)
+}
+
+func (m *mockTransferRecordRepo) ListTransferRecords() ([]models.TransferRecord, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.TransferRecord), args.Error(1)
+}
+
+func (m *mockTransferRecordRepo) ListUserTransferRecords(userID int) ([]models.TransferRecord, error) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.TransferRecord), args.Error(1)
+}
+
+func (m *mockTransferRecordRepo) ListPendingTransferRecords() ([]models.TransferRecord, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.TransferRecord), args.Error(1)
+}
+
+func (m *mockTransferRecordRepo) ListFailedTransferRecords() ([]models.TransferRecord, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]models.TransferRecord), args.Error(1)
+}
+
+func (m *mockTransferRecordRepo) UpdateTransferRecordState(recordID int, state models.State, failure string) error {
+	args := m.Called(recordID, state, failure)
+	return args.Error(0)
+}
+
+func (m *mockTransferRecordRepo) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error) {
+	args := m.Called(userID)
+	return args.Get(0).(uint64), args.Error(1)
+}
+
 var dummyMailService = mailservice.MailService{}
 
 // Test 1: ListAllUsers - SUCCESS
 func TestAdminService_ListAllUsers_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -90,7 +171,7 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -105,8 +186,8 @@ func TestAdminService_ListAllUsers_Success(t *testing.T) {
 // Test 2: ListAllUsers - EMPTY
 func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -116,7 +197,7 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -129,8 +210,8 @@ func TestAdminService_ListAllUsers_Empty(t *testing.T) {
 // Test 3: ListAllUsers - ERROR
 func TestAdminService_ListAllUsers_Error(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -140,7 +221,7 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -153,8 +234,8 @@ func TestAdminService_ListAllUsers_Error(t *testing.T) {
 // Test 4: DeleteUserByID - SUCCESS
 func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -164,7 +245,7 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -177,8 +258,8 @@ func TestAdminService_DeleteUserByID_Success(t *testing.T) {
 // Test 5: DeleteUserByID - USER NOT FOUND
 func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -188,7 +269,7 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -201,8 +282,8 @@ func TestAdminService_DeleteUserByID_NotFound(t *testing.T) {
 // Test 6: GenerateVouchers - SUCCESS
 func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -215,7 +296,7 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -230,8 +311,8 @@ func TestAdminService_GenerateVouchers_Success(t *testing.T) {
 // Test 7: GenerateVouchers - ZERO COUNT
 func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -239,7 +320,7 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 
@@ -252,8 +333,8 @@ func TestAdminService_GenerateVouchers_ZeroCount(t *testing.T) {
 // Test 8: GenerateVouchers - LARGE COUNT
 func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
-	mockNodesRepo := new(mockUserNodesRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
+	mockContractsRepo := new(mockContractDataRepo)
+	mockTransferRecordsRepo := new(mockTransferRecordRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
 	mockTransRepo := new(mockTransactionRepo)
 
@@ -266,7 +347,7 @@ func TestAdminService_GenerateVouchers_LargeCount(t *testing.T) {
 
 	service := NewAdminService(
 		context.Background(),
-		mockUserRepo, mockNodesRepo, mockPRRepo, mockVoucherRepo, mockTransRepo,
+		mockUserRepo, mockContractsRepo, mockTransferRecordsRepo, mockVoucherRepo, mockTransRepo,
 		gridClient, nil, dummyMailService, nil, nil,
 	)
 

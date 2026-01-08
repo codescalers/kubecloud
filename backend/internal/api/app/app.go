@@ -128,7 +128,7 @@ func (app *App) registerHandlers() {
 				usersGroup.POST("/drain-all", app.handlers.adminHandler.DrainAllUsersHandler)
 			}
 			usersGroup.POST("/mail", app.handlers.adminHandler.SendMailToAllUsersHandler)
-			adminGroup.GET("/pending-records", app.handlers.adminHandler.ListPendingRecordsHandler)
+			adminGroup.GET("/transfer-records", app.handlers.adminHandler.ListTransferRecordsHandler)
 			adminGroup.GET("/invoices", app.handlers.invoiceHandler.ListAllInvoicesHandler)
 			adminGroup.GET("/workflows", app.handlers.adminHandler.ListAllWorkflowsHandler)
 
@@ -161,9 +161,7 @@ func (app *App) registerHandlers() {
 				authGroup.GET("/", app.handlers.userHandler.GetUserHandler)
 				authGroup.POST("/balance/charge", app.handlers.userHandler.ChargeBalance)
 				authGroup.PUT("/change_password", app.handlers.userHandler.ChangePasswordHandler)
-				authGroup.GET("/balance", app.handlers.userHandler.GetUserBalance)
 				authGroup.PUT("/redeem/:voucher_code", app.handlers.userHandler.RedeemVoucherHandler)
-				authGroup.GET("/pending-records", app.handlers.userHandler.ListUserPendingRecordsHandler)
 				authGroup.GET("/workflows", app.handlers.userHandler.ListUserRemainingWorkflowsHandler)
 
 				authGroup.GET("/nodes", app.handlers.nodeHandler.ListNodesHandler)
@@ -226,6 +224,7 @@ func (app *App) StartBackgroundWorkers() {
 	go app.workers.MonitorSystemBalanceAndHandleSettlement()
 	go app.workers.TrackClusterHealth()
 	go app.workers.TrackReservedNodeHealth()
+	go app.workers.DeductUSDBalanceBasedOnUsage()
 	go app.workers.CollectGORMMetrics()
 	go app.workers.CollectGoRuntimeMetrics()
 }

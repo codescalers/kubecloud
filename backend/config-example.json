@@ -49,7 +49,6 @@
   "debug": false,
   "disable_sentry": true,
   "dev_mode": false,
-  "monitor_balance_interval_in_minutes": 120,
   "notify_admins_for_pending_records_in_hours": 24,
   "cluster_health_check_interval_in_hours": 1,
 	"node_health_check"	: {
@@ -71,6 +70,9 @@
       "host": ""
     }
   },
+	"settle_transfer_records_interval_in_minutes": 5,
+  "applied_discount": "gold",
+	"minimum_tft_amount_in_wallet": 10,
   "telemetry": {
     "otlp_endpoint": "jaeger:4317"
   }

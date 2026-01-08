@@ -24,14 +24,14 @@ func (m *MockGraphQLClient) GetItemTotalCount(itemType string, options string) (
 	return 0, nil
 }
 
-// TestAmountBilledPerMonth tests amount calculation from billing reports.
+// TestCalculateTotalAmountBilledForReports tests amount calculation from billing reports.
 // This scenario covers:
 // - Single report with amount is calculated correctly
 // - Multiple reports are summed correctly
 // - Zero amount reports are handled
 // - Large amounts are handled correctly
 // - Invalid amount string fails with error
-func TestAmountBilledPerMonth(t *testing.T) {
+func TestCalculateTotalAmountBilledForReports(t *testing.T) {
 	tests := []struct {
 		name        string
 		reports     ContractBillReports
@@ -122,15 +122,15 @@ func TestAmountBilledPerMonth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := AmountBilledPerMonth(tt.reports)
+			result, err := CalculateTotalAmountBilledForReports(tt.reports)
 
 			if (err != nil) != tt.expectError {
-				t.Errorf("AmountBilledPerMonth() error = %v, expectError %v (%s)", err, tt.expectError, tt.description)
+				t.Errorf("CalculateTotalAmountBilledForReports() error = %v, expectError %v (%s)", err, tt.expectError, tt.description)
 				return
 			}
 
 			if !tt.expectError && result != tt.expected {
-				t.Errorf("AmountBilledPerMonth() = %d, want %d (%s)", result, tt.expected, tt.description)
+				t.Errorf("CalculateTotalAmountBilledForReports() = %d, want %d (%s)", result, tt.expected, tt.description)
 			}
 		})
 	}

@@ -8,13 +8,14 @@ import (
 )
 
 type Workers struct {
-	ctx     context.Context
-	svc     services.WorkerService
-	metrics *metrics.Metrics
-	db      models.DB
+	ctx            context.Context
+	svc            services.WorkerService
+	billingService services.BillingService
+	metrics        *metrics.Metrics
+	db             models.DB
 }
 
-func NewWorkers(ctx context.Context, svc services.WorkerService, metrics *metrics.Metrics, db models.DB) Workers {
+func NewWorkers(ctx context.Context, svc services.WorkerService, billingService services.BillingService, metrics *metrics.Metrics, db models.DB) Workers {
 	return Workers{
 		ctx:     ctx,
 		svc:     svc,

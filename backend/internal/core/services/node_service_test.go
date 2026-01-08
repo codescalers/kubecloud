@@ -12,10 +12,10 @@ import (
 
 // Test 1: NodeService - GetUserNodeByNodeID SUCCESS
 func TestNodeService_GetUserNodeByNodeID_Success(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
-	node := models.UserNodes{
+	node := models.UserContractData{
 		ID:         1,
 		UserID:     1,
 		NodeID:     100,
@@ -25,8 +25,8 @@ func TestNodeService_GetUserNodeByNodeID_Success(t *testing.T) {
 	mockNodesRepo.On("GetUserNodeByNodeID", uint64(100)).Return(node, nil)
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	result, err := service.GetUserNodeByNodeID(100)
@@ -37,14 +37,14 @@ func TestNodeService_GetUserNodeByNodeID_Success(t *testing.T) {
 
 // Test 2: NodeService - GetUserNodeByNodeID NOT FOUND
 func TestNodeService_GetUserNodeByNodeID_NotFound(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
-	mockNodesRepo.On("GetUserNodeByNodeID", uint64(999)).Return(models.UserNodes{}, fmt.Errorf("node not found"))
+	mockNodesRepo.On("GetUserNodeByNodeID", uint64(999)).Return(models.UserContractData{}, fmt.Errorf("node not found"))
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	_, err := service.GetUserNodeByNodeID(999)
@@ -55,10 +55,10 @@ func TestNodeService_GetUserNodeByNodeID_NotFound(t *testing.T) {
 
 // Test 3: NodeService - GetUserNodeByContractID SUCCESS
 func TestNodeService_GetUserNodeByContractID_Success(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
-	node := models.UserNodes{
+	node := models.UserContractData{
 		ID:         1,
 		UserID:     1,
 		NodeID:     100,
@@ -68,8 +68,8 @@ func TestNodeService_GetUserNodeByContractID_Success(t *testing.T) {
 	mockNodesRepo.On("GetUserNodeByContractID", uint64(123)).Return(node, nil)
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	result, err := service.GetUserNodeByContractID(123)
@@ -80,14 +80,14 @@ func TestNodeService_GetUserNodeByContractID_Success(t *testing.T) {
 
 // Test 4: NodeService - GetUserNodeByContractID ERROR
 func TestNodeService_GetUserNodeByContractID_Error(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
-	mockNodesRepo.On("GetUserNodeByContractID", uint64(999)).Return(models.UserNodes{}, fmt.Errorf("contract error"))
+	mockNodesRepo.On("GetUserNodeByContractID", uint64(999)).Return(models.UserContractData{}, fmt.Errorf("contract error"))
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	_, err := service.GetUserNodeByContractID(999)
@@ -98,7 +98,7 @@ func TestNodeService_GetUserNodeByContractID_Error(t *testing.T) {
 
 // Test 5: NodeService - GetUserByID SUCCESS
 func TestNodeService_GetUserByID_Success(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
 	user := models.User{
@@ -110,8 +110,8 @@ func TestNodeService_GetUserByID_Success(t *testing.T) {
 	mockUserRepo.On("GetUserByID", 1).Return(user, nil)
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	result, err := service.GetUserByID(1)
@@ -122,14 +122,14 @@ func TestNodeService_GetUserByID_Success(t *testing.T) {
 
 // Test 6: NodeService - GetUserByID NOT FOUND
 func TestNodeService_GetUserByID_NotFound(t *testing.T) {
-	mockNodesRepo := new(mockUserNodesRepo)
+	mockNodesRepo := new(mockContractDataRepo)
 	mockUserRepo := new(mockUserRepo)
 
 	mockUserRepo.On("GetUserByID", 999).Return(models.User{}, fmt.Errorf("user not found"))
 
 	service := NodeService{
-		nodesRepo: mockNodesRepo,
-		userRepo:  mockUserRepo,
+		contractsRepo: mockNodesRepo,
+		userRepo:      mockUserRepo,
 	}
 
 	_, err := service.GetUserByID(999)

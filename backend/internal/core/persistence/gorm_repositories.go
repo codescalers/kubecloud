@@ -26,7 +26,11 @@ func NewGormUserRepository(db models.DB) models.UserRepository {
 
 // RegisterUser registers a new user to the system
 func (r *GormUserRepository) RegisterUser(user *models.User) error {
-	return r.db.Create(user).Error
+	if err := r.db.Create(user).Error; err != nil {
+		return err
+	}
+
+	return r.UpdateUserLastCalcTime(user.ID, time.Now())
 }
 
 // SetStateUserID sets gorm user ID in workflow state
@@ -86,6 +90,36 @@ func (r *GormUserRepository) UpdateUserByID(user *models.User) error {
 	return nil
 }
 
+func (r *GormUserRepository) DeductUserBalance(user *models.User, amount uint64) error {
+	if user.CreditedBalance >= amount {
+		return r.db.Model(&models.User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credited_balance", gorm.Expr("credited_balance - ?", amount)).
+			Error
+	}
+
+	if user.CreditedBalance > 0 && user.CreditCardBalance >= amount-user.CreditedBalance {
+		return r.db.Model(&models.User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credited_balance", gorm.Expr("credited_balance - ?", user.CreditedBalance)).
+			UpdateColumn("credit_card_balance", gorm.Expr("credit_card_balance - ?", amount-user.CreditedBalance)).
+			Error
+	}
+
+	if user.CreditCardBalance >= amount {
+		return r.db.Model(&models.User{}).
+			Where("id = ?", user.ID).
+			UpdateColumn("credit_card_balance", gorm.Expr("credit_card_balance - ?", amount)).
+			Error
+	}
+
+	// if credit card balance is not enough, add debt
+	return r.db.Model(&models.User{}).
+		Where("id = ?", user.ID).
+		UpdateColumn("debt", gorm.Expr("debt + ?", amount)).
+		Error
+}
+
 // ListAllUsers lists all users in system
 func (r *GormUserRepository) ListAllUsers() ([]models.User, error) {
 	var users []models.User
@@ -118,6 +152,44 @@ func (r *GormUserRepository) DeleteUserByID(userID int) error {
 		return models.ErrUserNotFound
 	}
 	return nil
+}
+
+// GetUserLastCalcTime returns the last calculation time for a user
+func (r *GormUserRepository) GetUserLastCalcTime(userID int) (time.Time, error) {
+	var calcTime models.UserUsageCalculationTime
+	err := r.db.Where("user_id = ?", userID).First(&calcTime).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// If no record exists, return zero time
+			return time.Time{}, nil
+		}
+		return time.Time{}, err
+	}
+	return calcTime.LastCalcTime, nil
+}
+
+// UpdateUserLastCalcTime updates the last calculation time for a user
+func (r *GormUserRepository) UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error {
+	var calcTime models.UserUsageCalculationTime
+	err := r.db.Where("user_id = ?", userID).First(&calcTime).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// Create a new record if one doesn't exist
+			calcTime = models.UserUsageCalculationTime{
+				UserID:       userID,
+				LastCalcTime: lastCalcTime,
+				UpdatedAt:    time.Now(),
+			}
+			return r.db.Create(&calcTime).Error
+		}
+		return err
+	}
+
+	// Update existing record
+	calcTime.LastCalcTime = lastCalcTime
+	calcTime.UpdatedAt = time.Now()
+	return r.db.Save(&calcTime).Error
 }
 
 // CreditUserBalance add credited balance to user by its ID
@@ -219,7 +291,29 @@ func (r *GormClusterRepository) CreateCluster(userID int, cluster *models.Cluste
 	cluster.CreatedAt = time.Now()
 	cluster.UpdatedAt = time.Now()
 	cluster.UserID = userID
-	return r.db.Create(cluster).Error
+
+	clusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			contractData := &models.UserContractData{
+				UserID:     userID,
+				ContractID: node.ContractID,
+				NodeID:     node.NodeID,
+				Type:       models.ContractTypeDeployed,
+				CreatedAt:  time.Now(),
+			}
+
+			if err := tx.Create(contractData).Error; err != nil {
+				return fmt.Errorf("failed to create contract data for node %d: %w", node.NodeID, err)
+			}
+		}
+
+		return tx.Create(cluster).Error
+	})
 }
 
 func (r *GormClusterRepository) ListUserClusters(userID int) ([]models.Cluster, error) {
@@ -238,7 +332,58 @@ func (r *GormClusterRepository) GetClusterByName(userID int, projectName string)
 	return cluster, query.Error
 }
 
-func (r *GormClusterRepository) UpdateCluster(cluster *models.Cluster) error {
+func (r *GormClusterRepository) UpdateCluster(contractsRepo models.ContractDataRepository, cluster *models.Cluster) error {
+	existingCluster, err := r.GetClusterByName(cluster.UserID, cluster.ProjectName)
+	if err != nil {
+		return fmt.Errorf("failed to get existing cluster: %w", err)
+	}
+
+	existingClusterData, err := existingCluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse existing cluster data: %w", err)
+	}
+
+	newClusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return fmt.Errorf("failed to parse new cluster data: %w", err)
+	}
+
+	existingNodes := make(map[uint64]struct{})
+	for _, node := range existingClusterData.Nodes {
+		if node.ContractID != 0 {
+			existingNodes[node.ContractID] = struct{}{}
+		}
+	}
+
+	for _, node := range newClusterData.Nodes {
+		if node.ContractID != 0 {
+			if _, exists := existingNodes[node.ContractID]; !exists {
+				// This is a new node, create a contract for it
+				if err := contractsRepo.CreateUserContractData(
+					&models.UserContractData{
+						UserID:     cluster.UserID,
+						ContractID: node.ContractID,
+						NodeID:     node.NodeID,
+						Type:       models.ContractTypeDeployed,
+						CreatedAt:  time.Now(),
+					},
+				); err != nil {
+					return fmt.Errorf("failed to create contract for new node: %w", err)
+				}
+			}
+			// Remove from existing nodes map to track what is processed
+			delete(existingNodes, node.ContractID)
+		}
+	}
+
+	// Handle removed nodes - delete contracts for nodes that exist in old but not in new
+	for contractID := range existingNodes {
+		if err := contractsRepo.DeleteUserContract(contractID); err != nil {
+			return fmt.Errorf("failed to delete contract for removed node: %w", err)
+		}
+	}
+
+	// Update the cluster record
 	cluster.UpdatedAt = time.Now()
 	return r.db.Model(&models.Cluster{}).
 		Where("user_id = ? AND project_name = ?", cluster.UserID, cluster.ProjectName).
@@ -246,20 +391,51 @@ func (r *GormClusterRepository) UpdateCluster(cluster *models.Cluster) error {
 }
 
 func (r *GormClusterRepository) DeleteCluster(userID int, projectName string) error {
-	query := r.db.Where("user_id = ? AND project_name = ?", userID, projectName).Delete(&models.Cluster{})
-
-	if errors.Is(query.Error, gorm.ErrRecordNotFound) {
-		return models.ErrClusterNotFound
+	cluster, err := r.GetClusterByName(userID, projectName)
+	if err != nil {
+		return err
 	}
 
-	if query.RowsAffected == 0 {
-		return models.ErrClusterNotFound
+	clusterData, err := cluster.GetClusterResult()
+	if err != nil {
+		return err
 	}
 
-	return query.Error
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		for _, node := range clusterData.Nodes {
+			if err := tx.Model(&models.UserContractData{}).
+				Where("contract_id = ?", node.ContractID).
+				Update("deleted_at", time.Now()).Error; err != nil {
+				return fmt.Errorf("failed to delete contract for node %d: %w", node.NodeID, err)
+			}
+		}
+
+		return tx.Where("user_id = ? AND project_name = ?", userID, projectName).
+			Delete(&models.Cluster{}).Error
+	})
+
+	return err
 }
 
-func (r *GormClusterRepository) DeleteAllUserClusters(userID int) error {
+func (r *GormClusterRepository) DeleteAllUserClusters(contractsRepo models.ContractDataRepository, userID int) error {
+	clusters, err := r.ListUserClusters(userID)
+	if err != nil {
+		return err
+	}
+
+	for _, cluster := range clusters {
+		clusterData, err := cluster.GetClusterResult()
+		if err != nil {
+			return err
+		}
+
+		for _, node := range clusterData.Nodes {
+			if err := contractsRepo.DeleteUserContract(node.ContractID); err != nil {
+				return err
+			}
+		}
+	}
+
 	return r.db.Where("user_id = ?", userID).Delete(&models.Cluster{}).Error
 }
 
@@ -331,55 +507,71 @@ func (r *GormVoucherRepository) RedeemVoucher(userID int, username, code string)
 	return nil
 }
 
-// UserNodes Repository
+// UserContractData Repository
 
-var _ models.UserNodesRepository = (*GormUserNodesRepository)(nil)
+var _ models.ContractDataRepository = (*GormUserContractDataRepository)(nil)
 
-type GormUserNodesRepository struct {
+type GormUserContractDataRepository struct {
 	db *gorm.DB
 }
 
-func NewGormUserNodesRepository(db models.DB) models.UserNodesRepository {
-	return &GormUserNodesRepository{db: db.GetDB()}
+func NewGormUserContractDataRepository(db models.DB) models.ContractDataRepository {
+	return &GormUserContractDataRepository{db: db.GetDB()}
 }
 
-func (r *GormUserNodesRepository) CreateUserNode(userNode *models.UserNodes) error {
-	return r.db.Create(&userNode).Error
+// CreateUserContractData creates new contract record for user
+func (r *GormUserContractDataRepository) CreateUserContractData(contractData *models.UserContractData) error {
+	return r.db.Create(&contractData).Error
 }
 
-func (r *GormUserNodesRepository) DeleteUserNode(contractID uint64) error {
-	return r.db.Where("contract_id = ?", contractID).Delete(&models.UserNodes{}).Error
+// DeleteUserContract updates deleted time of a contract record for user by its contract ID
+func (r *GormUserContractDataRepository) DeleteUserContract(contractID uint64) error {
+	return r.db.Where("contract_id = ?", contractID).Update("deleted_at", time.Now()).Error
 }
 
-func (r *GormUserNodesRepository) ListUserNodes(userID int) ([]models.UserNodes, error) {
-	var userNodes []models.UserNodes
-	return userNodes, r.db.Where("user_id = ?", userID).Find(&userNodes).Error
+// ListUserRentedNodes returns all nodes records for user by its ID
+func (r *GormUserContractDataRepository) ListUserRentedNodes(userID int) ([]models.UserContractData, error) {
+	var userNodes []models.UserContractData
+	return userNodes, r.db.Where("user_id = ? and type = ? and deleted_at = ?", userID, models.ContractTypeRented, time.Time{}).Find(&userNodes).Error
 }
 
-func (r *GormUserNodesRepository) ListAllReservedNodes() ([]models.UserNodes, error) {
-	var userNodes []models.UserNodes
-	return userNodes, r.db.Find(&userNodes).Error
-}
+// ListAllContractsInPeriod returns all contracts that existed during the specified time period.
+// This includes:
+// 1. Contracts created before or during the period end date
+// 2. AND either not deleted (deleted_at is zero time) OR deleted after the period start date
+// If userID is provided (non-zero), it will only return contracts for that specific user.
+// If userID is 0, it will return contracts for all users.
+func (r *GormUserContractDataRepository) ListAllContractsInPeriod(userID int, start, end time.Time) ([]models.UserContractData, error) {
+	var userNodes []models.UserContractData
 
-func (r *GormUserNodesRepository) GetUserNodeByNodeID(nodeID uint64) (models.UserNodes, error) {
-	var userNode models.UserNodes
-	result := r.db.Where("node_id = ?", nodeID).First(&userNode)
+	// Query for contracts that:
+	// - Were created on or before the end date of the period
+	// - AND are either not deleted (deleted_at is zero) OR were deleted after the start of the period
+	query := r.db.Where("created_at <= ?", end).
+		Where("(deleted_at = ? OR deleted_at >= ?)", time.Time{}, start)
 
-	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return models.UserNodes{}, models.ErrUserNodeNotFound
+	// If userID is provided (non-zero), filter by that user
+	if userID > 0 {
+		query = query.Where("user_id = ?", userID)
 	}
 
-	return userNode, result.Error
+	return userNodes, query.Find(&userNodes).Error
 }
 
-func (r *GormUserNodesRepository) GetUserNodeByContractID(contractID uint64) (models.UserNodes, error) {
-	var userNode models.UserNodes
-	result := r.db.Where("contract_id = ?", contractID).First(&userNode)
-	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return models.UserNodes{}, models.ErrUserNodeNotFound
-	}
+// ListAllReservedNodes returns all reserved nodes from all users
+func (r *GormUserContractDataRepository) ListAllReservedNodes() ([]models.UserContractData, error) {
+	var userNodes []models.UserContractData
+	return userNodes, r.db.Where("type = ? and deleted_at = ?", models.ContractTypeRented, time.Time{}).Find(&userNodes).Error
+}
 
-	return userNode, result.Error
+func (r *GormUserContractDataRepository) GetUserNodeByNodeID(nodeID uint64) (models.UserContractData, error) {
+	var userNode models.UserContractData
+	return userNode, r.db.Where("node_id = ? and deleted_at = ?", nodeID, time.Time{}).First(&userNode).Error
+}
+
+func (r *GormUserContractDataRepository) GetUserNodeByContractID(contractID uint64) (models.UserContractData, error) {
+	var userNode models.UserContractData
+	return userNode, r.db.Where("contract_id = ? and deleted_at = ?", contractID, time.Time{}).First(&userNode).Error
 }
 
 // Transaction Repository
@@ -458,44 +650,57 @@ func (r *GormSettingsRepository) GetMaintenanceMode() (bool, error) {
 	return value == maintenanceModeEnabled, nil
 }
 
-// PendingRecord Repository
+// TransferRecord Repository
 
-var _ models.PendingRecordRepository = (*GormPendingRecordRepository)(nil)
+var _ models.TransferRecordRepository = (*GormTransferRecordRepository)(nil)
 
-type GormPendingRecordRepository struct {
+type GormTransferRecordRepository struct {
 	db *gorm.DB
 }
 
-func NewGormPendingRecordRepository(db models.DB) models.PendingRecordRepository {
-	return &GormPendingRecordRepository{db: db.GetDB()}
+func NewGormTransferRecordRepository(db models.DB) models.TransferRecordRepository {
+	return &GormTransferRecordRepository{db: db.GetDB()}
 }
 
-func (r *GormPendingRecordRepository) CreatePendingRecord(record *models.PendingRecord) error {
+func (r *GormTransferRecordRepository) CreateTransferRecord(record *models.TransferRecord) error {
 	record.CreatedAt = time.Now()
 	return r.db.Create(record).Error
 }
-
-func (r *GormPendingRecordRepository) ListAllPendingRecords() ([]models.PendingRecord, error) {
-	var pendingRecords []models.PendingRecord
-	return pendingRecords, r.db.Find(&pendingRecords).Error
+func (r *GormTransferRecordRepository) ListTransferRecords() ([]models.TransferRecord, error) {
+	var TransferRecords []models.TransferRecord
+	return TransferRecords, r.db.Find(&TransferRecords).Error
 }
 
-func (r *GormPendingRecordRepository) ListOnlyPendingRecords() ([]models.PendingRecord, error) {
-	var pendingRecords []models.PendingRecord
-	return pendingRecords, r.db.Where("tft_amount > transferred_tft_amount").Find(&pendingRecords).Error
+func (r *GormTransferRecordRepository) CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error) {
+	var totalAmount uint64
+	err := r.db.Model(&models.TransferRecord{}).
+		Select("COALESCE(SUM(tft_amount), 0)").
+		Where("user_id = ? AND state = ?", userID, models.PendingState).
+		Scan(&totalAmount).Error
+	if err != nil {
+		return 0, err
+	}
+	return totalAmount, nil
 }
 
-func (r *GormPendingRecordRepository) ListUserPendingRecords(userID int) ([]models.PendingRecord, error) {
-	var pendingRecords []models.PendingRecord
-	return pendingRecords, r.db.Where("user_id = ?", userID).Find(&pendingRecords).Error
+func (r *GormTransferRecordRepository) ListUserTransferRecords(userID int) ([]models.TransferRecord, error) {
+	var TransferRecords []models.TransferRecord
+	return TransferRecords, r.db.Where("user_id = ?", userID).Find(&TransferRecords).Error
 }
 
-func (r *GormPendingRecordRepository) UpdatePendingRecordTransferredAmount(id int, amount uint64) error {
-	return r.db.Model(&models.PendingRecord{}).
-		Where("id = ?", id).
-		UpdateColumn("transferred_tft_amount", gorm.Expr("transferred_tft_amount + ?", amount)).
-		UpdateColumn("updated_at", gorm.Expr("?", time.Now())).
-		Error
+func (r *GormTransferRecordRepository) ListPendingTransferRecords() ([]models.TransferRecord, error) {
+	var TransferRecords []models.TransferRecord
+	return TransferRecords, r.db.Where("state = ?", models.PendingState).Find(&TransferRecords).Error
+}
+
+func (r *GormTransferRecordRepository) ListFailedTransferRecords() ([]models.TransferRecord, error) {
+	var TransferRecords []models.TransferRecord
+	return TransferRecords, r.db.Where("state = ?", models.FailedState).Find(&TransferRecords).Error
+}
+
+func (r *GormTransferRecordRepository) UpdateTransferRecordState(recordID int, state models.State, failure string) error {
+	return r.db.Model(&models.TransferRecord{}).Where("id = ?", recordID).Updates(
+		map[string]interface{}{"state": state, "failure": failure, "updated_at": time.Now()}).Error
 }
 
 // Notification Repository

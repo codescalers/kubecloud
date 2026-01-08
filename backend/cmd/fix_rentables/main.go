@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"kubecloud/internal/core/models"
+	corepersistence "kubecloud/internal/core/persistence"
 	"kubecloud/internal/infrastructure/persistence"
 	"strings"
 
@@ -52,8 +53,9 @@ func main() {
 	defer substrateClient.Close()
 
 	// Get all user_nodes records
-	var allRecords []models.UserNodes
-	if err := db.GetDB().Order("created_at DESC, id DESC").Find(&allRecords).Error; err != nil {
+	contractsRepo := corepersistence.NewGormUserContractDataRepository(db)
+	allRecords, err := contractsRepo.ListAllReservedNodes()
+	if err != nil {
 		log.Error().Err(err).Msg("Failed to get user_nodes records")
 		return
 	}

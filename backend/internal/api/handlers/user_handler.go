@@ -10,6 +10,7 @@ import (
 	"kubecloud/internal/infrastructure/gridclient"
 	"kubecloud/internal/infrastructure/mailservice"
 	"kubecloud/internal/infrastructure/notification"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ import (
 
 type UserHandler struct {
 	svc                    services.UserService
+	billingService         services.BillingService
 	notificationDispatcher *notification.NotificationDispatcher
 	mailService            mailservice.MailService
 	tokenManager           auth.TokenManager
@@ -34,6 +36,7 @@ type UserHandler struct {
 
 func NewUserHandler(
 	svc services.UserService,
+	billing services.BillingService,
 	notificationDispatcher *notification.NotificationDispatcher,
 	mailService mailservice.MailService,
 	tokenManager auth.TokenManager,
@@ -109,13 +112,6 @@ type ChargeBalanceResponse struct {
 	Email      string `json:"email"`
 }
 
-// UserBalanceResponse struct holds the response data for user balance
-type UserBalanceResponse struct {
-	BalanceUSD        float64 `json:"balance_usd"`
-	DebtUSD           float64 `json:"debt_usd"`
-	PendingBalanceUSD float64 `json:"pending_balance_usd"`
-}
-
 // SSHKeyInput struct for adding SSH keys
 type SSHKeyInput struct {
 	Name      string `json:"name" binding:"required"`
@@ -132,11 +128,6 @@ type VerifyRegisterUserResponse struct {
 	WorkflowID string `json:"workflow_id"`
 	Email      string `json:"email"`
 	*auth.TokenPair
-}
-
-// PendingRecordsResponse swagger model
-type PendingRecordsResponse struct {
-	PendingRecords []services.PendingRecordsWithUSDAmounts `json:"pending_records"`
 }
 
 // RedeemVoucherResponse holds the response for redeeming a voucher
@@ -662,6 +653,12 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 		return
 	}
 
+	if err := h.billingService.AfterUserGetCredit(c.Request.Context(), &user); err != nil {
+		reqLog.Error().Err(err).Msg("Failed to credit user balance")
+		InternalServerError(c)
+		return
+	}
+
 	Accepted(c, "Charge in progress. You can check its status using the workflow id.", ChargeBalanceResponse{
 		WorkflowID: wfUUID,
 		Email:      user.Email,
@@ -673,7 +670,7 @@ func (h *UserHandler) ChargeBalance(c *gin.Context) {
 // @Tags users
 // @ID get-user
 // @Produce json
-// @Success 200 {object} APIResponse{data=services.UserWithPendingBalance} "User is retrieved successfully"
+// @Success 200 {object} APIResponse{data=services.UserWithBalancesInUSD} "User is retrieved successfully"
 // @Failure 404 {object} APIResponse "User is not found"
 // @Failure 500 {object} APIResponse
 // @Router /user [get]
@@ -682,7 +679,7 @@ func (h *UserHandler) GetUserHandler(c *gin.Context) {
 	userID := c.GetInt("user_id")
 	reqLog := requestLogger(c, "GetUserHandler")
 
-	userWithPendingBalance, err := h.svc.GetUserWithPendingBalance(userID)
+	userWithBalancesInUSD, err := h.svc.GetUserWithBalancesInUSD(userID)
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
 			NotFound(c, "User is not found")
@@ -695,53 +692,7 @@ func (h *UserHandler) GetUserHandler(c *gin.Context) {
 	}
 
 	OK(c, "User is retrieved successfully", gin.H{
-		"user": userWithPendingBalance,
-	})
-}
-
-// @Summary Get user balance
-// @Description Retrieves the user's balance in USD
-// @Tags users
-// @ID get-user-balance
-// @Produce json
-// @Success 200 {object} APIResponse{data=UserBalanceResponse} "Balance fetched successfully"
-// @Failure 404 {object} APIResponse "User is not found"
-// @Failure 500 {object} APIResponse
-// @Router /user/balance [get]
-// GetUserBalance returns user's balance in usd
-func (h *UserHandler) GetUserBalance(c *gin.Context) {
-	userID := c.GetInt("user_id")
-	reqLog := requestLogger(c, "GetUserBalance")
-
-	user, err := h.svc.GetUserByID(userID)
-	if err != nil {
-		if errors.Is(err, models.ErrUserNotFound) {
-			NotFound(c, "User is not found")
-			return
-		}
-		reqLog.Error().Err(err).Msg("User is not found")
-		InternalServerError(c)
-		return
-	}
-
-	usdMillicentBalance, err := h.svc.GetUserBalanceInUSDMillicent(user.Mnemonic)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to get user balance in usd millicent")
-		InternalServerError(c)
-		return
-	}
-
-	pendingAmountInUSDMillicent, err := h.svc.GetUserPendingBalanceInUSDMillicent(userID)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to list pending records")
-		InternalServerError(c)
-		return
-	}
-
-	OK(c, "Balance is fetched", UserBalanceResponse{
-		BalanceUSD:        gridclient.FromUSDMilliCentToUSD(usdMillicentBalance),
-		DebtUSD:           gridclient.FromUSDMilliCentToUSD(user.Debt),
-		PendingBalanceUSD: gridclient.FromUSDMilliCentToUSD(pendingAmountInUSDMillicent),
+		"user": userWithBalancesInUSD,
 	})
 }
 
@@ -800,15 +751,25 @@ func (h *UserHandler) RedeemVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	wfUUID, err := h.svc.AsyncRedeemVoucher(user.ID, voucher.Value, user.Mnemonic, user.Username, voucher.Code)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to redeem voucher")
+	millicentAmount := gridclient.FromUSDToUSDMillicent(voucher.Value)
+	user.CreditedBalance += millicentAmount
+	if err := h.svc.UpdateUserByID(&user); err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
+		reqLog.Error().Err(err).Send()
 		InternalServerError(c)
 		return
 	}
 
-	Accepted(c, "Voucher is redeemed successfully. Money transfer in progress.", RedeemVoucherResponse{
-		WorkflowID:  wfUUID,
+	if err := h.billingService.AfterUserGetCredit(c.Request.Context(), &user); err != nil {
+		reqLog.Error().Err(err).Msg("Failed to credit user balance")
+		InternalServerError(c)
+		return
+	}
+
+	Success(c, http.StatusOK, fmt.Sprintf("Voucher with value %v$ is redeemed successfully.", voucher.Value), RedeemVoucherResponse{
 		VoucherCode: voucher.Code,
 		Amount:      voucher.Value,
 		Email:       user.Email,
@@ -998,33 +959,6 @@ func (h *UserHandler) GetWorkflowStatus(c *gin.Context) {
 	}
 
 	OK(c, "Status returned successfully", workflowStatus)
-}
-
-// @Summary List user pending records
-// @Description Returns user pending records in the system
-// @Tags users
-// @ID list-user-pending-records
-// @Accept json
-// @Produce json
-// @Success 200 {object} APIResponse{data=PendingRecordsResponse} "Pending records returned successfully"
-// @Failure 500 {object} APIResponse
-// @Security BearerAuth
-// @Router /user/pending-records [get]
-// ListUserPendingRecordsHandler returns user pending records in the system
-func (h *UserHandler) ListUserPendingRecordsHandler(c *gin.Context) {
-	userID := c.GetInt("user_id")
-	reqLog := requestLogger(c, "ListUserPendingRecordsHandler")
-
-	pendingRecordsWithUSDAmounts, err := h.svc.ListUserPendingRecordsWithUSDAmounts(userID)
-	if err != nil {
-		reqLog.Error().Err(err).Msg("failed to list pending records with usd amounts")
-		InternalServerError(c)
-		return
-	}
-
-	OK(c, "Pending records are retrieved successfully", gin.H{
-		"pending_records": pendingRecordsWithUSDAmounts,
-	})
 }
 
 // @Summary List remaining user workflows

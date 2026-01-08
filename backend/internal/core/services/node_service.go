@@ -23,8 +23,8 @@ var Zos3NodeFeatures = []string{
 }
 
 type NodeService struct {
-	nodesRepo models.UserNodesRepository
-	userRepo  models.UserRepository
+	contractsRepo models.ContractDataRepository
+	userRepo      models.UserRepository
 
 	appCtx     context.Context
 	ewfEngine  *ewf.Engine
@@ -33,16 +33,16 @@ type NodeService struct {
 }
 
 func NewNodeService(
-	userNodesRepo models.UserNodesRepository, userRepo models.UserRepository,
+	contractsRepo models.ContractDataRepository, userRepo models.UserRepository,
 	appCtx context.Context, ewfEngine *ewf.Engine, gridClient gridclient.GridClient,
 ) NodeService {
 	return NodeService{
-		nodesRepo:  userNodesRepo,
-		userRepo:   userRepo,
-		appCtx:     appCtx,
-		ewfEngine:  ewfEngine,
-		gridClient: gridClient,
-		tracer:     telemetry.NewServiceTracer("node_service"),
+		contractsRepo: contractsRepo,
+		userRepo:      userRepo,
+		appCtx:        appCtx,
+		ewfEngine:     ewfEngine,
+		gridClient:    gridClient,
+		tracer:        telemetry.NewServiceTracer("node_service"),
 	}
 }
 
@@ -82,8 +82,8 @@ func (svc *NodeService) GetUserByID(userID int) (models.User, error) {
 	return svc.userRepo.GetUserByID(userID)
 }
 
-func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserNodes, error) {
-	return svc.nodesRepo.GetUserNodeByNodeID(uint64(nodeID))
+func (svc *NodeService) GetUserNodeByNodeID(nodeID uint32) (models.UserContractData, error) {
+	return svc.contractsRepo.GetUserNodeByNodeID(uint64(nodeID))
 }
 
 func (svc *NodeService) CheckUserBalanceForOneHour(ctx context.Context, userMnemonic string, userDebt uint64, nodePriceUsd float64) error {
@@ -117,8 +117,8 @@ func (svc *NodeService) CheckUserBalanceForOneHour(ctx context.Context, userMnem
 	return nil
 }
 
-func (svc *NodeService) GetUserNodeByContractID(contractID uint64) (models.UserNodes, error) {
-	return svc.nodesRepo.GetUserNodeByContractID(contractID)
+func (svc *NodeService) GetUserNodeByContractID(contractID uint64) (models.UserContractData, error) {
+	return svc.contractsRepo.GetUserNodeByContractID(contractID)
 }
 
 func (svc *NodeService) GetTwinIDFromUserID(ctx context.Context, userID int) (uint64, error) {

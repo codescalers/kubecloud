@@ -308,18 +308,23 @@ func (app *App) createHandlers() appHandlers {
 	// Repositories
 	userRepo := corepersistence.NewGormUserRepository(app.core.db)
 	voucherRepo := corepersistence.NewGormVoucherRepository(app.core.db)
-	pendingRecordRepo := corepersistence.NewGormPendingRecordRepository(app.core.db)
+	transferRecordsRepo := corepersistence.NewGormTransferRecordRepository(app.core.db)
 	notificationRepo := corepersistence.NewGormNotificationRepository(app.core.db)
 	clusterRepo := corepersistence.NewGormClusterRepository(app.core.db)
 	invoiceRepo := corepersistence.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
+	contractsRepo := corepersistence.NewGormUserContractDataRepository(app.core.db)
 	transactionRepo := corepersistence.NewGormTransactionRepository(app.core.db)
 	settingsRepo := corepersistence.NewGormSettingsRepository(app.core.db)
 	ewfRepo := corepersistence.NewGormEWFRepository(app.core.db)
 
 	// Services
+	billingService := services.NewBillingService(
+		userRepo, contractsRepo, transferRecordsRepo, clusterRepo,
+		app.infra.graphql, app.infra.gridClient,
+		uint64(app.config.MinimumTFTAmountInWallet), services.Discount(app.config.AppliedDiscount),
+	)
 	userService := services.NewUserService(
-		app.core.appCtx, userRepo, voucherRepo, pendingRecordRepo,
+		app.core.appCtx, userRepo, voucherRepo,
 		app.infra.gridClient, app.core.ewfEngine,
 		app.security.kycClient, app.core.metrics, app.config.MailSender.TimeoutMin,
 		app.config.Admins,
@@ -332,7 +337,7 @@ func (app *App) createHandlers() appHandlers {
 	notificationAPIService := services.NewNotificationService(notificationRepo)
 
 	nodeService := services.NewNodeService(
-		userNodesRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
+		contractsRepo, userRepo, app.core.appCtx, app.core.ewfEngine,
 		app.infra.gridClient,
 	)
 
@@ -341,12 +346,12 @@ func (app *App) createHandlers() appHandlers {
 	)
 
 	deploymentService := services.NewDeploymentService(
-		app.core.appCtx, clusterRepo, userRepo, userNodesRepo, app.core.ewfEngine,
+		app.core.appCtx, clusterRepo, userRepo, contractsRepo, app.core.ewfEngine,
 		app.config.Debug, app.security.sshPublicKey, app.config.SSH.PrivateKeyPath, app.config.SystemAccount.Network,
 	)
 
 	adminService := services.NewAdminService(
-		app.core.appCtx, userRepo, userNodesRepo, pendingRecordRepo, voucherRepo,
+		app.core.appCtx, userRepo, contractsRepo, transferRecordsRepo, voucherRepo,
 		transactionRepo, app.infra.gridClient, app.core.ewfEngine, app.communication.mailService, app.communication.notificationDispatcher, ewfRepo,
 	)
 
@@ -355,15 +360,15 @@ func (app *App) createHandlers() appHandlers {
 	// Handlers
 	stripeClient := &billing.DefaultStripeClient{}
 	userHandler := handlers.NewUserHandler(
-		userService, app.communication.notificationDispatcher,
+		userService, billingService, app.communication.notificationDispatcher,
 		app.communication.mailService, app.security.tokenManager, stripeClient,
 	)
 	statsHandler := handlers.NewStatsHandler(statsService)
 	notificationHandler := handlers.NewNotificationHandler(notificationAPIService)
-	nodeHandler := handlers.NewNodeHandler(nodeService)
-	deploymentHandler := handlers.NewDeploymentHandler(deploymentService)
+	nodeHandler := handlers.NewNodeHandler(nodeService, billingService)
+	deploymentHandler := handlers.NewDeploymentHandler(deploymentService, billingService)
 	invoiceHandler := handlers.NewInvoiceHandler(invoiceService)
-	adminHandler := handlers.NewAdminHandler(adminService, app.communication.notificationDispatcher, app.communication.mailService)
+	adminHandler := handlers.NewAdminHandler(adminService, billingService, app.communication.notificationDispatcher, app.communication.mailService)
 	healthHandler := handlers.NewHealthHandler(app.config.SystemAccount.Network, app.infra.firesquidClient, app.infra.graphql, app.core.db)
 	settingsHandler := handlers.NewSettingsHandler(settingsService)
 
@@ -382,19 +387,32 @@ func (app *App) createHandlers() appHandlers {
 
 func (app *App) createWorkers() workers.Workers {
 	userRepo := corepersistence.NewGormUserRepository(app.core.db)
-	pendingRecordRepo := corepersistence.NewGormPendingRecordRepository(app.core.db)
+	transferRecordsRepo := corepersistence.NewGormTransferRecordRepository(app.core.db)
 	clusterRepo := corepersistence.NewGormClusterRepository(app.core.db)
 	invoiceRepo := corepersistence.NewGormInvoiceRepository(app.core.db)
-	userNodesRepo := corepersistence.NewGormUserNodesRepository(app.core.db)
+	contractsRepo := corepersistence.NewGormUserContractDataRepository(app.core.db)
 
 	workersService := services.NewWorkersService(
-		app.core.appCtx, userRepo, userNodesRepo, invoiceRepo, clusterRepo, pendingRecordRepo,
+		app.core.appCtx, userRepo, contractsRepo, invoiceRepo, clusterRepo, transferRecordsRepo,
 		app.communication.mailService, app.infra.gridClient, app.core.ewfEngine,
 		app.communication.notificationDispatcher, app.infra.graphql, app.infra.firesquidClient,
 		app.config.Invoice, app.config.SystemAccount.Mnemonic,
 		app.config.Currency, app.config.ClusterHealthCheckIntervalInHours,
-		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, app.config.MonitorBalanceIntervalInMinutes, app.config.NotifyAdminsForPendingRecordsInHours, app.config.UsersBalanceCheckIntervalInHours, app.config.CheckUserDebtIntervalInHours,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes,
+		app.config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum,
+		app.config.SettleTransferRecordsIntervalInMinutes,
+		app.config.NotifyAdminsForPendingRecordsInHours,
+		app.config.MinimumTFTAmountInWallet, services.Discount(app.config.AppliedDiscount),
+		app.config.UsersBalanceCheckIntervalInHours,
+		app.config.CheckUserDebtIntervalInHours,
 	)
 
-	return workers.NewWorkers(app.core.appCtx, workersService, app.core.metrics, app.core.db)
+	billingService := services.NewBillingService(
+		userRepo, contractsRepo, transferRecordsRepo, clusterRepo,
+		app.infra.graphql, app.infra.gridClient,
+		uint64(app.config.MinimumTFTAmountInWallet), services.Discount(app.config.AppliedDiscount),
+	)
+
+	return workers.NewWorkers(app.core.appCtx, workersService, billingService, app.core.metrics, app.core.db)
 }

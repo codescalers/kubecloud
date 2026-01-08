@@ -182,10 +182,6 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 
 	displayName := getWorkflowDisplayName(wf)
 
-	if wf.Name == WorkflowAdminCreditBalance {
-		return sendAdminCreditBalanceWorkflowNotification(ctx, notificationDispatcher, wf, err)
-	}
-
 	amount, amountErr := getUint64FromState(wf.State, "amount")
 	if amountErr != nil {
 		log.Error().Err(amountErr).Msg("failed to get amount from state")
@@ -207,12 +203,6 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		status = "funds_succeeded"
 		subject = "Adding Funds Succeeded"
 		message = fmt.Sprintf("Funds were added successfully to your account. Amount added: $%.2f. New balance will be: $%.2f.", amountUSD, newBalanceUSD)
-
-		if wf.Name == WorkflowRedeemVoucher {
-			status = "voucher_redeemed"
-			subject = "Voucher Redeemed"
-			message = fmt.Sprintf("Voucher redeemed successfully. Amount added: $%.2f.", amountUSD)
-		}
 
 		notif := notification.BillingNotification(config.UserID).
 			Success(message).
@@ -237,78 +227,6 @@ func sendBillingWorkflowNotifications(ctx context.Context, notificationDispatche
 		Build()
 
 	return notificationDispatcher.Send(ctx, notif)
-}
-
-func sendAdminCreditBalanceWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
-	log := logger.ForOperation("workflow", "create_admin_credit_balance_notification").With().Str("workflow_name", wf.Name).Logger()
-	adminID, adminIDErr := getIntFromState(wf.State, "admin_id")
-	if adminIDErr != nil {
-		log.Error().Err(adminIDErr).Msg("failed to get admin ID from state")
-		return adminIDErr
-	}
-
-	username, usernameErr := getFromState[string](wf.State, "username")
-	if usernameErr != nil {
-		log.Warn().Err(usernameErr).Msg("failed to get username from state")
-		notif := buildGenericWorkflowNotification(wf, adminID, err)
-		return notificationDispatcher.Send(ctx, notif)
-	}
-
-	displayName := getWorkflowDisplayName(wf)
-	amount, amountErr := getUint64FromState(wf.State, "amount")
-	if amountErr != nil {
-		log.Error().Err(amountErr).Msg("failed to get amount from state")
-		notif := buildGenericWorkflowNotification(wf, adminID, err)
-		return notificationDispatcher.Send(ctx, notif)
-	}
-
-	amountUSD := gridclient.FromUSDMilliCentToUSD(amount)
-
-	// Admin notification
-	adminNotif := notification.BillingNotification(adminID).
-		Success(fmt.Sprintf("User %s was credited successfully, money transferred successfully to their account (Amount: $%.2f)", username, amountUSD)).
-		WithSubject("Money transfer to user's account succeeded").
-		WithStatus("succeeded").
-		WithExtra("amount", fmt.Sprintf("%.2f", amountUSD)).
-		WithExtra("workflow_name", displayName).
-		WithChannels(notification.ChannelUI).
-		Build()
-
-	if err != nil {
-		adminNotif = notification.BillingNotification(adminID).
-			Failure(fmt.Sprintf("Money transfer to user %s's account failed", username), err).
-			WithSubject("Money transfer to user's account failed").
-			WithChannels(notification.ChannelUI).
-			Build()
-	}
-
-	if sendErr := notificationDispatcher.Send(ctx, adminNotif); sendErr != nil {
-		return sendErr
-	}
-
-	// User notification
-	config, confErr := getConfig(wf.State)
-	if confErr != nil {
-		log.Error().Msg("Missing or invalid 'config' in workflow state")
-		return confErr
-	}
-	userBuilder := notification.BillingNotification(config.UserID)
-	if err != nil {
-		userBuilder = userBuilder.Failure("Funds transfer to your account failed", err).
-			WithSubject("Your Account Credit Failed")
-	} else {
-		userBuilder = userBuilder.Success("Funds were credited to your account.").
-			WithSubject("Your Account Has Been Credited").
-			WithStatus("succeeded").
-			WithExtra("amount", fmt.Sprintf("%.2f", amountUSD))
-	}
-
-	userNotif := userBuilder.
-		WithExtra("workflow_name", displayName).
-		WithChannels(notification.ChannelEmail).
-		Build()
-
-	return notificationDispatcher.Send(ctx, userNotif)
 }
 
 func sendNodeWorkflowNotification(ctx context.Context, notificationDispatcher *notification.NotificationDispatcher, wf *ewf.Workflow, err error) error {
@@ -427,7 +345,7 @@ func sendUserWorkflowNotification(ctx context.Context, notificationDispatcher *n
 }
 
 func workflowToNotificationType(workflowName string) models.NotificationType {
-	billingWf := []string{WorkflowChargeBalance, WorkflowAdminCreditBalance, WorkflowRedeemVoucher, WorkflowDrainUser, WorkflowDrainAllUsers}
+	billingWf := []string{WorkflowChargeBalance, WorkflowDrainUser, WorkflowDrainAllUsers}
 	deployWf := []string{WorkflowDeleteAllClusters, WorkflowDeleteCluster, WorkflowRemoveNode, WorkflowAddNode, WorkflowRollbackFailedDeployment}
 	nodesWf := []string{WorkflowReserveNode, WorkflowUnreserveNode}
 	userWf := []string{WorkflowUserVerification, WorkflowUserRegistration}

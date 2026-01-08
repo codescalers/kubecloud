@@ -36,8 +36,8 @@ func (m *mockClusterRepo) GetClusterByName(userID int, projectName string) (mode
 	return args.Get(0).(models.Cluster), args.Error(1)
 }
 
-func (m *mockClusterRepo) UpdateCluster(cluster *models.Cluster) error {
-	args := m.Called(cluster)
+func (m *mockClusterRepo) UpdateCluster(contractsRepo models.ContractDataRepository, cluster *models.Cluster) error {
+	args := m.Called(contractsRepo, cluster)
 	return args.Error(0)
 }
 
@@ -46,8 +46,8 @@ func (m *mockClusterRepo) DeleteCluster(userID int, projectName string) error {
 	return args.Error(0)
 }
 
-func (m *mockClusterRepo) DeleteAllUserClusters(userID int) error {
-	args := m.Called(userID)
+func (m *mockClusterRepo) DeleteAllUserClusters(contractsRepo models.ContractDataRepository, userID int) error {
+	args := m.Called(contractsRepo, userID)
 	return args.Error(0)
 }
 
@@ -78,8 +78,9 @@ func TestDeploymentService_GetClusterByName_Success(t *testing.T) {
 	mockClusterRepo.On("GetClusterByName", 1, "test-project").Return(cluster, nil)
 
 	service := DeploymentService{
-		clusterRepo: mockClusterRepo,
-		userRepo:    mockUserRepo,
+		clusterRepo:   mockClusterRepo,
+		userRepo:      mockUserRepo,
+		contractsRepo: new(mockContractDataRepo),
 	}
 
 	result, err := service.GetClusterByName(1, "test-project")
@@ -97,8 +98,9 @@ func TestDeploymentService_GetClusterByName_NotFound(t *testing.T) {
 	mockClusterRepo.On("GetClusterByName", 1, "nonexistent").Return(models.Cluster{}, fmt.Errorf("cluster not found"))
 
 	service := DeploymentService{
-		clusterRepo: mockClusterRepo,
-		userRepo:    mockUserRepo,
+		clusterRepo:   mockClusterRepo,
+		userRepo:      mockUserRepo,
+		contractsRepo: new(mockContractDataRepo),
 	}
 
 	_, err := service.GetClusterByName(1, "nonexistent")
@@ -128,8 +130,9 @@ func TestDeploymentService_ListUserClusters_Success(t *testing.T) {
 	mockClusterRepo.On("ListUserClusters", 1).Return(clusters, nil)
 
 	service := DeploymentService{
-		clusterRepo: mockClusterRepo,
-		userRepo:    mockUserRepo,
+		clusterRepo:   mockClusterRepo,
+		userRepo:      mockUserRepo,
+		contractsRepo: new(mockContractDataRepo),
 	}
 
 	result, err := service.ListUserClusters(1)
@@ -147,8 +150,9 @@ func TestDeploymentService_ListUserClusters_Empty(t *testing.T) {
 	mockClusterRepo.On("ListUserClusters", 999).Return([]models.Cluster{}, nil)
 
 	service := DeploymentService{
-		clusterRepo: mockClusterRepo,
-		userRepo:    mockUserRepo,
+		clusterRepo:   mockClusterRepo,
+		userRepo:      mockUserRepo,
+		contractsRepo: new(mockContractDataRepo),
 	}
 
 	result, err := service.ListUserClusters(999)
@@ -165,8 +169,9 @@ func TestDeploymentService_ListUserClusters_Error(t *testing.T) {
 	mockClusterRepo.On("ListUserClusters", 1).Return(nil, fmt.Errorf("database error"))
 
 	service := DeploymentService{
-		clusterRepo: mockClusterRepo,
-		userRepo:    mockUserRepo,
+		clusterRepo:   mockClusterRepo,
+		userRepo:      mockUserRepo,
+		contractsRepo: new(mockContractDataRepo),
 	}
 
 	_, err := service.ListUserClusters(1)

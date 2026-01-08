@@ -20,8 +20,9 @@ import (
 )
 
 type DeploymentService struct {
-	clusterRepo models.ClusterRepository
-	userRepo    models.UserRepository
+	clusterRepo   models.ClusterRepository
+	userRepo      models.UserRepository
+	contractsRepo models.ContractDataRepository
 
 	appCtx    context.Context
 	ewfEngine *ewf.Engine
@@ -36,12 +37,14 @@ type DeploymentService struct {
 
 func NewDeploymentService(appCtx context.Context,
 	clusterRepo models.ClusterRepository, userRepo models.UserRepository,
-	userNodesRepo models.UserNodesRepository, ewfEngine *ewf.Engine,
+	contractsRepo models.ContractDataRepository,
+	ewfEngine *ewf.Engine,
 	debug bool, sshPublicKey, sshPrivateKeyPath, systemNetwork string,
 ) DeploymentService {
 	return DeploymentService{
-		clusterRepo: clusterRepo,
-		userRepo:    userRepo,
+		clusterRepo:   clusterRepo,
+		userRepo:      userRepo,
+		contractsRepo: contractsRepo,
 
 		appCtx:    appCtx,
 		ewfEngine: ewfEngine,
@@ -164,7 +167,7 @@ func (svc *DeploymentService) GetClusterKubeconfig(ctx context.Context, cluster 
 	}
 
 	cluster.Kubeconfig = kubeconfig
-	if err = svc.clusterRepo.UpdateCluster(cluster); err != nil {
+	if err = svc.clusterRepo.UpdateCluster(svc.contractsRepo, cluster); err != nil {
 		telemetry.RecordError(span, err)
 		return "", err
 	}
@@ -172,8 +175,12 @@ func (svc *DeploymentService) GetClusterKubeconfig(ctx context.Context, cluster 
 	return kubeconfig, nil
 }
 
+func (svc *DeploymentService) GetUserByID(userID int) (models.User, error) {
+	return svc.userRepo.GetUserByID(userID)
+}
+
 func (svc *DeploymentService) GetClientConfig(userID int) (statemanager.ClientConfig, error) {
-	user, err := svc.userRepo.GetUserByID(userID)
+	user, err := svc.GetUserByID(userID)
 	if err != nil {
 		return statemanager.ClientConfig{}, fmt.Errorf("failed to get user: %v", err)
 	}

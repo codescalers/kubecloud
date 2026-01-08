@@ -138,7 +138,7 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(t, "Test Governorate", config.Invoice.Governorate)
 	assert.Equal(t, privateKeyPath, config.SSH.PrivateKeyPath)
 	assert.Equal(t, publicKeyPath, config.SSH.PublicKeyPath)
-	assert.Equal(t, 5, config.MonitorBalanceIntervalInMinutes)
+	assert.Equal(t, 5, config.SettleTransferRecordsIntervalInMinutes)
 	assert.Equal(t, 2, config.NotifyAdminsForPendingRecordsInHours)
 	assert.Equal(t, 1, config.ClusterHealthCheckIntervalInHours)
 	assert.Equal(t, 1, config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours)
@@ -244,7 +244,7 @@ func TestDefaultTagsInConfig(t *testing.T) {
 	assert.Equal(t, 1, config.NodeHealthCheck.ReservedNodeHealthCheckIntervalInHours, "Default node health check interval not applied")
 	assert.Equal(t, 1, config.NodeHealthCheck.ReservedNodeHealthCheckTimeoutInMinutes, "Default node health check timeout not applied")
 	assert.Equal(t, 10, config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum, "Default node health check workers num not applied")
-	assert.Equal(t, 120, config.MonitorBalanceIntervalInMinutes, "Default monitor balance interval not applied")
+	assert.Equal(t, 5, config.SettleTransferRecordsIntervalInMinutes, "Default monitor balance interval not applied")
 	assert.Equal(t, 24, config.NotifyAdminsForPendingRecordsInHours, "Default notify admins for pending records interval not applied")
 }
 

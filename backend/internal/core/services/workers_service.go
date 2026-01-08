@@ -17,19 +17,33 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-multierror"
 	"github.com/threefoldtech/tfgrid-sdk-go/grid-client/graphql"
 	"github.com/xmonader/ewf"
 )
 
+const (
+	// UnitFactor represents the smallest unit conversion factor for both USD and TFT
+	TFTUnitFactor = 1e7
+	transferFees  = 0.01 * TFTUnitFactor // 0.01 TFT
+	nodeCertified = "Certified"
+
+	zeroTFTBalanceValue    = 0.05 * TFTUnitFactor // 0.05 TFT
+	defaultPricingPolicyID = uint32(1)
+
+	TrackingDebtPeriod = time.Hour
+	reties             = 3
+)
+
 type WorkerService struct {
 	ctx context.Context
 
-	userRepo           models.UserRepository
-	nodesRepo          models.UserNodesRepository
-	invoicesRepo       models.InvoiceRepository
-	clusterRepo        models.ClusterRepository
-	pendingRecordsRepo models.PendingRecordRepository
+	userRepo            models.UserRepository
+	contractsRepo       models.ContractDataRepository
+	invoicesRepo        models.InvoiceRepository
+	clusterRepo         models.ClusterRepository
+	transferRecordsRepo models.TransferRecordRepository
 
 	mailService            mailservice.MailService
 	graphql                graphql.GraphQl
@@ -47,31 +61,34 @@ type WorkerService struct {
 	reservedNodeHealthCheckIntervalInHours  int
 	reservedNodeHealthCheckTimeoutInMinutes int
 	reservedNodeHealthCheckWorkersNum       int
-	monitorBalanceIntervalInMinutes         int
+	settleTransferRecordsIntervalInMinutes  int
 	notifyAdminsForPendingRecordsInHours    int
+	minimumTFTAmountInWallet                int
+	appliedDiscount                         Discount
 	usersBalanceCheckIntervalInHours        int
 }
 
 func NewWorkersService(
-	ctx context.Context, userRepo models.UserRepository, nodesRepo models.UserNodesRepository,
-	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, pendingRecordsRepo models.PendingRecordRepository,
+	ctx context.Context, userRepo models.UserRepository, contractsRepo models.ContractDataRepository,
+	invoicesRepo models.InvoiceRepository, clusterRepo models.ClusterRepository, transferRecordsRepo models.TransferRecordRepository,
 	mailService mailservice.MailService,
 	gridClient gridclient.GridClient, ewfEngine *ewf.Engine, notificationDispatcher *notification.NotificationDispatcher,
 	graphql graphql.GraphQl, firesquidClient graphql.GraphQl,
 	invoiceCompanyData config.InvoiceCompanyData, systemMnemonic, currency string,
 	clusterHealthCheckIntervalInHours, reservedNodeHealthCheckIntervalInHours,
 	reservedNodeHealthCheckTimeoutInMinutes, reservedNodeHealthCheckWorkersNum,
-	monitorBalanceIntervalInMinutes, notifyAdminsForPendingRecordsInHours int,
-	usersBalanceCheckIntervalInHours int,
+	settleTransferRecordsIntervalInMinutes, notifyAdminsForPendingRecordsInHours,
+	minimumTFTAmountInWallet int, appliedDiscount Discount,
+	usersBalanceCheckIntervalInHours,
 	checkUserDebtIntervalInHours int,
 ) WorkerService {
 	return WorkerService{
-		ctx:                ctx,
-		userRepo:           userRepo,
-		nodesRepo:          nodesRepo,
-		invoicesRepo:       invoicesRepo,
-		clusterRepo:        clusterRepo,
-		pendingRecordsRepo: pendingRecordsRepo,
+		ctx:                 ctx,
+		userRepo:            userRepo,
+		contractsRepo:       contractsRepo,
+		invoicesRepo:        invoicesRepo,
+		clusterRepo:         clusterRepo,
+		transferRecordsRepo: transferRecordsRepo,
 
 		mailService:            mailService,
 		notificationDispatcher: notificationDispatcher,
@@ -89,9 +106,12 @@ func NewWorkersService(
 		reservedNodeHealthCheckIntervalInHours:  reservedNodeHealthCheckIntervalInHours,
 		reservedNodeHealthCheckTimeoutInMinutes: reservedNodeHealthCheckTimeoutInMinutes,
 		reservedNodeHealthCheckWorkersNum:       reservedNodeHealthCheckWorkersNum,
-		monitorBalanceIntervalInMinutes:         monitorBalanceIntervalInMinutes,
+		settleTransferRecordsIntervalInMinutes:  settleTransferRecordsIntervalInMinutes,
 		notifyAdminsForPendingRecordsInHours:    notifyAdminsForPendingRecordsInHours,
-		usersBalanceCheckIntervalInHours:        usersBalanceCheckIntervalInHours,
+
+		minimumTFTAmountInWallet:         minimumTFTAmountInWallet,
+		appliedDiscount:                  appliedDiscount,
+		usersBalanceCheckIntervalInHours: usersBalanceCheckIntervalInHours,
 	}
 }
 
@@ -108,12 +128,20 @@ func (svc WorkerService) ListAllClusters() ([]models.Cluster, error) {
 	return svc.clusterRepo.ListAllClusters()
 }
 
-func (svc WorkerService) ListAllReservedNodes() ([]models.UserNodes, error) {
-	return svc.nodesRepo.ListAllReservedNodes()
+func (svc WorkerService) ListUserClusters(userID int) ([]models.Cluster, error) {
+	return svc.clusterRepo.ListUserClusters(userID)
 }
 
-func (svc WorkerService) ListOnlyPendingRecords() ([]models.PendingRecord, error) {
-	return svc.pendingRecordsRepo.ListOnlyPendingRecords()
+func (svc WorkerService) ListAllReservedNodes() ([]models.UserContractData, error) {
+	return svc.contractsRepo.ListAllReservedNodes()
+}
+
+func (svc WorkerService) ListFailedTransferRecords() ([]models.TransferRecord, error) {
+	return svc.transferRecordsRepo.ListFailedTransferRecords()
+}
+
+func (svc WorkerService) ListPendingTransferRecords() ([]models.TransferRecord, error) {
+	return svc.transferRecordsRepo.ListPendingTransferRecords()
 }
 
 func (svc WorkerService) GetClusterHealthCheckInterval() time.Duration {
@@ -124,12 +152,12 @@ func (svc WorkerService) GetReservedNodeHealthCheckInterval() time.Duration {
 	return time.Duration(svc.reservedNodeHealthCheckIntervalInHours) * time.Hour
 }
 
-func (svc WorkerService) GetCheckUserDebtInterval() time.Duration {
-	return time.Duration(svc.checkUserDebtIntervalInHours) * time.Hour
+func (svc WorkerService) GetSettleTransferRecordsInterval() time.Duration {
+	return time.Duration(svc.settleTransferRecordsIntervalInMinutes) * time.Minute
 }
 
-func (svc WorkerService) GetMonitorBalanceInterval() time.Duration {
-	return time.Duration(svc.monitorBalanceIntervalInMinutes) * time.Minute
+func (svc WorkerService) GetCheckUserDebtInterval() time.Duration {
+	return time.Duration(svc.checkUserDebtIntervalInHours) * time.Hour
 }
 
 func (svc WorkerService) GetNotifyAdminsForPendingRecordsInterval() time.Duration {
@@ -140,43 +168,40 @@ func (svc WorkerService) GetUsersBalanceCheckInterval() time.Duration {
 	return time.Duration(svc.usersBalanceCheckIntervalInHours) * time.Hour
 }
 
-func (svc WorkerService) CreateUserInvoice(user models.User) error {
-	records, err := svc.nodesRepo.ListUserNodes(user.ID)
+func (svc WorkerService) CreateUserInvoice(BillingService BillingService, user models.User) error {
+	now := time.Now()
+	timeMonthAgo := now.AddDate(0, -1, 0)
+
+	contracts, err := svc.contractsRepo.ListAllContractsInPeriod(user.ID, timeMonthAgo, now)
 	if err != nil {
 		return err
 	}
 
-	if len(records) == 0 {
+	if len(contracts) == 0 {
 		return nil
 	}
-
-	now := time.Now()
 
 	var invoiceItems []models.NodeItem
 	var totalInvoiceCostUSD float64
 
-	for _, record := range records {
-		billReports, err := billing.ListContractBillReportsPerMonth(svc.graphql, record.ContractID, now)
+	for _, contract := range contracts {
+		billReports, err := billing.ListContractBillReports(svc.graphql, contract.ContractID, timeMonthAgo, now)
 		if err != nil {
 			return err
 		}
 
-		totalAmountTFT, err := billing.AmountBilledPerMonth(billReports)
+		totalAmountBilledInUSDMillicent, err := BillingService.calculateTotalUsageOfReportsInUSDMillicent(billReports.Reports)
 		if err != nil {
 			return err
 		}
-		totalAmountUSDMillicent, err := svc.gridClient.FromTFTtoUSDMillicent(totalAmountTFT)
-		if err != nil {
-			return err
-		}
+
 		rentRecordStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
-		if record.CreatedAt.After(rentRecordStart) {
-			rentRecordStart = record.CreatedAt
+		if contract.CreatedAt.After(rentRecordStart) {
+			rentRecordStart = contract.CreatedAt
 		}
 
 		var totalHours int
-		cancellationDate, err := billing.GetRentContractCancellationDate(svc.firesquidClient, record.ContractID)
-
+		cancellationDate, err := billing.GetRentContractCancellationDate(svc.firesquidClient, contract.ContractID)
 		if errors.Is(err, billing.ErrorEventsNotFound) {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, time.Now())
 		} else if err != nil {
@@ -185,11 +210,11 @@ func (svc WorkerService) CreateUserInvoice(user models.User) error {
 			totalHours = getHoursOfGivenPeriod(rentRecordStart, cancellationDate)
 		}
 
-		totalAmountUSD := gridclient.FromUSDMilliCentToUSD(totalAmountUSDMillicent)
+		totalAmountUSD := gridclient.FromUSDMilliCentToUSD(totalAmountBilledInUSDMillicent)
 
 		invoiceItems = append(invoiceItems, models.NodeItem{
-			NodeID:        record.NodeID,
-			ContractID:    record.ContractID,
+			NodeID:        contract.NodeID,
+			ContractID:    contract.ContractID,
 			RentCreatedAt: rentRecordStart,
 			PeriodInHours: float64(totalHours),
 			Cost:          totalAmountUSD,
@@ -233,16 +258,18 @@ func (svc WorkerService) UpdateUserDebt() error {
 	}
 
 	for _, user := range users {
-		userNodes, err := svc.nodesRepo.ListUserNodes(user.ID)
+		userContracts, err := svc.contractsRepo.ListAllContractsInPeriod(user.ID, time.Now().Add(-TrackingDebtPeriod), time.Now())
 		if err != nil {
-			logger.ForOperation("debt_tracker", "list_user_nodes").Error().Err(err).Msg("Failed to list user nodes")
+			logger.ForOperation("debt_tracker", "list_user_contracts").Error().Err(err).Msg("Failed to list user contracts")
 			continue
 		}
-		contractIDs := make([]uint64, len(userNodes))
-		for i, node := range userNodes {
-			contractIDs[i] = node.ContractID
+
+		var contractIDs []uint64
+		for _, contract := range userContracts {
+			contractIDs = append(contractIDs, contract.ContractID)
 		}
-		userDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs, time.Hour)
+
+		userDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs)
 		if err != nil {
 			logger.ForOperation("debt_tracker", "calculate_debt").Error().Err(err).Msg("Failed to calculate user debt")
 			continue
@@ -258,20 +285,30 @@ func (svc WorkerService) UpdateUserDebt() error {
 	return nil
 }
 
-func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64, debtPeriod time.Duration) (uint64, error) {
+func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64) (uint64, error) {
+	if len(contractIDs) == 0 {
+		return 0, nil
+	}
 
 	calculatorClient, err := svc.gridClient.NewCalculator(userMnemonic)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create new calculator: %w", err)
+		return 0, fmt.Errorf("failed to create calculator: %w", err)
 	}
 
 	var totalDebt int64
 	for _, contractID := range contractIDs {
-		debt, err := calculatorClient.CalculateContractOverdue(contractID, debtPeriod)
-		if err != nil {
+		var debt int64
+		if err = backoff.Retry(func() error {
+			debt, err = calculatorClient.CalculateContractOverdue(contractID, time.Hour)
+			return err
+		}, backoff.WithMaxRetries(
+			backoff.NewExponentialBackOff(),
+			reties,
+		)); err != nil {
 			logger.ForOperation("debt_tracker", "calc_overdue").Error().Err(err).Msg("Failed to calculate contract overdue")
 			continue
 		}
+
 		totalDebt += debt
 	}
 
@@ -284,7 +321,7 @@ func (svc WorkerService) calculateDebt(userMnemonic string, contractIDs []uint64
 }
 
 // checkNodesWithWorkerPool uses a worker pool to check node health concurrently
-func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserNodes) {
+func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserContractData) {
 	timeout := time.Duration(svc.reservedNodeHealthCheckTimeoutInMinutes) * time.Minute
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -295,7 +332,7 @@ func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserNod
 		workerCount = len(reservedNodes)
 	}
 
-	jobs := make(chan models.UserNodes, len(reservedNodes))
+	jobs := make(chan models.UserContractData, len(reservedNodes))
 	results := make(chan NodeHealthResult, len(reservedNodes))
 
 	var wg sync.WaitGroup
@@ -354,7 +391,7 @@ func (svc WorkerService) CheckNodesWithWorkerPool(reservedNodes []models.UserNod
 	}
 }
 
-func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserNodes, results chan<- NodeHealthResult) {
+func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan models.UserContractData, results chan<- NodeHealthResult) {
 	defer wg.Done()
 	log := logger.ForOperation("health_tracker", "health_check_worker")
 
@@ -381,14 +418,21 @@ func (svc WorkerService) healthCheckWorker(ctx context.Context, wg *sync.WaitGro
 	}
 }
 
-func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
+func (svc WorkerService) SettlePendingPayments(records []models.TransferRecord) {
 	log := logger.ForOperation("balance_monitor", "settle_pending_payments")
 
 	for _, record := range records {
-		// Already settled
-		if record.TransferredTFTAmount >= record.TFTAmount {
+		if record.Operation == models.WithdrawOperation {
 			continue
 		}
+
+		// Already settled
+		if record.State == models.SuccessState {
+			continue
+		}
+
+		transferState := models.SuccessState
+		var transferFailure string
 
 		// getting balance every time to ensure we have the latest balance
 		systemTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(svc.systemMnemonic)
@@ -397,43 +441,82 @@ func (svc WorkerService) SettlePendingPayments(records []models.PendingRecord) {
 			continue
 		}
 
-		amountToTransfer := record.TFTAmount - record.TransferredTFTAmount
-		if systemTFTBalance < amountToTransfer {
-			log.Warn().
-				Int("record_id", record.ID).
-				Uint64("system_balance", systemTFTBalance).
-				Uint64("amount_needed", amountToTransfer).
-				Msg("Insufficient system balance to settle pending record")
+		if systemTFTBalance < record.TFTAmount {
+			logger.GetLogger().Warn().Msgf("Insufficient system balance to settle pending record ID %d", record.ID)
 			continue
 		}
 
-		if err = svc.transferTFTsToUser(record.UserID, record.ID, amountToTransfer); err != nil {
-			log.Error().Err(err).Int("user_id", record.UserID).Int("record_id", record.ID).Msg("Failed to transfer TFTs to user")
-			continue
+		if err = svc.transferTFTsToUser(record.UserID, record.TFTAmount); err != nil {
+			logger.GetLogger().Error().Err(err).Msgf("Failed to settle pending record ID %d", record.ID)
+
+			transferState = models.FailedState
+			transferFailure = err.Error()
+		}
+
+		if err := svc.transferRecordsRepo.UpdateTransferRecordState(record.ID, transferState, transferFailure); err != nil {
+			logger.GetLogger().Error().Err(err).Msgf("Failed to update pending record ID %d state", record.ID)
 		}
 	}
 }
 
-func (svc WorkerService) transferTFTsToUser(userID, recordID int, amountToTransfer uint64) error {
+func (svc WorkerService) transferTFTsToUser(userID int, amountToTransfer uint64) error {
 	user, err := svc.userRepo.GetUserByID(userID)
 	if err != nil {
-		return fmt.Errorf("failed to get user for pending record ID %d: %w", recordID, err)
+		return fmt.Errorf("failed to get user %d: %w", userID, err)
 	}
 
 	err = svc.gridClient.TransferTFTsFromSystem(amountToTransfer, user.Mnemonic)
 	if err != nil {
-		return fmt.Errorf("failed to transfer TFTs for pending record ID %d: %w", recordID, err)
-	}
-
-	err = svc.pendingRecordsRepo.UpdatePendingRecordTransferredAmount(recordID, amountToTransfer)
-	if err != nil {
-		return fmt.Errorf("failed to update transferred amount for pending record ID %d: %w", recordID, err)
+		return fmt.Errorf("failed to transfer TFTs for user %d: %w", userID, err)
 	}
 
 	return nil
 }
 
-func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.PendingRecord) error {
+func (svc *WorkerService) ResetUsersTFTsWithNoUSDBalance(users []models.User) error {
+	for _, user := range users {
+		if user.CreditedBalance+user.CreditCardBalance-user.Debt <= 0 {
+			logger.GetLogger().Info().Msgf("User %d has no USD balance, withdrawing all TFTs except for %d", user.ID, svc.minimumTFTAmountInWallet)
+
+			userTFTBalance, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
+			if err != nil {
+				logger.GetLogger().Error().Err(err).Msgf("Failed to get user TFT balance for user %d", user.ID)
+				continue
+			}
+
+			if userTFTBalance <= uint64(svc.minimumTFTAmountInWallet)*TFTUnitFactor {
+				continue
+			}
+
+			if userTFTBalance <= uint64(svc.minimumTFTAmountInWallet)*TFTUnitFactor+transferFees {
+				continue
+			}
+
+			transferRecord := models.TransferRecord{
+				UserID:    user.ID,
+				Username:  user.Username,
+				TFTAmount: userTFTBalance - transferFees - uint64(svc.minimumTFTAmountInWallet)*TFTUnitFactor,
+				Operation: models.WithdrawOperation,
+				State:     models.SuccessState,
+			}
+
+			if err = svc.gridClient.TransferTFTsToSystem(userTFTBalance, user.Mnemonic); err != nil {
+				logger.GetLogger().Error().Err(err).Msgf("Failed to withdraw all TFTs for user %d", user.ID)
+
+				transferRecord.State = models.FailedState
+				transferRecord.Failure = err.Error()
+			}
+
+			if err := svc.transferRecordsRepo.CreateTransferRecord(&transferRecord); err != nil {
+				logger.GetLogger().Error().Err(err).Msgf("Failed to create transfer record for user %d", user.ID)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (svc WorkerService) NotifyAdminWithPendingRecords(records []models.TransferRecord) error {
 
 	admins, err := svc.userRepo.ListAdmins()
 	if err != nil {
@@ -473,7 +556,7 @@ func (svc WorkerService) AsyncTrackClusterHealth(cluster models.Cluster) error {
 }
 
 func (svc WorkerService) checkUserDebt(user models.User, contractIDs []uint64) error {
-	totalDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs, svc.GetCheckUserDebtInterval())
+	totalDebt, err := svc.calculateDebt(user.Mnemonic, contractIDs)
 	if err != nil {
 		return fmt.Errorf("failed to calculate debt: %w", err)
 	}
@@ -559,7 +642,7 @@ func (svc WorkerService) getUserContractIDs() (map[int][]uint64, error) {
 		return nil, fmt.Errorf("failed to list clusters: %w", err)
 	}
 
-	reservedNodes, err := svc.nodesRepo.ListAllReservedNodes()
+	reservedNodes, err := svc.contractsRepo.ListAllReservedNodes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list reserved nodes: %w", err)
 	}

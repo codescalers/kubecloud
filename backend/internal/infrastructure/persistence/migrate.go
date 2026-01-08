@@ -30,13 +30,13 @@ func MigrateAll(ctx context.Context, src models.DB, dst models.DB) error {
 	if err := migrateNodeItems(ctx, srcGormDB, dstGormDB); err != nil {
 		return fmt.Errorf("node_items: %w", err)
 	}
-	if err := migrateUserNodes(ctx, srcGormDB, dstGormDB); err != nil {
-		return fmt.Errorf("user_nodes: %w", err)
+	if err := migrateUserContractData(ctx, srcGormDB, dstGormDB); err != nil {
+		return fmt.Errorf("user_contract_data: %w", err)
 	}
 	if err := migrateClusters(ctx, srcGormDB, dstGormDB); err != nil {
 		return fmt.Errorf("clusters: %w", err)
 	}
-	if err := migratePendingRecords(ctx, srcGormDB, dstGormDB); err != nil {
+	if err := migrateTransferRecords(ctx, srcGormDB, dstGormDB); err != nil {
 		return fmt.Errorf("pending_records: %w", err)
 	}
 	if err := migrateNotificationsToDst(ctx, srcGormDB, dstGormDB); err != nil {
@@ -107,8 +107,8 @@ func migrateNodeItems(ctx context.Context, src *GormDB, dst *GormDB) error {
 	return insertOnConflictReturnError(ctx, dst, rows)
 }
 
-func migrateUserNodes(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []models.UserNodes
+func migrateUserContractData(ctx context.Context, src *GormDB, dst *GormDB) error {
+	var rows []models.UserContractData
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}
@@ -123,8 +123,8 @@ func migrateClusters(ctx context.Context, src *GormDB, dst *GormDB) error {
 	return insertOnConflictReturnError(ctx, dst, rows)
 }
 
-func migratePendingRecords(ctx context.Context, src *GormDB, dst *GormDB) error {
-	var rows []models.PendingRecord
+func migrateTransferRecords(ctx context.Context, src *GormDB, dst *GormDB) error {
+	var rows []models.TransferRecord
 	if err := src.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return err
 	}

@@ -1177,53 +1177,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/pending-records": {
-            "get": {
-                "security": [
-                    {
-                        "AdminMiddleware": []
-                    }
-                ],
-                "description": "Returns all pending records in the system",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "admin"
-                ],
-                "summary": "List pending records",
-                "operationId": "list-pending-records",
-                "responses": {
-                    "200": {
-                        "description": "Pending records are retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/services.PendingRecordsWithUSDAmounts"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/stats": {
             "get": {
                 "security": [
@@ -1362,6 +1315,47 @@ const docTemplate = `{
                 }
             }
         },
+        "/transfer-records": {
+            "get": {
+                "security": [
+                    {
+                        "AdminMiddleware": []
+                    }
+                ],
+                "description": "Returns all transfer records in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "List transfer records",
+                "operationId": "list-transfer-records",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/services.TransferRecordsWithTFTAmount"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/twins/{twin_id}/account": {
             "get": {
                 "description": "Retrieve the account ID associated with a specific twin ID",
@@ -1465,52 +1459,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/services.UserWithPendingBalance"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "User is not found",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/user/balance": {
-            "get": {
-                "description": "Retrieves the user's balance in USD",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "Get user balance",
-                "operationId": "get-user-balance",
-                "responses": {
-                    "200": {
-                        "description": "Balance fetched successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.UserBalanceResponse"
+                                            "$ref": "#/definitions/services.UserWithBalancesInUSD"
                                         }
                                     }
                                 }
@@ -2231,53 +2180,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/pending-records": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns user pending records in the system",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "users"
-                ],
-                "summary": "List user pending records",
-                "operationId": "list-user-pending-records",
-                "responses": {
-                    "200": {
-                        "description": "Pending records returned successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/handlers.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/handlers.PendingRecordsResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/user/redeem/{voucher_code}": {
             "put": {
                 "description": "Redeems a voucher for the user",
@@ -2797,7 +2699,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/services.UserWithUSDBalance"
+                                "$ref": "#/definitions/services.UserWithTFTBalance"
                             }
                         }
                     },
@@ -3350,7 +3252,6 @@ const docTemplate = `{
         },
         "gridtypes.Unit": {
             "type": "integer",
-            "format": "int64",
             "enum": [
                 1024,
                 1048576,
@@ -3826,17 +3727,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.PendingRecordsResponse": {
-            "type": "object",
-            "properties": {
-                "pending_records": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/services.PendingRecordsWithUSDAmounts"
-                    }
-                }
-            }
-        },
         "handlers.RedeemVoucherResponse": {
             "type": "object",
             "properties": {
@@ -3979,20 +3869,6 @@ const docTemplate = `{
                 },
                 "workflow_id": {
                     "type": "string"
-                }
-            }
-        },
-        "handlers.UserBalanceResponse": {
-            "type": "object",
-            "properties": {
-                "balance_usd": {
-                    "type": "number"
-                },
-                "debt_usd": {
-                    "type": "number"
-                },
-                "pending_balance_usd": {
-                    "type": "number"
                 }
             }
         },
@@ -4153,6 +4029,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "healthy": {
+                    "type": "boolean"
+                },
                 "ip": {
                     "description": "Computed",
                     "type": "string"
@@ -4230,7 +4109,6 @@ const docTemplate = `{
                     }
                 },
                 "tax": {
-                    "description": "TODO:",
                     "type": "number"
                 },
                 "total": {
@@ -4347,6 +4225,19 @@ const docTemplate = `{
                 }
             }
         },
+        "models.State": {
+            "type": "string",
+            "enum": [
+                "failed",
+                "success",
+                "pending"
+            ],
+            "x-enum-varnames": [
+                "FailedState",
+                "SuccessState",
+                "PendingState"
+            ]
+        },
         "models.Voucher": {
             "type": "object",
             "required": [
@@ -4371,10 +4262,27 @@ const docTemplate = `{
                 "redeemed": {
                     "type": "boolean"
                 },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "number"
                 }
             }
+        },
+        "models.operation": {
+            "type": "string",
+            "enum": [
+                "withdraw",
+                "deposit"
+            ],
+            "x-enum-varnames": [
+                "WithdrawOperation",
+                "DepositOperation"
+            ]
         },
         "services.AdminWorkflow": {
             "type": "object",
@@ -4444,42 +4352,6 @@ const docTemplate = `{
                 }
             }
         },
-        "services.PendingRecordsWithUSDAmounts": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "tft_amount": {
-                    "description": "TFTs are multiplied by 1e7",
-                    "type": "integer"
-                },
-                "transfer_mode": {
-                    "type": "string"
-                },
-                "transferred_tft_amount": {
-                    "type": "integer"
-                },
-                "transferred_usd_amount": {
-                    "type": "number"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "usd_amount": {
-                    "type": "number"
-                },
-                "user_id": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
         "services.Pool": {
             "type": "object",
             "properties": {
@@ -4522,7 +4394,43 @@ const docTemplate = `{
                 }
             }
         },
-        "services.UserWithPendingBalance": {
+        "services.TransferRecordsWithTFTAmount": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "failure": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "operation": {
+                    "$ref": "#/definitions/models.operation"
+                },
+                "state": {
+                    "$ref": "#/definitions/models.State"
+                },
+                "tft_amount": {
+                    "description": "TFTs are multiplied by 1e7",
+                    "type": "integer"
+                },
+                "tft_amount_in_whole_unit": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.UserWithBalancesInUSD": {
             "type": "object",
             "required": [
                 "email",
@@ -4535,6 +4443,9 @@ const docTemplate = `{
                 "admin": {
                     "type": "boolean"
                 },
+                "balance_in_tft": {
+                    "type": "number"
+                },
                 "code": {
                     "type": "integer"
                 },
@@ -4545,22 +4456,28 @@ const docTemplate = `{
                     "description": "millicent, money from credit card",
                     "type": "integer"
                 },
+                "credit_card_balance_in_usd": {
+                    "type": "number"
+                },
                 "credited_balance": {
                     "description": "millicent, manually added by admin or from vouchers",
                     "type": "integer"
                 },
+                "credited_balance_in_usd": {
+                    "type": "number"
+                },
                 "debt": {
                     "description": "millicent",
                     "type": "integer"
+                },
+                "debt_in_usd": {
+                    "type": "number"
                 },
                 "email": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
-                },
-                "pending_balance_usd": {
-                    "type": "number"
                 },
                 "sponsored": {
                     "type": "boolean"
@@ -4582,7 +4499,7 @@ const docTemplate = `{
                 }
             }
         },
-        "services.UserWithUSDBalance": {
+        "services.UserWithTFTBalance": {
             "type": "object",
             "required": [
                 "email",
@@ -4595,8 +4512,7 @@ const docTemplate = `{
                 "admin": {
                     "type": "boolean"
                 },
-                "balance": {
-                    "description": "USD balance",
+                "balance_in_tft": {
                     "type": "number"
                 },
                 "code": {
@@ -5014,8 +4930,7 @@ const docTemplate = `{
                 "externalSK": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "iprange": {
@@ -5026,8 +4941,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -5036,8 +4950,7 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "type": "integer",
-                            "format": "int32"
+                            "type": "integer"
                         }
                     }
                 },
@@ -5047,15 +4960,13 @@ const docTemplate = `{
                 "nodeDeploymentID": {
                     "type": "object",
                     "additionalProperties": {
-                        "type": "integer",
-                        "format": "int64"
+                        "type": "integer"
                     }
                 },
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "nodesIPRange": {
@@ -5065,8 +4976,7 @@ const docTemplate = `{
                     }
                 },
                 "publicNodeID": {
-                    "type": "integer",
-                    "format": "int32"
+                    "type": "integer"
                 },
                 "solutionType": {
                     "type": "string"
@@ -5086,16 +4996,14 @@ const docTemplate = `{
                     "description": "network number",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 },
                 "mask": {
                     "description": "network mask",
                     "type": "array",
                     "items": {
-                        "type": "integer",
-                        "format": "int32"
+                        "type": "integer"
                     }
                 }
             }

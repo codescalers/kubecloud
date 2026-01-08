@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"kubecloud/internal/core/services"
-	"kubecloud/internal/infrastructure/logger"
 	"kubecloud/internal/infrastructure/mailservice"
 	mailsender "kubecloud/internal/infrastructure/mailservice/mail_sender"
 	"kubecloud/internal/infrastructure/notification"
@@ -26,15 +25,17 @@ import (
 
 type AdminHandler struct {
 	svc                    services.AdminService
+	billingService         services.BillingService
 	notificationDispatcher *notification.NotificationDispatcher
 	mailService            mailservice.MailService
 }
 
-func NewAdminHandler(svc services.AdminService,
+func NewAdminHandler(svc services.AdminService, billingService services.BillingService,
 	notificationDispatcher *notification.NotificationDispatcher, mailService mailservice.MailService,
 ) AdminHandler {
 	return AdminHandler{
 		svc:                    svc,
+		billingService:         billingService,
 		notificationDispatcher: notificationDispatcher,
 		mailService:            mailService,
 	}
@@ -77,7 +78,7 @@ type MaintenanceModeStatus struct {
 // @ID get-all-users
 // @Accept json
 // @Produce json
-// @Success 200 {array} services.UserWithUSDBalance
+// @Success 200 {array} services.UserWithTFTBalance
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
 // @Router /users [get]
@@ -139,7 +140,7 @@ func (h *AdminHandler) DeleteUsersHandler(c *gin.Context) {
 			NotFound(c, "User not found")
 			return
 		}
-		logger.GetLogger().Error().Err(err).Msg("failed to delete user by id")
+		reqLog.Error().Err(err).Msg("failed to delete user by id")
 		InternalServerError(c)
 		return
 	}
@@ -255,6 +256,17 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 		return
 	}
 
+	user, err := h.svc.GetUserByID(id)
+	if err != nil {
+		if errors.Is(err, models.ErrUserNotFound) {
+			NotFound(c, "User is not found")
+			return
+		}
+		reqLog.Error().Err(err).Msg("failed to retrieve user")
+		InternalServerError(c)
+		return
+	}
+
 	transaction := models.Transaction{
 		UserID:    id,
 		AdminID:   adminID,
@@ -263,41 +275,59 @@ func (h *AdminHandler) CreditUserHandler(c *gin.Context) {
 		CreatedAt: time.Now(),
 	}
 
-	if err := h.svc.AsyncCreditUserUSD(&transaction); err != nil {
-		reqLog.Error().Err(err).Msg("failed to credit user")
+	if err := h.svc.CreditUserBalance(c.Request.Context(), transaction, &user); err != nil {
+		reqLog.Error().Err(err).Msg("Failed to credit user balance")
 		InternalServerError(c)
 		return
 	}
 
-	Accepted(c, "Transaction is created successfully, Money transfer is in progress", CreditUserResponse{
+	if err := h.billingService.AfterUserGetCredit(c.Request.Context(), &user); err != nil {
+		reqLog.Error().Err(err).Msg("Failed to credit user balance")
+		InternalServerError(c)
+		return
+	}
+
+	notif := notification.BillingNotification(adminID).
+		Success(fmt.Sprintf("Admin %s has credited your account with %v$ successfully", user.Username, request.AmountUSD)).
+		WithSubject("Admin Credited Your Account").
+		WithStatus("succeeded").
+		WithChannels(notification.ChannelUI).
+		NoPersist().
+		Build()
+
+	if err := h.notificationDispatcher.Send(c.Request.Context(), notif); err != nil {
+		reqLog.Error().Err(err).Msg("failed to send UI ")
+	}
+
+	Success(c, http.StatusCreated, fmt.Sprintf("User is credited with %v$ successfully", request.AmountUSD), CreditUserResponse{
 		AmountUSD: request.AmountUSD,
 		Memo:      request.Memo,
 	})
 }
 
-// @Summary List pending records
-// @Description Returns all pending records in the system
+// @Summary List transfer records
+// @Description Returns all transfer records in the system
 // @Tags admin
-// @ID list-pending-records
+// @ID list-transfer-records
 // @Accept json
 // @Produce json
-// @Success 200 {object} APIResponse{data=services.PendingRecordsWithUSDAmounts} "Pending records are retrieved successfully"
+// @Success 200 {array} []services.TransferRecordsWithTFTAmount
 // @Failure 500 {object} APIResponse
 // @Security AdminMiddleware
-// @Router /pending-records [get]
-// ListPendingRecordsHandler returns all pending records in the system
-func (h *AdminHandler) ListPendingRecordsHandler(c *gin.Context) {
+// @Router /transfer-records [get]
+// ListTransferRecordsHandler returns all transfer records in the system
+func (h *AdminHandler) ListTransferRecordsHandler(c *gin.Context) {
 	reqLog := requestLogger(c, "ListPendingRecordsHandler")
 
-	pendingRecordsResponse, err := h.svc.ListAllPendingRecordsWithUSDAmounts()
+	transferRecordsResponse, err := h.svc.ListAllTransferRecordsWithTFTAmount()
 	if err != nil {
 		reqLog.Error().Err(err).Msg("failed to list all pending records")
 		InternalServerError(c)
 		return
 	}
 
-	OK(c, "Pending records are retrieved successfully", gin.H{
-		"pending_records": pendingRecordsResponse,
+	OK(c, "Transfer records are retrieved successfully", gin.H{
+		"transfer_records": transferRecordsResponse,
 	})
 }
 
@@ -373,7 +403,6 @@ func (h *AdminHandler) parseAttachments(fileHeaders []*multipart.FileHeader) ([]
 
 			attachment, err := h.parseAttachment(fh)
 			if err != nil {
-				logger.GetLogger().Error().Err(err).Str("filename", fh.Filename).Msg("failed to parse attachment")
 				mu.Lock()
 				multiErr = multierror.Append(multiErr, err)
 				mu.Unlock()

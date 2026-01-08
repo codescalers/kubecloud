@@ -14,30 +14,33 @@ import (
 )
 
 type Configuration struct {
-	Server                               Server                        `json:"server" validate:"required,dive"`
-	Database                             DB                            `json:"database" validate:"required"`
-	JwtToken                             JwtToken                      `json:"jwt_token" validate:"required"`
-	Admins                               []string                      `json:"admins" validate:"required"`
-	MailSender                           MailSender                    `json:"mailSender"`
-	Currency                             string                        `json:"currency" default:"usd"`
-	StripeSecret                         string                        `json:"stripe_secret" validate:"required"`
-	VoucherNameLength                    int                           `json:"voucher_name_length" validate:"required,gt=0" default:"8"`
-	VerificationCodeLength               int                           `json:"verification_code_length" validate:"gt=0" default:"4"`
-	TermsANDConditions                   TermsANDConditions            `json:"terms_and_conditions"`
-	SystemAccount                        GridAccount                   `json:"system_account"`
-	DeployerWorkersNum                   int                           `json:"deployer_workers_num" default:"1"`
-	Invoice                              InvoiceCompanyData            `json:"invoice"`
-	SSH                                  SSHConfig                     `json:"ssh" validate:"required,dive"`
-	Redis                                RedisConfig                   `json:"redis" validate:"dive"`
-	Debug                                bool                          `json:"debug"`
-	DisableSentry                        bool                          `json:"disable_sentry" default:"true"`
-	DevMode                              bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
-	MonitorBalanceIntervalInMinutes      int                           `json:"monitor_balance_interval_in_minutes" validate:"required,gt=0"`
-	NotifyAdminsForPendingRecordsInHours int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
-	ClusterHealthCheckIntervalInHours    int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
-	UsersBalanceCheckIntervalInHours     int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
-	CheckUserDebtIntervalInHours         int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
-	NodeHealthCheck                      ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
+	Server                                 Server                        `json:"server" validate:"required,dive"`
+	Database                               DB                            `json:"database" validate:"required"`
+	JwtToken                               JwtToken                      `json:"jwt_token" validate:"required"`
+	Admins                                 []string                      `json:"admins" validate:"required"`
+	MailSender                             MailSender                    `json:"mailSender"`
+	Currency                               string                        `json:"currency" default:"usd"`
+	StripeSecret                           string                        `json:"stripe_secret" validate:"required"`
+	VoucherNameLength                      int                           `json:"voucher_name_length" validate:"required,gt=0" default:"8"`
+	VerificationCodeLength                 int                           `json:"verification_code_length" validate:"gt=0" default:"4"`
+	TermsANDConditions                     TermsANDConditions            `json:"terms_and_conditions"`
+	SystemAccount                          GridAccount                   `json:"system_account"`
+	DeployerWorkersNum                     int                           `json:"deployer_workers_num" default:"1"`
+	Invoice                                InvoiceCompanyData            `json:"invoice"`
+	SSH                                    SSHConfig                     `json:"ssh" validate:"required,dive"`
+	Redis                                  RedisConfig                   `json:"redis" validate:"dive"`
+	Debug                                  bool                          `json:"debug"`
+	DisableSentry                          bool                          `json:"disable_sentry" default:"true"`
+	DevMode                                bool                          `json:"dev_mode"` // When true, allows empty SendGridKey and uses FakeMailService
+	NotifyAdminsForPendingRecordsInHours   int                           `json:"notify_admins_for_pending_records_in_hours" validate:"required,gt=0"`
+	ClusterHealthCheckIntervalInHours      int                           `json:"cluster_health_check_interval_in_hours" validate:"gt=0" default:"1"`
+	SettleTransferRecordsIntervalInMinutes int                           `json:"settle_transfer_records_interval_in_minutes" validate:"required,gt=0"`
+	NodeHealthCheck                        ReservedNodeHealthCheckConfig `json:"node_health_check" validate:"required,dive"`
+	UsersBalanceCheckIntervalInHours       int                           `json:"users_balance_check_interval_in_hours" validate:"gt=0" default:"6"`
+	CheckUserDebtIntervalInHours           int                           `json:"check_user_debt_interval_in_hours" validate:"gt=0" default:"48"`
+
+	AppliedDiscount          string `json:"applied_discount" validate:"required"`
+	MinimumTFTAmountInWallet int    `json:"minimum_tft_amount_in_wallet" default:"10" validate:"required,gt=0"`
 
 	Logger    LoggerConfig    `json:"logger"`
 	Loki      LokiConfig      `json:"loki"`
@@ -321,6 +324,11 @@ func applyDefaultValues(config *Configuration) {
 		config.ClusterHealthCheckIntervalInHours = 1
 	}
 
+	// SettleTransferRecordsIntervalInMinutes default
+	if config.SettleTransferRecordsIntervalInMinutes == 0 {
+		config.SettleTransferRecordsIntervalInMinutes = 5
+	}
+
 	// JwtToken defaults
 	if config.JwtToken.AccessExpiryMinutes == 0 {
 		config.JwtToken.AccessExpiryMinutes = 60
@@ -384,11 +392,16 @@ func applyDefaultValues(config *Configuration) {
 		config.NodeHealthCheck.ReservedNodeHealthCheckWorkersNum = 10
 	}
 
-	if config.MonitorBalanceIntervalInMinutes == 0 {
-		config.MonitorBalanceIntervalInMinutes = 120
-	}
 	if config.NotifyAdminsForPendingRecordsInHours == 0 {
 		config.NotifyAdminsForPendingRecordsInHours = 24
+	}
+
+	if config.MinimumTFTAmountInWallet == 0 {
+		config.MinimumTFTAmountInWallet = 10
+	}
+
+	if config.AppliedDiscount == "" {
+		config.AppliedDiscount = "gold"
 	}
 
 	if config.Telemetry.OTLPEndpoint == "" {

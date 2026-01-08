@@ -17,7 +17,7 @@ const (
 	NodeHasActiveContracts = "NodeHasActiveContracts"
 )
 
-func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridclient.GridClient) ewf.StepFn {
+func ReserveNodeStep(contractsRepo models.ContractDataRepository, gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)
 		if err != nil {
@@ -39,10 +39,11 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridcl
 			return fmt.Errorf("failed to create rent contract for node_id=%d (user_id=%d): %w", nodeID, config.UserID, err)
 		}
 
-		err = userNodesRepo.CreateUserNode(&models.UserNodes{
+		err = contractsRepo.CreateUserContractData(&models.UserContractData{
 			UserID:     config.UserID,
 			ContractID: contractID,
 			NodeID:     nodeID,
+			Type:       models.ContractTypeRented,
 			CreatedAt:  time.Now(),
 		})
 		if err != nil {
@@ -54,7 +55,7 @@ func ReserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridcl
 	}
 }
 
-func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient gridclient.GridClient) ewf.StepFn {
+func UnreserveNodeStep(contractsRepo models.ContractDataRepository, gridClient gridclient.GridClient) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		contractIDVal, ok := state["contract_id"]
 		if !ok {
@@ -76,7 +77,7 @@ func UnreserveNodeStep(userNodesRepo models.UserNodesRepository, gridClient grid
 			return fmt.Errorf("failed to cancel contract: %w", err)
 		}
 
-		err = userNodesRepo.DeleteUserNode(contractID)
+		err = contractsRepo.DeleteUserContract(contractID)
 		if err != nil {
 			return fmt.Errorf("failed to delete user node: %w", err)
 		}

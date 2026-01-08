@@ -17,12 +17,14 @@ import (
 )
 
 type NodeHandler struct {
-	svc services.NodeService
+	svc            services.NodeService
+	billingService services.BillingService
 }
 
-func NewNodeHandler(svc services.NodeService) NodeHandler {
+func NewNodeHandler(svc services.NodeService, billingService services.BillingService) NodeHandler {
 	return NodeHandler{
-		svc: svc,
+		svc:            svc,
+		billingService: billingService,
 	}
 }
 
@@ -287,6 +289,12 @@ func (h *NodeHandler) ReserveNodeHandler(c *gin.Context) {
 	if err := h.svc.CheckUserBalanceForOneHour(c.Request.Context(), user.Mnemonic, user.Debt, node.PriceUsd); err != nil {
 		reqLog.Error().Err(err).Msg("failed to check user balance")
 		BadRequest(c, "You should at least have enough balance for one hour")
+		return
+	}
+
+	if err := h.billingService.FundUserToFulfillDiscount(c.Request.Context(), &user, nil, nil); err != nil {
+		reqLog.Error().Err(err).Send()
+		InternalServerError(c)
 		return
 	}
 

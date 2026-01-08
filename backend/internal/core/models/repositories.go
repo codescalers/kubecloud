@@ -1,11 +1,14 @@
 package models
 
+import "time"
+
 // UserRepository defines operations for user data persistence
 type UserRepository interface {
 	RegisterUser(user *User) error
 	GetUserByEmail(email string) (User, error)
 	GetUserByID(userID int) (User, error)
 	UpdateUserByID(user *User) error
+	DeductUserBalance(user *User, amount uint64) error
 	ListAllUsers() ([]User, error)
 	ListAdmins() ([]User, error)
 	DeleteUserByID(userID int) error
@@ -14,6 +17,10 @@ type UserRepository interface {
 
 	// stats methods
 	CountAllUsers() (int64, error)
+
+	// Usage calculation time methods
+	GetUserLastCalcTime(userID int) (time.Time, error)
+	UpdateUserLastCalcTime(userID int, lastCalcTime time.Time) error
 
 	// SSH Key methods
 	CreateSSHKey(sshKey *SSHKey) error
@@ -27,23 +34,24 @@ type ClusterRepository interface {
 	CreateCluster(userID int, cluster *Cluster) error
 	ListUserClusters(userID int) ([]Cluster, error)
 	GetClusterByName(userID int, projectName string) (Cluster, error)
-	UpdateCluster(cluster *Cluster) error
+	UpdateCluster(contractsRepo ContractDataRepository, cluster *Cluster) error
 	DeleteCluster(userID int, projectName string) error
-	DeleteAllUserClusters(userID int) error
+	DeleteAllUserClusters(contractsRepo ContractDataRepository, userID int) error
 
 	// stats methods
 	CountAllClusters() (int64, error)
 	ListAllClusters() ([]Cluster, error)
 }
 
-// UserNodesRepository defines operations for user nodes data persistence
-type UserNodesRepository interface {
-	CreateUserNode(userNode *UserNodes) error
-	DeleteUserNode(contractID uint64) error
-	ListUserNodes(userID int) ([]UserNodes, error)
-	GetUserNodeByNodeID(nodeID uint64) (UserNodes, error)
-	GetUserNodeByContractID(contractID uint64) (UserNodes, error)
-	ListAllReservedNodes() ([]UserNodes, error)
+// ContractDataRepository defines operations for contract data persistence
+type ContractDataRepository interface {
+	CreateUserContractData(contractData *UserContractData) error
+	DeleteUserContract(contractID uint64) error
+	ListUserRentedNodes(userID int) ([]UserContractData, error)
+	GetUserNodeByNodeID(nodeID uint64) (UserContractData, error)
+	GetUserNodeByContractID(contractID uint64) (UserContractData, error)
+	ListAllReservedNodes() ([]UserContractData, error)
+	ListAllContractsInPeriod(userID int, start, end time.Time) ([]UserContractData, error)
 }
 
 // VoucherRepository defines operations for voucher data persistence
@@ -80,13 +88,15 @@ type NotificationRepository interface {
 	DeleteAllNotifications(userID int) error
 }
 
-// PendingRecordRepository defines operations for pending record data persistence
-type PendingRecordRepository interface {
-	CreatePendingRecord(record *PendingRecord) error
-	ListAllPendingRecords() ([]PendingRecord, error)
-	ListOnlyPendingRecords() ([]PendingRecord, error)
-	ListUserPendingRecords(userID int) ([]PendingRecord, error)
-	UpdatePendingRecordTransferredAmount(id int, amount uint64) error
+// TransferRecordRepository defines operations for transfer record data persistence
+type TransferRecordRepository interface {
+	CreateTransferRecord(record *TransferRecord) error
+	ListTransferRecords() ([]TransferRecord, error)
+	ListUserTransferRecords(userID int) ([]TransferRecord, error)
+	ListPendingTransferRecords() ([]TransferRecord, error)
+	ListFailedTransferRecords() ([]TransferRecord, error)
+	UpdateTransferRecordState(recordID int, state State, failure string) error
+	CalculateTotalPendingTFTAmountPerUser(userID int) (uint64, error)
 }
 
 // SettingsRepository defines operations for settings data persistence

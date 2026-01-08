@@ -32,8 +32,7 @@ func RegisterEWFWorkflows(
 ) {
 	userRepo := persistence.NewGormUserRepository(db)
 	clusterRepo := persistence.NewGormClusterRepository(db)
-	userNodesRepo := persistence.NewGormUserNodesRepository(db)
-	pendingRecordRepo := persistence.NewGormPendingRecordRepository(db)
+	contractsRepo := persistence.NewGormUserContractDataRepository(db)
 
 	engine.Register(StepSendVerificationEmail, SendVerificationEmailStep(mailService, config))
 	engine.Register(StepCreateUser, CreateUserStep(config, userRepo))
@@ -43,17 +42,15 @@ func RegisterEWFWorkflows(
 	engine.Register(StepCreateKYCSponsorship, CreateKYCSponsorship(kycClient, sponsorAddress, sponsorKeyPair, userRepo))
 	engine.Register(StepSendWelcomeEmail, SendWelcomeEmailStep(mailService, metrics))
 	engine.Register(StepCreatePaymentIntent, CreatePaymentIntentStep(config.Currency, metrics, stripeClient))
-	engine.Register(StepCreatePendingRecord, CreatePendingRecord(gridClient, pendingRecordRepo))
 	engine.Register(StepUpdateCreditCardBalance, UpdateCreditCardBalanceStep(userRepo))
-	engine.Register(StepReserveNode, ReserveNodeStep(userNodesRepo, gridClient))
-	engine.Register(StepUnreserveNode, UnreserveNodeStep(userNodesRepo, gridClient))
-	engine.Register(StepUpdateCreditedBalance, UpdateCreditedBalanceStep(userRepo))
+	engine.Register(StepReserveNode, ReserveNodeStep(contractsRepo, gridClient))
+	engine.Register(StepUnreserveNode, UnreserveNodeStep(contractsRepo, gridClient))
 	engine.Register(StepSendEmailNotification, SendEmailNotificationStep(userRepo, mailService))
 	engine.Register(StepVerifyNodeState, VerifyNodeStateStep(gridClient))
 	engine.Register(StepVerifyClusterInDB, VerifyClusterInDBStep(clusterRepo))
 	engine.Register(StepDrainUserBalance, DrainUserBalanceStep(userRepo, gridClient))
 	engine.Register(StepDrainAllUsersBalance, DrainAllUsersBalanceStep(userRepo, engine, config.MailSender.MaxConcurrentSends))
-	engine.Register(StepCheckClusterNodesHealth, CheckClusterNodesHealthStep(clusterRepo))
+	engine.Register(StepCheckClusterNodesHealth, CheckClusterNodesHealthStep(clusterRepo, contractsRepo))
 	engine.Register(StepCheckClusterHealth, CheckClusterHealthStep(config.SSH.PrivateKeyPath))
 
 	registerWorkflowTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
@@ -102,23 +99,8 @@ func RegisterEWFWorkflows(
 	chargeBalanceTemplate.Steps = []ewf.Step{
 		{Name: StepCreatePaymentIntent, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 		{Name: StepUpdateCreditCardBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
 	}
 	engine.RegisterTemplate(WorkflowChargeBalance, &chargeBalanceTemplate)
-
-	adminCreditBalanceTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
-	adminCreditBalanceTemplate.Steps = []ewf.Step{
-		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	engine.RegisterTemplate(WorkflowAdminCreditBalance, &adminCreditBalanceTemplate)
-
-	redeemVoucherTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
-	redeemVoucherTemplate.Steps = []ewf.Step{
-		{Name: StepUpdateCreditedBalance, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-		{Name: StepCreatePendingRecord, RetryPolicy: &ewf.RetryPolicy{MaxAttempts: 2, BackOff: ewf.ConstantBackoff(2 * time.Second)}},
-	}
-	engine.RegisterTemplate(WorkflowRedeemVoucher, &redeemVoucherTemplate)
 
 	reserveNodeTemplate := newKubecloudWorkflowTemplate(notificationDispatcher)
 	reserveNodeTemplate.Steps = []ewf.Step{
@@ -144,7 +126,7 @@ func RegisterEWFWorkflows(
 	// trackClusterHealthWFTemplate.BeforeWorkflowHooks = []ewf.BeforeWorkflowHook{hookNotificationWorkflowStarted}
 	engine.RegisterTemplate(WorkflowTrackClusterHealth, &trackClusterHealthWFTemplate)
 
-	registerDeploymentActivities(engine, metrics, clusterRepo, notificationDispatcher, config)
+	registerDeploymentActivities(engine, metrics, clusterRepo, contractsRepo, notificationDispatcher, config)
 
 	// Email-only workflow for guaranteed email delivery with retries
 	emailNotificationTemplate := ewf.WorkflowTemplate{

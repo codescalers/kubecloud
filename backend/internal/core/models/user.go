@@ -6,6 +6,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type ContractType string
+
+const (
+	ContractTypeRented   ContractType = "rented"
+	ContractTypeDeployed ContractType = "deployed"
+)
+
 // User represents a user in the system
 type User struct {
 	ID                int            `json:"id" gorm:"primaryKey;autoIncrement;column:id"`

@@ -20,7 +20,6 @@ import (
 type UserService struct {
 	userRepo    models.UserRepository
 	voucherRepo models.VoucherRepository
-	prRepo      models.PendingRecordRepository
 
 	appCtx     context.Context
 	gridClient gridclient.GridClient
@@ -36,7 +35,6 @@ type UserService struct {
 func NewUserService(appCtx context.Context,
 	userRepo models.UserRepository,
 	voucherRepo models.VoucherRepository,
-	pendingRecordRepo models.PendingRecordRepository,
 	gridClient gridclient.GridClient,
 	ewfEngine *ewf.Engine,
 	kycClient *kyc.KYCClient,
@@ -47,7 +45,6 @@ func NewUserService(appCtx context.Context,
 	return UserService{
 		userRepo:    userRepo,
 		voucherRepo: voucherRepo,
-		prRepo:      pendingRecordRepo,
 
 		appCtx:     appCtx,
 		gridClient: gridClient,
@@ -60,9 +57,12 @@ func NewUserService(appCtx context.Context,
 	}
 }
 
-type UserWithPendingBalance struct {
+type UserWithBalancesInUSD struct {
 	models.User
-	PendingBalanceUSD float64 `json:"pending_balance_usd"`
+	CreditCardBalanceInUSD float64 `json:"credit_card_balance_in_usd"`
+	CreditedBalanceInUSD   float64 `json:"credited_balance_in_usd"`
+	DebtInUSD              float64 `json:"debt_in_usd"`
+	BalanceInTFT           float64 `json:"balance_in_tft,omitempty"`
 }
 
 func (svc *UserService) GetUserByEmail(email string) (models.User, error) {
@@ -73,68 +73,18 @@ func (svc *UserService) GetUserByID(userID int) (models.User, error) {
 	return svc.userRepo.GetUserByID(userID)
 }
 
-func (svc *UserService) GetUserWithPendingBalance(userID int) (UserWithPendingBalance, error) {
+func (svc *UserService) GetUserWithBalancesInUSD(userID int) (UserWithBalancesInUSD, error) {
 	user, err := svc.GetUserByID(userID)
 	if err != nil {
-		return UserWithPendingBalance{}, err
+		return UserWithBalancesInUSD{}, err
 	}
 
-	usdMillicentPendingAmount, err := svc.GetUserPendingBalanceInUSDMillicent(userID)
-	if err != nil {
-		return UserWithPendingBalance{}, err
-	}
-
-	return UserWithPendingBalance{
-		User:              user,
-		PendingBalanceUSD: gridclient.FromUSDMilliCentToUSD(usdMillicentPendingAmount),
+	return UserWithBalancesInUSD{
+		User:                   user,
+		CreditedBalanceInUSD:   gridclient.FromUSDMilliCentToUSD(user.CreditedBalance),
+		CreditCardBalanceInUSD: gridclient.FromUSDMilliCentToUSD(user.CreditCardBalance),
+		DebtInUSD:              gridclient.FromUSDMilliCentToUSD(user.Debt),
 	}, nil
-}
-
-func (svc *UserService) GetUserPendingBalanceInUSDMillicent(userID int) (uint64, error) {
-	pendingRecords, err := svc.prRepo.ListUserPendingRecords(userID)
-	if err != nil {
-		return 0, err
-	}
-
-	var tftPendingAmount uint64
-	for _, record := range pendingRecords {
-		tftPendingAmount += record.TFTAmount - record.TransferredTFTAmount
-	}
-
-	usdMillicentPendingAmount, err := svc.gridClient.FromTFTtoUSDMillicent(tftPendingAmount)
-	if err != nil {
-		return 0, err
-	}
-
-	return usdMillicentPendingAmount, nil
-}
-
-func (svc *UserService) ListUserPendingRecordsWithUSDAmounts(userID int) ([]PendingRecordsWithUSDAmounts, error) {
-	pendingRecords, err := svc.prRepo.ListUserPendingRecords(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
-	for _, record := range pendingRecords {
-		usdAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TFTAmount)
-		if err != nil {
-			return nil, err
-		}
-
-		usdTransferredAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
-		if err != nil {
-			return nil, err
-		}
-
-		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
-			PendingRecord:        record,
-			USDAmount:            gridclient.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: gridclient.FromUSDMilliCentToUSD(usdTransferredAmount),
-		})
-	}
-
-	return pendingRecordsWithUSDAmounts, nil
 }
 
 func (svc *UserService) ListRemainingWorkflowsByUserID(userID int) ([]*ewf.Workflow, error) {
@@ -267,36 +217,6 @@ func (svc *UserService) AsyncStripeChargeBalance(userID int, userStripeCustomerI
 		"payment_method_id":  paymentMethodID,
 		"amount":             gridclient.FromUSDToUSDMillicent(requestAmount),
 		"username":           username,
-		"transfer_mode":      models.ChargeBalanceMode,
-		"config": map[string]interface{}{
-			"user_id":  userID,
-			"mnemonic": userMnemonic,
-		},
-	}
-
-	if err = persistence.SetStateUserID(&wf, userID); err != nil {
-		return "", err
-	}
-
-	err = svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
-	return wf.UUID, err
-}
-
-func (svc *UserService) AsyncRedeemVoucher(userID int, voucherValue float64, userMnemonic, userUsername, voucherCode string) (string, error) {
-	err := svc.voucherRepo.RedeemVoucher(userID, userUsername, voucherCode)
-	if err != nil {
-		return "", err
-	}
-
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowRedeemVoucher, ewf.WithDisplayName(fmt.Sprintf("Redeem voucher %s", voucherCode)))
-	if err != nil {
-		return "", err
-	}
-
-	wf.State = map[string]interface{}{
-		"amount":        gridclient.FromUSDToUSDMillicent(voucherValue),
-		"username":      userUsername,
-		"transfer_mode": models.RedeemVoucherMode,
 		"config": map[string]interface{}{
 			"user_id":  userID,
 			"mnemonic": userMnemonic,

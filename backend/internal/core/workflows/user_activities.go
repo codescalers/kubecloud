@@ -366,62 +366,6 @@ func CreatePaymentIntentStep(currency string, metrics *metrics.Metrics, stripeCl
 	}
 }
 
-func CreatePendingRecord(gridClient gridclient.GridClient, pendingRecordRepo models.PendingRecordRepository) ewf.StepFn {
-	return func(ctx context.Context, state ewf.State) error {
-		log := logger.ForOperation("user_activities", "create_pending_record")
-		amountVal, ok := state["amount"]
-		if !ok {
-			return fmt.Errorf("missing 'amount' in state")
-		}
-
-		amount, ok := amountVal.(uint64)
-		if !ok {
-			return fmt.Errorf("'amount' in state is not a uint64")
-		}
-
-		config, err := getConfig(state)
-		if err != nil {
-			return fmt.Errorf("failed to get config from state: %w", err)
-		}
-
-		usernameVal, ok := state["username"]
-		if !ok {
-			return fmt.Errorf("missing 'username' in state")
-		}
-		username, ok := usernameVal.(string)
-		if !ok {
-			return fmt.Errorf("'username' in state is not a string")
-		}
-
-		transferModeVal, ok := state["transfer_mode"]
-		if !ok {
-			return fmt.Errorf("missing 'transfer_mode' in state")
-		}
-		transferMode, ok := transferModeVal.(string)
-		if !ok {
-			return fmt.Errorf("'transfer_mode' in state is not a string")
-		}
-
-		requestedTFTs, err := gridClient.FromUSDMillicentToTFT(amount)
-		if err != nil {
-			log.Error().Err(err).Msg("error converting USD to TFT")
-			return err
-		}
-
-		if err = pendingRecordRepo.CreatePendingRecord(&models.PendingRecord{
-			UserID:       config.UserID,
-			Username:     username,
-			TFTAmount:    requestedTFTs,
-			TransferMode: transferMode,
-		}); err != nil {
-			log.Error().Err(err).Msg("failed to create pending record")
-			return err
-		}
-
-		return nil
-	}
-}
-
 func UpdateCreditCardBalanceStep(userRepo models.UserRepository) ewf.StepFn {
 	return func(ctx context.Context, state ewf.State) error {
 		config, err := getConfig(state)

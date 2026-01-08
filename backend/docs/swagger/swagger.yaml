@@ -21,7 +21,6 @@ definitions:
     - 1048576
     - 1073741824
     - 1099511627776
-    format: int64
     type: integer
     x-enum-varnames:
     - Kilobyte
@@ -339,13 +338,6 @@ definitions:
       type:
         $ref: '#/definitions/models.NotificationType'
     type: object
-  handlers.PendingRecordsResponse:
-    properties:
-      pending_records:
-        items:
-          $ref: '#/definitions/services.PendingRecordsWithUSDAmounts'
-        type: array
-    type: object
   handlers.RedeemVoucherResponse:
     properties:
       amount:
@@ -441,15 +433,6 @@ definitions:
         type: string
       workflow_id:
         type: string
-    type: object
-  handlers.UserBalanceResponse:
-    properties:
-      balance_usd:
-        type: number
-      debt_usd:
-        type: number
-      pending_balance_usd:
-        type: number
     type: object
   handlers.UserWorkflow:
     properties:
@@ -550,6 +533,8 @@ definitions:
         items:
           type: string
         type: array
+      healthy:
+        type: boolean
       ip:
         description: Computed
         type: string
@@ -610,7 +595,6 @@ definitions:
           $ref: '#/definitions/models.NodeItem'
         type: array
       tax:
-        description: 'TODO:'
         type: number
       total:
         type: number
@@ -697,6 +681,16 @@ definitions:
     - public_key
     - userID
     type: object
+  models.State:
+    enum:
+    - failed
+    - success
+    - pending
+    type: string
+    x-enum-varnames:
+    - FailedState
+    - SuccessState
+    - PendingState
   models.Voucher:
     properties:
       code:
@@ -709,6 +703,10 @@ definitions:
         type: integer
       redeemed:
         type: boolean
+      user_id:
+        type: integer
+      username:
+        type: string
       value:
         type: number
     required:
@@ -717,6 +715,14 @@ definitions:
     - expires_at
     - value
     type: object
+  models.operation:
+    enum:
+    - withdraw
+    - deposit
+    type: string
+    x-enum-varnames:
+    - WithdrawOperation
+    - DepositOperation
   services.AdminWorkflow:
     properties:
       created_at:
@@ -762,30 +768,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  services.PendingRecordsWithUSDAmounts:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      tft_amount:
-        description: TFTs are multiplied by 1e7
-        type: integer
-      transfer_mode:
-        type: string
-      transferred_tft_amount:
-        type: integer
-      transferred_usd_amount:
-        type: number
-      updated_at:
-        type: string
-      usd_amount:
-        type: number
-      user_id:
-        type: integer
-      username:
-        type: string
-    type: object
   services.Pool:
     properties:
       free:
@@ -814,12 +796,38 @@ definitions:
       up_nodes:
         type: integer
     type: object
-  services.UserWithPendingBalance:
+  services.TransferRecordsWithTFTAmount:
+    properties:
+      created_at:
+        type: string
+      failure:
+        type: string
+      id:
+        type: integer
+      operation:
+        $ref: '#/definitions/models.operation'
+      state:
+        $ref: '#/definitions/models.State'
+      tft_amount:
+        description: TFTs are multiplied by 1e7
+        type: integer
+      tft_amount_in_whole_unit:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+      username:
+        type: string
+    type: object
+  services.UserWithBalancesInUSD:
     properties:
       account_address:
         type: string
       admin:
         type: boolean
+      balance_in_tft:
+        type: number
       code:
         type: integer
       created_at:
@@ -827,18 +835,22 @@ definitions:
       credit_card_balance:
         description: millicent, money from credit card
         type: integer
+      credit_card_balance_in_usd:
+        type: number
       credited_balance:
         description: millicent, manually added by admin or from vouchers
         type: integer
+      credited_balance_in_usd:
+        type: number
       debt:
         description: millicent
         type: integer
+      debt_in_usd:
+        type: number
       email:
         type: string
       id:
         type: integer
-      pending_balance_usd:
-        type: number
       sponsored:
         type: boolean
       ssh_key:
@@ -855,14 +867,13 @@ definitions:
     - email
     - username
     type: object
-  services.UserWithUSDBalance:
+  services.UserWithTFTBalance:
     properties:
       account_address:
         type: string
       admin:
         type: boolean
-      balance:
-        description: USD balance
+      balance_in_tft:
         type: number
       code:
         type: integer
@@ -1143,7 +1154,6 @@ definitions:
         $ref: '#/definitions/zos.IPNet'
       externalSK:
         items:
-          format: int32
           type: integer
         type: array
       iprange:
@@ -1151,14 +1161,12 @@ definitions:
       keys:
         additionalProperties:
           items:
-            format: int32
             type: integer
           type: array
         type: object
       myceliumKeys:
         additionalProperties:
           items:
-            format: int32
             type: integer
           type: array
         type: object
@@ -1166,12 +1174,10 @@ definitions:
         type: string
       nodeDeploymentID:
         additionalProperties:
-          format: int64
           type: integer
         type: object
       nodes:
         items:
-          format: int32
           type: integer
         type: array
       nodesIPRange:
@@ -1179,7 +1185,6 @@ definitions:
           $ref: '#/definitions/zos.IPNet'
         type: object
       publicNodeID:
-        format: int32
         type: integer
       solutionType:
         type: string
@@ -1193,13 +1198,11 @@ definitions:
       ip:
         description: network number
         items:
-          format: int32
           type: integer
         type: array
       mask:
         description: network mask
         items:
-          format: int32
           type: integer
         type: array
     type: object
@@ -1915,33 +1918,6 @@ paths:
       summary: Get unread notifications
       tags:
       - notifications
-  /pending-records:
-    get:
-      consumes:
-      - application/json
-      description: Returns all pending records in the system
-      operationId: list-pending-records
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Pending records are retrieved successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/services.PendingRecordsWithUSDAmounts'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.APIResponse'
-      security:
-      - AdminMiddleware: []
-      summary: List pending records
-      tags:
-      - admin
   /stats:
     get:
       consumes:
@@ -2024,6 +2000,32 @@ paths:
       summary: Set maintenance mode
       tags:
       - admin
+  /transfer-records:
+    get:
+      consumes:
+      - application/json
+      description: Returns all transfer records in the system
+      operationId: list-transfer-records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              items:
+                $ref: '#/definitions/services.TransferRecordsWithTFTAmount'
+              type: array
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: List transfer records
+      tags:
+      - admin
   /twins/{twin_id}/account:
     get:
       consumes:
@@ -2088,7 +2090,7 @@ paths:
             - $ref: '#/definitions/handlers.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/services.UserWithPendingBalance'
+                  $ref: '#/definitions/services.UserWithBalancesInUSD'
               type: object
         "404":
           description: User is not found
@@ -2099,33 +2101,6 @@ paths:
           schema:
             $ref: '#/definitions/handlers.APIResponse'
       summary: Get user details
-      tags:
-      - users
-  /user/balance:
-    get:
-      description: Retrieves the user's balance in USD
-      operationId: get-user-balance
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Balance fetched successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.UserBalanceResponse'
-              type: object
-        "404":
-          description: User is not found
-          schema:
-            $ref: '#/definitions/handlers.APIResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.APIResponse'
-      summary: Get user balance
       tags:
       - users
   /user/balance/charge:
@@ -2560,33 +2535,6 @@ paths:
       summary: Unreserve node
       tags:
       - nodes
-  /user/pending-records:
-    get:
-      consumes:
-      - application/json
-      description: Returns user pending records in the system
-      operationId: list-user-pending-records
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Pending records returned successfully
-          schema:
-            allOf:
-            - $ref: '#/definitions/handlers.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/handlers.PendingRecordsResponse'
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/handlers.APIResponse'
-      security:
-      - BearerAuth: []
-      summary: List user pending records
-      tags:
-      - users
   /user/redeem/{voucher_code}:
     put:
       description: Redeems a voucher for the user
@@ -2905,7 +2853,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/services.UserWithUSDBalance'
+              $ref: '#/definitions/services.UserWithTFTBalance'
             type: array
         "500":
           description: Internal Server Error

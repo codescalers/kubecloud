@@ -3,11 +3,12 @@ package workers
 import (
 	"time"
 
+	"kubecloud/internal/core/services"
 	"kubecloud/internal/infrastructure/logger"
 )
 
 func (w Workers) TrackUserDebt() {
-	ticker := time.NewTicker(1 * time.Hour)
+	ticker := time.NewTicker(services.TrackingDebtPeriod)
 	defer ticker.Stop()
 
 	for {

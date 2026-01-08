@@ -145,43 +145,7 @@ func (m *mockVoucherRepo) RedeemVoucher(userID int, username, code string) error
 	return args.Error(0)
 }
 
-type mockPendingRecordRepo struct {
-	mock.Mock
-}
-
-func (m *mockPendingRecordRepo) CreatePendingRecord(record *models.PendingRecord) error {
-	args := m.Called(record)
-	return args.Error(0)
-}
-
-func (m *mockPendingRecordRepo) ListAllPendingRecords() ([]models.PendingRecord, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]models.PendingRecord), args.Error(1)
-}
-
-func (m *mockPendingRecordRepo) ListOnlyPendingRecords() ([]models.PendingRecord, error) {
-	args := m.Called()
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]models.PendingRecord), args.Error(1)
-}
-
-func (m *mockPendingRecordRepo) ListUserPendingRecords(userID int) ([]models.PendingRecord, error) {
-	args := m.Called(userID)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]models.PendingRecord), args.Error(1)
-}
-
-func (m *mockPendingRecordRepo) UpdatePendingRecordTransferredAmount(id int, amount uint64) error {
-	args := m.Called(id, amount)
-	return args.Error(0)
-}
+// Using mockTransferRecordRepo from admin_service_test.go
 
 // ============================================================================
 // TESTS FOR METHODS THAT DON'T REQUIRE EXTERNAL DEPENDENCIES
@@ -191,7 +155,6 @@ func (m *mockPendingRecordRepo) UpdatePendingRecordTransferredAmount(id int, amo
 func TestUserService_GetUserByEmail_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	expectedUser := models.User{
 		ID:       1,
@@ -204,7 +167,7 @@ func TestUserService_GetUserByEmail_Success(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -219,7 +182,6 @@ func TestUserService_GetUserByEmail_Success(t *testing.T) {
 func TestUserService_GetUserByEmail_NotFound(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	mockUserRepo.On("GetUserByEmail", "invalid@example.com").
 		Return(nil, fmt.Errorf("user not found"))
@@ -227,7 +189,7 @@ func TestUserService_GetUserByEmail_NotFound(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -241,14 +203,13 @@ func TestUserService_GetUserByEmail_NotFound(t *testing.T) {
 func TestUserService_CreateSSHKey_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	mockUserRepo.On("CreateSSHKey", mock.AnythingOfType("*models.SSHKey")).Return(nil)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -264,14 +225,13 @@ func TestUserService_CreateSSHKey_Success(t *testing.T) {
 func TestUserService_DeleteSSHKey_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	mockUserRepo.On("DeleteSSHKey", 5, 1).Return("my-key", nil)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -286,7 +246,6 @@ func TestUserService_DeleteSSHKey_Success(t *testing.T) {
 func TestUserService_IsVerificationCodeExpired_Expired(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	// Code from 20 minutes ago, timeout is 5 minutes
 	oldTime := time.Now().Add(-20 * time.Minute)
@@ -294,7 +253,7 @@ func TestUserService_IsVerificationCodeExpired_Expired(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{}, // 5 minute timeout
 	)
 
@@ -307,7 +266,6 @@ func TestUserService_IsVerificationCodeExpired_Expired(t *testing.T) {
 func TestUserService_IsVerificationCodeExpired_NotExpired(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	// Code from 2 minutes ago, timeout is 5 minutes
 	recentTime := time.Now().Add(-2 * time.Minute)
@@ -315,7 +273,7 @@ func TestUserService_IsVerificationCodeExpired_NotExpired(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{}, // 5 minute timeout
 	)
 
@@ -328,12 +286,11 @@ func TestUserService_IsVerificationCodeExpired_NotExpired(t *testing.T) {
 func TestUserService_IsSystemAdmin_True(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{"admin@example.com", "superuser@example.com"},
 	)
 
@@ -346,12 +303,11 @@ func TestUserService_IsSystemAdmin_True(t *testing.T) {
 func TestUserService_IsSystemAdmin_False(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{"admin@example.com"},
 	)
 
@@ -364,7 +320,6 @@ func TestUserService_IsSystemAdmin_False(t *testing.T) {
 func TestUserService_GetVoucherByCode_Success(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	expectedVoucher := models.Voucher{
 		ID:   1,
@@ -376,7 +331,7 @@ func TestUserService_GetVoucherByCode_Success(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -390,7 +345,6 @@ func TestUserService_GetVoucherByCode_Success(t *testing.T) {
 func TestUserService_GetVoucherByCode_NotFound(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	mockVoucherRepo.On("GetVoucherByCode", "INVALID").
 		Return(nil, fmt.Errorf("voucher not found"))
@@ -398,7 +352,7 @@ func TestUserService_GetVoucherByCode_NotFound(t *testing.T) {
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -412,12 +366,11 @@ func TestUserService_GetVoucherByCode_NotFound(t *testing.T) {
 func TestUserService_GenerateRandomCode_ValidRange(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 5, []string{},
 	)
 
@@ -432,12 +385,11 @@ func TestUserService_GenerateRandomCode_ValidRange(t *testing.T) {
 func TestUserService_CodeTimeoutInMinutes(t *testing.T) {
 	mockUserRepo := new(mockUserRepo)
 	mockVoucherRepo := new(mockVoucherRepo)
-	mockPRRepo := new(mockPendingRecordRepo)
 
 	var gridClient gridclient.GridClient
 	service := NewUserService(
 		context.Background(),
-		mockUserRepo, mockVoucherRepo, mockPRRepo, gridClient,
+		mockUserRepo, mockVoucherRepo, gridClient,
 		nil, nil, nil, 15, []string{},
 	)
 

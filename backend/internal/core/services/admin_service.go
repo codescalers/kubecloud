@@ -21,12 +21,12 @@ import (
 )
 
 type AdminService struct {
-	userRepo    models.UserRepository
-	nodesRepo   models.UserNodesRepository
-	prRepo      models.PendingRecordRepository
-	voucherRepo models.VoucherRepository
-	transRepo   models.TransactionRepository
-	ewfRepo     *persistence.GormEWFRepository
+	userRepo            models.UserRepository
+	contractsRepo       models.ContractDataRepository
+	transferRecordsRepo models.TransferRecordRepository
+	voucherRepo         models.VoucherRepository
+	transRepo           models.TransactionRepository
+	ewfRepo             *persistence.GormEWFRepository
 
 	appCtx                 context.Context
 	gridClient             gridclient.GridClient
@@ -37,8 +37,8 @@ type AdminService struct {
 
 func NewAdminService(appCtx context.Context,
 	userRepo models.UserRepository,
-	userNodeRepo models.UserNodesRepository,
-	pendingRecordRepo models.PendingRecordRepository,
+	contractsRepo models.ContractDataRepository,
+	transferRecordsRepo models.TransferRecordRepository,
 	voucherRepo models.VoucherRepository,
 	transactionRepo models.TransactionRepository,
 	gridClient gridclient.GridClient,
@@ -48,12 +48,12 @@ func NewAdminService(appCtx context.Context,
 	ewfRepo *persistence.GormEWFRepository,
 ) AdminService {
 	return AdminService{
-		userRepo:    userRepo,
-		nodesRepo:   userNodeRepo,
-		prRepo:      pendingRecordRepo,
-		voucherRepo: voucherRepo,
-		transRepo:   transactionRepo,
-		ewfRepo:     ewfRepo,
+		userRepo:            userRepo,
+		contractsRepo:       contractsRepo,
+		transferRecordsRepo: transferRecordsRepo,
+		voucherRepo:         voucherRepo,
+		transRepo:           transactionRepo,
+		ewfRepo:             ewfRepo,
 
 		appCtx:                 appCtx,
 		gridClient:             gridClient,
@@ -65,22 +65,25 @@ func NewAdminService(appCtx context.Context,
 
 const maxConcurrentBalanceFetches = 20
 
-type UserWithUSDBalance struct {
+type UserWithTFTBalance struct {
 	models.User
-	Balance float64 `json:"balance"` // USD balance
+	BalanceInTFT float64 `json:"balance_in_tft"`
 }
 
-type PendingRecordsWithUSDAmounts struct {
-	models.PendingRecord
-	USDAmount            float64 `json:"usd_amount"`
-	TransferredUSDAmount float64 `json:"transferred_usd_amount"`
+type TransferRecordsWithTFTAmount struct {
+	models.TransferRecord
+	TFTAmountInWholeUnit float32 `json:"tft_amount_in_whole_unit"`
 }
 
 func (svc *AdminService) ListAllUsers() ([]models.User, error) {
 	return svc.userRepo.ListAllUsers()
 }
 
-func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance, error) {
+func (svc *AdminService) GetUserByID(id int) (models.User, error) {
+	return svc.userRepo.GetUserByID(id)
+}
+
+func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithTFTBalance, error) {
 	users, err := svc.ListAllUsers()
 	// Here is the only critical errors, not the balance related ones
 	if err != nil {
@@ -88,7 +91,7 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 	}
 
 	var (
-		usersWithBalance []UserWithUSDBalance
+		usersWithBalance []UserWithTFTBalance
 		wg               sync.WaitGroup
 		mu               sync.Mutex
 		balanceErrors    *multierror.Error
@@ -104,18 +107,19 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 			defer wg.Done()
 			defer func() { <-balanceConcurrencyLimiter }()
 
-			balance, err := svc.gridClient.GetUserBalanceUSD(user.Mnemonic)
+			balanceInTFTUnit, err := svc.gridClient.GetFreeBalanceTFT(user.Mnemonic)
 			if err != nil {
+				logger.GetLogger().Error().Err(err).Int("user_id", user.ID).Msg("failed to get user balance")
 				mu.Lock()
 				balanceErrors = multierror.Append(balanceErrors, fmt.Errorf("failed to get balance for user %d: %w", user.ID, err))
 				mu.Unlock()
-				balance = 0.0
+				return
 			}
 
 			mu.Lock()
-			usersWithBalance = append(usersWithBalance, UserWithUSDBalance{
-				User:    user,
-				Balance: balance,
+			usersWithBalance = append(usersWithBalance, UserWithTFTBalance{
+				User:         user,
+				BalanceInTFT: float64(balanceInTFTUnit) / TFTUnitFactor,
 			})
 			mu.Unlock()
 		}(user)
@@ -134,40 +138,6 @@ func (svc *AdminService) ListAllUsersIncludingUSDBalance() ([]UserWithUSDBalance
 
 func (svc *AdminService) DeleteUserByID(userID int) error {
 	return svc.userRepo.DeleteUserByID(userID)
-}
-
-func (svc *AdminService) AsyncCreditUserUSD(transaction *models.Transaction) error {
-	if err := svc.transRepo.CreateTransaction(transaction); err != nil {
-		return err
-	}
-
-	user, err := svc.userRepo.GetUserByID(transaction.UserID)
-	if err != nil {
-		return err
-	}
-
-	displayName := fmt.Sprintf("Admin credit balance for %s", user.Username)
-	wf, err := svc.ewfEngine.NewWorkflow(workflows.WorkflowAdminCreditBalance, ewf.WithDisplayName(displayName))
-	if err != nil {
-		return err
-	}
-
-	wf.State = map[string]interface{}{
-		"amount":        gridclient.FromUSDToUSDMillicent(transaction.Amount),
-		"username":      user.Username,
-		"transfer_mode": models.AdminCreditMode,
-		"admin_id":      transaction.AdminID,
-		"config": map[string]interface{}{
-			"user_id":  transaction.UserID,
-			"mnemonic": user.Mnemonic,
-		},
-	}
-
-	if err = persistence.SetStateUserID(&wf, transaction.AdminID); err != nil {
-		return err
-	}
-
-	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }
 
 func (svc *AdminService) GenerateVouchers(count, expireAfterDays int, voucherValue float64) ([]models.Voucher, error) {
@@ -194,38 +164,41 @@ func (svc *AdminService) ListAllVouchers() ([]models.Voucher, error) {
 	return svc.voucherRepo.ListAllVouchers()
 }
 
-func (svc *AdminService) ListAllPendingRecordsWithUSDAmounts() ([]PendingRecordsWithUSDAmounts, error) {
-	pendingRecords, err := svc.prRepo.ListAllPendingRecords()
+func (svc *AdminService) ListAllTransferRecordsWithTFTAmount() ([]TransferRecordsWithTFTAmount, error) {
+	transferRecords, err := svc.transferRecordsRepo.ListTransferRecords()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list transfer records: %w", err)
 	}
 
-	var pendingRecordsWithUSDAmounts []PendingRecordsWithUSDAmounts
-	for _, record := range pendingRecords {
-		usdAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TFTAmount)
-		if err != nil {
-			return nil, err
-		}
-
-		usdTransferredAmount, err := svc.gridClient.FromTFTtoUSDMillicent(record.TransferredTFTAmount)
-		if err != nil {
-			return nil, err
-		}
-
-		pendingRecordsWithUSDAmounts = append(pendingRecordsWithUSDAmounts, PendingRecordsWithUSDAmounts{
-			PendingRecord:        record,
-			USDAmount:            gridclient.FromUSDMilliCentToUSD(usdAmount),
-			TransferredUSDAmount: gridclient.FromUSDMilliCentToUSD(usdTransferredAmount),
+	var transferRecordsResponse []TransferRecordsWithTFTAmount
+	for _, transferRecord := range transferRecords {
+		transferRecordsResponse = append(transferRecordsResponse, TransferRecordsWithTFTAmount{
+			TransferRecord:       transferRecord,
+			TFTAmountInWholeUnit: float32(transferRecord.TFTAmount) / TFTUnitFactor,
 		})
 	}
 
-	return pendingRecordsWithUSDAmounts, nil
+	return transferRecordsResponse, nil
 }
 
 func (svc *AdminService) generateVoucherWithTimestamp() string {
 	voucherCode := generators.GenerateVoucherCode(8) // Default to 8-character vouchers
 	timestampPart := fmt.Sprintf("%02d%02d", time.Now().Minute(), time.Now().Second())
 	return fmt.Sprintf("%s-%s", voucherCode, timestampPart)
+}
+
+func (svc *AdminService) CreditUserBalance(ctx context.Context, transaction models.Transaction, user *models.User) error {
+	if err := svc.transRepo.CreateTransaction(&transaction); err != nil {
+		return fmt.Errorf("failed to create transaction: %w", err)
+	}
+
+	millicentAmount := gridclient.FromUSDToUSDMillicent(transaction.Amount)
+	user.CreditedBalance += millicentAmount
+	if err := svc.userRepo.UpdateUserByID(&models.User{ID: transaction.UserID}); err != nil {
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
 }
 
 // AsyncDrainUserUSD drains a specific user's balance to the system account
