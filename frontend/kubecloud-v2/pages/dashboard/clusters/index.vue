@@ -3,8 +3,8 @@
     <h1>Dashboard Clusters {{ isLoading }}</h1>
 
     <pre>
-      {{ state }}
-    </pre>
+        {{ state }}
+      </pre>
   </div>
 </template>
 
