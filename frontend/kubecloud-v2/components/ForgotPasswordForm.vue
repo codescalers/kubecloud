@@ -1,6 +1,8 @@
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold text-center">Forgot Password</h1>
+    <h1 class="text-h4 font-weight-bold text-center">
+      Forgot Password
+    </h1>
 
     <p class="text-subtitle-2 opacity-70 text-center mt-2 mb-8">
       Enter your email to receive a reset code
@@ -41,10 +43,7 @@
 <script setup lang="ts">
 import { AxiosError } from "axios"
 
-const emit = defineEmits<{
-  (e: "back-to-login"): void
-  (e: "reset-password", email: string): void
-}>()
+const emit = defineEmits<{ (e: "reset", email: string): void }>()
 
 const api = useApi()
 const valid = ref(false)
@@ -56,11 +55,11 @@ const { execute: forgotPassword, isLoading } = useAsyncState(
   async () => {
     const { data } = await api.users.forgotPassword(
       { email: email.value },
-      { unauthenticated: true }
+      { unauthenticated: true },
     )
 
     if (data.status === 200) {
-      emit("reset-password", email.value)
+      emit("reset", email.value)
     }
   },
   null,
@@ -72,6 +71,6 @@ const { execute: forgotPassword, isLoading } = useAsyncState(
         toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
       }
     },
-  }
+  },
 )
 </script>

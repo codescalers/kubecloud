@@ -1,0 +1,6 @@
+@use 'sass:string';
+
+@use 'vuetify/styles' as * with (
+  $body-font-family: string.unquote('Inter, sans-serif'),
+  $heading-font-family: string.unquote('Inter, sans-serif'),
+);

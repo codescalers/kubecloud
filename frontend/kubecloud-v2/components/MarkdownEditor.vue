@@ -26,7 +26,7 @@
             >
               <template #item="{ item, props }">
                 <v-list-item v-bind="props" :title="undefined">
-                  <span :style="{ fontFamily: item.value + ' !important' }" v-text="item.title" />
+                  <span :style="{ fontFamily: `${item.value} !important` }" v-text="item.title" />
                 </v-list-item>
               </template>
             </v-select>
@@ -51,7 +51,7 @@
             >
               <template #item="{ item, props }">
                 <v-list-item v-bind="props" :title="undefined">
-                  <span :style="{ fontSize: item.value + ' !important' }" v-text="item.title" />
+                  <span :style="{ fontSize: `${item.value} !important` }" v-text="item.title" />
                 </v-list-item>
               </template>
             </v-select>
@@ -59,7 +59,8 @@
             <v-btn
               v-for="{ format, icon, action } in formats"
               :key="format"
-              :class="{ 'px-0': true, ['ql-' + format]: !action }"
+              class="px-0"
+              :class="{ [`ql-${format}`]: !action }"
               :style="{ minWidth: 'auto !important' }"
               variant="plain"
               size="small"
@@ -67,7 +68,7 @@
               tabindex="-1"
               @click="action"
             >
-              <v-icon :icon="'mdi-' + icon" size="large" />
+              <v-icon :icon="`mdi-${icon}`" size="large" />
             </v-btn>
           </span>
         </div>
@@ -91,7 +92,9 @@
         <v-card :style="{ padding: '0 !important' }">
           <v-card-title class="px-6 py-4">
             <div class="d-flex align-center justify-space-between">
-              <h3 class="text-h5 font-weight-bold">Add Link</h3>
+              <h3 class="text-h5 font-weight-bold">
+                Add Link
+              </h3>
             </div>
           </v-card-title>
 
@@ -110,8 +113,12 @@
           <v-divider />
 
           <v-card-actions class="px-6 py-4 flex-row-reverse justify-start">
-            <v-btn variant="text" color="primary" type="submit">Add</v-btn>
-            <v-btn variant="plain" type="button" @click="cancel()">Cancel</v-btn>
+            <v-btn variant="text" color="primary" type="submit">
+              Add
+            </v-btn>
+            <v-btn variant="plain" type="button" @click="cancel()">
+              Cancel
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-form>
@@ -155,7 +162,7 @@ const formats = markRaw([
 ])
 
 const font = ref("sans")
-watchImmediate(font, (f) => quill?.format("font", f))
+watchImmediate(font, f => quill?.format("font", f))
 
 const size = ref({ text: "Normal", value: "1em" })
 watchImmediate(size, (v) => {

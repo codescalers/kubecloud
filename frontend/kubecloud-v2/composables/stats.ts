@@ -6,20 +6,20 @@ export interface StatsResource {
   value: string | number
 }
 
-export type Resources =
-  | "users"
-  | "clusters"
-  | "nodes"
-  | "countries"
-  | "balance"
-  | "memory"
-  | "storage"
+export type Resources
+  = | "users"
+    | "clusters"
+    | "nodes"
+    | "countries"
+    | "balance"
+    | "memory"
+    | "storage"
 
 export interface UseStatsOptions {
   exclude?: Resources[]
 }
 
-export const useStats = (options?: UseStatsOptions) => {
+export function useStats(options?: UseStatsOptions) {
   const api = useApi()
 
   const { state, isLoading } = useAsyncState(async () => {

@@ -10,11 +10,9 @@
         <div class="form-container">
           <v-card max-width="668" class="w-100">
             <ForgotPasswordForm
-              @back-to-login="activeTab = 0"
-              @reset-password="
-                /* prettier-ignore */
+              @reset="
                 email = $event;
-                activeTab = 1
+                activeTab = 1;
               "
             />
           </v-card>
@@ -33,9 +31,8 @@
               :verify-fn="verifyCode"
               @resend="sendVerificationCode()"
               @back="
-                // prettier-ignore
                 email = '';
-                activeTab = 0
+                activeTab = 0;
               "
             />
           </v-card>
@@ -68,13 +65,13 @@ const refreshToken = ref("")
 const api = useApi()
 const { execute: sendVerificationCode, isLoading } = useAsyncState(
   () => api.users.forgotPassword({ email: email.value }, { unauthenticated: true }),
-  null
+  null,
 )
 
 async function verifyCode(otp: string) {
   const { data } = await api.users.verifyForgotPasswordCode(
     { code: +otp, email: email.value },
-    { unauthenticated: true }
+    { unauthenticated: true },
   )
 
   accessToken.value = data.data?.access_token ?? ""

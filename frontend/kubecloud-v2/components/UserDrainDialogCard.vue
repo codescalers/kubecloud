@@ -13,8 +13,7 @@
           :style="{
             backgroundColor: 'rgba(var(--v-theme-primary), var(--v-border-opacity))',
           }"
-          >{{ user?.email ?? "N/A" }}</span
-        >
+        >{{ user?.email ?? "N/A" }}</span>
       </div>
     </template>
 
@@ -31,8 +30,9 @@
         color="warning"
         prepend-icon="mdi-water-remove"
         @click="$emit('confirm')"
-        >Drain Balance</v-btn
       >
+        Drain Balance
+      </v-btn>
     </template>
   </DialogCardLayout>
 </template>

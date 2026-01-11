@@ -108,7 +108,7 @@ watchDebounced(() => route.path, animateIndicatorToActive, { immediate: true, de
 function animateIndicatorToActive() {
   const { offset: currentOffset } = indicatorTransform.value
 
-  const item = navbarLinkItems.value.find((item) => item.$el.classList.contains("v-btn--active"))
+  const item = navbarLinkItems.value.find(item => item.$el.classList.contains("v-btn--active"))
   if (!item) {
     indicatorTransform.value = { offset: currentOffset, width: 0 }
     return

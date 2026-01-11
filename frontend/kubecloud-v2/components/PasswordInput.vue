@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import type { VTextField } from "vuetify/components/VTextField"
 
-defineProps<{ modelValue: string; block?: boolean }>()
+defineProps<{ modelValue: string, block?: boolean }>()
 const emit = defineEmits<{ (e: "update:model-value", value: string): void }>()
 
 const confirmPasswordRef = ref<VTextField>()
@@ -93,7 +93,7 @@ const confirmPassword = ref("")
 const passwordRules = markRaw([
   { label: "One uppercase letter (A-Z)", rule: (v: string) => v.match(/[A-Z]/) !== null },
   { label: "One lowercase letter (a-z)", rule: (v: string) => v.match(/[a-z]/) !== null },
-  { label: "One number (0-9)", rule: (v: string) => v.match(/[0-9]/) !== null },
+  { label: "One number (0-9)", rule: (v: string) => v.match(/\d/) !== null },
   { label: "One special character (!@#$%^&*)", rule: (v: string) => v.match(/[!@#$%^&*]/) !== null },
   { label: "At least 8 characters", rule: (v: string) => v.length >= 8 },
   { label: "Passwords should match", rule: (v: string) => !!v && v === confirmPassword.value },

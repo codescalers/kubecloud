@@ -1,8 +1,12 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-h4 font-weight-bold">System Stats</h1>
-      <p class="text-body-1 mt-2 opacity-70">Platform health and performance metrics</p>
+      <h1 class="text-h4 font-weight-bold">
+        System Stats
+      </h1>
+      <p class="text-body-1 mt-2 opacity-70">
+        Platform health and performance metrics
+      </p>
     </div>
 
     <v-card class="mb-8 d-flex align-start ga-4">
@@ -40,7 +44,9 @@
       </v-avatar>
 
       <div>
-        <h3 class="text-h5 font-weight-bold text-error">Danger Zone</h3>
+        <h3 class="text-h5 font-weight-bold text-error">
+          Danger Zone
+        </h3>
         <p class="text-body-1 mt-2 opacity-70">
           Enable maintenance mode to temporarily restrict access to the platform.
         </p>
@@ -63,7 +69,9 @@
       <v-card :style="{ padding: '0 !important' }">
         <v-card-title class="px-6 py-4">
           <div class="d-flex align-center justify-space-between">
-            <h3 class="text-h5 font-weight-bold">Enable Maintenance Mode</h3>
+            <h3 class="text-h5 font-weight-bold">
+              Enable Maintenance Mode
+            </h3>
           </div>
         </v-card-title>
 
@@ -78,8 +86,12 @@
         <v-divider />
 
         <v-card-actions class="px-6 py-4 flex-row-reverse justify-start">
-          <v-btn variant="text" color="error" @click="confirm()">Enable</v-btn>
-          <v-btn variant="plain" @click="cancel()">Cancel</v-btn>
+          <v-btn variant="text" color="error" @click="confirm()">
+            Enable
+          </v-btn>
+          <v-btn variant="plain" @click="cancel()">
+            Cancel
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -100,7 +112,7 @@ const { execute: toggleMaintenanceMode, isLoading } = useAsyncState(
     isEnabled.value = !isEnabled.value
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 
 const { isRevealed, reveal, cancel, confirm } = useDialog()

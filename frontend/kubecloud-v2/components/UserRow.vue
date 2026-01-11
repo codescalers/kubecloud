@@ -78,7 +78,7 @@ const { execute: handleCredit, isLoading: isCreditLoading } = useAsyncState(
     toast.success({ message: data.message })
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 
 async function onCredit() {
@@ -95,7 +95,7 @@ const { execute: handleDrain, isLoading: isDrainLoading } = useAsyncState(
     toast.success({ message: data.message })
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 
 async function onDrain() {
@@ -113,7 +113,7 @@ const { execute: handleRemove, isLoading: isRemoveLoading } = useAsyncState(
     emit("remove")
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 
 async function onRemove() {

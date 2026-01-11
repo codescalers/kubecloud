@@ -4,7 +4,7 @@ export default defineNuxtRouteMiddleware(() => {
     return navigateTo("/sign-in")
   }
 
-  console.log("should be admin")
+  console.warn("should be admin")
 
   // TODO: Check if user is admin
 })

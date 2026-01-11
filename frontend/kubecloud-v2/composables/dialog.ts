@@ -1,10 +1,9 @@
 // import type { UseConfirmDialogRevealResult } from "@vueuse/core"
 
-export const useDialog = <A = undefined, B = undefined, C = undefined>() => {
+export function useDialog<A = undefined, B = undefined, C = undefined>() {
   const data = ref<A>()
   const { onReveal, ...reset } = useConfirmDialog<A, B, C>()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onReveal(((d: A) => (data.value = d)) as any)
 
   return {
@@ -14,25 +13,26 @@ export const useDialog = <A = undefined, B = undefined, C = undefined>() => {
   }
 }
 
-export const useFilesDialog = (options?: Parameters<typeof useFileDialog>[0]) => {
+export function useFilesDialog(options?: Parameters<typeof useFileDialog>[0]) {
   const { onChange, onCancel, open, reset } = useFileDialog(options)
   const files = ref<File[]>([])
 
   onChange((newFiles) => {
     if (newFiles) {
       const fs = [...files.value]
-      outer: for (const newFile of newFiles) {
-        for (const file of fs) {
-          if (
-            file.name === newFile.name &&
-            file.size === newFile.size &&
-            file.lastModified === newFile.lastModified
-          ) {
-            continue outer
-          }
-        }
 
-        fs.push(newFile)
+      for (const newFile of newFiles) {
+        const exists = fs.some((f) => {
+          return (
+            f.name === newFile.name
+            && f.size === newFile.size
+            && f.lastModified === newFile.lastModified
+          )
+        })
+
+        if (!exists) {
+          fs.push(newFile)
+        }
       }
 
       files.value = fs
@@ -40,7 +40,7 @@ export const useFilesDialog = (options?: Parameters<typeof useFileDialog>[0]) =>
   })
 
   function removeFile(file: File) {
-    files.value = files.value.filter((f) => f !== file)
+    files.value = files.value.filter(f => f !== file)
   }
 
   return {

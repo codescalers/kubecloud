@@ -1,6 +1,8 @@
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold text-center">Welcome Back!</h1>
+    <h1 class="text-h4 font-weight-bold text-center">
+      Welcome Back!
+    </h1>
 
     <p class="text-subtitle-2 opacity-70 text-center mt-4 mb-8">
       Sign in to your Mycelium Cloud account
@@ -72,7 +74,7 @@ const { isLoading, execute: login } = useAsyncState(
   async () => {
     const { data } = await api.users.loginUser(
       { email: email.value, password: password.value },
-      { unauthenticated: true }
+      { unauthenticated: true },
     )
 
     accessToken.value = data.data?.access_token ?? ""
@@ -90,6 +92,6 @@ const { isLoading, execute: login } = useAsyncState(
         toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
       }
     },
-  }
+  },
 )
 </script>

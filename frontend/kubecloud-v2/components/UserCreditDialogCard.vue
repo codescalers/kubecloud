@@ -8,8 +8,7 @@
           :style="{
             backgroundColor: 'rgba(var(--v-theme-primary), var(--v-border-opacity))',
           }"
-          >{{ user?.email ?? "N/A" }}</span
-        >
+        >{{ user?.email ?? "N/A" }}</span>
       </div>
     </template>
 
@@ -17,8 +16,12 @@
       <v-row>
         <v-col cols="12">
           <div class="d-flex justify-space-between align-center">
-            <p class="text-h6">Credit Details</p>
-            <p class="text-subtitle-2 opacity-50">Apply credits to user accounts</p>
+            <p class="text-h6">
+              Credit Details
+            </p>
+            <p class="text-subtitle-2 opacity-50">
+              Apply credits to user accounts
+            </p>
           </div>
         </v-col>
 
@@ -39,9 +42,9 @@
               (v) => v < 10000 || 'Amount must be less than 10,000',
               (v) => !isNaN(parseFloat(v)) || 'Amount must be a number',
               (v) =>
-                !v.includes('.') ||
-                (v.includes('.') && v.split('.')[1].length <= 2) ||
-                'Amount can only have 2 decimal places',
+                !v.includes('.')
+                || (v.includes('.') && v.split('.')[1].length <= 2)
+                || 'Amount can only have 2 decimal places',
             ]"
           >
             <template #append-inner>
@@ -91,13 +94,13 @@ import type { ServicesUserWithUSDBalance } from "../generated/api"
 
 defineProps<{ user?: ServicesUserWithUSDBalance }>()
 const emit = defineEmits<{
-  (e: "confirm", event: { amount: number; memo: string }): void
+  (e: "confirm", event: { amount: number, memo: string }): void
   (e: "cancel"): void
 }>()
 
 const form = ref<VForm>()
 function submit() {
   const f = new FormData(form.value!.$el as HTMLFormElement)
-  emit("confirm", { amount: parseFloat(f.get("amount") as string), memo: f.get("memo") as string })
+  emit("confirm", { amount: Number.parseFloat(f.get("amount") as string), memo: f.get("memo") as string })
 }
 </script>

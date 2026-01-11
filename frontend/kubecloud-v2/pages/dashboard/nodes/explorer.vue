@@ -8,7 +8,9 @@
           text="My Nodes"
           to="/dashboard/nodes"
         />
-        <h1 class="text-h4 font-weight-bold">Reserve Your Node</h1>
+        <h1 class="text-h4 font-weight-bold">
+          Reserve Your Node
+        </h1>
         <div :style="{ width: '122px' }" />
       </div>
 
@@ -52,7 +54,9 @@
       <div class="border rounded-1">
         <div class="pa-8">
           <div class="d-flex justify-space-between">
-            <h4 class="text-h5 font-weight-bold">Available Nodes</h4>
+            <h4 class="text-h5 font-weight-bold">
+              Available Nodes
+            </h4>
             <v-btn
               variant="text"
               class="border"
@@ -70,7 +74,9 @@
         <v-divider />
 
         <div class="pa-8">
-          <p v-if="isLoading" class="text-subtitle-2 opacity-70 text-center">Loading nodes...</p>
+          <p v-if="isLoading" class="text-subtitle-2 opacity-70 text-center">
+            Loading nodes...
+          </p>
           <p v-else-if="filteredNodes.length === 0" class="text-subtitle-2 opacity-70 text-center">
             No nodes found
           </p>

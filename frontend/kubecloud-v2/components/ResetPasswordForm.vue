@@ -1,8 +1,12 @@
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold text-center">Reset Password</h1>
+    <h1 class="text-h4 font-weight-bold text-center">
+      Reset Password
+    </h1>
 
-    <p class="text-subtitle-2 opacity-70 text-center mt-2 mb-10">Enter your new password below</p>
+    <p class="text-subtitle-2 opacity-70 text-center mt-2 mb-10">
+      Enter your new password below
+    </p>
 
     <v-form v-model="valid" @submit.prevent="resetPassword()">
       <PasswordInput v-model="password" block />
@@ -25,7 +29,7 @@
 <script setup lang="ts">
 import { AxiosError } from "axios"
 
-const props = defineProps<{ email: string; accessToken: string; refreshToken: string }>()
+const props = defineProps<{ email: string, accessToken: string, refreshToken: string }>()
 
 const password = ref("")
 const valid = ref(false)
@@ -43,7 +47,7 @@ const { execute: resetPassword, isLoading } = useAsyncState(
         password: password.value,
         confirm_password: password.value,
       },
-      { unauthenticated: true, headers: { Authorization: `Bearer ${props.accessToken}` } }
+      { unauthenticated: true, headers: { Authorization: `Bearer ${props.accessToken}` } },
     )
 
     if (data.status === 200) {
@@ -64,6 +68,6 @@ const { execute: resetPassword, isLoading } = useAsyncState(
         toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
       }
     },
-  }
+  },
 )
 </script>

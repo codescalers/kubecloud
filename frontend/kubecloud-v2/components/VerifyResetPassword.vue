@@ -1,13 +1,21 @@
 <template>
   <div>
-    <h3 class="text-h5 text-center mb-4">Please check your email</h3>
+    <h3 class="text-h5 text-center mb-4">
+      Please check your email
+    </h3>
     <p class="text-body-2 text-center mb-4">
       We've sent a code to
       <span class="font-weight-bold">{{ email }}</span>
     </p>
 
     <v-form @submit.prevent>
-      <v-otp-input v-model="otp" length="4" variant="outlined" autofocus :disabled="isLoading" />
+      <v-otp-input
+        v-model="otp"
+        length="4"
+        variant="outlined"
+        autofocus
+        :disabled="isLoading"
+      />
 
       <v-btn
         type="submit"
@@ -45,7 +53,7 @@ const { execute: verifyCode, isLoading } = useAsyncState(
   async () => {
     const { data } = await api.users.verifyForgotPasswordCode(
       { code: +otp.value, email: props.email },
-      { unauthenticated: true }
+      { unauthenticated: true },
     )
 
     accessToken.value = data.data?.access_token ?? ""
@@ -55,6 +63,6 @@ const { execute: verifyCode, isLoading } = useAsyncState(
     emit("verify")
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 </script>
