@@ -41,6 +41,9 @@ export default defineNuxtPlugin((nuxtApp) => {
             borderRadius: "18px",
           },
         },
+        VDataTable: {
+          class: "kc-table",
+        },
         VDataTableServer: {
           class: "kc-table",
         },

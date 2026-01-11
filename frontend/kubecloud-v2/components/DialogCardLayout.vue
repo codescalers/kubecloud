@@ -24,7 +24,9 @@
       </v-btn>
     </v-card-title>
 
-    <v-card-text>
+    <slot v-if="$slots.outer" name="outer" />
+
+    <v-card-text v-if="$slots.default">
       <slot />
     </v-card-text>
 

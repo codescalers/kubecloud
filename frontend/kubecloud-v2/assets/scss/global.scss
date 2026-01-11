@@ -1,7 +1,6 @@
-// Global styles
 body,
 html {
-      scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
 .text-link {
@@ -126,6 +125,7 @@ html {
     text-wrap: nowrap !important;
     font-size: 12px !important;
     opacity: 0.5 !important;
+    font-weight: bold !important;
   }
 
   tbody {

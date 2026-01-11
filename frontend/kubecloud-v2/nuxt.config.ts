@@ -11,6 +11,12 @@ export default defineNuxtConfig({
     enabled: !prod,
   },
   ssr: prod,
+  components: [
+    {
+      path: "~/components",
+      pathPrefix: false,
+    },
+  ],
   typescript: {
     strict: true,
   },
