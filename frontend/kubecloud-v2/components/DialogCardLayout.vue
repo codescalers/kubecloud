@@ -39,6 +39,6 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ title?: string; description?: string; icon?: string; iconColor?: string }>()
+defineProps<{ title?: string, description?: string, icon?: string, iconColor?: string }>()
 defineEmits<{ (e: "cancel"): void }>()
 </script>

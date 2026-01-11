@@ -1,6 +1,8 @@
 <template>
   <div class="text-center">
-    <h3 class="text-h4 font-weight-bold mb-3">Verify Your email</h3>
+    <h3 class="text-h4 font-weight-bold mb-3">
+      Verify Your email
+    </h3>
 
     <p class="text-subtitle-2 mb-9">
       <span class="opacity-70">
@@ -8,7 +10,7 @@
       </span>
       <span
         class="font-weight-bold opacity-90"
-        v-text="email ? email.slice(0, 2) + '***@' + email.split('@')[1] : 'Your Email Address'"
+        v-text="email ? `${email.slice(0, 2)}***@${email.split('@')[1]}` : 'Your Email Address'"
       />.
       <span class="opacity-70">Please enter the 4-6 digits code.</span>
     </p>
@@ -104,7 +106,7 @@ watch(
       otp.value = ""
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const toast = useToast()
@@ -119,7 +121,7 @@ const { execute: verify, isLoading: verifying } = useAsyncState(
         toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
       }
     },
-  }
+  },
 )
 </script>
 

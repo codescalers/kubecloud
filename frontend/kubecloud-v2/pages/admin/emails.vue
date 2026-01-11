@@ -1,8 +1,12 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-h4 font-weight-bold">Emails</h1>
-      <p class="text-body-1 mt-2 opacity-70">Send emails to all platform users</p>
+      <h1 class="text-h4 font-weight-bold">
+        Emails
+      </h1>
+      <p class="text-body-1 mt-2 opacity-70">
+        Send emails to all platform users
+      </p>
     </div>
 
     <v-alert
@@ -20,7 +24,9 @@
     <v-form class="mb-16">
       <v-row>
         <v-col cols="12">
-          <p class="text-subtitle-2 opacity-70 mb-2">Email Subject</p>
+          <p class="text-subtitle-2 opacity-70 mb-2">
+            Email Subject
+          </p>
           <v-text-field
             placeholder="Enter the subject of the email"
             variant="outlined"
@@ -31,8 +37,12 @@
 
         <v-col cols="12">
           <div class="mb-2 d-flex align-center justify-space-between">
-            <p class="text-subtitle-2 opacity-70">Email Content</p>
-            <p class="text-caption opacity-50">Markdown supported</p>
+            <p class="text-subtitle-2 opacity-70">
+              Email Content
+            </p>
+            <p class="text-caption opacity-50">
+              Markdown supported
+            </p>
           </div>
           <MarkdownEditor label="Write your message here..." />
         </v-col>
@@ -62,7 +72,9 @@
               <v-avatar variant="tonal" size="80">
                 <v-icon icon="mdi-paperclip" />
               </v-avatar>
-              <p class="text-subtitle-2 opacity-70">Click to add attachments</p>
+              <p class="text-subtitle-2 opacity-70">
+                Click to add attachments
+              </p>
             </template>
           </v-card>
         </v-col>
@@ -83,7 +95,9 @@
             </div>
 
             <div class="d-flex ga-2 align-center">
-              <v-btn variant="plain">Save Draft</v-btn>
+              <v-btn variant="plain">
+                Save Draft
+              </v-btn>
 
               <v-btn
                 type="submit"

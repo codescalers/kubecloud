@@ -1,4 +1,4 @@
-export const useStatusColor = (status: () => string) => {
+export function useStatusColor(status: () => string) {
   return computed(() => {
     switch (status()) {
       case "running":

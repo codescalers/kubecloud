@@ -1,8 +1,12 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-h4 font-weight-bold">Voucher Management</h1>
-      <p class="text-body-1 mt-2 opacity-70">Generate and manage platform vouchers</p>
+      <h1 class="text-h4 font-weight-bold">
+        Voucher Management
+      </h1>
+      <p class="text-body-1 mt-2 opacity-70">
+        Generate and manage platform vouchers
+      </p>
     </div>
 
     <v-card :style="{ padding: '0 !important' }" class="mb-8">
@@ -100,7 +104,7 @@ const { state, isLoading } = useAsyncState(
     return (data.data as unknown as { vouchers: ModelsVoucher[] }).vouchers ?? []
   },
   [],
-  { resetOnExecute: false }
+  { resetOnExecute: false },
 )
 
 const vouchers = computed(() => {

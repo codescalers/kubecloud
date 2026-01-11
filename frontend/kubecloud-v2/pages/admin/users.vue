@@ -1,8 +1,12 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-h4 font-weight-bold">Users</h1>
-      <p class="text-body-1 mt-2 opacity-70">All platform users</p>
+      <h1 class="text-h4 font-weight-bold">
+        Users
+      </h1>
+      <p class="text-body-1 mt-2 opacity-70">
+        All platform users
+      </p>
     </div>
 
     <v-data-table-server
@@ -80,20 +84,20 @@ const { state: users, isLoading } = useAsyncState(
     return data.data?.users ?? []
   },
   [],
-  { resetOnExecute: false }
+  { resetOnExecute: false },
 )
 
-const credit = useDialog<ServicesUserWithUSDBalance, { amount: number; memo: string }>()
+const credit = useDialog<ServicesUserWithUSDBalance, { amount: number, memo: string }>()
 const drain = useDialog<ServicesUserWithUSDBalance>()
 const remove = useDialog<ServicesUserWithUSDBalance>()
 
 provide(UserDialogCtxKey, {
-  credit: (u) => credit.reveal(u).then((d) => d.data),
-  drain: (u) => drain.reveal(u).then((d) => !d.isCanceled),
-  remove: (u) => remove.reveal(u).then((d) => !d.isCanceled),
+  credit: u => credit.reveal(u).then(d => d.data),
+  drain: u => drain.reveal(u).then(d => !d.isCanceled),
+  remove: u => remove.reveal(u).then(d => !d.isCanceled),
 })
 
 function onRemoveUser(id: number) {
-  users.value = users.value.filter((u) => u.id !== id)
+  users.value = users.value.filter(u => u.id !== id)
 }
 </script>

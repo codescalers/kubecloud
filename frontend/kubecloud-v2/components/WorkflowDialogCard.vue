@@ -6,7 +6,9 @@
           <v-icon icon="mdi-sitemap-outline" size="small" color="success" />
           <span class="text-h5 font-weight-bold">Workflow Details</span>
         </div>
-        <p class="text-subtitle-2 opacity-50">Review execution parameters and current state</p>
+        <p class="text-subtitle-2 opacity-50">
+          Review execution parameters and current state
+        </p>
       </div>
 
       <v-btn
@@ -23,7 +25,9 @@
     <v-card-text>
       <v-row>
         <v-col cols="12">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">uuid</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            uuid
+          </p>
           <p
             class="text-subtitle-2 border d-inline-block px-3 py-1 rounded-lg"
             :style="{ backgroundColor: 'rgb(var(--v-bg-2))' }"
@@ -33,12 +37,16 @@
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">name</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            name
+          </p>
           <p class="text-subtitle-2" v-text="workflow?.display_name" />
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">template name</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            template name
+          </p>
           <div class="d-flex align-center ga-2 opacity-70">
             <v-icon icon="mdi-puzzle" size="x-small" />
             <p class="text-subtitle-2 border px-2 rounded-lg" v-text="workflow?.name" />
@@ -46,14 +54,18 @@
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">Status</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            Status
+          </p>
           <div class="d-inline-block">
             <StatusChip :status="workflow?.status!" />
           </div>
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">Progress</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            Progress
+          </p>
           <div class="text-subtitle-2 mb-2 d-flex align-center ga-3">
             <span>
               Step {{ workflow?.current_step! }} of
@@ -72,7 +84,9 @@
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">user id</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            user id
+          </p>
           <p
             class="text-subtitle-2"
             :class="{ 'opacity-50': !workflow?.user_id }"
@@ -81,7 +95,9 @@
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">queue</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            queue
+          </p>
           <p
             class="text-subtitle-2"
             :class="{ 'opacity-50': !workflow?.queue_name }"
@@ -90,7 +106,9 @@
         </v-col>
 
         <v-col cols="6">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">created at</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            created at
+          </p>
           <p class="text-subtitle-2 d-flex align-center ga-2">
             <v-icon icon="mdi-calendar-outline" size="x-small" />
             <span>{{ createdAt }}</span>
@@ -98,19 +116,21 @@
         </v-col>
 
         <v-col cols="12">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">metadata</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            metadata
+          </p>
           <pre>
                 {{ workflow?.metadata }}
-              </pre
-          >
+              </pre>
         </v-col>
 
         <v-col cols="12">
-          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">state</p>
+          <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
+            state
+          </p>
           <pre class="w-100 overflow-x-auto">
                 {{ workflow?.state }}
-              </pre
-          >
+              </pre>
         </v-col>
       </v-row>
     </v-card-text>

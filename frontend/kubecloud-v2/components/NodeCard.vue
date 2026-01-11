@@ -5,14 +5,12 @@
         class="px-4 py-2 bg-primary text-uppercase text-caption font-weight-bold"
         :style="{ borderRadius: '0 18px' }"
       >
-        <span class="text-background"
-          >{{ Math.round((node.discount_price! / node.price_usd!) * 100 * 100) / 100 }}% OFF</span
-        >
+        <span class="text-background">{{ Math.round((node.discount_price! / node.price_usd!) * 100 * 100) / 100 }}% OFF</span>
       </p>
     </div>
 
     <div>
-      <h4 class="text-h6 font-weight-bold" v-text="'Node ' + node.nodeId" />
+      <h4 class="text-h6 font-weight-bold" v-text="`Node ${node.nodeId}`" />
       <div
         class="d-flex justify-space-between align-end"
         :style="{ marginTop: node.num_gpu ? '-6px' : '0' }"
@@ -66,10 +64,11 @@
 
     <div class="d-flex justify-space-between align-end flex-wrap">
       <div>
-        <h6 class="opacity-70 text-uppercase text-caption font-weight-bold">Monthly Price</h6>
+        <h6 class="opacity-70 text-uppercase text-caption font-weight-bold">
+          Monthly Price
+        </h6>
         <p class="text-h5">
-          <span class="font-weight-bold">${{ Math.round(node.discount_price! * 100) / 100 }}</span
-          >&nbsp;
+          <span class="font-weight-bold">${{ Math.round(node.discount_price! * 100) / 100 }}</span>&nbsp;
           <span class="text-caption opacity-50">/mo</span>
         </p>
       </div>
@@ -121,19 +120,17 @@
 </template>
 
 <script setup lang="ts">
-import { AxiosError } from "axios"
 import type { HandlersNodesWithDiscount } from "../generated/api"
+import { AxiosError } from "axios"
 
 const props = defineProps<{ node: HandlersNodesWithDiscount }>()
 const api = useApi()
 
 const monitoringUrl = computedAsync(async () => {
-  console.log("async computing")
-
   const accountId = await api.helpers.getAccountId(props.node.twinId!)
   const params = new URLSearchParams({
-    orgId: "2",
-    refresh: "30s",
+    "orgId": "2",
+    "refresh": "30s",
     "var-network": "dev",
     "var-farm": props.node.farmId!.toString(),
     "var-node": accountId,
@@ -147,7 +144,7 @@ const toast = useToast()
 const { isLoading, execute: reserveNode } = useAsyncState(
   async () => {
     const { data } = await api.nodes.reserveNode(props.node.nodeId!.toString())
-    console.log(data)
+    return data
   },
   null,
   {
@@ -157,6 +154,6 @@ const { isLoading, execute: reserveNode } = useAsyncState(
         toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
       }
     },
-  }
+  },
 )
 </script>

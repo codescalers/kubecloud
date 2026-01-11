@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
 cd frontend/kubecloud-v2
 
-yarn typecheck
+yarn typecheck || exit 1
 yarn lint-staged

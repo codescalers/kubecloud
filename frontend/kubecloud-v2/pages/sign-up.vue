@@ -47,7 +47,7 @@ const { execute: sendVerificationCode, isLoading } = useAsyncState(
     await api.helpers.awaitWorkflowCompletion(data.data?.workflow_id ?? "")
   },
   null,
-  { immediate: false }
+  { immediate: false },
 )
 
 const router = useRouter()
@@ -59,7 +59,7 @@ async function verifyCode(otp: string) {
 
   const { data } = await api.users.verifyRegisterCode(
     { code: +otp, email: body.email },
-    { unauthenticated: true }
+    { unauthenticated: true },
   )
 
   const completed = await api.helpers.awaitWorkflowCompletion(data.data?.workflow_id ?? "")
@@ -72,7 +72,7 @@ async function verifyCode(otp: string) {
       email: body.email,
       password: body.password,
     },
-    { unauthenticated: true }
+    { unauthenticated: true },
   )
 
   accessToken.value = loginData.data?.access_token ?? ""

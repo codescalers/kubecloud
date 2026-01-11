@@ -1,81 +1,11 @@
 {
-  // Editor
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.enable": false,
+  "eslint.enable": true,
+  "eslint.useFlatConfig": true,
+  "editor.formatOnSave": false,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
-    "source.organizeImports": "explicit"
+    "source.organizeImports": "never"
   },
-  "editor.tabSize": 2,
-  "editor.insertSpaces": true,
-  "editor.detectIndentation": false,
-  "editor.rulers": [100],
-  "editor.trimAutoWhitespace": true,
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
-  "files.eol": "\n",
-
-  // Prettier
-  "prettier.requireConfig": true,
-  "prettier.useEditorConfig": false,
-
-  // ESLint
-  "eslint.validate": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact",
-    "vue"
-  ],
-  "eslint.format.enable": true,
-
-  // TypeScript
-  "typescript.preferences.importModuleSpecifier": "relative",
-  "typescript.updateImportsOnFileMove.enabled": "always",
-  "typescript.suggest.autoImports": true,
-  "typescript.inlayHints.parameterNames.enabled": "all",
-  "typescript.inlayHints.variableTypes.enabled": true,
-
-  // Vue
-  "vetur.format.enable": false,
-  "volar.autoCompleteRefs": true,
-  "volar.codeLens.pugTools": false,
-  "volar.codeLens.scriptSetupTools": true,
-
-  // File associations
-  "files.associations": {
-    "*.vue": "vue"
-  },
-
-  // Exclude patterns
-  "files.exclude": {
-    "**/.git": true,
-    "**/.DS_Store": true,
-    "**/node_modules": true,
-    "**/.nuxt": true,
-    "**/.output": true,
-    "**/.nitro": true
-  },
-
-  // Search exclude
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/.nuxt": true,
-    "**/.output": true,
-    "**/.nitro": true,
-    "**/dist": true,
-    "**/yarn.lock": true,
-    "**/package-lock.json": true
-  },
-
-  // Watcher exclude
-  "files.watcherExclude": {
-    "**/.git/objects/**": true,
-    "**/.git/subtree-cache/**": true,
-    "**/node_modules/**": true,
-    "**/.nuxt/**": true,
-    "**/.output/**": true,
-    "**/.nitro/**": true
-  }
+  "typescript.inlayHints.parameterNames.enabled": "all"
 }
-

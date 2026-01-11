@@ -48,25 +48,26 @@ export const useApi = createGlobalState(() => {
   })
 
   instance.interceptors.response.use(
-    (response) => response,
+    response => response,
     async (error) => {
       if (
-        error instanceof AxiosError &&
-        error.response &&
-        [401, 403].includes(error.response.status) &&
-        error.config &&
-        "Authorization" in error.config.headers
+        error instanceof AxiosError
+        && error.response
+        && [401, 403].includes(error.response.status)
+        && error.config
+        && "Authorization" in error.config.headers
       ) {
         if (!mu.isAcquired()) {
           await mu.acquire()
           const { data } = await users.refreshToken(
             { refresh_token: refreshToken.value },
-            { unauthenticated: true }
+            { unauthenticated: true },
           )
 
           accessToken.value = data.data?.access_token ?? ""
           mu.release()
-        } else {
+        }
+        else {
           await awaitLock()
         }
 
@@ -74,7 +75,7 @@ export const useApi = createGlobalState(() => {
       }
 
       return Promise.reject(error)
-    }
+    },
   )
 
   return {
@@ -94,7 +95,7 @@ export const useApi = createGlobalState(() => {
       notifications,
       twins,
       users,
-      workflow
+      workflow,
     ),
   }
 })
@@ -110,7 +111,7 @@ class ApiHelpers {
     private readonly notifications: NotificationsApi,
     private readonly twins: TwinsApi,
     private readonly users: UsersApi,
-    private readonly workflow: WorkflowApi
+    private readonly workflow: WorkflowApi,
   ) {
     this.twinToAccountId = {}
   }
@@ -128,7 +129,7 @@ class ApiHelpers {
       return true
     }
 
-    await new Promise((res) => setTimeout(res, 2_000))
+    await new Promise(res => setTimeout(res, 2_000))
     return this.awaitWorkflowCompletion(workflowId)
   }
 

@@ -48,6 +48,6 @@ export default defineNuxtPlugin((nuxtApp) => {
           maxWidth: "1400px",
         },
       },
-    })
+    }),
   )
 })

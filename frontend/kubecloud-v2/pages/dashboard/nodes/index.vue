@@ -1,7 +1,9 @@
 <template>
   <div>
     <h1>Dashboard Nodes {{ isLoading }}</h1>
-    <v-btn to="/dashboard/nodes/explorer">Explorer</v-btn>
+    <v-btn to="/dashboard/nodes/explorer">
+      Explorer
+    </v-btn>
 
     <pre>
       {{ state?.data }}

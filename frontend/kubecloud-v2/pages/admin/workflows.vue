@@ -1,8 +1,12 @@
 <template>
   <div>
     <div class="mb-8">
-      <h1 class="text-h4 font-weight-bold">Workflows</h1>
-      <p class="text-body-1 mt-2 opacity-70">All platform workflows</p>
+      <h1 class="text-h4 font-weight-bold">
+        Workflows
+      </h1>
+      <p class="text-body-1 mt-2 opacity-70">
+        All platform workflows
+      </p>
     </div>
 
     <div class="d-flex justify-space-between align-center mb-6">
@@ -88,7 +92,7 @@ const {
     return data.data
   },
   null,
-  { resetOnExecute: false }
+  { resetOnExecute: false },
 )
 
 watchDebounced([page, limit, status], () => loadWorkflows(), { debounce: 100 })

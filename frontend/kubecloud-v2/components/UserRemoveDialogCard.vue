@@ -13,8 +13,7 @@
           :style="{
             backgroundColor: 'rgba(var(--v-theme-primary), var(--v-border-opacity))',
           }"
-          >{{ user?.email ?? "N/A" }}</span
-        >
+        >{{ user?.email ?? "N/A" }}</span>
       </div>
     </template>
 
@@ -31,8 +30,9 @@
         color="error"
         prepend-icon="mdi-trash-can-outline"
         @click="$emit('confirm')"
-        >Remove User</v-btn
       >
+        Remove User
+      </v-btn>
     </template>
   </DialogCardLayout>
 </template>

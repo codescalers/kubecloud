@@ -1,6 +1,8 @@
 <template>
   <div>
-    <h1 class="text-h4 font-weight-bold mb-9">Create Account</h1>
+    <h1 class="text-h4 font-weight-bold mb-9">
+      Create Account
+    </h1>
 
     <v-form v-model="valid" :disabled="isLoading" @submit.prevent="register()">
       <v-row>
@@ -22,7 +24,6 @@
 
         <v-col cols="12" sm="6" md="12" lg="6">
           <v-text-field
-            ref="emailRef"
             v-model.trim="email"
             prepend-inner-icon="mdi-email-outline"
             variant="outlined"
@@ -48,9 +49,11 @@
           <template #label>
             <div class="text-caption">
               <span class="opacity-50">By creating an account you agree to our</span>&nbsp;
-              <a target="_blank" href="/terms-and-conditions" class="text-link"
-                >Terms & Conditions</a
-              >&nbsp; <span class="opacity-50">and</span>&nbsp;
+              <a
+                target="_blank"
+                href="/terms-and-conditions"
+                class="text-link"
+              >Terms & Conditions</a>&nbsp; <span class="opacity-50">and</span>&nbsp;
               <a target="_blank" href="/privacy-policy" class="text-link">Privacy Policy</a>
             </div>
           </template>
@@ -73,9 +76,9 @@
 </template>
 
 <script lang="ts" setup>
+import type { HandlersRegisterInput } from "~/generated/api"
 import { AxiosError } from "axios"
 import isEmail from "validator/es/lib/isEmail"
-import type { HandlersRegisterInput } from "~/generated/api"
 
 const props = defineProps<{ modelValue: HandlersRegisterInput | null }>()
 const emit = defineEmits<{ (e: "update:model-value", value: HandlersRegisterInput | null): void }>()
@@ -120,6 +123,6 @@ const { execute: register, isLoading } = useAsyncState(
         }
       }
     },
-  }
+  },
 )
 </script>

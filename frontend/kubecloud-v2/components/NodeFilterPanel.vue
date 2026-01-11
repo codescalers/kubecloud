@@ -1,7 +1,9 @@
 <template>
   <v-expand-transition>
     <div v-if="nodes.length === 0">
-      <p class="text-body-2 opacity-70 text-center">Please load some nodes</p>
+      <p class="text-body-2 opacity-70 text-center">
+        Please load some nodes
+      </p>
     </div>
 
     <div v-else>
@@ -39,8 +41,12 @@
 
       <div class="d-flex justify-space-between align-center px-10">
         <div>
-          <p class="text-subtitle-1 font-weight-bold">GPU Required</p>
-          <p class="text-caption opacity-70">Dedicated graphics card</p>
+          <p class="text-subtitle-1 font-weight-bold">
+            GPU Required
+          </p>
+          <p class="text-caption opacity-70">
+            Dedicated graphics card
+          </p>
         </div>
 
         <v-switch v-model="gpu" color="primary" inset hide-details />
@@ -62,7 +68,9 @@
       <v-divider class="my-6" />
 
       <div class="px-10">
-        <p class="text-subtitle-1 font-weight-bold mb-3">Location</p>
+        <p class="text-subtitle-1 font-weight-bold mb-3">
+          Location
+        </p>
         <v-select
           v-model="location"
           clearable
@@ -89,12 +97,10 @@ export interface NodeFilters {
   location: string
 }
 
-const props = defineProps<{ modelValue?: NodeFilters; nodes: HandlersNodesWithDiscount[] }>()
+const props = defineProps<{ modelValue?: NodeFilters, nodes: HandlersNodesWithDiscount[] }>()
 const emit = defineEmits<{ (e: "update:model-value", value: NodeFilters): void }>()
 
 const filterRanges = computed(() => {
-  console.log("computing filter ranges")
-
   const cpu: number[] = []
   const ram: number[] = []
   const ssd: number[] = []
@@ -143,5 +149,5 @@ const filters = computed(() => {
   } as NodeFilters
 })
 
-watchDebounced(filters, (f) => emit("update:model-value", f), { debounce: 100 })
+watchDebounced(filters, f => emit("update:model-value", f), { debounce: 100 })
 </script>

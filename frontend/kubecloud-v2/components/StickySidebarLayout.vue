@@ -7,7 +7,7 @@
           maxHeight: mobile ? undefined : `calc(100vh - 100px)`,
           willChange: 'width',
           transition: 'width 250ms ease-in-out',
-          width: mobile ? '100%' : isOpen ? sidebarWidth + 24 + 'px' : 0,
+          width: mobile ? '100%' : isOpen ? `${sidebarWidth + 24}px` : 0,
         }"
       >
         <div :class="{ 'pr-6 h-100': !mobile }">

@@ -7,5 +7,5 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ icon: string; color: string; title: string; value: number; unit: string }>()
+defineProps<{ icon: string, color: string, title: string, value: number, unit: string }>()
 </script>
