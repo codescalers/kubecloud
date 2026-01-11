@@ -71,6 +71,11 @@
       :items-length="state.length"
       :loading="isLoading"
     >
+      <template #top>
+        <div>
+          <p>xyz</p>
+        </div>
+      </template>
       <template #[`item.created_at`]="{ item }">
         {{ useDateFormat(item.created_at, "DD/MM/YYYY, HH:mm") }}
       </template>
