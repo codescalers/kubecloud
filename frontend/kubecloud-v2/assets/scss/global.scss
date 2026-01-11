@@ -1,12 +1,8 @@
-// *:not([class*="ql-"]),
-// body {
-//   font-family:
-//     Inter,
-//     system-ui,
-//     -apple-system,
-//     BlinkMacSystemFont,
-//     sans-serif !important;
-// }
+// Global styles
+body,
+html {
+      scroll-behavior: smooth;
+}
 
 .text-link {
   position: relative;
