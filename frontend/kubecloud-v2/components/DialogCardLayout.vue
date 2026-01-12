@@ -30,13 +30,10 @@
       <slot />
     </v-card-text>
 
-    <template v-if="$slots.actions">
-      <v-divider />
-
-      <v-card-actions class="px-6 py-4 flex-row-reverse justify-start">
-        <slot name="actions" />
-      </v-card-actions>
-    </template>
+    <v-divider v-if="$slots.actions" />
+    <v-card-actions v-if="$slots.actions" class="px-6 py-4 flex-row-reverse justify-start">
+      <slot name="actions" />
+    </v-card-actions>
   </v-card>
 </template>
 

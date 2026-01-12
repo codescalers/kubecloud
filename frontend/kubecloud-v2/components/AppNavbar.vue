@@ -38,7 +38,7 @@
 
       <v-spacer />
 
-      <template v-if="!authenticated">
+      <div v-if="!authenticated">
         <span v-if="$route.path === ROUTES.SignIn()" class="text-caption opacity-70 mr-2">
           Don't have an account?
         </span>
@@ -65,7 +65,7 @@
           to="/register"
           text="Register"
         /> -->
-      </template>
+      </div>
 
       <v-menu v-else>
         <template #activator="{ props }">

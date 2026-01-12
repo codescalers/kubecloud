@@ -38,7 +38,7 @@ Admin.Workflows = () => `${Admin()}/workflows`
 
 // dashboard routes
 interface DashboardRoutes {
-  Clusters: (() => string) & { Deploy: () => string }
+  Clusters: ((id?: string) => string) & { Deploy: () => string }
   MyNodes: (() => string) & { Explorer: () => string }
   SshKeys: () => string
   Funds: () => string
@@ -48,7 +48,7 @@ interface DashboardRoutes {
 }
 
 const Dashboard: (() => string) & DashboardRoutes = () => "/dashboard"
-Dashboard.Clusters = (() => `${Dashboard()}/clusters`) as DashboardRoutes["Clusters"]
+Dashboard.Clusters = ((id?: string) => `${Dashboard()}/clusters${id ? `/${id}` : ""}`) as DashboardRoutes["Clusters"]
 Dashboard.Clusters.Deploy = () => `${Dashboard.Clusters()}/deploy`
 Dashboard.MyNodes = (() => `${Dashboard()}/my-nodes`) as DashboardRoutes["MyNodes"]
 Dashboard.MyNodes.Explorer = () => `${Dashboard.MyNodes()}/explorer`

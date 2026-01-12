@@ -2,6 +2,9 @@
   <div>
     <h1>Dashboard Clusters {{ isLoading }}</h1>
 
+    <VBtn :to="ROUTES.Dashboard.Clusters.Deploy()" text="Deploy Cluster" />
+    <VBtn :to="ROUTES.Dashboard.Clusters('123')" text="Deploy Cluster" />
+
     <pre>
         {{ state }}
       </pre>
