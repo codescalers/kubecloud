@@ -7,12 +7,13 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "openapi-generator-cli generate && nuxt prepare",
+    "postinstall": "nuxt prepare",
     "prepare": "npm run audit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "nuxt typecheck",
-    "audit": "yarn audit --summary --level critical"
+    "audit": "yarn audit --summary --level critical",
+    "generate:api": "openapi-generator-cli generate"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

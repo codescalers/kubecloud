@@ -12,7 +12,7 @@
 
         <v-spacer />
         <v-col cols="auto">
-          <v-btn size="small" text="Documentation" to="/docs" variant="plain" />
+          <v-btn size="small" text="Documentation" :to="ROUTES.Docs()" variant="plain" />
           <v-btn
             size="small"
             text="Github"
@@ -23,10 +23,10 @@
           <v-btn
             size="small"
             text="Terms & Conditions"
-            to="/terms-and-conditions"
+            :to="ROUTES.TermsAndConditions()"
             variant="plain"
           />
-          <v-btn size="small" text="Privacy Policy" to="/privacy-policy" variant="plain" />
+          <v-btn size="small" text="Privacy Policy" :to="ROUTES.PrivacyPolicy()" variant="plain" />
         </v-col>
       </v-row>
 

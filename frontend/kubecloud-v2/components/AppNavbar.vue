@@ -6,7 +6,7 @@
   >
     <v-container class="d-flex align-center py-0">
       <div class="mr-16">
-        <NuxtLink to="/">
+        <NuxtLink :to="ROUTES.Home()">
           <v-img src="~/assets/images/logo.png" width="124" height="33" />
         </NuxtLink>
       </div>
@@ -39,21 +39,21 @@
       <v-spacer />
 
       <template v-if="!authenticated">
-        <span v-if="$route.path === '/sign-in'" class="text-caption opacity-70 mr-2">
+        <span v-if="$route.path === ROUTES.SignIn()" class="text-caption opacity-70 mr-2">
           Don't have an account?
         </span>
 
-        <span v-if="$route.path === '/sign-up'" class="text-caption opacity-70 mr-2">
+        <span v-if="$route.path === ROUTES.SignUp()" class="text-caption opacity-70 mr-2">
           Already have an account?
         </span>
 
-        <v-btn v-if="$route.path !== '/sign-up'" variant="outlined" to="/sign-up" text="Sign up" />
+        <v-btn v-if="$route.path !== ROUTES.SignUp()" variant="outlined" :to="ROUTES.SignUp()" text="Sign up" />
 
         <v-btn
-          v-if="$route.path !== '/sign-in'"
+          v-if="$route.path !== ROUTES.SignIn()"
           variant="tonal"
           color="primary"
-          to="/sign-in"
+          :to="ROUTES.SignIn()"
           text="Sign in"
           class="ml-2"
         />
@@ -73,9 +73,9 @@
         </template>
 
         <v-list>
-          <v-list-item link title="Admin Panel" prepend-icon="mdi-shield-crown" to="/admin" />
-          <v-list-item link title="Dashboard" prepend-icon="mdi-view-dashboard" to="/dashboard" />
-          <v-list-item link title="Profile" prepend-icon="mdi-account" to="/profile" />
+          <v-list-item link title="Admin Panel" prepend-icon="mdi-shield-crown" :to="ROUTES.Admin()" />
+          <v-list-item link title="Dashboard" prepend-icon="mdi-view-dashboard" :to="ROUTES.Dashboard()" />
+          <v-list-item link title="Profile" prepend-icon="mdi-account" :to="ROUTES.Profile()" />
           <v-divider />
           <v-list-item
             link
@@ -94,12 +94,12 @@
 import type { VBtn } from "vuetify/components/VBtn"
 
 const route = useRoute()
-const routes = ref([
-  { title: "Home", path: "/" },
-  { title: "Features", path: "/features" },
-  { title: "Docs", path: "/docs" },
-  { title: "Use Cases", path: "/use-cases" },
-])
+const routes = [
+  { title: "Home", path: ROUTES.Home() },
+  { title: "Features", path: ROUTES.Features() },
+  { title: "Docs", path: ROUTES.Docs() },
+  { title: "Use Cases", path: ROUTES.UseCases() },
+]
 
 const navbarLinkItems = useTemplateRefsList<VBtn>()
 const indicatorTransform = ref({ offset: 0, width: 0 })
@@ -133,7 +133,7 @@ const authenticated = computed(() => !!accessToken.value)
 function logout() {
   accessToken.value = ""
   refreshToken.value = ""
-  router.push("/")
+  router.push(ROUTES.Home())
 }
 </script>
 

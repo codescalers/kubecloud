@@ -140,7 +140,7 @@ const text = ref("")
 let quill: Quill | null = null
 
 const { isRevealed, reveal, cancel, confirm } = useDialog<undefined, HTMLFormElement>()
-const formats = markRaw([
+const formats = [
   { format: "bold", icon: "format-bold" },
   { format: "italic", icon: "format-italic" },
   { format: "underline", icon: "format-underline" },
@@ -159,7 +159,7 @@ const formats = markRaw([
   },
   { format: "strike", icon: "format-strikethrough-variant" },
   { format: "blockquote", icon: "format-quote-close" },
-])
+]
 
 const font = ref("sans")
 watchImmediate(font, f => quill?.format("font", f))

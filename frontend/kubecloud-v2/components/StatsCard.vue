@@ -1,17 +1,15 @@
 <template>
-  <v-card>
-    <div class="d-flex align-center justify-center">
-      <v-avatar
-        :icon="icon"
-        :color="color"
-        variant="tonal"
-        :size="50"
-        rounded="lg"
-      />
-    </div>
+  <v-card class="text-center">
+    <v-avatar
+      :icon="icon"
+      :color="color"
+      variant="tonal"
+      :size="50"
+      rounded="lg"
+    />
 
-    <p class="text-center text-h4 font-weight-bold mt-4 mb-1 text-no-wrap" v-text="value" />
-    <p class="text-center text-subtitle-2 text-uppercase opacity-50" v-text="title" />
+    <p class="text-h4 font-weight-bold mt-4 mb-1 text-no-wrap" v-text="value" />
+    <p class="text-subtitle-2 text-uppercase text-accent" v-text="title" />
   </v-card>
 </template>
 

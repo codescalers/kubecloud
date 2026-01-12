@@ -2,14 +2,14 @@
   <StickySidebarLayout :is-open="isOpen" :is-fluid="isFluid">
     <template #sidebar>
       <v-list class="overflow-hidden w-100">
-        <v-list-item link exact title="Overview" to="/admin" />
-        <v-list-item link exact title="Users" to="/admin/users" />
-        <v-list-item link exact title="Vouchers" to="/admin/vouchers" />
-        <v-list-item link exact title="System" to="/admin/system" />
-        <v-list-item link exact title="Invoices" to="/admin/invoices" />
-        <v-list-item link exact title="Payments" to="/admin/payments" />
-        <v-list-item link exact title="Emails" to="/admin/emails" />
-        <v-list-item link exact title="Workflows" to="/admin/workflows" />
+        <v-list-item link exact title="Overview" :to="ROUTES.Admin()" />
+        <v-list-item link exact title="Users" :to="ROUTES.Admin.Users()" />
+        <v-list-item link exact title="Vouchers" :to="ROUTES.Admin.Vouchers()" />
+        <v-list-item link exact title="System" :to="ROUTES.Admin.System()" />
+        <v-list-item link exact title="Invoices" :to="ROUTES.Admin.Invoices()" />
+        <v-list-item link exact title="Payments" :to="ROUTES.Admin.Payments()" />
+        <v-list-item link exact title="Emails" :to="ROUTES.Admin.Emails()" />
+        <v-list-item link exact title="Workflows" :to="ROUTES.Admin.Workflows()" />
       </v-list>
     </template>
 

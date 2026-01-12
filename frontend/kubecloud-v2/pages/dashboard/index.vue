@@ -27,44 +27,8 @@
       </p>
 
       <v-row>
-        <v-col cols="3">
-          <v-btn
-            to="/dashboard/clusters/deploy"
-            block
-            variant="outlined"
-            text="Deploy Cluster"
-            prepend-icon="mdi-plus"
-          />
-        </v-col>
-
-        <v-col cols="3">
-          <v-btn
-            to="/dashboard/nodes/explorer"
-            block
-            variant="outlined"
-            text="Reserve Node"
-            prepend-icon="mdi-server-plus"
-          />
-        </v-col>
-
-        <v-col cols="3">
-          <v-btn
-            to="/dashboard/ssh"
-            block
-            variant="outlined"
-            text="Add SSH Key"
-            prepend-icon="mdi-key-plus"
-          />
-        </v-col>
-
-        <v-col cols="3">
-          <v-btn
-            to="/dashboard/funds"
-            block
-            variant="outlined"
-            text="Add Funds"
-            prepend-icon="mdi-cash-plus"
-          />
+        <v-col v-for="action in actions" :key="action.to" cols="3">
+          <v-btn block variant="outlined" v-bind="action" />
         </v-col>
       </v-row>
     </div>
@@ -118,4 +82,27 @@ const stats = computed<StatsResource[]>(() => {
     },
   ]
 })
+
+const actions = [
+  {
+    to: "/dashboard/clusters/deploy",
+    text: "Deploy Cluster",
+    prependIcon: "mdi-plus",
+  },
+  {
+    to: "/dashboard/nodes/explorer",
+    text: "Reserve Node",
+    prependIcon: "mdi-server-plus",
+  },
+  {
+    to: "/dashboard/ssh-keys",
+    text: "Add SSH Key",
+    prependIcon: "mdi-key-plus",
+  },
+  {
+    to: "/dashboard/funds",
+    text: "Add Funds",
+    prependIcon: "mdi-cash-plus",
+  },
+]
 </script>

@@ -37,7 +37,6 @@
       @update:model-value="cancel()"
     >
       <InvoiceDialogCard :invoice="selectedInvoice!" @cancel="cancel()" />
-      <!-- <WorkflowDialogCard :workflow="selectedWorkflow!" @cancel="cancel()" /> -->
     </v-dialog>
   </div>
 </template>

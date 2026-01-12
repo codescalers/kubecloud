@@ -37,9 +37,7 @@ export default defineNuxtPlugin((nuxtApp) => {
         },
         VCard: {
           class: "px-10 py-8 border",
-          style: {
-            borderRadius: "18px",
-          },
+          rounded: "xl",
         },
         VDataTable: {
           class: "kc-table",

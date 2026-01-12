@@ -60,12 +60,14 @@
     <template #actions>
       <v-btn
         component="a"
-        variant="text"
-        prepend-icon="mdi-download"
-        text="Download"
+        :variant="downloaded ? 'tonal' : 'text'"
+        :prepend-icon="downloaded ? 'mdi-check' : 'mdi-download'"
+        :text="downloaded ? `00:0${remaining}` : 'Download'"
         color="success"
         download="invoice.json"
         :href="binary"
+        :disabled="downloaded"
+        @click="startDownload(3)"
       />
     </template>
   </DialogCardLayout>
@@ -92,4 +94,6 @@ const binary = computed(() => {
 
   return URL.createObjectURL(blob)
 })
+
+const { isActive: downloaded, start: startDownload, remaining } = useCountdown(3)
 </script>

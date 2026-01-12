@@ -6,7 +6,7 @@
           variant="plain"
           prepend-icon="mdi-keyboard-backspace"
           text="My Nodes"
-          to="/dashboard/nodes"
+          :to="ROUTES.Dashboard.MyNodes()"
         />
         <h1 class="text-h4 font-weight-bold">
           Reserve Your Node

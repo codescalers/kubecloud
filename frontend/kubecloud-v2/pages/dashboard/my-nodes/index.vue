@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>Dashboard Nodes {{ isLoading }}</h1>
-    <v-btn to="/dashboard/nodes/explorer">
+    <v-btn :to="ROUTES.Dashboard.MyNodes.Explorer()">
       Explorer
     </v-btn>
 

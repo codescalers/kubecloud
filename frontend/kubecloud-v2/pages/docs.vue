@@ -1,8 +1,8 @@
 <template>
   <StickySidebarLayout :cols="9">
     <template #items>
-      <v-list-item link exact title="Getting Started" to="/docs" />
-      <v-list-item link exact title="Tutorials" to="/docs/tutorials" />
+      <v-list-item link exact title="Getting Started" :to="ROUTES.Docs()" />
+      <v-list-item link exact title="Tutorials" :to="ROUTES.Docs.Tutorials()" />
     </template>
 
     <NuxtPage />

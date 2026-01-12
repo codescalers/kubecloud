@@ -4,3 +4,11 @@
   $body-font-family: string.unquote('Inter, sans-serif'),
   $heading-font-family: string.unquote('Inter, sans-serif'),
 );
+
+.text-accent {
+  @extend .text-grey;
+}
+
+.rounded-xl {
+  border-radius: 18px !important;
+}

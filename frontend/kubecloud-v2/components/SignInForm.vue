@@ -35,7 +35,7 @@
         </template>
       </v-text-field>
 
-      <NuxtLink to="/forgot-password" class="text-link text-caption d-inline-block mt-2 mb-8">
+      <NuxtLink :to="ROUTES.ForgotPassword()" class="text-link text-caption d-inline-block mt-2 mb-8">
         Forgot Password?
       </NuxtLink>
 

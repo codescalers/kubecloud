@@ -4,7 +4,7 @@
       <h1 class="text-h4 font-weight-bold">
         Admin Overview
       </h1>
-      <p class="text-body-1 mt-2 opacity-70">
+      <p class="text-body-1 mt-2 text-accent">
         Monitor platform health and key metrics
       </p>
     </div>
@@ -20,12 +20,7 @@
         lg="4"
         xl="3"
       >
-        <StatsCard
-          :title="resource.title"
-          :icon="resource.icon"
-          :color="resource.color"
-          :value="resource.value"
-        />
+        <StatsCard v-bind="resource" />
       </v-col>
     </v-row>
   </div>
