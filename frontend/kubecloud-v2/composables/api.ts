@@ -102,6 +102,7 @@ export const useApi = createGlobalState(() => {
 
 class ApiHelpers {
   private readonly twinToAccountId: { [twinId: number]: string }
+  private readonly clusterToKubeconfig: { [clusterId: string]: string }
 
   constructor(
     private readonly admin: AdminApi,
@@ -114,6 +115,7 @@ class ApiHelpers {
     private readonly workflow: WorkflowApi,
   ) {
     this.twinToAccountId = {}
+    this.clusterToKubeconfig = {}
   }
 
   public async awaitWorkflowCompletion(workflowId: string): Promise<boolean> {
@@ -143,5 +145,15 @@ class ApiHelpers {
     const accountId = data.data?.account_id ?? ""
     this.twinToAccountId[twinId] = accountId
     return accountId
+  }
+
+  public async getKubeconfig(clusterName: string): Promise<string> {
+    if (clusterName in this.clusterToKubeconfig) {
+      return this.clusterToKubeconfig[clusterName]!
+    }
+
+    const { data } = await this.deployments.deploymentsNameKubeconfigGet(clusterName)
+    this.clusterToKubeconfig[clusterName] = data.data?.kubeconfig ?? ""
+    return data.data?.kubeconfig ?? ""
   }
 }
