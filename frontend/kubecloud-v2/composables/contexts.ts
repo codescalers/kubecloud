@@ -1,4 +1,4 @@
-import type { HandlersCreditRequestInput, ServicesUserWithUSDBalance } from "../generated/api"
+import type { HandlersCreditRequestInput, HandlersNodeInput, ServicesClusterData, ServicesUserWithUSDBalance } from "../generated/api"
 
 // Dashboard Layout Context
 export interface DashboardLayoutCtx {
@@ -29,3 +29,11 @@ export interface UserDialogCtx {
 }
 
 export const UserDialogCtxKey: InjectionKey<UserDialogCtx> = Symbol("UserDialogCtx")
+
+// Deployment Dialog Context
+export interface DeploymentDialogCtx {
+  addNode: (deployment: ServicesClusterData) => Promise<HandlersNodeInput | undefined>
+  delete: (deployment: ServicesClusterData) => Promise<boolean>
+}
+
+export const DeploymentDialogCtxKey: InjectionKey<DeploymentDialogCtx> = Symbol("DeploymentDialogCtx")

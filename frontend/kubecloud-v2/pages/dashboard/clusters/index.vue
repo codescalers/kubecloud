@@ -10,7 +10,13 @@
     </div>
 
     <div class="d-flex justify-end ga-4 mb-8">
-      <v-btn prepend-icon="mdi-plus" text="New Cluster" variant="tonal" color="primary" />
+      <v-btn
+        prepend-icon="mdi-plus"
+        text="New Cluster"
+        variant="tonal"
+        color="primary"
+        :to="ROUTES.Dashboard.Clusters.Deploy()"
+      />
       <v-btn
         prepend-icon="mdi-trash-can-outline"
         color="error"
@@ -19,6 +25,9 @@
         border
         class="border-error"
         :style="{ '--v-border-opacity': '0.3' }"
+        :loading="isDeleting"
+        :disabled="deployments.length === 0"
+        @click="onDeleteAll()"
       />
     </div>
 
@@ -57,14 +66,60 @@
       :loading="isLoading"
     >
       <template #item="{ item }">
-        <DeploymentRow :deployment="item" />
+        <DeploymentRow :deployment="item" :disabled="isDeleting" />
       </template>
     </v-data-table>
+
+    <v-dialog
+      :model-value="isRevealed"
+      max-width="600"
+      scrollable
+      @update:model-value="cancel()"
+    >
+      <v-card>
+        <v-btn @click="confirm()">
+          Ok
+        </v-btn>
+        <v-btn @click="cancel()">
+          Cancel
+        </v-btn>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      :model-value="addNode.isRevealed.value"
+      max-width="600"
+      scrollable
+      @update:model-value="addNode.cancel()"
+    >
+      <v-card>
+        {{ addNode.data.value }}
+      </v-card>
+    </v-dialog>
+
+    <v-dialog
+      :model-value="deleteDeployment.isRevealed.value"
+      max-width="600"
+      scrollable
+      @update:model-value="deleteDeployment.cancel()"
+    >
+      <v-card>
+        <v-btn @click="deleteDeployment.confirm()">
+          Ok
+        </v-btn>
+        <v-btn @click="deleteDeployment.cancel()">
+          Cancel
+        </v-btn>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { HandlersNodeInput, ServicesClusterData } from "~/generated/api"
+
 const api = useApi()
+const toast = useToast()
 
 const { state: deployments, isLoading } = useAsyncState(async () => {
   const { data } = await api.deployments.deploymentsGet()
@@ -76,4 +131,30 @@ const sortByItems = [
   { title: "Created At", value: "createdAt" },
   { title: "Nodes", value: "nodes" },
 ]
+
+const { isRevealed, reveal, confirm, cancel } = useDialog()
+const { execute: deleteDeployments, isLoading: isDeleting } = useAsyncState(async () => {
+  const { data } = await api.deployments.deploymentsDelete()
+  const id = data.data?.task_id
+  if (id && await api.helpers.awaitWorkflowCompletion(id)) {
+    deployments.value = []
+    return toast.success({ message: "Deployments deleted successfully" })
+  }
+  toast.error({ message: data.message ?? "Failed to delete deployments" })
+}, null, { immediate: false })
+
+async function onDeleteAll() {
+  const { isCanceled } = await reveal()
+  if (!isCanceled) {
+    deleteDeployments()
+  }
+}
+
+const addNode = useDialog<ServicesClusterData, HandlersNodeInput>()
+const deleteDeployment = useDialog<ServicesClusterData>()
+
+provide(DeploymentDialogCtxKey, {
+  addNode: d => addNode.reveal(d).then(d => d.data),
+  delete: u => deleteDeployment.reveal(u).then(d => !d.isCanceled),
+})
 </script>

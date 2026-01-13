@@ -21,6 +21,7 @@
           size="small"
           text="View"
           :to="ROUTES.Dashboard.Clusters(deployment.cluster?.name)"
+          :disabled="disabled"
         />
 
         <v-btn
@@ -32,6 +33,7 @@
           :loading="downloading"
           :href="binary"
           :download="`${deployment.cluster?.name}-kubeconfig.yaml`"
+          :disabled="disabled"
         />
 
         <v-btn
@@ -41,7 +43,8 @@
           size="small"
           text="Add Node"
           color="primary"
-          @click="console.log('add node')"
+          :disabled="disabled"
+          @click="onAddNode()"
         />
 
         <v-btn
@@ -51,7 +54,8 @@
           size="small"
           text="Delete"
           color="error"
-          @click="console.log('delete cluster')"
+          :disabled="disabled"
+          @click="onDelete()"
         />
       </div>
     </td>
@@ -61,7 +65,7 @@
 <script setup lang="ts">
 import type { ServicesClusterData } from "~/generated/api"
 
-const props = defineProps<{ deployment: ServicesClusterData }>()
+const props = defineProps<{ deployment: ServicesClusterData, disabled: boolean }>()
 defineEmits<{ (e: "view"): void }>()
 
 const createdAt = useDateFormat(() => props.deployment.created_at, DATE_FORMAT)
@@ -83,4 +87,23 @@ const binary = computed(() => {
   const blob = new Blob([data], { type: "application/json" })
   return URL.createObjectURL(blob)
 })
+
+const toast = useToast()
+const ctx = inject(DeploymentDialogCtxKey)!
+
+async function onAddNode() {
+  const result = await ctx.addNode(props.deployment)
+  // TODO: add node
+  if (result) {
+    toast.success({ message: "Node added successfully" })
+  }
+}
+
+async function onDelete() {
+  const result = await ctx.delete(props.deployment)
+  // TODO: delete cluster
+  if (result) {
+    toast.success({ message: "Deployment deleted successfully" })
+  }
+}
 </script>
