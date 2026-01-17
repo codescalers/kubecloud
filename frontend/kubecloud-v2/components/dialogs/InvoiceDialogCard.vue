@@ -12,7 +12,7 @@
           <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
             Total Amount
           </p>
-          <p class="text-h3 font-weight-bold">
+          <p class="text-h4 mt-2 font-weight-bold">
             ${{ toPrecision(invoice?.total ?? 0, 3) }}
           </p>
         </v-col>
@@ -21,7 +21,7 @@
           <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
             Tax Applied
           </p>
-          <p class="text-h3 font-weight-bold">
+          <p class="text-h4 mt-2 font-weight-bold">
             ${{ toPrecision(invoice?.tax ?? 0, 3) }}
           </p>
         </v-col>

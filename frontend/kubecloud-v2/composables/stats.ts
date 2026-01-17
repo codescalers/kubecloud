@@ -12,7 +12,7 @@ export type Resources
     | "nodes"
     | "countries"
     | "balance"
-    | "memory"
+    | "cpu"
     | "storage"
 
 export interface UseStatsOptions {
@@ -22,7 +22,7 @@ export interface UseStatsOptions {
 export function useStats(options?: UseStatsOptions) {
   const api = useApi()
 
-  const { state, isLoading } = useAsyncState(async () => {
+  const { state, isLoading, error } = useAsyncState(async () => {
     const { data } = await api.admin.getStats({ unauthenticated: true })
     return data.data
   }, null)
@@ -86,11 +86,11 @@ export function useStats(options?: UseStatsOptions) {
       })
     }
 
-    if (!exclude.includes("memory")) {
+    if (!exclude.includes("cpu")) {
       resources.push({
-        id: "memory",
-        title: "Total Memory",
-        icon: "mdi-memory",
+        id: "cpu",
+        title: "CPU Cores",
+        icon: "mdi-cpu-64-bit",
         color: "#EA2831",
         value: s.cores ?? 0,
       })
@@ -109,5 +109,5 @@ export function useStats(options?: UseStatsOptions) {
     return resources
   })
 
-  return { isLoading, stats, data: state }
+  return { isLoading, stats, data: state, error }
 }

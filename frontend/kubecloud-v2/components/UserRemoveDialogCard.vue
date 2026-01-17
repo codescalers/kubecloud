@@ -28,7 +28,9 @@
       <v-btn
         variant="text"
         color="error"
+        :style="{ '--v-border-opacity': 0.5 }"
         prepend-icon="mdi-trash-can-outline"
+
         @click="$emit('confirm')"
       >
         Remove User

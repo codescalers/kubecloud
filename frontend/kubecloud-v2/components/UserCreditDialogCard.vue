@@ -1,18 +1,18 @@
 <template>
-  <DialogCardLayout title="Credit Balance" icon="mdi-cash-plus" @cancel="$emit('cancel')">
-    <template #description>
-      <div>
-        <span class="text-subtitle-2 opacity-50">Apply credits to user:</span>&nbsp;
-        <span
-          class="text-subtitle-2 text-primary px-2 py-1 rounded-lg"
-          :style="{
-            backgroundColor: 'rgba(var(--v-theme-primary), var(--v-border-opacity))',
-          }"
-        >{{ user?.email ?? "N/A" }}</span>
-      </div>
-    </template>
+  <v-form ref="form" @submit.prevent="submit()">
+    <DialogCardLayout title="Credit Balance" icon="mdi-cash-plus" @cancel="$emit('cancel')">
+      <template #description>
+        <div>
+          <span class="text-subtitle-2 opacity-50">Apply credits to user:</span>&nbsp;
+          <span
+            class="text-subtitle-2 text-primary px-2 py-1 rounded-lg"
+            :style="{
+              backgroundColor: 'rgba(var(--v-theme-primary), var(--v-border-opacity))',
+            }"
+          >{{ user?.email ?? "N/A" }}</span>
+        </div>
+      </template>
 
-    <v-form ref="form" @submit.prevent="submit()">
       <v-row>
         <v-col cols="12">
           <div class="d-flex justify-space-between align-center">
@@ -71,7 +71,7 @@
           />
         </v-col>
 
-        <v-col cols="12">
+        <!-- <v-col cols="12">
           <v-btn
             type="submit"
             block
@@ -82,10 +82,22 @@
             variant="outlined"
             :disabled="!form?.isValid"
           />
-        </v-col>
+        </v-col> -->
       </v-row>
-    </v-form>
-  </DialogCardLayout>
+
+      <template #actions>
+        <v-btn
+          type="submit"
+          class="btn-form"
+          text="Apply Credits"
+          prepend-icon="mdi-cash-plus"
+          variant="outlined"
+          block
+          :disabled="!form?.isValid"
+        />
+      </template>
+    </DialogCardLayout>
+  </v-form>
 </template>
 
 <script setup lang="ts">

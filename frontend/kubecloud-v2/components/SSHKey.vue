@@ -35,7 +35,7 @@
 
       <div class="d-flex align-center ga-1 mt-1">
         <VIcon icon="mdi-calendar-outline" size="x-small" color="accent" />
-        <span class="text-subtitle-2 text-accent">Added on {{ addedAt }}</span>
+        <span class="text-caption text-accent">Added on {{ addedAt }}</span>
       </div>
     </div>
 
