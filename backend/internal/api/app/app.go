@@ -189,31 +189,29 @@ func (app *App) registerHandlers() {
 			sseGroup.GET("/events", app.communication.sseManager.HandleSSE)
 		}
 
-		deployerGroup := v1.Group("")
-		deployerGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
+		deploymentGroup := v1.Group("/deployments")
+		deploymentGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
 		{
-			deploymentGroup := deployerGroup.Group("/deployments")
-			{
-				deploymentGroup.POST("", app.handlers.deploymentHandler.HandleDeployCluster)
-				deploymentGroup.GET("", app.handlers.deploymentHandler.HandleListDeployments)
-				deploymentGroup.DELETE("", app.handlers.deploymentHandler.HandleDeleteAllDeployments)
-				deploymentGroup.GET("/:name", app.handlers.deploymentHandler.HandleGetDeployment)
-				deploymentGroup.GET("/:name/kubeconfig", app.handlers.deploymentHandler.HandleGetKubeconfig)
-				deploymentGroup.DELETE("/:name", app.handlers.deploymentHandler.HandleDeleteCluster)
-				deploymentGroup.POST("/:name/nodes", app.handlers.deploymentHandler.HandleAddNode)
-				deploymentGroup.DELETE("/:name/nodes/:node_name", app.handlers.deploymentHandler.HandleRemoveNode)
-			}
+			deploymentGroup.POST("", app.handlers.deploymentHandler.HandleDeployCluster)
+			deploymentGroup.GET("", app.handlers.deploymentHandler.HandleListDeployments)
+			deploymentGroup.DELETE("", app.handlers.deploymentHandler.HandleDeleteAllDeployments)
+			deploymentGroup.GET("/:name", app.handlers.deploymentHandler.HandleGetDeployment)
+			deploymentGroup.GET("/:name/kubeconfig", app.handlers.deploymentHandler.HandleGetKubeconfig)
+			deploymentGroup.DELETE("/:name", app.handlers.deploymentHandler.HandleDeleteCluster)
+			deploymentGroup.POST("/:name/nodes", app.handlers.deploymentHandler.HandleAddNode)
+			deploymentGroup.DELETE("/:name/nodes/:node_name", app.handlers.deploymentHandler.HandleRemoveNode)
+		}
 
-			notificationGroup := deployerGroup.Group("/notifications")
-			{
-				notificationGroup.GET("", app.handlers.notificationHandler.GetAllNotificationsHandler)
-				notificationGroup.GET("/unread", app.handlers.notificationHandler.GetUnreadNotificationsHandler)
-				notificationGroup.PATCH("/read-all", app.handlers.notificationHandler.MarkAllNotificationsReadHandler)
-				notificationGroup.DELETE("", app.handlers.notificationHandler.DeleteAllNotificationsHandler)
-				notificationGroup.PATCH("/:notification_id/read", app.handlers.notificationHandler.MarkNotificationReadHandler)
-				notificationGroup.PATCH("/:notification_id/unread", app.handlers.notificationHandler.MarkNotificationUnreadHandler)
-				notificationGroup.DELETE("/:notification_id", app.handlers.notificationHandler.DeleteNotificationHandler)
-			}
+		notificationGroup := v1.Group("/notifications")
+		notificationGroup.Use(middlewares.UserMiddleware(app.security.tokenManager))
+		{
+			notificationGroup.GET("", app.handlers.notificationHandler.GetAllNotificationsHandler)
+			notificationGroup.GET("/unread", app.handlers.notificationHandler.GetUnreadNotificationsHandler)
+			notificationGroup.PATCH("/read-all", app.handlers.notificationHandler.MarkAllNotificationsReadHandler)
+			notificationGroup.DELETE("", app.handlers.notificationHandler.DeleteAllNotificationsHandler)
+			notificationGroup.PATCH("/:notification_id/read", app.handlers.notificationHandler.MarkNotificationReadHandler)
+			notificationGroup.PATCH("/:notification_id/unread", app.handlers.notificationHandler.MarkNotificationUnreadHandler)
+			notificationGroup.DELETE("/:notification_id", app.handlers.notificationHandler.DeleteNotificationHandler)
 		}
 	}
 	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
