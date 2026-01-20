@@ -54,8 +54,8 @@
       <label class="filter-label">Price Range ($/mo)</label>
       <v-range-slider
         v-model="modelValue.priceRange"
-        :min="priceMin"
-        :max="priceMax"
+        :min="priceMin < Infinity ? priceMin : undefined"
+        :max="priceMax > -Infinity ? priceMax : undefined"
         :step="1"
         thumb-label
         class="filter-slider"

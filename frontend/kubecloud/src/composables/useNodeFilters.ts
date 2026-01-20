@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { NormalizedNode } from '../types/normalizedNode';
+import { getNodePrice } from '../utils/nodeNormalizer';
 
 export interface NodeFilterState {
   cpu: [number, number];
@@ -16,8 +17,14 @@ export function useNodeFilters(nodes: () => NormalizedNode[], initialPriceRange:
   const cpuMax = computed(() => Math.max(...nodes().map(n => n.cpu).filter(Boolean), 0));
   const ramMin = computed(() => Math.min(...nodes().map(n => Math.round(n.ram)).filter(Boolean), 0));
   const ramMax = computed(() => Math.max(...nodes().map(n => Math.round(n.ram)).filter(Boolean), 0));
-  const priceMin = computed(() => Math.min(...nodes().map(n => typeof n.price_usd === 'number' ? n.price_usd : Infinity)));
-  const priceMax = computed(() => Math.max(...nodes().map(n => typeof n.price_usd === 'number' ? n.price_usd : 0)));
+  const priceMin = computed(() => Math.floor(Math.min(...nodes().map(n => {
+    const price = getNodePrice(n);
+    return typeof price === 'number' ? price : Infinity;
+  }))));
+  const priceMax = computed(() => Math.ceil(Math.max(...nodes().map(n => {
+    const price = getNodePrice(n);
+    return typeof price === 'number' ? price : 0;
+  }))));
 
   // Location options
   const locationOptions = computed(() => {
@@ -61,10 +68,11 @@ export function useNodeFilters(nodes: () => NormalizedNode[], initialPriceRange:
   // Filtering logic
   const filteredNodes = computed(() => {
     return nodes().filter(node => {
+      const price = getNodePrice(node);
       if (node.cpu < filters.value.cpu[0] || node.cpu > filters.value.cpu[1]) return false;
       if (Math.round(node.ram) < filters.value.ram[0] || Math.round(node.ram) > filters.value.ram[1]) return false;
       if (filters.value.gpu && node.gpu === false) return false;
-      if (typeof node.price_usd === 'number' && (node.price_usd < filters.value.priceRange[0] || node.price_usd > filters.value.priceRange[1])) return false;
+      if (typeof price === 'number' && (price < filters.value.priceRange[0] || price > filters.value.priceRange[1])) return false;
       if (filters.value.location &&
         !node.locationString.toLowerCase().includes(filters.value.location?.toLowerCase() ?? '')
       )
@@ -99,4 +107,4 @@ export function useNodeFilters(nodes: () => NormalizedNode[], initialPriceRange:
     locationOptions,
     clearFilters
   };
-} 
+}
