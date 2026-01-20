@@ -131,6 +131,7 @@ func (app *App) registerHandlers() {
 			adminGroup.GET("/pending-records", app.handlers.adminHandler.ListPendingRecordsHandler)
 			adminGroup.GET("/invoices", app.handlers.invoiceHandler.ListAllInvoicesHandler)
 			adminGroup.GET("/workflows", app.handlers.adminHandler.ListAllWorkflowsHandler)
+			adminGroup.GET("/workflows/retry/:workflow_uuid", app.handlers.adminHandler.RetryFailedWorkflowHandler)
 
 			vouchersGroup := adminGroup.Group("/vouchers")
 			{

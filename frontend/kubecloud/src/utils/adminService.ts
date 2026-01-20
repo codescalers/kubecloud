@@ -288,6 +288,17 @@ export class AdminService {
     }
   }
 
+    // Retry a failed workflow (admin)
+    async retryWorkflow(workflowUUID: string): Promise<void> {
+      await api.get<void>(`/v1/workflows/retry/${encodeURIComponent(workflowUUID)}`, {
+        requiresAuth: true,
+        showNotifications: true,
+        loadingMessage: 'Retrying workflow...',
+        successMessage: 'Workflow retry initiated',
+        errorMessage: 'Failed to retry workflow',
+      })
+    }
+
   async SetMaintenanceModeStatus(status: boolean): Promise<void> {
     try {
       const response = await api.put(

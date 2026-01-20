@@ -550,6 +550,8 @@ definitions:
         items:
           type: string
         type: array
+      healthy:
+        type: boolean
       ip:
         description: Computed
         type: string
@@ -709,6 +711,10 @@ definitions:
         type: integer
       redeemed:
         type: boolean
+      user_id:
+        type: integer
+      username:
+        type: string
       value:
         type: number
     required:
@@ -3232,6 +3238,42 @@ paths:
       security:
       - AdminMiddleware: []
       summary: List all workflows
+      tags:
+      - admin
+  /workflows/retry/{workflow_uuid}:
+    post:
+      consumes:
+      - application/json
+      description: Retries a workflow that is in failed state
+      operationId: retry-failed-workflow
+      parameters:
+      - description: Workflow UUID
+        in: path
+        name: workflow_uuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Workflow retry initiated
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "400":
+          description: Invalid workflow UUID or workflow not failed
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "404":
+          description: Workflow not found
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.APIResponse'
+      security:
+      - AdminMiddleware: []
+      summary: Retry failed workflow
       tags:
       - admin
 securityDefinitions:

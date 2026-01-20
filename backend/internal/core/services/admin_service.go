@@ -20,6 +20,9 @@ import (
 	"github.com/xmonader/ewf"
 )
 
+var ErrWorkflowNotFound = fmt.Errorf("workflow not found")
+var ErrWorkflowNotFailed = fmt.Errorf("workflow is not in failed state")
+
 type AdminService struct {
 	userRepo    models.UserRepository
 	nodesRepo   models.UserNodesRepository
@@ -440,4 +443,27 @@ func (svc *AdminService) sendBulkSystemMails(users []models.User, body string, s
 	wg.Wait()
 
 	return len(failedEmails)
+}
+
+// RetryFailedWorkflow retries a failed workflow
+func (svc *AdminService) RetryFailedWorkflow(workflowUUID string) error {
+	wf, err := svc.ewfRepo.LoadWorkflowByUUID(svc.appCtx, workflowUUID)
+	if err != nil {
+		logger.GetLogger().Error().Err(err).
+			Str("workflow_uuid", workflowUUID).
+			Msg("failed to get workflow for retry")
+
+		return ErrWorkflowNotFound
+	}
+
+	if wf.Status != ewf.StatusFailed {
+		return ErrWorkflowNotFailed
+	}
+
+	// Reset workflow fields
+	wf.Status = ewf.StatusPending
+	wf.CurrentStep = 0
+	wf.Error = ""
+
+	return svc.ewfEngine.Run(svc.appCtx, wf, ewf.WithAsync())
 }

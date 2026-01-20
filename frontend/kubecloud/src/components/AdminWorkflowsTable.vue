@@ -147,6 +147,18 @@
           </div>
         </v-card-text>
         <v-card-actions class="justify-end mt-2">
+          <v-btn
+            v-if="selectedWorkflow && selectedWorkflow.status === 'failed'"
+            size="small"
+            variant="outlined"
+            color="primary"
+            class="mr-2"
+            :loading="retryLoading"
+            @click="retryWorkflowAction"
+          >
+            <v-icon icon="mdi-replay" size="16" class="mr-1"></v-icon>
+            Retry
+          </v-btn>
           <v-btn text color="grey-lighten-1" @click="closeWorkflowModal">Close</v-btn>
         </v-card-actions>
       </v-card>
@@ -186,6 +198,7 @@ const headers = [
 
 const showWorkflowModal = ref(false)
 const selectedWorkflow = ref<AdminWorkflow | null>(null)
+const retryLoading = ref(false)
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -254,6 +267,20 @@ async function filterByStatus() {
 
 async function refreshWorkflows() {
   await loadWorkflows()
+}
+
+async function retryWorkflowAction() {
+  if (!selectedWorkflow.value) return
+  retryLoading.value = true
+  try {
+    await adminService.retryWorkflow(selectedWorkflow.value.uuid)
+    closeWorkflowModal()
+    await loadWorkflows()
+  } catch (err) {
+    console.error('Failed to retry workflow:', err)
+  } finally {
+    retryLoading.value = false
+  }
 }
 
 onMounted(async () => {
