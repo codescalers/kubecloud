@@ -1,0 +1,64 @@
+<template>
+  <div ref="vantaGlobe">
+    <div
+      class="d-flex justify-center align-center"
+      :style="{
+        minHeight: '600px',
+
+      }"
+    >
+      <v-container class="mt-16">
+        <div>
+          <h1 class="text-h1 font-weight-bold text-center mb-8">
+            Ready to Transform Your Kubernetes Experience?
+          </h1>
+          <p class="text-body-1 text-center mx-auto pa-2 rounded-lg" :style="{ maxWidth: '600px', backgroundColor: 'rgba(var(--v-theme-background), 0.8)' }">
+            Join a growing community of developers and DevOps engineers who trust Mycelium Cloud for their production workloads.
+          </p>
+
+          <div class="d-flex justify-center mt-4">
+            <v-btn
+              class="btn-form"
+              text="Deploy Kubernetes Cluster"
+              variant="flat"
+              color="primary"
+              to="/dashboard/clusters/deploy"
+            />
+          </div>
+        </div>
+      </v-container>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+ensureThreeGlobal()
+
+const vantaGlobe = ref<HTMLElement | null>(null)
+
+useHead({
+  script: [
+    {
+      async: true,
+      src: "/scripts/vanta.globe.min.js",
+      defer: true,
+      onload() {
+        window?.VANTA?.GLOBE?.({
+          el: vantaGlobe.value,
+          mouseControls: true,
+          touchControls: true,
+          gyroControls: true,
+          minHeight: 200,
+          minWidth: 200,
+          scale: 1,
+          scaleMobile: 1,
+          color: 0x2B3951,
+          color2: 0x2B3951,
+          size: 0.75,
+          backgroundColor: 0x0A192F,
+        })
+      },
+    },
+  ],
+})
+</script>
