@@ -3,7 +3,8 @@ export interface StatsResource {
   title: string
   icon: string
   color: string
-  value: string | number
+  value: number
+  transform?: (value: number) => string | number
 }
 
 export type Resources
@@ -82,7 +83,8 @@ export function useStats(options?: UseStatsOptions) {
         title: "System Balance",
         icon: "mdi-wallet-bifold",
         color: "#4c16c9",
-        value: `$${Math.floor(s.system_account_balance ?? 0)}`,
+        value: Math.floor(s.system_account_balance ?? 0),
+        transform: value => `$${value}`,
       })
     }
 
@@ -102,7 +104,8 @@ export function useStats(options?: UseStatsOptions) {
         title: "Total Storage",
         icon: "mdi-harddisk",
         color: "#FAC638",
-        value: `${(Math.floor((s.ssd ?? 0) / 1024) * 100) / 100} TB`,
+        value: (Math.floor((s.ssd ?? 0) / 1024) * 100) / 100,
+        transform: value => `${value} TB`,
       })
     }
 

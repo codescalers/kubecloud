@@ -71,14 +71,16 @@ const stats = computed<StatsResource[]>(() => {
       title: "Balance",
       icon: "mdi-wallet-bifold",
       color: "#607AFB",
-      value: `$${balance.value}`,
+      value: balance.value,
+      transform: value => `$${value}`,
     },
     {
       id: "spent",
       title: "Total Spent",
       icon: "mdi-currency-usd",
       color: "#39E079",
-      value: `$${spent.value}`,
+      value: spent.value,
+      transform: value => `$${value}`,
     },
   ]
 })
