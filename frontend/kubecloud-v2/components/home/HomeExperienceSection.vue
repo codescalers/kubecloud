@@ -35,17 +35,5 @@
 ensureThreeGlobal()
 
 const vantaGlobe = ref<HTMLElement | null>(null)
-
-useHead({
-  script: [
-    {
-      async: true,
-      src: "/scripts/vanta.globe.min.js",
-      defer: true,
-      onload() {
-        applyVantaGlobe(vantaGlobe.value!)
-      },
-    },
-  ],
-})
+useVanta("globe", () => vantaGlobe.value!)
 </script>

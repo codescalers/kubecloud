@@ -34,17 +34,5 @@ import myceliumBg2 from "~/assets/images/mycelium_bg_2.svg"
 ensureThreeGlobal()
 
 const vantaDots = ref<HTMLElement | null>(null)
-
-useHead({
-  script: [
-    {
-      async: true,
-      src: "/scripts/vanta.dots.min.js",
-      defer: true,
-      onload() {
-        applyVantaDots(vantaDots.value!)
-      },
-    },
-  ],
-})
+useVanta("dots", () => vantaDots.value!)
 </script>

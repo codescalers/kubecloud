@@ -8,7 +8,16 @@ export function ensureThreeGlobal() {
   return THREE
 }
 
-export function applyVantaDots(el: HTMLElement) {
+export function applyVanta(type: "dots" | "globe", el: HTMLElement) {
+  if (type === "dots") {
+    applyVantaDots(el)
+  }
+  else if (type === "globe") {
+    applyVantaGlobe(el)
+  }
+}
+
+function applyVantaDots(el: HTMLElement) {
   window?.VANTA?.DOTS?.({
     el,
     mouseControls: true,
@@ -27,7 +36,7 @@ export function applyVantaDots(el: HTMLElement) {
   })
 }
 
-export function applyVantaGlobe(el: HTMLElement) {
+function applyVantaGlobe(el: HTMLElement) {
   window?.VANTA?.GLOBE?.({
     el,
     mouseControls: true,

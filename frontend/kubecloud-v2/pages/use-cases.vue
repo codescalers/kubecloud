@@ -23,20 +23,9 @@
 definePageMeta({ middleware: "public" })
 
 ensureThreeGlobal()
-const vantaDots = ref<HTMLElement | null>(null)
 
-useHead({
-  script: [
-    {
-      async: true,
-      src: "/scripts/vanta.dots.min.js",
-      defer: true,
-      onload() {
-        applyVantaDots(vantaDots.value!)
-      },
-    },
-  ],
-})
+const vantaDots = ref<HTMLElement | null>(null)
+useVanta("dots", () => vantaDots.value!)
 
 const features = [
   {
