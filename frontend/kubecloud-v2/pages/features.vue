@@ -1,5 +1,12 @@
 <template>
-  <div>Features</div>
+  <v-container>
+    <div>Features</div>
+
+    <FeatureMyceliumPanel />
+    <FeatureWebGateway />
+    <FeatureMultiMaster />
+    <FeatureLoadBalancing />
+  </v-container>
 </template>
 
 <script setup lang="ts">
