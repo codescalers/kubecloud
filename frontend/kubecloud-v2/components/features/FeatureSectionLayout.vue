@@ -1,6 +1,12 @@
 <template>
   <v-row>
-    <v-col cols="6" class="position-relative" :style="{ height: '500px' }" :order="reversed ? 'last' : undefined">
+    <v-col
+      cols="12"
+      md="6"
+      class="position-relative"
+      :style="{ height: '500px' }"
+      :order="reversed || $vuetify.display.smAndDown ? 'last' : undefined"
+    >
       <div
         class="position-absolute h-100 w-100 inset-0"
         :style="{
@@ -21,13 +27,13 @@
       />
     </v-col>
 
-    <v-col cols="6" class="d-flex align-center">
+    <v-col cols="12" md="6" class="d-flex align-center">
       <div>
         <h3 class="text-h4 font-weight-bold mb-2" v-text="title" />
 
         <div class="text-subtitle-1 text-accent" v-text="description" />
 
-        <div class="d-flex ga-2 mt-2">
+        <div class="d-flex justify-center ga-2 mt-4 flex-wrap">
           <v-chip
             v-for="tag in tags"
             :key="tag"

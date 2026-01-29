@@ -43,20 +43,7 @@ useHead({
       src: "/scripts/vanta.globe.min.js",
       defer: true,
       onload() {
-        window?.VANTA?.GLOBE?.({
-          el: vantaGlobe.value,
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: true,
-          minHeight: 200,
-          minWidth: 200,
-          scale: 1,
-          scaleMobile: 1,
-          color: 0x2B3951,
-          color2: 0x2B3951,
-          size: 0.75,
-          backgroundColor: 0x0A192F,
-        })
+        applyVantaGlobe(vantaGlobe.value!)
       },
     },
   ],

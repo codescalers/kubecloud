@@ -42,22 +42,7 @@ useHead({
       src: "/scripts/vanta.dots.min.js",
       defer: true,
       onload() {
-        window?.VANTA?.DOTS?.({
-          el: vantaDots.value,
-          mouseControls: true,
-          touchControls: true,
-          gyroControls: false,
-          minHeight: 200,
-          minWidth: 200,
-          scale: 1,
-          scaleMobile: 1,
-          color: 0x2B3951,
-          color2: 0x2B3951,
-          backgroundColor: 0x0A192F,
-          size: 5,
-          spacing: 70,
-          showLines: true,
-        })
+        applyVantaDots(vantaDots.value!)
       },
     },
   ],
