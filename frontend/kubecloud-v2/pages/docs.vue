@@ -1,16 +1,76 @@
 <template>
-  <StickySidebarLayout :cols="9">
-    <template #items>
-      <v-list-item link exact title="Getting Started" :to="ROUTES.Docs()" />
-      <v-list-item link exact title="Tutorials" :to="ROUTES.Docs.Tutorials()" />
+  <StickySidebarLayout :cols="9" :sidebar-width="300">
+    <template #sidebar>
+      <VCard :style="{ padding: '16px !important' }">
+        <v-list>
+          <v-list-item class="text-body-1 text-accent font-weight-bold">
+            Documentation
+          </v-list-item>
+
+          <v-list-item
+            v-for="doc in docs"
+            :key="doc.path"
+            :prepend-icon="doc.icon"
+            link
+            exact
+            :title="doc.title"
+            :to="ROUTES.Docs(doc.path)"
+            class="text-accent"
+          />
+
+          <div class="mt-4" />
+
+          <v-list-item class="text-body-1 text-accent font-weight-bold">
+            Table of Contents
+          </v-list-item>
+
+          <v-list-item
+            v-for="doc in docs"
+            :key="doc.path"
+            link
+            exact
+            density="compact"
+            class="text-body-2"
+          >
+            {{ doc.title }}
+          </v-list-item>
+        </v-list>
+        <!-- :to="ROUTES.Docs(doc.path)" -->
+      </VCard>
     </template>
 
-    <NuxtPage />
-    <div :style="{ height: '2000px' }" />
-    <NuxtPage />
+    <!-- x {{ route.path }}
+    {{ isLoading }}
+    {{ docs.map(doc => doc.content) }} -->
+    <NuxtPage :page="activePage" />
+    <!-- <div :style="{ height: '2000px' }" />
+    <NuxtPage /> -->
   </StickySidebarLayout>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: "public" })
+
+const route = useRoute()
+const { state: docs } = useDocs()
+
+const activePage = computed(() => {
+  let activePath = route.path
+  if (activePath.endsWith("/")) {
+    activePath = activePath.slice(0, -1)
+  }
+  activePath = activePath.replace(ROUTES.Docs(), "")
+
+  return docs.value.find(doc => doc.path === activePath)
+})
 </script>
+
+<style lang="scss">
+.v-list-item--active {
+  color: white !important;
+
+  i {
+    color: rgb(var(--v-theme-primary)) !important
+  }
+}
+</style>

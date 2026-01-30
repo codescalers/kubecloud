@@ -1,0 +1,9 @@
+- title: Getting Started
+  icon: mdi-rocket-launch
+  path: ""
+  file: getting-started.md
+
+- title: Tutorials
+  icon: mdi-book-open-page-variant
+  path: /tutorials
+  file: tutorial.md

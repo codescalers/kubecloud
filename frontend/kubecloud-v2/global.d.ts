@@ -13,8 +13,6 @@ declare global {
     VANTA?: {
       DOTS?: (options: Record<string, any>) => void
       GLOBE?: (options: Record<string, any>) => void
-      BIRDS?: (options: Record<string, any>) => void
-      HALO?: (options: Record<string, any>) => void
     }
   }
 }

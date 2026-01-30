@@ -10,11 +10,7 @@ const SignUp = () => "/sign-up"
 const ForgotPassword = () => "/forgot-password"
 
 // Docs
-interface DocsRoutes {
-  Tutorials: () => string
-}
-const Docs: (() => string) & DocsRoutes = () => "/docs"
-Docs.Tutorials = () => `${Docs()}/tutorials`
+const Docs = (path = "") => `/docs${path}`
 
 // admin routes
 interface AdminRoutes {

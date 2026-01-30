@@ -1,8 +1,4 @@
 <template>
-  <!-- <div>
-    {{ page }}
-  </div> -->
-
   <div v-html="page?.md?.html" />
 </template>
 
