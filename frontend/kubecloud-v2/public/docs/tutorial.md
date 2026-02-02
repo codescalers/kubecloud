@@ -22,7 +22,7 @@ kubectl get nodes
 
 ## Example 1: Hello World
 
-### Step 1 â€” Create the Deployment (save as `hello-world-deploy.yaml`)
+### Step 1 — Create the Deployment (save as `hello-world-deploy.yaml`)
 
 ```yaml
 apiVersion: apps/v1
@@ -46,7 +46,7 @@ spec:
             - containerPort: 80
 ```
 
-### Step 2 â€” Expose it with a Service (save as `hello-world-svc.yaml`)
+### Step 2 — Expose it with a Service (save as `hello-world-svc.yaml`)
 
 ```yaml
 apiVersion: v1
@@ -62,7 +62,7 @@ spec:
   type: ClusterIP
 ```
 
-### Step 3 â€” Apply and test
+### Step 3 — Apply and test
 
 ```bash
 kubectl apply -f hello-world-deploy.yaml
@@ -70,11 +70,11 @@ kubectl apply -f hello-world-svc.yaml
 kubectl port-forward service/hello-world-service 8080:80
 ```
 
-Open `http://localhost:8080` â€” you should see the Nginx welcome page.
+Open `http://localhost:8080` — you should see the Nginx welcome page.
 
 ## Example 2: 3 Python Servers with Load Balancing
 
-### Step 1 â€” Deploy three simple Python HTTP servers
+### Step 1 — Deploy three simple Python HTTP servers
 
 Save each as its own file and apply them (or combine into one file if you prefer).
 
@@ -190,7 +190,7 @@ spec:
             - containerPort: 8000
 ```
 
-### Step 2 â€” Create a load balancer Service (save as `python-servers-lb.yaml`)
+### Step 2 — Create a load balancer Service (save as `python-servers-lb.yaml`)
 
 ```yaml
 apiVersion: v1
@@ -206,7 +206,7 @@ spec:
   type: LoadBalancer
 ```
 
-### Step 3 â€” Apply and test (Python Servers)
+### Step 3 — Apply and test (Python Servers)
 
 ```bash
 kubectl apply -f python-server-1.yaml
@@ -343,7 +343,7 @@ This example shows how three services communicate across different nodes using M
 
 **Yes, services communicate over Mycelium!** Services on different nodes use Mycelium IPs for communication, while services on the same node use standard Kubernetes networking.
 
-### Step 1 â€” Frontend service (save as `frontend.yaml`)
+### Step 1 — Frontend service (save as `frontend.yaml`)
 
 ```yaml
 apiVersion: apps/v1
@@ -391,7 +391,7 @@ spec:
             - containerPort: 8000
 ```
 
-### Step 2 â€” Backend service (save as `backend.yaml`)
+### Step 2 — Backend service (save as `backend.yaml`)
 
 ```yaml
 apiVersion: apps/v1
@@ -430,7 +430,7 @@ spec:
             - containerPort: 8001
 ```
 
-### Step 3 â€” Database service (save as `database.yaml`)
+### Step 3 — Database service (save as `database.yaml`)
 
 ```yaml
 apiVersion: apps/v1
@@ -469,7 +469,7 @@ spec:
             - containerPort: 8002
 ```
 
-### Step 4 â€” Services (save as `microservices-svc.yaml`)
+### Step 4 — Services (save as `microservices-svc.yaml`)
 
 ```yaml
 apiVersion: v1
@@ -512,7 +512,7 @@ spec:
   type: ClusterIP
 ```
 
-### Step 5 â€” Apply and test
+### Step 5 — Apply and test
 
 ```bash
 kubectl apply -f frontend.yaml
@@ -522,9 +522,9 @@ kubectl apply -f microservices-svc.yaml
 kubectl port-forward service/frontend-service 8080:8000
 ```
 
-Open `http://localhost:8080` â€” the frontend should call the backend and database over Mycelium networking.
+Open `http://localhost:8080` — the frontend should call the backend and database over Mycelium networking.
 
-### Step 6 â€” Verify Communication
+### Step 6 — Verify Communication
 
 ```bash
 # Check which nodes pods are running on

@@ -13,6 +13,7 @@
             :prepend-icon="doc.icon"
             link
             exact
+            rounded
             :title="doc.title"
             :to="ROUTES.Docs(doc.path)"
             class="text-accent"
@@ -25,14 +26,18 @@
           </v-list-item>
 
           <v-list-item
-            v-for="doc in docs"
-            :key="doc.path"
+            v-for="{ id, content } in activePage?.md.tableOfContent"
+            :key="id"
             link
-            exact
             density="compact"
-            class="text-body-2"
+            rounded
+            :href="`#${id}`"
           >
-            {{ doc.title }}
+            <v-list-item-title
+              class="text-body-2 pl-4 text-no-wrap"
+            >
+              {{ content }}
+            </v-list-item-title>
           </v-list-item>
         </v-list>
         <!-- :to="ROUTES.Docs(doc.path)" -->

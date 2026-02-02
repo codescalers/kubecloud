@@ -1,6 +1,7 @@
 body,
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 80px;
 }
 
 .text-link {
@@ -139,4 +140,14 @@ html {
 
 .v-container--fluid {
   max-width: 100% !important;
+}
+
+blockquote > * {
+  &:first-child {
+    margin-top: 0 !important;
+  }
+
+  &:last-child {
+    margin-bottom: 0 !important;
+  }
 }
