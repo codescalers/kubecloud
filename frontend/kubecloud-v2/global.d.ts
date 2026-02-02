@@ -14,5 +14,8 @@ declare global {
       DOTS?: (options: Record<string, any>) => void
       GLOBE?: (options: Record<string, any>) => void
     }
+    MD?: {
+      routeLink?: (event: Event, href: string) => void
+    }
   }
 }

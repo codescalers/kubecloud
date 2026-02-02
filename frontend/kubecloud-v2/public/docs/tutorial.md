@@ -1,10 +1,10 @@
 # Tutorials
 
-This tutorial covers advanced deployment scenarios for Mycelium Cloud. For basic setup, see the [Getting Started Guide](#getting-started).
+This tutorial covers advanced deployment scenarios for Mycelium Cloud. For basic setup, see the [Getting Started Guide](/docs).
 
 ## Prerequisites
 
-- Completed [Getting Started Guide](#getting-started)
+- Completed [Getting Started Guide](/docs)
 - Deployed cluster with kubectl access
 - Mycelium binary installed
 

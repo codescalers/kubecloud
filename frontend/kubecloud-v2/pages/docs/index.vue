@@ -3,7 +3,7 @@
     {{ page }}
   </div> -->
 
-  <div v-html="page?.md?.html" />
+  <div class="markdown" v-html="page?.md?.html" />
 </template>
 
 <script setup lang="ts">

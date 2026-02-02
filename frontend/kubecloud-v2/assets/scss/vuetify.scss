@@ -12,3 +12,144 @@
 .rounded-xl {
   border-radius: 18px !important;
 }
+
+// markdown styles
+.markdown {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.7;
+    color: #c9d1d9;
+    background-color: #0d1117;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+    word-wrap: break-word;
+  
+  /* Headings */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #e6edf3;
+    font-weight: 600;
+    margin: 24px 0 16px;
+    line-height: 1.25;
+  }
+  
+  h1 {
+    font-size: 2.2em;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 0.3em;
+  }
+  
+  h2 {
+    font-size: 1.7em;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 0.3em;
+  }
+  
+  h3 { font-size: 1.4em; }
+  h4 { font-size: 1.2em; }
+  
+  /* Paragraphs */
+  p {
+    margin: 0 0 16px;
+  }
+  
+  /* Links */
+  a {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+  
+  a:hover {
+    text-decoration: underline;
+  }
+  
+  /* Lists */
+  ul,
+  ol {
+    margin: 0 0 16px 24px;
+  }
+  
+  li {
+    margin: 6px 0;
+  }
+  
+  /* Blockquotes */
+  blockquote {
+    margin: 16px 0;
+    padding: 0.75em 1em;
+    color: #8b949e;
+    background: #161b22;
+    border-left: 4px solid #30363d;
+  }
+  
+  /* Inline code */
+  code {
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.95em;
+    background: #161b22;
+    color: #e6edf3;
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+  }
+  
+  /* Code blocks */
+  pre {
+    background: #010409;
+    color: #c9d1d9;
+    padding: 16px;
+    overflow: auto;
+    border-radius: 10px;
+    margin: 16px 0;
+    border: 1px solid #30363d;
+  }
+  
+  pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+  }
+  
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+  }
+  
+  th,
+  td {
+    border: 1px solid #30363d;
+    padding: 8px 12px;
+  }
+  
+  th {
+    background: #161b22;
+    font-weight: 600;
+  }
+  
+  /* Images */
+  img {
+    max-width: 100%;
+    display: block;
+    margin: 16px auto;
+    border-radius: 8px;
+  }
+  
+  /* Horizontal rule */
+  hr {
+    border: none;
+    border-top: 1px solid #30363d;
+    margin: 24px 0;
+  }
+  
+  /* Selection */
+  ::selection {
+    background: #264f78;
+  }
+  
+}
