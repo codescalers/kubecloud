@@ -19,6 +19,7 @@
           <div class="d-flex justify-center mt-4">
             <v-btn
               class="btn-form"
+              :style="{ color: '#333 !important' }"
               text="Deploy Kubernetes Cluster"
               variant="flat"
               color="primary"
