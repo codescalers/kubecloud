@@ -21,6 +21,7 @@
     "@vueuse/nuxt": "14.1.0",
     "async-await-mutex-lock": "^1.0.12",
     "axios": "^1.13.2",
+    "front-matter": "^4.0.2",
     "highlight.js": "^11.11.1",
     "izitoast": "^1.4.0",
     "js-yaml": "^4.1.1",

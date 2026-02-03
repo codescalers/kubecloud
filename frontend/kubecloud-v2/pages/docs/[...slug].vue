@@ -1,5 +1,7 @@
 <template>
-  <div v-html="page?.md?.html" />
+  <v-card>
+    <div v-html="page?.md?.html" />
+  </v-card>
 </template>
 
 <script setup lang="ts">

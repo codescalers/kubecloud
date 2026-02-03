@@ -33,7 +33,7 @@
 
         <div class="text-subtitle-1 text-accent" v-text="description" />
 
-        <div class="d-flex justify-center ga-2 mt-4 flex-wrap">
+        <div class="d-flex ga-2 mt-4 flex-wrap">
           <v-chip
             v-for="tag in tags"
             :key="tag"

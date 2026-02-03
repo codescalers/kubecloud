@@ -16,7 +16,7 @@ export interface Doc {
   }
 }
 
-const marked = new Marked(
+export const marked = new Marked(
   markedHighlight({
     emptyLangClass: "hljs",
     langPrefix: "hljs language-",
@@ -27,7 +27,7 @@ const marked = new Marked(
   }),
 )
 
-const renderer = new marked.Renderer()
+export const renderer = new marked.Renderer()
 
 renderer.code = function ({ text }) {
   const parts = text.split("\n")
@@ -51,62 +51,64 @@ renderer.blockquote = function ({ tokens }) {
   return `<blockquote class="my-6 px-6 pa-4 border-s-lg border-primary rounded" style="--v-border-opacity: 1; background: rgba(var(--v-theme-primary), 0.12);">${content}</blockquote>`
 }
 
-export const useDocs = createGlobalState(() => {
-  // const router = useRouter()
+function getIdFromTitle(title: string) {
+  let id = ""
+  for (const char of title.toLowerCase()) {
+    const code = char.charCodeAt(0)
+    const isAlpha = code >= 97 && code <= 122
+    const isAllowedSpace = code === 32 && id.length > 0 && id[id.length - 1] !== " "
+    if (isAlpha || isAllowedSpace) {
+      id += char
+    }
+  }
 
-  return useAsyncState(async () => {
-    const res = await fetch("/docs/docs.yaml")
-    const data = await res.text()
-    const docs = yaml.load(data) as Doc[]
-    const contents = await Promise.all(
-      docs
-        .map(doc => fetch(`/docs/${doc.file}`)
-          .then(res => res.text())),
-    )
+  return id.replaceAll(" ", "-")
+}
 
-    let tableOfContent: Doc["md"]["tableOfContent"] = []
+let tableOfContent: Doc["md"]["tableOfContent"] = []
 
-    const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10.59 13.41c.41.39.41 1.03 0 1.42c-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0a5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24a2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0a5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24a2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24a.973.973 0 0 1 0-1.42"/></svg>`
-    renderer.heading = function ({ depth, tokens }) {
-      const content = this.parser.parseInline(tokens)
-      let id = ""
-      let a = ""
-      if (depth === 2) {
-        id = content.toLowerCase().replaceAll(":", "").replaceAll(" ", "-")
-        a = `<a href="#${id}" class="d-inline-block mr-2 text-primary opacity-50">${linkIcon}</a>`
-        tableOfContent.push({ id, content })
-      }
+const linkIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M10.59 13.41c.41.39.41 1.03 0 1.42c-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0a5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.98 2.98 0 0 0 0-4.24a2.98 2.98 0 0 0-4.24 0l-3.53 3.53a2.98 2.98 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0a5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.98 2.98 0 0 0 0 4.24a2.98 2.98 0 0 0 4.24 0l3.53-3.53a2.98 2.98 0 0 0 0-4.24a.973.973 0 0 1 0-1.42"/></svg>`
+renderer.heading = function ({ depth, tokens }) {
+  const content = this.parser.parseInline(tokens)
+  let id = ""
+  let a = ""
+  if (depth === 2) {
+    id = getIdFromTitle(content)
+    // .toLowerCase().replaceAll(":", "").replaceAll(" ", "-")
+    a = `<a href="#${id}" class="d-inline-block mr-2 text-primary opacity-50">${linkIcon}</a>`
+    tableOfContent.push({ id, content })
+  }
 
-      const lv = Math.min(depth + 3, 6)
-      return `
-        <h${depth} id="${id}" class="text-h${lv} mb-4">
+  const lv = Math.min(depth + 3, 6)
+  return `
+        <h${depth} id="${id}" class="text-white text-h${lv} mb-4">
           ${a}${content}
         </h${depth}>
       `
-    }
+}
 
-    renderer.paragraph = function ({ tokens }) {
-      const content = this.parser.parseInline(tokens)
-      return `<p class="text-body-1 text-accent mt-3 mb-6">${content}</p>`
-    }
+renderer.paragraph = function ({ tokens }) {
+  const content = this.parser.parseInline(tokens)
+  return `<p class="text-body-1 text-accent mt-3 mb-6">${content}</p>`
+}
 
-    renderer.listitem = function (x) {
-      const content = this.parser.parse(x.tokens)
-      return `
-        <li class="mb-2">
+renderer.listitem = function (x) {
+  const content = this.parser.parse(x.tokens)
+  return `
+        <li class="mb-2 text-white">
           <span class="text-body-1 text-accent">${content}</span>
         </li>
       `
-    }
+}
 
-    renderer.list = function ({ ordered, items }) {
-      const tag = ordered ? "ol" : "ul"
-      const body = items.map(item => this.listitem(item)).join("")
-      return `<${tag} class="mt-4 mb-6 pl-4" style="list-style-type: square">${body}</${tag}>`
-    }
+renderer.list = function ({ ordered, items }) {
+  const tag = ordered ? "ol" : "ul"
+  const body = items.map(item => this.listitem(item)).join("")
+  return `<${tag} class="mt-4 mb-6 pl-4" style="list-style-type: square">${body}</${tag}>`
+}
 
-    renderer.link = function ({ href, tokens }) {
-      const content = this.parser.parseInline(tokens)
+renderer.link = function ({ href, tokens }) {
+  const content = this.parser.parseInline(tokens)
 
       // if (href.startsWith("/")) {
       // const a = document.createElement("a")
@@ -120,24 +122,39 @@ export const useDocs = createGlobalState(() => {
       // }
 
       ;(window as any).xonClick = function (e: Event, _: HTMLAnchorElement) {
-        e.preventDefault()
-        // console.log({ event, target })
-      }
+    e.preventDefault()
+    // console.log({ event, target })
+  }
 
-      return `<a class="text-link" href="${href}" onclick="xonClick(event, this);">${content}</a>`
-    }
+  return `<a class="text-link" href="${href}" onclick="xonClick(event, this);">${content}</a>`
+}
 
-    renderer.strong = function ({ tokens }) {
-      const content = this.parser.parseInline(tokens)
-      return `<strong class="text-white text-body-1 font-weight-bold">${content}</strong>`
-    }
+renderer.strong = function ({ tokens }) {
+  const content = this.parser.parseInline(tokens)
+  return `<strong class="text-white text-body-1 font-weight-bold">${content}</strong>`
+}
 
-    renderer.codespan = function ({ text }) {
-      return `<code
+renderer.codespan = function ({ text }) {
+  return `<code
           class="text-primary text-body-1 border border-primary py-1 px-2 rounded"
           style="--v-border-opacity: 0.12; background-color: rgba(var(--v-theme-primary), var(--v-border-opacity))"
         >${text}</code>`
-    }
+}
+
+export const useDocs = createGlobalState(() => {
+  // const router = useRouter()
+
+  return useAsyncState(async () => {
+    const res = await fetch("/docs/docs.yaml")
+    const data = await res.text()
+    const docs = yaml.load(data) as Doc[]
+    const contents = await Promise.all(
+      docs
+        .map(doc => fetch(`/docs/${doc.file}`)
+          .then(res => res.text())),
+    )
+
+    // let tableOfContent: Doc["md"]["tableOfContent"] = []
 
     return docs.map((doc, index) => {
       tableOfContent = []

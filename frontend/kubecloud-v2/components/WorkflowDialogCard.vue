@@ -115,22 +115,18 @@
           </p>
         </v-col>
 
-        <v-col cols="12">
+        <v-col v-if="workflow?.metadata && Object.keys(workflow.metadata).length > 0" cols="12">
           <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
             metadata
           </p>
-          <pre>
-                {{ workflow?.metadata }}
-              </pre>
+          <div :style="{ margin: '-20px 0 -24px 0' }" v-html="metadata" />
         </v-col>
 
         <v-col cols="12">
           <p class="text-subtitle-2 opacity-50 mb-1 text-uppercase">
             state
           </p>
-          <pre class="w-100 overflow-x-auto">
-                {{ workflow?.state }}
-              </pre>
+          <div :style="{ margin: '-20px 0 -24px 0' }" v-html="state" />
         </v-col>
       </v-row>
     </v-card-text>
@@ -145,4 +141,6 @@ defineEmits<{ (e: "cancel"): void }>()
 
 const color = useStatusColor(() => props.workflow?.status ?? "")
 const createdAt = useDateFormat(() => props.workflow?.created_at, "DD/MM/YYYY, HH:mm")
+const metadata = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.metadata, null, 2)}\n\`\`\``, { renderer }))
+const state = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.state, null, 2)}\n\`\`\``, { renderer }))
 </script>
