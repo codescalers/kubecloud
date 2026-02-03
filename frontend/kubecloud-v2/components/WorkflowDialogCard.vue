@@ -141,6 +141,6 @@ defineEmits<{ (e: "cancel"): void }>()
 
 const color = useStatusColor(() => props.workflow?.status ?? "")
 const createdAt = useDateFormat(() => props.workflow?.created_at, "DD/MM/YYYY, HH:mm")
-const metadata = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.metadata, null, 2)}\n\`\`\``, { renderer }))
-const state = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.state, null, 2)}\n\`\`\``, { renderer }))
+const metadata = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.metadata ?? "", null, 2)}\n\`\`\``, { renderer }))
+const state = computed(() => marked.parse(`\`\`\`json\n${JSON.stringify(props.workflow?.state ?? "", null, 2)}\n\`\`\``, { renderer }))
 </script>

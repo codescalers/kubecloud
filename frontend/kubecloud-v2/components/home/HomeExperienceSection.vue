@@ -9,7 +9,7 @@
     >
       <v-container class="mt-16">
         <div>
-          <h1 class="text-h1 font-weight-bold text-center mb-8">
+          <h1 class="text-h3 font-weight-bold text-center mb-8 mx-auto" :style="{ maxWidth: '900px' }">
             Ready to Transform Your Kubernetes Experience?
           </h1>
           <p class="text-body-1 text-center mx-auto pa-2 rounded-lg" :style="{ maxWidth: '600px', backgroundColor: 'rgba(var(--v-theme-background), 0.8)' }">

@@ -1,3 +1,10 @@
+---
+tags:
+   - Overview
+   - Architecture
+   - Quick Start
+---
+
 # Getting Started with Mycelium Cloud
 
 Welcome to Mycelium Cloud, a comprehensive platform for deploying and managing Kubernetes clusters on the decentralized ThreeFold Grid infrastructure.
@@ -10,6 +17,7 @@ Mycelium Cloud provides a complete solution for cloud-native applications with:
 - **Kubernetes Management**: Full K3s cluster deployment and management
 - **IPv6 Networking**: Mycelium peer-to-peer networking
 - **High Availability**: Multi-master cluster support
+- **new entry**: some info
 
 ## Architecture
 

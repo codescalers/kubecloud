@@ -1,3 +1,4 @@
+import fm from "front-matter"
 import hljs from "highlight.js"
 import yaml from "js-yaml"
 import { Marked } from "marked"
@@ -13,6 +14,7 @@ export interface Doc {
   md: {
     html: string
     tableOfContent: { id: string, content: string }[]
+    attributes: Record<string, string>
   }
 }
 
@@ -131,7 +133,7 @@ renderer.link = function ({ href, tokens }) {
 
 renderer.strong = function ({ tokens }) {
   const content = this.parser.parseInline(tokens)
-  return `<strong class="text-white text-body-1 font-weight-bold">${content}</strong>`
+  return `<strong class="text-white text-body-1">${content}</strong>`
 }
 
 renderer.codespan = function ({ text }) {
@@ -158,13 +160,15 @@ export const useDocs = createGlobalState(() => {
 
     return docs.map((doc, index) => {
       tableOfContent = []
-      const content = contents[index] ?? ""
+      const { attributes, body } = fm(contents[index] ?? "") as { attributes: Record<string, string>, body: string }
+      const content = body
       return {
         ...doc,
         content,
         md: {
           html: marked.parse(content, { renderer }),
           tableOfContent,
+          attributes,
         },
       }
     })
