@@ -35,7 +35,7 @@
         <v-tab v-for="node in nodes" :key="node.id" :value="node.id" :class="{ 'text-error': !isValidClusterNode(node) }">
           {{ node.name || '*Unnamed' }}
 
-          <template v-if="!node.permanent" #append>
+          <template v-if="node.type !== 'leader'" #append>
             <v-btn
               icon
               size="x-small"

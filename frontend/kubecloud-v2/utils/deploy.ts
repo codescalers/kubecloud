@@ -8,8 +8,8 @@ export interface ClusterForm {
 
 export interface ClusterNode {
   id: string
+  type: string
   name: string
-  permanent: boolean
   useFullNodeCapabilities: boolean
   cpu: number
   memory: number
@@ -21,8 +21,8 @@ export interface ClusterNode {
 export function createClusterNode(opts: Partial<ClusterNode> = {}): ClusterNode {
   return {
     id: v4(),
+    type: "worker",
     name: `engine${Math.floor(Math.random() * 1000)}`,
-    permanent: false,
     useFullNodeCapabilities: true,
     cpu: 2,
     memory: 4,

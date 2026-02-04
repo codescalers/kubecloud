@@ -5,7 +5,7 @@
     </h3>
 
     <v-text-field
-      :model-value="modelValue"
+      :model-value="$props.modelValue"
       variant="outlined"
       label="Cluster Name"
       placeholder="Enter cluster name"

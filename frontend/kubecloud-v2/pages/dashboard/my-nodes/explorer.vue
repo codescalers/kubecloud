@@ -160,8 +160,8 @@ const filteredNodes = computed(() => {
 const { drawer, container } = inject(DashboardLayoutCtxKey)!
 
 onMounted(drawer.close)
-onUnmounted(drawer.open)
+onBeforeUnmount(drawer.open)
 
 onMounted(container.fluidize)
-onUnmounted(container.containerize)
+onBeforeUnmount(container.containerize)
 </script>

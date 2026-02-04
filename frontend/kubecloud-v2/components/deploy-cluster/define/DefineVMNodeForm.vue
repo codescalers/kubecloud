@@ -1,7 +1,15 @@
 <template>
   <v-row>
     <v-col cols="12" class="pb-0">
-      <v-text-field v-model="$props.node.name" variant="outlined" label="Node Name" />
+      <v-text-field
+        v-model="$props.node.name"
+        :rules="[
+          (v) => !!v || 'Node name is required',
+          (v) => v.length >= 3 || 'Node name must be at least 3 characters',
+        ]"
+        variant="outlined"
+        label="Node Name"
+      />
     </v-col>
 
     <v-col cols="12">
@@ -15,7 +23,20 @@
           </p>
         </div>
 
-        <v-switch v-model="$props.node.useFullNodeCapabilities" color="primary" inset hide-details />
+        <v-switch
+          :model-value="$props.node.useFullNodeCapabilities"
+          color="primary"
+          inset
+          hide-details
+          @update:model-value="e => {
+            $props.node.useFullNodeCapabilities = e ?? false
+            if (e) {
+              $props.node.cpu = 2
+              $props.node.memory = 4
+              $props.node.disk = 25
+            }
+          }"
+        />
       </div>
     </v-col>
 
@@ -24,15 +45,39 @@
         <v-col cols="12" class="pb-0">
           <v-row>
             <v-col cols="4" class="pb-0">
-              <v-text-field v-model="$props.node.cpu" variant="outlined" label="CPU (vCores)" />
+              <v-text-field
+                v-model="$props.node.cpu"
+                :rules="[
+                  (v) => !!v || 'CPU is required',
+                  (v) => v > 0 || 'CPU must be greater than 0',
+                ]"
+                variant="outlined"
+                label="CPU (vCores)"
+              />
             </v-col>
 
             <v-col cols="4" class="pb-0">
-              <v-text-field v-model="$props.node.memory" variant="outlined" label="RAM (GB)" />
+              <v-text-field
+                v-model="$props.node.memory"
+                :rules="[
+                  (v) => !!v || 'RAM is required',
+                  (v) => v > 0 || 'RAM must be greater than 0',
+                ]"
+                variant="outlined"
+                label="RAM (GB)"
+              />
             </v-col>
 
             <v-col cols="4" class="pb-0">
-              <v-text-field v-model="$props.node.disk" variant="outlined" label="Disk Size (GB)" />
+              <v-text-field
+                v-model="$props.node.disk"
+                :rules="[
+                  (v) => !!v || 'Disk size is required',
+                  (v) => v > 0 || 'Disk size must be greater than 0',
+                ]"
+                variant="outlined"
+                label="Disk Size (GB)"
+              />
             </v-col>
           </v-row>
         </v-col>
@@ -57,10 +102,14 @@
         </v-chip>
       </v-chip-group>
     </v-col>
-    <p v-if="node.sshKeys.length === 0" class="text-error text-caption">
-      <v-icon icon="mdi-alert-circle" size="small" color="error" />
-      Please select at least one SSH key
-    </p>
+
+    <v-expand-transition>
+      <div v-if="node.sshKeys.length === 0" class="w-100">
+        <v-alert type="error" variant="tonal">
+          Please select at least one SSH key
+        </v-alert>
+      </div>
+    </v-expand-transition>
   </v-row>
 </template>
 
