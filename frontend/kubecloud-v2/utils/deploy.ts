@@ -2,6 +2,7 @@ import { v4 } from "uuid"
 
 export interface ClusterForm {
   name: string
+  region: string | null
   masters: ClusterNode[]
   workers: ClusterNode[]
 }

@@ -90,6 +90,14 @@
               >
                 <NodeCard :node="node" />
               </v-col>
+
+              <v-col
+                v-for="node in filteredNodes"
+                :key="node.id"
+                :cols="12"
+              >
+                <NodeListItem :node="node" />
+              </v-col>
             </v-row>
           </v-expand-transition>
         </div>

@@ -15,7 +15,7 @@
 const api = useApi()
 
 const { state, isLoading } = useAsyncState(async () => {
-  const { data } = await api.nodes.listRentableNodes()
+  const { data } = await api.nodes.listReservedNodes()
   return data
 }, null)
 </script>

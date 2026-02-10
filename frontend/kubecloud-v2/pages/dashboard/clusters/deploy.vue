@@ -55,19 +55,19 @@
         </v-stepper-header>
 
         <v-stepper-window>
-          <v-stepper-window-item :value="1">
+          <v-stepper-window-item eager :value="1">
             <v-form v-model="defineFormValid">
               <DefineVMsForm v-model="cluster" />
             </v-form>
           </v-stepper-window-item>
 
-          <v-stepper-window-item :value="2">
+          <v-stepper-window-item eager :value="2">
             <v-form v-model="defineFormValid">
               <PlaceVMsForm v-model="cluster" />
             </v-form>
           </v-stepper-window-item>
 
-          <v-stepper-window-item :value="3">
+          <v-stepper-window-item eager :value="3">
             Review
           </v-stepper-window-item>
         </v-stepper-window>
@@ -133,6 +133,7 @@ const placeFormValid = ref(true)
 
 const cluster = ref<ClusterForm>({
   name: "engine789",
+  region: null,
   masters: [createClusterNode({ type: "leader", name: "Leader" })],
   workers: [],
 })

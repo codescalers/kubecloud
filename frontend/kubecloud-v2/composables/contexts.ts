@@ -37,3 +37,11 @@ export interface DeploymentDialogCtx {
 }
 
 export const DeploymentDialogCtxKey: InjectionKey<DeploymentDialogCtx> = Symbol("DeploymentDialogCtx")
+
+// Node Pick Context
+export interface NodePickCtx {
+  loadingNode: Ref<number | undefined>
+  setLoadingNode: (nodeId?: number) => void
+}
+
+export const NodePickCtxKey: InjectionKey<NodePickCtx> = Symbol("NodePickCtx")

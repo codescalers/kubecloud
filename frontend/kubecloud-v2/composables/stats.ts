@@ -42,7 +42,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "users",
         title: "Total Users",
         icon: "mdi-account-group-outline",
-        color: "#359EFF",
+        color: `rgb(${getColor(0)})`,
         value: s.total_users ?? 0,
       })
     }
@@ -52,7 +52,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "clusters",
         title: "Active Clusters",
         icon: "mdi-server-outline",
-        color: "#607AFB",
+        color: `rgb(${getColor(1)})`,
         value: s.total_clusters ?? 0,
       })
     }
@@ -62,7 +62,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "nodes",
         title: "Up Nodes",
         icon: "mdi-server-network-outline",
-        color: "#39E079",
+        color: `rgb(${getColor(2)})`,
         value: s.up_nodes ?? 0,
       })
     }
@@ -72,7 +72,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "countries",
         title: "Countries",
         icon: "mdi-earth",
-        color: "#D0BB95",
+        color: `rgb(${getColor(3)})`,
         value: s.countries ?? 0,
       })
     }
@@ -82,7 +82,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "balance",
         title: "System Balance",
         icon: "mdi-wallet-bifold",
-        color: "#4c16c9",
+        color: `rgb(${getColor(4)})`,
         value: Math.floor(s.system_account_balance ?? 0),
         transform: value => `$${value}`,
       })
@@ -93,7 +93,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "cpu",
         title: "CPU Cores",
         icon: "mdi-cpu-64-bit",
-        color: "#EA2831",
+        color: `rgb(${getColor(5)})`,
         value: s.cores ?? 0,
       })
     }
@@ -103,7 +103,7 @@ export function useStats(options?: UseStatsOptions) {
         id: "storage",
         title: "Total Storage",
         icon: "mdi-harddisk",
-        color: "#FAC638",
+        color: `rgb(${getColor(6)})`,
         value: (Math.floor((s.ssd ?? 0) / 1024) * 100) / 100,
         transform: value => `${value} TB`,
       })

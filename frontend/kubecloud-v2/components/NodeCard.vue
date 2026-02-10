@@ -109,9 +109,13 @@
         block
         size="x-large"
         class="btn-form"
-        text="Reserve Node"
-        append-icon="mdi-arrow-right"
+        :text="reserved ? 'Node Reserved' : 'Reserve Node'"
+        :style="reserved ? { borderColor: 'rgb(var(--v-theme-success)) !important', boxShadow: 'none !important' } : {}"
+        :append-icon="reserved ? undefined : 'mdi-arrow-right'"
+        :prepend-icon="reserved ? 'mdi-check' : undefined"
+        :color="reserved ? 'success' : undefined"
         variant="outlined"
+        :readonly="reserved"
         :loading="isLoading"
         @click="reserveNode()"
       />
@@ -121,39 +125,9 @@
 
 <script setup lang="ts">
 import type { HandlersNodesWithDiscount } from "../generated/api"
-import { AxiosError } from "axios"
 
 const props = defineProps<{ node: HandlersNodesWithDiscount }>()
-const api = useApi()
 
-const monitoringUrl = computedAsync(async () => {
-  const accountId = await api.helpers.getAccountId(props.node.twinId!)
-  const params = new URLSearchParams({
-    "orgId": "2",
-    "refresh": "30s",
-    "var-network": "dev",
-    "var-farm": props.node.farmId!.toString(),
-    "var-node": accountId,
-    "var-diskdevices": "[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+",
-  })
-
-  return `https://metrics.grid.tf/d/rYdddlPWkfqwf/zos-host-metrics?${params.toString()}`
-})
-
-const toast = useToast()
-const { isLoading, execute: reserveNode } = useAsyncState(
-  async () => {
-    const { data } = await api.nodes.reserveNode(props.node.nodeId!.toString())
-    return data
-  },
-  null,
-  {
-    immediate: false,
-    onError(e: unknown) {
-      if (e instanceof AxiosError) {
-        toast.error({ message: e.response?.data?.message ?? "An unknown error occurred" })
-      }
-    },
-  },
-)
+const monitoringUrl = useNodeMonitoringUrl(() => props.node)
+const { isLoading, execute: reserveNode, state: reserved } = useNodeReserve(() => props.node)
 </script>

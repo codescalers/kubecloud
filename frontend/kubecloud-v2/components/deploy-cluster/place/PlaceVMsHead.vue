@@ -28,6 +28,7 @@
     </v-alert>
 
     <v-select
+      v-model="$props.modelValue.region"
       label="Filter By Region"
       placeholder="Pick a region"
       clearable
@@ -40,6 +41,5 @@
 </template>
 
 <script setup lang="ts">
-// defineProps<{ modelValue: string }>()
-// defineEmits<{ (e: "update:modelValue", value: string): void }>()
+defineProps<{ modelValue: ClusterForm }>()
 </script>

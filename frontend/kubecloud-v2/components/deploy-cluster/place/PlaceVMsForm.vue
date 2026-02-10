@@ -1,7 +1,7 @@
 <template>
   <v-row>
     <v-col cols="12">
-      <PlaceVMsHead />
+      <PlaceVMsHead v-model="$props.modelValue" />
     </v-col>
 
     <v-col cols="12">
@@ -35,9 +35,10 @@
 <script setup lang="ts">
 defineProps<{ modelValue: ClusterForm }>()
 
-// const api = useApi()
-// const { state: sshKeys } = useAsyncState(async () => {
-//   const { data } = await api.users.listSshKeys()
-//   return data.data ?? []
-// }, [])
+const loadingNode = ref<number | undefined>()
+
+provide(NodePickCtxKey, {
+  loadingNode,
+  setLoadingNode: (nodeId?: number) => (loadingNode.value = nodeId),
+})
 </script>
