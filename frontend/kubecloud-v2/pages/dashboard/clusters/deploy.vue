@@ -68,7 +68,7 @@
           </v-stepper-window-item>
 
           <v-stepper-window-item eager :value="3">
-            Review
+            {{ cluster }}
           </v-stepper-window-item>
         </v-stepper-window>
 
@@ -98,6 +98,7 @@
 
           <v-btn
             v-else
+            disabled
             prepend-icon="mdi-rocket-launch"
             text="Deploy Cluster"
             variant="tonal"
@@ -127,14 +128,17 @@ const [DefineStepperItem, ReuseStepperItem] = createReusableTemplate({
   props: { title: String, step: Number, value: Number, completed: Boolean },
 })
 
-const step = ref(1)
-const defineFormValid = ref(false)
-const placeFormValid = ref(true)
-
 const cluster = ref<ClusterForm>({
   name: "engine789",
   region: null,
   masters: [createClusterNode({ type: "leader", name: "Leader" })],
   workers: [],
+})
+
+const step = ref(1)
+const defineFormValid = ref(false)
+const placeFormValid = computed(() => {
+  const { masters, workers } = cluster.value
+  return masters.every(v => v.node && v.node.valid) && workers.every(v => v.node && v.node.valid)
 })
 </script>

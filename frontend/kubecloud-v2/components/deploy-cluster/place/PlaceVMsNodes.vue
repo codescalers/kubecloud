@@ -21,7 +21,11 @@
             :value="value"
             :text="text"
             :style="{ borderRadius: '0 !important', backgroundColor: deactive ? 'rgba(var(--v-theme-error), 0.12)' : active ? 'rgba(var(--v-theme-success), 0.12)' : nodeTab.join('|') === value ? 'rgba(var(--v-theme-primary), 0.12)' : undefined }"
-            :class="{ 'text-success': active, 'text-error': deactive }"
+            :class="{
+              'text-success': active,
+              'text-error': deactive,
+            }"
+            class="border-b border-0 border-dashed"
           />
         </DefineNodeTab>
 
