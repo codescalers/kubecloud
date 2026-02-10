@@ -14,5 +14,5 @@ const api = useApi()
 const { state, isLoading } = useAsyncState(async () => {
   const { data } = await api.users.getUser()
   return data
-}, null)
+}, null, { immediate: $meta.client })
 </script>

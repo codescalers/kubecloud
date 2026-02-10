@@ -95,7 +95,7 @@ const { state: _nodes } = useAsyncState(async () => {
   const { data } = await api.nodes.listNodes()
   const nodes = (data as ListRentableNodes200Response).data?.nodes ?? []
   return sortNodes(nodes)
-}, [], { resetOnExecute: false })
+}, [], { immediate: $meta.client, resetOnExecute: false })
 
 function onReserveNode(nodeId: number): void {
   // const __nodes = _nodes.value.map(n => n.nodeId === nodeId ? { ...n, rented: true } : n)

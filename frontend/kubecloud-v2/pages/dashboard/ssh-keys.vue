@@ -46,7 +46,7 @@ const api = useApi()
 const { state: keys } = useAsyncState(async () => {
   const { data } = await api.users.listSshKeys()
   return data.data ?? []
-}, [])
+}, [], { immediate: $meta.client })
 
 const toast = useToast()
 const { execute: addSSHKey, isLoading } = useAsyncState(async (value: HandlersSSHKeyInput) => {

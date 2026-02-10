@@ -104,7 +104,7 @@ const { state, isLoading } = useAsyncState(
     return (data.data as unknown as { vouchers: ModelsVoucher[] }).vouchers ?? []
   },
   [],
-  { resetOnExecute: false },
+  { immediate: $meta.client, resetOnExecute: false },
 )
 
 const vouchers = computed(() => {

@@ -75,6 +75,7 @@ const api = useApi()
 const { state: kubeconfig, isLoading: downloading } = useAsyncState(
   () => api.helpers.getKubeconfig(props.deployment.cluster?.name ?? ""),
   "",
+  { immediate: $meta.client },
 )
 
 const binary = computed(() => {

@@ -1,7 +1,7 @@
 import * as THREE from "three"
 
 export function ensureThreeGlobal() {
-  if (!window.THREE) {
+  if ($meta.client && !window.THREE) {
     window.THREE = THREE
   }
 
@@ -9,6 +9,10 @@ export function ensureThreeGlobal() {
 }
 
 export function applyVanta(type: "dots" | "globe", el: HTMLElement) {
+  if (!$meta.client) {
+    return
+  }
+
   if (type === "dots") {
     applyVantaDots(el)
   }

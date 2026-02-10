@@ -66,6 +66,7 @@ const api = useApi()
 const { execute: sendVerificationCode, isLoading } = useAsyncState(
   () => api.users.forgotPassword({ email: email.value }, { unauthenticated: true }),
   null,
+  { immediate: $meta.client },
 )
 
 async function verifyCode(otp: string) {

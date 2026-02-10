@@ -26,7 +26,7 @@ export function useStats(options?: UseStatsOptions) {
   const { state, isLoading, error } = useAsyncState(async () => {
     const { data } = await api.admin.getStats({ unauthenticated: true })
     return data.data
-  }, null)
+  }, null, { immediate: $meta.client })
 
   const stats = computed(() => {
     const s = state.value

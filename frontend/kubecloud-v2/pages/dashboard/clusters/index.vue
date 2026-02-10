@@ -124,7 +124,7 @@ const toast = useToast()
 const { state: deployments, isLoading } = useAsyncState(async () => {
   const { data } = await api.deployments.deploymentsGet()
   return data.data?.deployments ?? []
-}, [])
+}, [], { immediate: $meta.client })
 
 const sortByItems = [
   { title: "Name", value: "name" },

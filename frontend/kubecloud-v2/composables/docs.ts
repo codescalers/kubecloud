@@ -172,5 +172,5 @@ export const useDocs = createGlobalState(() => {
         },
       }
     })
-  }, [])
+  }, [], { immediate: $meta.client })
 })

@@ -126,7 +126,7 @@ const {
 } = useAsyncState(async () => {
   const { data } = await api.nodes.listRentableNodes()
   return data.data?.nodes ?? []
-}, [])
+}, [], { immediate: $meta.client })
 
 const filteredNodes = computed(() => {
   const f = filters.value

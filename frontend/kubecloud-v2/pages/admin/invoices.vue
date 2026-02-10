@@ -51,7 +51,7 @@ const page = ref(1)
 const { state, isLoading } = useAsyncState(async () => {
   const { data } = await api.admin.getAllInvoices()
   return (data.data as unknown as { invoices: ModelsInvoice[] }).invoices ?? []
-}, [])
+}, [], { immediate: $meta.client })
 
 const invoices = computed(() => {
   const v = (page.value - 1) * limit.value

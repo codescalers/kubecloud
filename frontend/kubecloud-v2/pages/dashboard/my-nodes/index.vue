@@ -17,5 +17,5 @@ const api = useApi()
 const { state, isLoading } = useAsyncState(async () => {
   const { data } = await api.nodes.listReservedNodes()
   return data
-}, null)
+}, null, { immediate: $meta.client })
 </script>

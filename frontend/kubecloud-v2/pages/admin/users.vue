@@ -84,7 +84,7 @@ const { state: users, isLoading } = useAsyncState(
     return data.data?.users ?? []
   },
   [],
-  { resetOnExecute: false },
+  { immediate: $meta.client, resetOnExecute: false },
 )
 
 const credit = useDialog<ServicesUserWithUSDBalance, { amount: number, memo: string }>()

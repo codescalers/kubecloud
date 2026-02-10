@@ -12,10 +12,12 @@ export function useVanta(type: "dots" | "globe", el: () => HTMLElement) {
     ],
   })
 
-  const script = document.querySelector(`script[src="/scripts/vanta.${type}.min.js"]`)
-  if (script) {
-    nextTick(() => {
-      applyVanta(type, el())
-    })
+  if ($meta.client) {
+    const script = document.querySelector(`script[src="/scripts/vanta.${type}.min.js"]`)
+    if (script) {
+      nextTick(() => {
+        applyVanta(type, el())
+      })
+    }
   }
 }

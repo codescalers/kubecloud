@@ -104,7 +104,7 @@ const api = useApi()
 const { state: isEnabled, isLoading: isLoadingEnabled } = useAsyncState(async () => {
   const { data } = await api.admin.getMaintenanceMode()
   return data.data?.enabled
-}, false)
+}, false, { immediate: $meta.client })
 
 const { execute: toggleMaintenanceMode, isLoading } = useAsyncState(
   async () => {

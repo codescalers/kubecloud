@@ -92,7 +92,7 @@ const {
     return data.data
   },
   null,
-  { resetOnExecute: false },
+  { immediate: $meta.client, resetOnExecute: false },
 )
 
 watchDebounced([page, limit, status], () => loadWorkflows(), { debounce: 100 })

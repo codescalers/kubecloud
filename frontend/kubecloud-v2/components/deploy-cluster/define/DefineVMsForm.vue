@@ -35,5 +35,5 @@ const api = useApi()
 const { state: sshKeys } = useAsyncState(async () => {
   const { data } = await api.users.listSshKeys()
   return data.data ?? []
-}, [])
+}, [], { immediate: $meta.client })
 </script>

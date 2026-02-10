@@ -43,19 +43,19 @@ const api = useApi()
 const { state: balance } = useAsyncState(async () => {
   const { data } = await api.users.getUserBalance()
   return toPrecision(data.data?.balance_usd ?? 0, 2)
-}, 0)
+}, 0, { immediate: $meta.client })
 
 const { state: spent } = useAsyncState(async () => {
   const { data } = await api.invoices.getInvoices()
   const { invoices } = data.data as unknown as { invoices: ModelsInvoice[] }
   const total = invoices.reduce((a, b) => a + (b.total ?? 0) * 1000, 0) ?? 0
   return toPrecision(total / 1000, 2)
-}, 0)
+}, 0, { immediate: $meta.client })
 
 const { state: deploymentsCount } = useAsyncState(async () => {
   const { data } = await api.deployments.deploymentsGet()
   return data.data?.count ?? 0
-}, 0)
+}, 0, { immediate: $meta.client })
 
 const stats = computed<StatsResource[]>(() => {
   return [

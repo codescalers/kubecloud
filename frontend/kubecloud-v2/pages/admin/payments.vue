@@ -8,5 +8,5 @@ const api = useApi()
 const { state } = useAsyncState(async () => {
   const { data } = await api.admin.listPendingRecords()
   return data.data
-}, null)
+}, null, { immediate: $meta.client })
 </script>

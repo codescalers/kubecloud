@@ -25,5 +25,5 @@ const { state: md } = useAsyncState(async () => {
   const text = await res.text()
   const { attributes, body } = fm(text) as { attributes: Record<string, string>, body: string }
   return { title: attributes.title, updatedAt: attributes.updatedAt, html: marked.parse(body, { renderer }) }
-}, null)
+}, null, { immediate: $meta.client })
 </script>
