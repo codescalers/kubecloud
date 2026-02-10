@@ -15,7 +15,10 @@ export interface ClusterNode {
   cpu: number
   memory: number
   disk: number
-  nodeId: number | null
+  node: null | {
+    id: number
+    valid: boolean
+  }
   sshKeys: number[]
 }
 
@@ -28,7 +31,7 @@ export function createClusterNode(opts: Partial<ClusterNode> = {}): ClusterNode 
     cpu: 2,
     memory: 4,
     disk: 25,
-    nodeId: null,
+    node: null,
     sshKeys: [0],
     ...opts,
   }

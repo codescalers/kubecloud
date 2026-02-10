@@ -32,7 +32,7 @@
 
     <v-expand-transition>
       <div v-if="activeNode">
-        <NodeListItem active :node="activeNode!" />
+        <NodeListItem :active="modelValue.node?.valid" :deactive="!modelValue.node?.valid" :node="activeNode!" />
       </div>
     </v-expand-transition>
 
@@ -44,7 +44,7 @@
         >
           <VDivider v-if="index !== 0" />
           <NodeListItem
-            :active="modelValue.nodeId === node.nodeId"
+            :disabled="pickedNodes.includes(node.nodeId!)"
             :node="node"
             @reserve="$emit('reserve', node.nodeId!)"
             @pick="getNodeStoragePool(undefined, $event)"
@@ -58,28 +58,28 @@
 <script setup lang="ts">
 import type { HandlersNodesWithDiscount } from "~/generated/api"
 
-const props = defineProps<{ modelValue: ClusterNode, allNodes: HandlersNodesWithDiscount[], nodes: HandlersNodesWithDiscount[] }>()
+const props = defineProps<{ modelValue: ClusterNode, pickedNodes: number[], nodes: HandlersNodesWithDiscount[] }>()
 const emit = defineEmits<{
   (e: "reserve", nodeId: number): void
-  (e: "pick", nodeId: number | null): void
+  (e: "pick", node: null | { id: number, valid: boolean }): void
 }>()
 
 const { loadingNode, setLoadingNode } = inject(NodePickCtxKey)!
 
-const activeNode = computed(() => props.allNodes.filter(n => n.nodeId === props.modelValue.nodeId)[0])
+const activeNode = computed(() => props.nodes.filter(n => n.nodeId === props.modelValue.node?.id)[0])
 
 const api = useApi()
 const { execute: getNodeStoragePool } = useAsyncState(async (node: HandlersNodesWithDiscount) => {
   setLoadingNode(node.nodeId!)
-  emit("pick", null)
-  /* const { data } =  */await api.nodes.getNodeStoragePool(node.nodeId!.toString())
-  return node.nodeId!
-}, null, {
-  immediate: false,
-  onSuccess(nodeId) {
+  try {
+    /* const { data } =  */ await api.nodes.getNodeStoragePool(node.nodeId!.toString())
+    emit("pick", { id: node.nodeId!, valid: true })
+  }
+  catch {
+    emit("pick", { id: node.nodeId!, valid: false })
+  }
+  finally {
     setLoadingNode(undefined)
-    emit("pick", nodeId!)
-  },
-  onError() { setLoadingNode(undefined) },
-})
+  }
+}, null, { immediate: false })
 </script>

@@ -1,8 +1,8 @@
 <template>
   <v-card
     :loading="loadingNode === node.nodeId"
-    :disabled="!!loadingNode && loadingNode !== node.nodeId"
-    :class="{ 'opacity-50': !!loadingNode && loadingNode !== node.nodeId }"
+    :disabled="disabled || (!!loadingNode && loadingNode !== node.nodeId)"
+    :class="{ 'opacity-50': disabled || (!!loadingNode && loadingNode !== node.nodeId) }"
     flat
     rounded="0"
     :style="{ padding: '16px !important', border: 'none !important' }"
@@ -123,7 +123,7 @@ import type { HandlersNodesWithDiscount } from "~/generated/api"
 import humanizeDuration from "humanize-duration"
 import prettyBytes from "pretty-bytes"
 
-const props = defineProps<{ node: HandlersNodesWithDiscount, active?: boolean, deactive?: boolean }>()
+const props = defineProps<{ node: HandlersNodesWithDiscount, disabled?: boolean, active?: boolean, deactive?: boolean }>()
 const emit = defineEmits<{ (e: "reserve", nodeId: number): void, (e: "pick", node: HandlersNodesWithDiscount): void }>()
 
 const { loadingNode } = inject(NodePickCtxKey)!

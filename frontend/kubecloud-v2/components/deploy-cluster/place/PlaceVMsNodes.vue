@@ -16,43 +16,45 @@
         mandatory
         @update:model-value="nodeTab = ($event.split('|') as ['masters' | 'workers', number])"
       >
-        <DefineNodeTab #="{ text, value, active }">
+        <DefineNodeTab #="{ text, value, active, deactive }">
           <v-tab
             :value="value"
             :text="text"
-            :style="{ borderRadius: '0 4px 4px 0 !important', backgroundColor: active ? 'rgba(var(--v-theme-success), 0.12)' : nodeTab.join('|') === value ? 'rgba(var(--v-theme-primary), 0.12)' : undefined }"
-            :class="{ 'text-success': active }"
+            :style="{ borderRadius: '0 !important', backgroundColor: deactive ? 'rgba(var(--v-theme-error), 0.12)' : active ? 'rgba(var(--v-theme-success), 0.12)' : nodeTab.join('|') === value ? 'rgba(var(--v-theme-primary), 0.12)' : undefined }"
+            :class="{ 'text-success': active, 'text-error': deactive }"
           />
         </DefineNodeTab>
 
         <ReuseNodeTab
           v-for="(node, index) in cluster.masters"
           :key="node.id"
-          :text="`${node.name} (${node.type})`"
+          :text="`${node.name} (${node.type})${node.node ? ` [${node.node.id}]` : ''}`"
           :value="`masters|${index}`"
           :loading="loadingNode && nodeTab.join('|') === `masters|${index}`"
           :disabled="loadingNode && nodeTab.join('|') !== `masters|${index}`"
-          :active="!!node.nodeId"
+          :active="!!node.node && node.node.valid"
+          :deactive="!!node.node && !node.node.valid"
         />
 
         <ReuseNodeTab
           v-for="(node, index) in cluster.workers"
           :key="node.id"
-          :text="`${node.name} (${node.type})`"
+          :text="`${node.name} (${node.type})${node.node ? ` [${node.node.id}]` : ''}`"
           :value="`workers|${index}`"
           :loading="loadingNode && nodeTab.join('|') === `workers|${index}`"
           :disabled="loadingNode && nodeTab.join('|') !== `workers|${index}`"
-          :active="!!node.nodeId"
+          :active="!!node.node && node.node.valid"
+          :deactive="!!node.node && !node.node.valid"
         />
       </v-tabs>
 
       <div v-if="cluster[nodeTab[0]][nodeTab[1]]" class="flex-grow-1">
         <PlaceVMsNode
           v-model="cluster[nodeTab[0]][nodeTab[1]]!"
-          :all-nodes="_nodes"
+          :picked-nodes="pickedNodes"
           :nodes="nodes"
           @reserve="onReserveNode"
-          @pick="$props.cluster[nodeTab[0]][nodeTab[1]]!.nodeId = $event"
+          @pick="$props.cluster[nodeTab[0]][nodeTab[1]]!.node = $event"
         />
       </div>
     </div>
@@ -65,7 +67,7 @@ import type { HandlersNodesWithDiscount, ListRentableNodes200Response } from "~/
 const props = defineProps<{ cluster: ClusterForm }>()
 
 const [DefineNodeTab, ReuseNodeTab] = createReusableTemplate({
-  props: { text: String, value: String, active: Boolean },
+  props: { text: String, value: String, active: Boolean, deactive: Boolean },
 })
 
 const { loadingNode } = inject(NodePickCtxKey)!
@@ -101,11 +103,15 @@ function onReserveNode(nodeId: number): void {
   _nodes.value = _nodes.value.map(n => n.nodeId === nodeId ? { ...n, rented: true } : n)
 }
 
+const pickedNodes = computed(() => {
+  return props.cluster.masters.concat(props.cluster.workers).map(n => n.node?.id).filter(v => !!v) as number[]
+})
 const nodes = computed(() => {
-  const pickedNodes = props.cluster.masters.concat(props.cluster.workers).map(n => n.nodeId)
+  // const pickedNodes = props.cluster.masters.concat(props.cluster.workers).map(n => n.nodeId)
   return _nodes.value.filter((n) => {
     const regionFilter = !props.cluster.region || n.location?.region === props.cluster.region
-    return regionFilter && !pickedNodes.includes(n.nodeId!)
+    // return regionFilter && !pickedNodes.includes(n.nodeId!)
+    return regionFilter
   })
 })
 </script>
