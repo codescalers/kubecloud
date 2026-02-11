@@ -36,6 +36,10 @@
       variant="outlined"
       density="compact"
       hide-details
+      @update:model-value="() => {
+        $props.modelValue.masters = $props.modelValue.masters.map(master => ({ ...master, node: null }))
+        $props.modelValue.workers = $props.modelValue.workers.map(worker => ({ ...worker, node: null }))
+      }"
     />
   </v-card>
 </template>

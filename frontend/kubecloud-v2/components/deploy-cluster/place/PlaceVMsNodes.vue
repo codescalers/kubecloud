@@ -102,8 +102,6 @@ const { state: _nodes } = useAsyncState(async () => {
 }, [], { immediate: $meta.client, resetOnExecute: false })
 
 function onReserveNode(nodeId: number): void {
-  // const __nodes = _nodes.value.map(n => n.nodeId === nodeId ? { ...n, rented: true } : n)
-  // _nodes.value = sortNodes(__nodes)
   _nodes.value = _nodes.value.map(n => n.nodeId === nodeId ? { ...n, rented: true } : n)
 }
 
@@ -111,11 +109,6 @@ const pickedNodes = computed(() => {
   return props.cluster.masters.concat(props.cluster.workers).map(n => n.node?.id).filter(v => !!v) as number[]
 })
 const nodes = computed(() => {
-  // const pickedNodes = props.cluster.masters.concat(props.cluster.workers).map(n => n.nodeId)
-  return _nodes.value.filter((n) => {
-    const regionFilter = !props.cluster.region || n.location?.region === props.cluster.region
-    // return regionFilter && !pickedNodes.includes(n.nodeId!)
-    return regionFilter
-  })
+  return _nodes.value.filter(n => !props.cluster.region || n.location?.region === props.cluster.region)
 })
 </script>

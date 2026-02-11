@@ -1,10 +1,26 @@
+import type { HandlersNodesWithDiscount } from "~/generated/api"
 import { v4 } from "uuid"
 
 export interface ClusterForm {
   name: string
+  token: string
   region: string | null
   masters: ClusterNode[]
   workers: ClusterNode[]
+}
+
+function _genName(prefix: string) {
+  return `${prefix}${Math.floor(Math.random() * 1000)}`
+}
+
+export function createClusterForm(): ClusterForm {
+  return {
+    name: _genName("cluster"),
+    token: v4(),
+    region: null,
+    masters: [createClusterNode({ type: "leader", name: "Leader" })],
+    workers: [],
+  }
 }
 
 export interface ClusterNode {
@@ -17,6 +33,7 @@ export interface ClusterNode {
   disk: number
   node: null | {
     id: number
+    raw: HandlersNodesWithDiscount
     valid: boolean
   }
   sshKeys: number[]
@@ -26,7 +43,7 @@ export function createClusterNode(opts: Partial<ClusterNode> = {}): ClusterNode 
   return {
     id: v4(),
     type: "worker",
-    name: `engine${Math.floor(Math.random() * 1000)}`,
+    name: _genName(opts.type ?? "worker"),
     useFullNodeCapabilities: true,
     cpu: 2,
     memory: 4,

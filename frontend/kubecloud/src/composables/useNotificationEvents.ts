@@ -72,6 +72,8 @@ export function useNotificationEvents() {
       'http://localhost:8080/api'
     const token = userStore.token
     const url = backendBaseUrl + '/v1/events?token=' + encodeURIComponent(token)
+    console.log(url);
+
 
     eventSource.value = new EventSource(url, { withCredentials: true })
 
@@ -154,7 +156,7 @@ export function useNotificationEvents() {
     }
 
     const { subject, message } = getNotificationData(data, type)
-    
+
     // Add persistent notification if it has an ID
     if (id) {
       notificationStore.addNotification({
@@ -166,10 +168,10 @@ export function useNotificationEvents() {
         persistent: true,
       })
     }
-    
+
     // Display toast notification based on severity
     displayToastNotification(severity, subject, message)
-    
+
     // Handle type-specific business logic
     handleSpecificNotificationType(type, severity)
   }

@@ -56,15 +56,11 @@
 
         <v-stepper-window>
           <v-stepper-window-item eager :value="1">
-            <v-form v-model="defineFormValid">
-              <DefineVMsForm v-model="cluster" />
-            </v-form>
+            <DefineVMsForm v-model="cluster" :ssh-keys="sshKeys" />
           </v-stepper-window-item>
 
           <v-stepper-window-item eager :value="2">
-            <v-form v-model="defineFormValid">
-              <PlaceVMsForm v-model="cluster" />
-            </v-form>
+            <PlaceVMsForm v-model="cluster" />
           </v-stepper-window-item>
 
           <v-stepper-window-item eager :value="3">
@@ -80,7 +76,17 @@
             text="Back"
             variant="text"
             :disabled="step === 1"
-            @click="prev"
+            @click="() => {
+              if (step === 2) {
+                $nextTick(() => {
+                  cluster.masters = cluster.masters.map(master => ({ ...master, node: null }))
+                  cluster.workers = cluster.workers.map(worker => ({ ...worker, node: null }))
+                })
+              }
+
+              prev()
+            }
+            "
           />
 
           <v-btn
@@ -98,12 +104,12 @@
 
           <v-btn
             v-else
-            disabled
             prepend-icon="mdi-rocket-launch"
             text="Deploy Cluster"
             variant="tonal"
             color="success"
-            @click="console.log('deploy cluster')"
+            :loading="deploying"
+            @click="deployCluster()"
           />
         </div>
       </v-stepper>
@@ -112,6 +118,8 @@
 </template>
 
 <script setup lang="ts">
+import type { HandlersNodeInput } from "~/generated/api"
+
 const { drawer, container } = inject(DashboardLayoutCtxKey)!
 
 onMounted(drawer.close)
@@ -119,6 +127,12 @@ onBeforeUnmount(drawer.open)
 
 onMounted(container.fluidize)
 onBeforeUnmount(container.containerize)
+
+const api = useApi()
+const { state: sshKeys } = useAsyncState(async () => {
+  const { data } = await api.users.listSshKeys()
+  return data.data ?? []
+}, [], { immediate: $meta.client })
 
 const [DefineStepperLine, ReuseStepperLine] = createReusableTemplate({
   props: { completed: Boolean },
@@ -128,17 +142,64 @@ const [DefineStepperItem, ReuseStepperItem] = createReusableTemplate({
   props: { title: String, step: Number, value: Number, completed: Boolean },
 })
 
-const cluster = ref<ClusterForm>({
-  name: "engine789",
-  region: null,
-  masters: [createClusterNode({ type: "leader", name: "Leader" })],
-  workers: [],
-})
+const cluster = ref(createClusterForm())
 
 const step = ref(1)
-const defineFormValid = ref(false)
+const defineFormValid = computed(() => {
+  const { name, masters, workers } = cluster.value
+  return name.length >= 3 && masters.concat(workers).every(isValidClusterNode)
+})
 const placeFormValid = computed(() => {
   const { masters, workers } = cluster.value
   return masters.every(v => v.node && v.node.valid) && workers.every(v => v.node && v.node.valid)
 })
+
+async function toNodeInput(clusterNode: ClusterNode): Promise<HandlersNodeInput> {
+  const keys = sshKeys.value
+  const SSH_KEY = clusterNode.sshKeys.map(i => keys[i]!.public_key).join("\n")
+  const root_size = 5 * 1024
+
+  const input: HandlersNodeInput = {
+    name: clusterNode.name,
+    type: clusterNode.type === "worker" ? "worker" : "master",
+    node_id: clusterNode.node!.id,
+    cpu: clusterNode.cpu,
+    memory: clusterNode.memory * 1024,
+    root_size,
+    data_disks: [clusterNode.disk * 1024 - root_size],
+    env_vars: {
+      SSH_KEY,
+      K3S_TOKEN: cluster.value.token,
+    },
+  }
+
+  if (clusterNode.useFullNodeCapabilities) {
+    const { nodeId, total_resources, used_resources } = clusterNode.node!.raw
+
+    input.cpu = total_resources!.cru!
+    input.memory = Math.floor(((total_resources!.mru! - used_resources!.mru!) * 0.99) / 1024 ** 3) * 1024
+
+    const pools = await api.nodes.getNodeStoragePool(nodeId!.toString()).then(v => v.data.data?.pools ?? [])
+    if (pools.length === 0) {
+      throw new Error("No storage pool found")
+    }
+
+    input.data_disks = pools.map((pool, i) => {
+      const size = Math.floor(pool.free! * 0.985 / 1024 ** 3)
+      return size * 1024 - (i === 0 ? root_size : 0)
+    })
+  }
+
+  return input
+}
+
+const { execute: deployCluster, isLoading: deploying } = useAsyncState(async () => {
+  const { name, masters, workers } = cluster.value
+  const nodes = await Promise.all(masters.concat(workers).map(toNodeInput))
+  /* const { data } =  */await api.deployments.deploymentsPost({
+    name,
+    token: cluster.value.token,
+    nodes,
+  })
+}, null, { immediate: false })
 </script>

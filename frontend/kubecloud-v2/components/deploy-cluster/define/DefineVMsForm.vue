@@ -29,11 +29,7 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ modelValue: ClusterForm }>()
+import type { ModelsSSHKey } from "~/generated/api"
 
-const api = useApi()
-const { state: sshKeys } = useAsyncState(async () => {
-  const { data } = await api.users.listSshKeys()
-  return data.data ?? []
-}, [], { immediate: $meta.client })
+defineProps<{ modelValue: ClusterForm, sshKeys: ModelsSSHKey[] }>()
 </script>

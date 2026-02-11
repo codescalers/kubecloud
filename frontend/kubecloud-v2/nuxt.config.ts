@@ -58,4 +58,13 @@ export default defineNuxtConfig({
       standalone: false,
     },
   },
+  toast: {
+    settings: {
+      timeout: 10_000,
+      resetOnHover: true,
+      maxWidth: 400,
+      messageLineHeight: "18",
+      titleLineHeight: "18",
+    },
+  },
 })
