@@ -25,6 +25,7 @@
         />
 
         <v-btn
+          ref="downloader"
           variant="text"
           border
           prepend-icon="mdi-download-outline"
@@ -34,6 +35,9 @@
           :href="binary"
           :download="`${deployment.cluster?.name}-kubeconfig.yaml`"
           :disabled="disabled"
+          v-bind="{
+            onClick: isKubeConfigReady ? undefined : downloadKubeConfig,
+          }"
         />
 
         <v-btn
@@ -63,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import type { VBtn } from "vuetify/components"
 import type { ServicesClusterData } from "~/generated/api"
 
 const props = defineProps<{ deployment: ServicesClusterData, disabled: boolean }>()
@@ -72,10 +77,10 @@ const createdAt = useDateFormat(() => props.deployment.created_at, DATE_FORMAT)
 
 const api = useApi()
 
-const { state: kubeconfig, isLoading: downloading } = useAsyncState(
-  () => api.helpers.getKubeconfig(props.deployment.cluster?.name ?? ""),
+const { state: kubeconfig, execute: loadKubeConfig, isLoading: downloading, isReady: isKubeConfigReady } = useAsyncState(
+  async () => api.helpers.getKubeconfig(props.deployment.cluster?.name ?? ""),
   "",
-  { immediate: $meta.client },
+  { immediate: false },
 )
 
 const binary = computed(() => {
@@ -88,6 +93,16 @@ const binary = computed(() => {
   const blob = new Blob([data], { type: "application/json" })
   return URL.createObjectURL(blob)
 })
+
+const downloader = ref<VBtn | null>(null)
+async function downloadKubeConfig(e: Event) {
+  if (!isKubeConfigReady.value) {
+    e.preventDefault()
+    await loadKubeConfig()
+    await nextTick()
+    downloader.value?.$el?.click()
+  }
+}
 
 const toast = useToast()
 const ctx = inject(DeploymentDialogCtxKey)!
