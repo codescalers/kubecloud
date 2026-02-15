@@ -22,10 +22,10 @@
           CPU: {{ modelValue.cpu }} vCores
         </v-chip>
         <v-chip size="small" prepend-icon="mdi-memory" color="success" class="font-weight-bold">
-          RAM: {{ modelValue.memory }} GB
+          RAM: {{ modelValue.memory }} GiB
         </v-chip>
         <v-chip size="small" prepend-icon="mdi-server" color="secondary" class="font-weight-bold">
-          Disk Size: {{ modelValue.disk }} GB
+          Disk Size: {{ modelValue.disk }} GiB
         </v-chip>
       </div>
     </div>
@@ -38,6 +38,10 @@
 
     <v-table class="border-t border-0 border-dashed" :class="{ 'table-hidden-overflow': !!loadingNode }" :style="{ maxHeight: '400px' }">
       <tbody>
+        <tr v-if="filteredNodes.length === 0" class="text-caption text-accent text-center">
+          <VListItem title="No available nodes for the requested configuration" />
+        </tr>
+
         <tr
           v-for="(node, index) in filteredNodes"
           :key="node.nodeId"
@@ -71,17 +75,21 @@ const { loadingNode, setLoadingNode } = inject(NodePickCtxKey)!
 const activeNode = computed(() => props.nodes.filter(n => n.nodeId === props.modelValue.node?.id)[0])
 const filteredNodes = computed(() => {
   return props.nodes.filter((n) => {
-    if (props.pickedNodes.includes(n.nodeId!) || props.modelValue.useFullNodeCapabilities) {
+    const { useFullNodeCapabilities, cpu, memory, disk } = props.modelValue
+
+    if (props.pickedNodes.includes(n.nodeId!)) {
       return true
     }
 
-    const cpu = n.total_resources!.cru!
-    const ram = n.total_resources!.mru! - n.used_resources!.mru!
-    const ssd = n.total_resources!.sru! - n.used_resources!.sru!
+    const cru = n.total_resources!.cru!
+    const ram = (n.total_resources!.mru! * 0.98 - n.used_resources!.mru!) / 1024 ** 3
+    const ssd = (n.total_resources!.sru! * 0.97 - n.used_resources!.sru!) / 1024 ** 3
 
-    return cpu >= props.modelValue.cpu
-      && ram >= (props.modelValue.memory / 1024 ** 3)
-      && ssd >= (props.modelValue.disk / 1024 ** 3)
+    if (useFullNodeCapabilities) {
+      return cru >= 0 && ram >= 0 && ssd >= 0
+    }
+
+    return cru >= cpu && ram >= memory && ssd >= disk
   })
 })
 

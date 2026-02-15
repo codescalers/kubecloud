@@ -1,6 +1,5 @@
 <template>
   <v-row>
-    {{ $props.modelValue.region }}
     <v-col cols="12">
       <PlaceVMsHead
         v-model="$props.modelValue"

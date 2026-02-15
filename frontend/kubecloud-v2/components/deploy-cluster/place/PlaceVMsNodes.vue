@@ -95,10 +95,28 @@ function sortNodes(nodes: HandlersNodesWithDiscount[]): HandlersNodesWithDiscoun
   })
 }
 
+/* const { state: deployments } = useAsyncState(async () => {
+  const { data } = await api.deployments.deploymentsGet()
+  return data.data?.deployments ?? []
+}, [], { immediate: $meta.client }) */
+
 const { state: _nodes } = useAsyncState(async () => {
   const { data } = await api.nodes.listNodes()
+  const deployments = await api.deployments
+    .deploymentsGet()
+    .then(v => v.data.data?.deployments ?? [])
+    .then(v => v.map(d => d.cluster?.nodes ?? []).flat(1))
+    .then(v => v.map(n => n.node_id))
+
   const nodes = (data as ListRentableNodes200Response).data?.nodes ?? []
-  return sortNodes(nodes)
+  // console.log({
+  //   deployments,
+  //   nodes,
+  // })
+
+  const x = sortNodes(nodes.filter(n => !deployments.includes(n.nodeId!)))
+
+  return x
 }, [], { immediate: $meta.client, resetOnExecute: false })
 
 function onReserveNode(nodeId: number): void {

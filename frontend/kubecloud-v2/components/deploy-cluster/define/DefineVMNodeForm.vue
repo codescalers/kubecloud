@@ -46,7 +46,7 @@
           <v-row>
             <v-col cols="4" class="pb-0">
               <v-text-field
-                v-model="$props.node.cpu"
+                v-model.number="$props.node.cpu"
                 :rules="[
                   (v) => !!v || 'CPU is required',
                   (v) => v > 0 || 'CPU must be greater than 0',
@@ -58,7 +58,7 @@
 
             <v-col cols="4" class="pb-0">
               <v-text-field
-                v-model="$props.node.memory"
+                v-model.number="$props.node.memory"
                 :rules="[
                   (v) => !!v || 'RAM is required',
                   (v) => v > 0 || 'RAM must be greater than 0',
@@ -70,7 +70,7 @@
 
             <v-col cols="4" class="pb-0">
               <v-text-field
-                v-model="$props.node.disk"
+                v-model.number="$props.node.disk"
                 :rules="[
                   (v) => !!v || 'Disk size is required',
                   (v) => v > 0 || 'Disk size must be greater than 0',

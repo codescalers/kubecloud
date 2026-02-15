@@ -64,7 +64,7 @@
           </v-stepper-window-item>
 
           <v-stepper-window-item eager :value="3">
-            {{ cluster }}
+            <ReviewDeployment :ssh-keys="sshKeys" :cluster="cluster" />
           </v-stepper-window-item>
         </v-stepper-window>
 
@@ -170,20 +170,20 @@ async function toNodeInput(clusterNode: ClusterNode): Promise<HandlersNodeInput>
     env_vars: {
       SSH_KEY,
       K3S_TOKEN: cluster.value.token,
+      USE_FULL_NODE_CAPABILITIES: clusterNode.useFullNodeCapabilities ? "1" : "0",
     },
   }
 
   if (clusterNode.useFullNodeCapabilities) {
     const { nodeId, total_resources, used_resources } = clusterNode.node!.raw
 
-    input.cpu = total_resources!.cru!
-    input.memory = Math.floor(((total_resources!.mru! - used_resources!.mru!) * 0.99) / 1024 ** 3) * 1024
-
     const pools = await api.nodes.getNodeStoragePool(nodeId!.toString()).then(v => v.data.data?.pools ?? [])
     if (pools.length === 0) {
       throw new Error("No storage pool found")
     }
 
+    input.cpu = total_resources!.cru!
+    input.memory = Math.floor((total_resources!.mru! * 0.99 - used_resources!.mru!) / 1024 ** 2)
     input.data_disks = pools.map((pool, i) => {
       const size = Math.floor(pool.free! * 0.985 / 1024 ** 3)
       return size * 1024 - (i === 0 ? root_size : 0)
@@ -193,6 +193,7 @@ async function toNodeInput(clusterNode: ClusterNode): Promise<HandlersNodeInput>
   return input
 }
 
+const router = useRouter()
 const { execute: deployCluster, isLoading: deploying } = useAsyncState(async () => {
   const { name, masters, workers } = cluster.value
   const nodes = await Promise.all(masters.concat(workers).map(toNodeInput))
@@ -201,5 +202,6 @@ const { execute: deployCluster, isLoading: deploying } = useAsyncState(async () 
     token: cluster.value.token,
     nodes,
   })
+  router.push("/dashboard/clusters")
 }, null, { immediate: false })
 </script>

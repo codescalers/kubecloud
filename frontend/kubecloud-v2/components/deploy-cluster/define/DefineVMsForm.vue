@@ -4,7 +4,7 @@
       <DefineVMsClusterName v-model="$props.modelValue.name" />
     </v-col>
 
-    <v-col cols="6">
+    <v-col cols="12" md="6">
       <DefineVMsNodes
         icon="mdi-server"
         node-type="Master"
@@ -15,7 +15,7 @@
       />
     </v-col>
 
-    <v-col cols="6">
+    <v-col cols="12" md="6">
       <DefineVMsNodes
         icon="mdi-console"
         node-type="Worker"
